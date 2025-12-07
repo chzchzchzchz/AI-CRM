@@ -4,39 +4,72 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Dashboard from "./pages/Dashboard";
-import Accounts from "./pages/Accounts";
-import AccountDetail from "./pages/AccountDetail";
-import Contacts from "./pages/Contacts";
-import ContactDetail from "./pages/ContactDetail";
-import Calls from "./pages/Calls";
-import RFPs from "./pages/RFPs";
-import Insights from "./pages/Insights";
+import Home from "./pages/Home";
+import { lazyLoad } from "./components/LazyRoute";
+
+// Lazy load heavy pages to reduce initial bundle size
+const Accounts = lazyLoad(() => import("./pages/Accounts"));
+const AccountDetail = lazyLoad(() => import("./pages/AccountDetail"));
+// Contacts list page removed - only contact detail template remains
+const ContactDetail = lazyLoad(() => import("./pages/ContactDetail"));
+const Calls = lazyLoad(() => import("./pages/Calls"));
+const Insights = lazyLoad(() => import("./pages/Insights"));
+const Outreach = lazyLoad(() => import("./pages/Outreach"));
+const RFPs = lazyLoad(() => import("./pages/RFPs"));
+const Admin = lazyLoad(() => import("./pages/Admin"));
+const SmartSearch = lazyLoad(() => import("./pages/SmartSearch"));
+import { GlobalSearch } from "./components/GlobalSearch";
+import { GlobalAIChat } from "./components/GlobalAIChat";
+import { useState, useEffect } from "react";
 
 function Router() {
   return (
     <Switch>
-      <Route path={"/"} component={Dashboard} />
-      <Route path={"/accounts"} component={Accounts} />
-      <Route path={"/accounts/:id"} component={AccountDetail} />
-      <Route path={"/contacts"} component={Contacts} />
-      <Route path={"/contacts/:id"} component={ContactDetail} />
-      <Route path={"/calls"} component={Calls} />
+      <Route path={"/"} component={Home} />
+      <Route path="/accounts" component={Accounts} />
+      <Route path="/accounts/:id" component={AccountDetail} />
+
+      <Route path="/contacts/:id" component={ContactDetail} />
+      <Route path="/calls" component={Calls} />      <Route path={"/insights"} component={Insights} />      <Route path={"/outreach"} component={Outreach} />
       <Route path={"/rfps"} component={RFPs} />
-      <Route path={"/insights"} component={Insights} />
+      <Route path={"/admin"} component={Admin} />
+      <Route path="/search" component={SmartSearch} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
+// NOTE: About Theme
+// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
+//   to keep consistent foreground/background color across components
+// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
+
 function App() {
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider
+        defaultTheme="dark"
+      >
         <TooltipProvider>
           <Toaster />
+          <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
           <Router />
+          <GlobalAIChat />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
