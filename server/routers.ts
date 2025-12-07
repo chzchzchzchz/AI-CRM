@@ -1,5 +1,5 @@
-import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { COOKIE_NAME } from "@shared/const";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
@@ -22,6 +22,20 @@ export const appRouter = router({
   }),
 
   accounts: router({
+    getStats: protectedProcedure.query(async () => {
+      const accounts = await db.getAllAccounts();
+      const totalAccounts = accounts.length;
+      const hotLeads = accounts.filter(a => (a.intentScore || 0) >= 70).length;
+      const warmLeads = accounts.filter(a => (a.intentScore || 0) >= 40 && (a.intentScore || 0) < 70).length;
+      
+      return {
+        totalAccounts,
+        hotLeads,
+        warmLeads,
+        tasksThisWeek: 8, // Placeholder
+      };
+    }),
+    
     list: protectedProcedure.query(async () => {
       return await db.getAllAccounts();
     }),
