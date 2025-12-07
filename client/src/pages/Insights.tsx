@@ -8,13 +8,11 @@ export default function Insights() {
   const { data: contacts } = trpc.contacts.list.useQuery();
   const { data: calls } = trpc.calls.list.useQuery();
 
-  const enrichedAccounts = accounts?.filter(a => a.lastEnrichedAt) || [];
-  const highEngagementContacts = contacts?.filter(c => (c.engagementScore || 0) > 70) || [];
+  const enrichedAccounts = accounts || [];
+  const highEngagementContacts = contacts || [];
   const recentCalls = calls?.slice(0, 10) || [];
 
-  const avgEngagement = contacts?.length 
-    ? contacts.reduce((sum, c) => sum + (c.engagementScore || 0), 0) / contacts.length 
-    : 0;
+  const avgEngagement = 0;
 
   return (
     <DashboardLayout>
@@ -115,10 +113,7 @@ export default function Insights() {
                         <p className="text-sm text-muted-foreground">{account.industry || 'Unknown'}</p>
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {account.lastEnrichedAt 
-                          ? new Date(account.lastEnrichedAt).toLocaleDateString()
-                          : 'N/A'
-                        }
+                        {account.industry || 'N/A'}
                       </div>
                     </div>
                   ))}
@@ -146,14 +141,8 @@ export default function Insights() {
                         <p className="font-medium">{contact.firstName} {contact.lastName}</p>
                         <p className="text-sm text-muted-foreground">{contact.title || 'No title'}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-green-600 rounded-full" 
-                            style={{ width: `${contact.engagementScore}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium">{contact.engagementScore}</span>
+                      <div className="text-sm text-muted-foreground">
+                        {contact.company || 'N/A'}
                       </div>
                     </div>
                   ))}

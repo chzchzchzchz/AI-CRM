@@ -185,35 +185,9 @@ export default function ContactDetail() {
                 <CardTitle>Engagement</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {contact.lastContactedAt && (
-                  <div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                      <Calendar className="h-4 w-4" />
-                      <span>Last Contacted</span>
-                    </div>
-                    <p className="text-sm font-medium">
-                      {new Date(contact.lastContactedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
 
-                {contact.engagementScore !== null && contact.engagementScore !== undefined && (
-                  <div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                      <TrendingUp className="h-4 w-4" />
-                      <span>Engagement Score</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-green-600 rounded-full" 
-                          style={{ width: `${contact.engagementScore}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium">{contact.engagementScore}</span>
-                    </div>
-                  </div>
-                )}
+
+
 
                 {contact.clayRecordId && (
                   <div>

@@ -1,5 +1,8 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean } from "drizzle-orm/mysql-core";
 
+/**
+ * Core user table backing auth flow.
+ */
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
@@ -15,28 +18,24 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+// Accounts table
 export const accounts = mysqlTable("accounts", {
   id: int("id").autoincrement().primaryKey(),
+  clayRecordId: varchar("clayRecordId", { length: 255 }).unique(),
+  clayTableId: varchar("clayTableId", { length: 255 }),
   name: varchar("name", { length: 255 }).notNull(),
   domain: varchar("domain", { length: 255 }),
-  industry: varchar("industry", { length: 255 }),
+  industry: varchar("industry", { length: 100 }),
   employeeCount: int("employeeCount"),
   revenue: varchar("revenue", { length: 100 }),
-  location: text("location"),
+  location: varchar("location", { length: 255 }),
   description: text("description"),
   website: varchar("website", { length: 500 }),
   linkedinUrl: varchar("linkedinUrl", { length: 500 }),
-  
-  // Enrichment data
-  securityStack: text("securityStack"), // JSON array
-  techStack: text("techStack"), // JSON array
-  triggerEvents: text("triggerEvents"), // JSON array
-  
-  // Clay integration
-  clayTableId: varchar("clayTableId", { length: 255 }),
-  clayRecordId: varchar("clayRecordId", { length: 255 }),
-  lastEnrichedAt: timestamp("lastEnrichedAt"),
-  
+  techStack: text("techStack"),
+  securityStack: text("securityStack"),
+  triggerEvents: text("triggerEvents"),
+  rawData: json("rawData"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -44,25 +43,22 @@ export const accounts = mysqlTable("accounts", {
 export type Account = typeof accounts.$inferSelect;
 export type InsertAccount = typeof accounts.$inferInsert;
 
+// Contacts table
 export const contacts = mysqlTable("contacts", {
   id: int("id").autoincrement().primaryKey(),
   accountId: int("accountId").notNull(),
-  firstName: varchar("firstName", { length: 100 }),
-  lastName: varchar("lastName", { length: 100 }),
+  clayRecordId: varchar("clayRecordId", { length: 255 }).unique(),
+  firstName: varchar("firstName", { length: 255 }),
+  lastName: varchar("lastName", { length: 255 }),
+  name: varchar("name", { length: 255 }),
+  title: varchar("title", { length: 255 }),
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 50 }),
-  title: varchar("title", { length: 255 }),
-  department: varchar("department", { length: 100 }),
   linkedinUrl: varchar("linkedinUrl", { length: 500 }),
-  
-  // Engagement tracking
-  lastContactedAt: timestamp("lastContactedAt"),
-  engagementScore: int("engagementScore"),
-  
-  // Clay integration
-  clayRecordId: varchar("clayRecordId", { length: 255 }),
-  lastEnrichedAt: timestamp("lastEnrichedAt"),
-  
+  location: varchar("location", { length: 255 }),
+  company: varchar("company", { length: 255 }),
+  department: varchar("department", { length: 100 }),
+  rawData: json("rawData"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -70,35 +66,19 @@ export const contacts = mysqlTable("contacts", {
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = typeof contacts.$inferInsert;
 
-export const intentScores = mysqlTable("intentScores", {
-  id: int("id").autoincrement().primaryKey(),
-  accountId: int("accountId").notNull(),
-  score: int("score").notNull(),
-  category: varchar("category", { length: 100 }),
-  keywords: text("keywords"), // JSON array
-  timestamp: timestamp("timestamp").defaultNow().notNull(),
-  source: varchar("source", { length: 50 }).default("6sense"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type IntentScore = typeof intentScores.$inferSelect;
-export type InsertIntentScore = typeof intentScores.$inferInsert;
-
+// Calls table
 export const calls = mysqlTable("calls", {
   id: int("id").autoincrement().primaryKey(),
   accountId: int("accountId"),
   contactId: int("contactId"),
   title: varchar("title", { length: 255 }),
-  duration: int("duration"), // seconds
+  duration: int("duration"), // in seconds
   recordingUrl: varchar("recordingUrl", { length: 500 }),
   transcriptUrl: varchar("transcriptUrl", { length: 500 }),
-  
-  // Gong integration
-  gongCallId: varchar("gongCallId", { length: 255 }),
+  gongCallId: varchar("gongCallId", { length: 255 }).unique(),
   sentiment: varchar("sentiment", { length: 50 }),
-  keyTopics: text("keyTopics"), // JSON array
-  actionItems: text("actionItems"), // JSON array
-  
+  keyTopics: text("keyTopics"), // JSON string
+  actionItems: text("actionItems"), // JSON string
   callDate: timestamp("callDate").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -107,22 +87,20 @@ export const calls = mysqlTable("calls", {
 export type Call = typeof calls.$inferSelect;
 export type InsertCall = typeof calls.$inferInsert;
 
+// RFPs table
 export const rfps = mysqlTable("rfps", {
   id: int("id").autoincrement().primaryKey(),
   accountId: int("accountId"),
   title: varchar("title", { length: 500 }).notNull(),
   description: text("description"),
   agency: varchar("agency", { length: 255 }),
-  solicitationNumber: varchar("solicitationNumber", { length: 100 }),
+  solicitationNumber: varchar("solicitationNumber", { length: 255 }).unique(),
   postedDate: timestamp("postedDate"),
   responseDeadline: timestamp("responseDeadline"),
   awardAmount: varchar("awardAmount", { length: 100 }),
-  
-  // SAM.gov integration
-  samGovId: varchar("samGovId", { length: 255 }),
+  samGovId: varchar("samGovId", { length: 255 }).unique(),
   url: varchar("url", { length: 500 }),
-  status: varchar("status", { length: 50 }).default("active"),
-  
+  status: varchar("status", { length: 50 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -130,24 +108,27 @@ export const rfps = mysqlTable("rfps", {
 export type RFP = typeof rfps.$inferSelect;
 export type InsertRFP = typeof rfps.$inferInsert;
 
-export const enrichmentLogs = mysqlTable("enrichmentLogs", {
-  id: int("id").autoincrement().primaryKey(),
-  entityType: varchar("entityType", { length: 50 }).notNull(), // 'account' or 'contact'
-  entityId: int("entityId").notNull(),
-  source: varchar("source", { length: 50 }).notNull(), // 'clay', '6sense', 'gong', etc.
-  status: varchar("status", { length: 50 }).notNull(),
-  dataSnapshot: text("dataSnapshot"), // JSON
-  errorMessage: text("errorMessage"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type EnrichmentLog = typeof enrichmentLogs.$inferSelect;
-export type InsertEnrichmentLog = typeof enrichmentLogs.$inferInsert;
-
-export const aiContext = mysqlTable("aiContext", {
+// Intent Scores table
+export const intentScores = mysqlTable("intentScores", {
   id: int("id").autoincrement().primaryKey(),
   accountId: int("accountId").notNull(),
-  contextType: varchar("contextType", { length: 50 }).notNull(), // 'research', 'outreach', 'summary'
+  score: int("score").notNull(),
+  category: varchar("category", { length: 100 }),
+  keywords: text("keywords"), // JSON string
+  source: varchar("source", { length: 50 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type IntentScore = typeof intentScores.$inferSelect;
+export type InsertIntentScore = typeof intentScores.$inferInsert;
+
+// AI Context table
+export const aiContext = mysqlTable("aiContext", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId"),
+  contactId: int("contactId"),
+  contextType: varchar("contextType", { length: 50 }).notNull(), // 'research', 'outreach', 'analysis'
   prompt: text("prompt"),
   response: text("response"),
   model: varchar("model", { length: 50 }),
@@ -158,6 +139,7 @@ export const aiContext = mysqlTable("aiContext", {
 export type AIContext = typeof aiContext.$inferSelect;
 export type InsertAIContext = typeof aiContext.$inferInsert;
 
+// Documents table
 export const documents = mysqlTable("documents", {
   id: int("id").autoincrement().primaryKey(),
   accountId: int("accountId"),
@@ -174,3 +156,101 @@ export const documents = mysqlTable("documents", {
 
 export type Document = typeof documents.$inferSelect;
 export type InsertDocument = typeof documents.$inferInsert;
+
+// Enrichment Logs table
+export const enrichmentLogs = mysqlTable("enrichmentLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  entityType: varchar("entityType", { length: 50 }).notNull(), // 'account', 'contact'
+  entityId: int("entityId").notNull(),
+  source: varchar("source", { length: 50 }).notNull(), // 'clay', '6sense', 'gong'
+  status: varchar("status", { length: 50 }).notNull(), // 'success', 'failed', 'pending'
+  dataSnapshot: text("dataSnapshot"), // JSON string
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EnrichmentLog = typeof enrichmentLogs.$inferSelect;
+export type InsertEnrichmentLog = typeof enrichmentLogs.$inferInsert;
+
+// Context Store for AI learning
+export const contextStore = mysqlTable("contextStore", {
+  id: int("id").autoincrement().primaryKey(),
+  type: varchar("type", { length: 64 }).notNull(), // 'company_knowledge', 'user_preference', 'search_pattern', 'interaction'
+  key: varchar("key", { length: 255 }).notNull(),
+  value: text("value").notNull(),
+  metadata: text("metadata"), // JSON for additional context
+  userId: int("userId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ContextStore = typeof contextStore.$inferSelect;
+export type InsertContextStore = typeof contextStore.$inferInsert;
+
+// AI Insights cache
+export const aiInsights = mysqlTable("aiInsights", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId"),
+  insightType: varchar("insightType", { length: 50 }).notNull(), // 'tech_stack', 'intent', 'trigger', 'research'
+  title: varchar("title", { length: 255 }),
+  content: text("content").notNull(),
+  confidence: int("confidence"), // 0-100
+  source: varchar("source", { length: 50 }),
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AIInsight = typeof aiInsights.$inferSelect;
+export type InsertAIInsight = typeof aiInsights.$inferInsert;
+
+// Email Sequences
+export const emailSequences = mysqlTable("emailSequences", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  steps: json("steps").notNull(), // Array of email steps
+  isActive: boolean("isActive").default(true),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmailSequence = typeof emailSequences.$inferSelect;
+export type InsertEmailSequence = typeof emailSequences.$inferInsert;
+
+// Outreach Campaigns
+export const outreachCampaigns = mysqlTable("outreachCampaigns", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  sequenceId: int("sequenceId"),
+  accountIds: json("accountIds"), // Array of account IDs
+  contactIds: json("contactIds"), // Array of contact IDs
+  status: varchar("status", { length: 50 }).notNull(), // 'draft', 'active', 'paused', 'completed'
+  startDate: timestamp("startDate"),
+  endDate: timestamp("endDate"),
+  stats: json("stats"), // Campaign statistics
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OutreachCampaign = typeof outreachCampaigns.$inferSelect;
+export type InsertOutreachCampaign = typeof outreachCampaigns.$inferInsert;
+
+// News Monitoring
+export const newsItems = mysqlTable("newsItems", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId"),
+  title: varchar("title", { length: 500 }).notNull(),
+  url: varchar("url", { length: 500 }),
+  source: varchar("source", { length: 255 }),
+  publishedAt: timestamp("publishedAt"),
+  summary: text("summary"),
+  sentiment: varchar("sentiment", { length: 50 }),
+  relevanceScore: int("relevanceScore"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type NewsItem = typeof newsItems.$inferSelect;
+export type InsertNewsItem = typeof newsItems.$inferInsert;

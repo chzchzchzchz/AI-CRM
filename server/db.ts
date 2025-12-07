@@ -189,7 +189,7 @@ export async function getIntentScoresByAccountId(accountId: number) {
   
   return await db.select().from(intentScores)
     .where(eq(intentScores.accountId, accountId))
-    .orderBy(desc(intentScores.timestamp));
+    .orderBy(desc(intentScores.createdAt));
 }
 
 export async function createIntentScore(score: InsertIntentScore) {

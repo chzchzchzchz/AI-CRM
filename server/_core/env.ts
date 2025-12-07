@@ -7,4 +7,6 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  sixSenseApiKey: process.env.SIXSENSE_API_KEY ?? process.env['6Sense_API'] ?? "",
+  clayWebhookUrl: process.env.CLAY_WEBHOOK_URL ?? "",
 };

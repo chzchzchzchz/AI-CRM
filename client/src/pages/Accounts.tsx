@@ -84,12 +84,7 @@ export default function Accounts() {
                         <span>{account.employeeCount.toLocaleString()} employees</span>
                       </div>
                     )}
-                    {account.lastEnrichedAt && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <TrendingUp className="h-4 w-4 text-green-600" />
-                        <span className="text-green-600">Enriched</span>
-                      </div>
-                    )}
+
                   </CardContent>
                 </Card>
               </Link>
