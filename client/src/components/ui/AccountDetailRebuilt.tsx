@@ -80,9 +80,9 @@ export default function AccountDetail() {
   };
 
   const stackData = parseJSON(account.techStack);
-  const researchData = parseJSON(account.rawData);
+  const researchData = {};
   const triggerData = parseJSON(account.triggerEvents);
-  const rawData = parseJSON(account.rawData);
+  const rawData = {};
 
   // Helper to format field names
   const formatFieldName = (key: string): string => {

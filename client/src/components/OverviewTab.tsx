@@ -43,23 +43,26 @@ export function OverviewTab({ accountId, account }: OverviewTabProps) {
                 AI-powered analysis of this account's strategic position and opportunities
               </CardDescription>
             </div>
-            {data && (
-              <div className="flex items-center gap-2">
-                {data.cached && (
-                  <Badge variant="outline" className="gap-1">
-                    <Clock className="h-3 w-3" />
-                    Cached ({data.cacheAge}m ago)
-                  </Badge>
-                )}
-                <Button
-                  onClick={handleRefresh}
-                  variant="outline"
-                  size="sm"
-                >
+            <div className="flex items-center gap-2">
+              {data?.cached && (
+                <Badge variant="outline" className="gap-1">
+                  <Clock className="h-3 w-3" />
+                  Cached ({data.cacheAge}m ago)
+                </Badge>
+              )}
+              <Button
+                onClick={handleRefresh}
+                variant="outline"
+                size="sm"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
                   <RefreshCw className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+                )}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">

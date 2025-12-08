@@ -51,9 +51,9 @@ export default function BulkEmail() {
 
       // Extract research insights
       let researchInfo = "";
-      if (account.rawData) {
+      if (null) {
         try {
-          const researchData = typeof account.rawData === 'string' ? JSON.parse(account.rawData) : account.rawData;
+          const researchData = typeof null === 'string' ? JSON.parse(null) : null;
           researchInfo = JSON.stringify(researchData).substring(0, 200);
         } catch (e) {
           researchInfo = "Research insights available";

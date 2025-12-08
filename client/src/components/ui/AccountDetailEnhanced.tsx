@@ -83,7 +83,7 @@ export default function AccountDetailEnhanced() {
   const stackData = parseJSON(account?.stack);
   const researchData = parseJSON(account?.research);
   const triggerData = parseJSON(account?.trigger);
-  const rawData = parseJSON(account?.rawData);
+  const rawData = {};
 
   // Helper to format field names
   const formatFieldName = (key: string): string => {

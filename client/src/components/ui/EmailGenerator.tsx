@@ -121,7 +121,7 @@ export default function EmailGenerator() {
                 </Select>
                 {selectedAccount && (
                   <div className="text-xs text-slate-500 mt-1">
-                    {selectedAccount.industry} • {selectedAccount.employees} employees
+                    {selectedAccount.industry} • {selectedAccount.employeeCount} employees
                   </div>
                 )}
               </div>

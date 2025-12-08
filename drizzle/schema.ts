@@ -40,6 +40,8 @@ export const accounts = mysqlTable("accounts", {
   securityStack: text("securityStack"),
   triggerEvents: text("triggerEvents"),
   rawData: json("rawData"),
+  aiOverviewCache: text("aiOverviewCache"),
+  aiCacheUpdatedAt: timestamp("aiCacheUpdatedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

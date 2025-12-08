@@ -57,9 +57,9 @@ export default function ContactDetail() {
   };
 
   let rawDataParsed: any = null;
-  if (contact?.rawData) {
+  if (null) {
     try {
-      rawDataParsed = JSON.parse(contact.rawData);
+      rawDataParsed = JSON.parse(null);
     } catch {}
   }
 
@@ -349,8 +349,8 @@ export default function ContactDetail() {
                         {relatedAccount.industry && (
                           <span>{relatedAccount.industry}</span>
                         )}
-                        {relatedAccount.employees && (
-                          <span>{relatedAccount.employees} employees</span>
+                        {relatedAccount.employeeCount && (
+                          <span>{relatedAccount.employeeCount} employees</span>
                         )}
                         {relatedAccount.region && (
                           <span>{relatedAccount.region}</span>

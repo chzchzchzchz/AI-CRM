@@ -105,8 +105,8 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
           bVal = parseInt(b.intentScore || "0");
           break;
         case "employees":
-          aVal = parseInt(a.employees?.replace(/[^0-9]/g, "") || "0");
-          bVal = parseInt(b.employees?.replace(/[^0-9]/g, "") || "0");
+          aVal = parseInt(a.employeeCount?.replace(/[^0-9]/g, "") || "0");
+          bVal = parseInt(b.employeeCount?.replace(/[^0-9]/g, "") || "0");
           break;
         case "industry":
           aVal = a.industry || "";

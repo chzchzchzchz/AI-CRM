@@ -25,8 +25,7 @@ export default function ContactDetail() {
 
   const { data: gongCalls } = trpc.gong.list.useQuery();
   const contactCalls = gongCalls?.filter(call => 
-    call.personId === personId || 
-    (call.participants && contact?.name && call.participants.includes(contact.name))
+    call.contactId === personId
   );
 
   const { data: accounts } = trpc.accounts.list.useQuery();
@@ -57,11 +56,8 @@ export default function ContactDetail() {
   };
 
   let rawDataParsed: any = null;
-  if (contact?.rawData) {
-    try {
-      rawDataParsed = JSON.parse(contact.rawData);
-    } catch {}
-  }
+  // rawData field removed from schema
+  rawDataParsed = {};
 
   // Loading state
   if (isLoading) {
@@ -349,8 +345,8 @@ export default function ContactDetail() {
                         {relatedAccount.industry && (
                           <span>{relatedAccount.industry}</span>
                         )}
-                        {relatedAccount.employees && (
-                          <span>{relatedAccount.employees} employees</span>
+                        {relatedAccount.employeeCount && (
+                          <span>{relatedAccount.employeeCount} employees</span>
                         )}
                         {relatedAccount.region && (
                           <span>{relatedAccount.region}</span>
