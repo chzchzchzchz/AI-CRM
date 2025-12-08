@@ -22,7 +22,7 @@ export const sequencesRouter = router({
     
     return allSequences.map(seq => ({
       ...seq,
-      steps: JSON.parse(seq.steps)
+      steps: typeof seq.steps === 'string' ? JSON.parse(seq.steps) : seq.steps
     }));
   }),
 

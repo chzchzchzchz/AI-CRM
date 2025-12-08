@@ -105,9 +105,9 @@ export default function AccountDetailEnhanced() {
     }
   };
 
-  const stackData = parseJSON(account?.stack);
-  const researchData = parseJSON(account?.research);
-  const triggerData = parseJSON(account?.trigger);
+  const stackData = parseJSON(account?.techStack);
+  const researchData = null; // No research field in schema
+  const triggerData = parseJSON(account?.triggerEvents);
   const rawData = parseJSON(account?.rawData);
 
   const formatFieldName = (key: string): string => {

@@ -63,9 +63,9 @@ export default function ContactsEnhanced() {
 
     let filtered = contacts.filter(contact => {
       const matchesSearch = !searchQuery || 
-        contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (contact.name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
         contact.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        contact.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (contact.company?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
         contact.email?.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesCompany = companyFilter === "all" || contact.company === companyFilter;
@@ -81,16 +81,16 @@ export default function ContactsEnhanced() {
 
       switch (sortField) {
         case "name":
-          aVal = a.name.toLowerCase();
-          bVal = b.name.toLowerCase();
+          aVal = (a.name || "").toLowerCase();
+          bVal = (b.name || "").toLowerCase();
           break;
         case "title":
           aVal = a.title?.toLowerCase() || "";
           bVal = b.title?.toLowerCase() || "";
           break;
         case "company":
-          aVal = a.company.toLowerCase();
-          bVal = b.company.toLowerCase();
+          aVal = (a.company || "").toLowerCase();
+          bVal = (b.company || "").toLowerCase();
           break;
         default:
           return 0;

@@ -170,7 +170,31 @@ export async function getAllPeople() {
     return [];
   }
 
-  return await db.select().from(contacts).orderBy(desc(contacts.createdAt));
+  // Join with accounts to get company information
+  const results = await db
+    .select({
+      id: contacts.id,
+      accountId: contacts.accountId,
+      clayRecordId: contacts.clayRecordId,
+      firstName: contacts.firstName,
+      lastName: contacts.lastName,
+      name: contacts.name,
+      title: contacts.title,
+      email: contacts.email,
+      phone: contacts.phone,
+      linkedinUrl: contacts.linkedinUrl,
+      location: contacts.location,
+      department: contacts.department,
+      createdAt: contacts.createdAt,
+      updatedAt: contacts.updatedAt,
+      company: accounts.name,
+      companyDomain: accounts.domain,
+    })
+    .from(contacts)
+    .leftJoin(accounts, eq(contacts.accountId, accounts.id))
+    .orderBy(desc(contacts.createdAt));
+  
+  return results;
 }
 
 export async function getPeopleByCompany(companyName: string) {
@@ -192,7 +216,31 @@ export async function getContactsByAccountId(accountId: number) {
     return [];
   }
 
-  return await db.select().from(contacts).where(eq(contacts.accountId, accountId));
+  // Join with accounts to get company information
+  const results = await db
+    .select({
+      id: contacts.id,
+      accountId: contacts.accountId,
+      clayRecordId: contacts.clayRecordId,
+      firstName: contacts.firstName,
+      lastName: contacts.lastName,
+      name: contacts.name,
+      title: contacts.title,
+      email: contacts.email,
+      phone: contacts.phone,
+      linkedinUrl: contacts.linkedinUrl,
+      location: contacts.location,
+      department: contacts.department,
+      createdAt: contacts.createdAt,
+      updatedAt: contacts.updatedAt,
+      company: accounts.name,
+      companyDomain: accounts.domain,
+    })
+    .from(contacts)
+    .leftJoin(accounts, eq(contacts.accountId, accounts.id))
+    .where(eq(contacts.accountId, accountId));
+  
+  return results;
 }
 
 // Clay request queries - COMMENTED OUT (clayRequests table not in schema)
@@ -266,7 +314,9 @@ export async function getGongCallsByCompany(companyName: string) {
     return [];
   }
 
-  return await db.select().from(calls).where(eq(calls.company, companyName)).orderBy(desc(calls.callDate));
+  // Company column doesn't exist - this function is deprecated
+  // Use getGongCallsByAccountId instead
+  return [];
 }
 
 export async function getGongCallsByAccountId(accountId: number) {
@@ -286,5 +336,6 @@ export async function getGongCallsByPersonId(personId: number) {
     return [];
   }
 
-  return await db.select().from(calls).where(eq(calls.personId, personId)).orderBy(desc(calls.callDate));
+  // personId column is now contactId
+  return await db.select().from(calls).where(eq(calls.contactId, personId)).orderBy(desc(calls.callDate));
 }

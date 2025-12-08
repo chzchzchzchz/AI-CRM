@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { contacts } from "../drizzle/schema";
+import { contacts, accounts } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 /**
@@ -162,7 +162,7 @@ export const clayRouter = router({
           const result = await db
             .select()
             .from(contacts)
-            .where(eq(contacts.clayId, input.clayId))
+            .where(eq(contacts.clayRecordId, input.clayId))
             .limit(1);
           existingContact = result[0];
         } else if (input.email) {
@@ -177,15 +177,13 @@ export const clayRouter = router({
         if (existingContact) {
           // Update existing contact
           await db
-            .update(people)
+            .update(contacts)
             .set({
               name: input.name,
               title: input.title || existingContact.title,
               email: input.email || existingContact.email,
-              linkedin: input.linkedin || existingContact.linkedin,
+              linkedinUrl: input.linkedin || existingContact.linkedinUrl,
               location: input.location || existingContact.location,
-              company: input.company,
-              rawData: rawDataString || existingContact.rawData,
               updatedAt: new Date(),
             })
             .where(eq(contacts.id, existingContact.id));
@@ -197,15 +195,14 @@ export const clayRouter = router({
           };
         } else {
           // Insert new contact
-          await db.insert(people).values({
-            clayId: input.clayId || null,
+          await db.insert(contacts).values({
+            clayRecordId: input.clayId || null,
             name: input.name,
             title: input.title || null,
             email: input.email || null,
-            linkedin: input.linkedin || null,
+            linkedinUrl: input.linkedin || null,
             location: input.location || null,
-            company: input.company,
-            rawData: rawDataString,
+            accountId: 0, // TODO: Need to match company to account
           });
 
           return {

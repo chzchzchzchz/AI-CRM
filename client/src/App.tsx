@@ -10,7 +10,7 @@ import { lazyLoad } from "./components/LazyRoute";
 // Lazy load heavy pages to reduce initial bundle size
 const Accounts = lazyLoad(() => import("./pages/Accounts"));
 const AccountDetail = lazyLoad(() => import("./pages/AccountDetail"));
-// Contacts list page removed - only contact detail template remains
+const Contacts = lazyLoad(() => import("./pages/Contacts"));
 const ContactDetail = lazyLoad(() => import("./pages/ContactDetail"));
 const Calls = lazyLoad(() => import("./pages/Calls"));
 const Insights = lazyLoad(() => import("./pages/Insights"));
@@ -28,11 +28,13 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path="/accounts" component={Accounts} />
       <Route path="/accounts/:id" component={AccountDetail} />
-
+      <Route path="/contacts" component={Contacts} />
       <Route path="/contacts/:id" component={ContactDetail} />
-      <Route path="/calls" component={Calls} />      <Route path={"/insights"} component={Insights} />      <Route path={"/outreach"} component={Outreach} />
-      <Route path={"/rfps"} component={RFPs} />
-      <Route path={"/admin"} component={Admin} />
+      <Route path="/calls" component={Calls} />
+      <Route path="/insights" component={Insights} />
+      <Route path="/outreach" component={Outreach} />
+      <Route path="/rfps" component={RFPs} />
+      <Route path="/admin" component={Admin} />
       <Route path="/search" component={SmartSearch} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />

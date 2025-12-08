@@ -27,9 +27,8 @@ export const geminiRouter = router({
       if (account.industry) {
         context += `Industry: ${account.industry}\n`;
       }
-      
-      if (account.employees) {
-        context += `Size: ${account.employees} employees\n`;
+      if (account.employeeCount) {
+        context += `Employees: ${account.employeeCount}\n`;
       }
       
       if (account.region) {
@@ -41,9 +40,9 @@ export const geminiRouter = router({
       }
 
       // Parse tech stack
-      if (account.stack) {
+      if (account.techStack) {
         try {
-          const stack = typeof account.stack === 'string' ? JSON.parse(account.stack) : account.stack;
+          const stack = typeof account.techStack === 'string' ? JSON.parse(account.techStack) : account.techStack;
           if (stack && typeof stack === 'object') {
             const techs = Object.values(stack).flat().filter(Boolean);
             if (techs.length > 0) {
@@ -55,22 +54,8 @@ export const geminiRouter = router({
         }
       }
 
-      // Parse research insights
-      if (account.research) {
-        try {
-          const research = typeof account.research === 'string' ? JSON.parse(account.research) : account.research;
-          if (research && typeof research === 'object') {
-            const insights = Object.entries(research)
-              .filter(([_, v]) => v)
-              .slice(0, 5);
-            if (insights.length > 0) {
-              context += `\nResearch Insights:\n${insights.map(([k, v]) => `- ${k}: ${v}`).join('\n')}\n`;
-            }
-          }
-        } catch (e) {
-          // Ignore parse errors
-        }
-      }
+      // Research insights field doesn't exist in schema
+      // Removed to fix type errors
 
       // Build the Gemini prompt
       const defaultPrompt = `You are an expert B2B sales researcher for the company, a company that provides passwordless MFA and modern SSO solutions.

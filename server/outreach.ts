@@ -2,7 +2,7 @@ import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { eq, inArray } from "drizzle-orm";
-import { contacts } from "../drizzle/schema";
+import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
 
 export const outreachRouter = router({
@@ -43,13 +43,13 @@ export const outreachRouter = router({
         .map((acc) => {
           let context = `Company: ${acc.name}`;
           if (acc.industry) context += `\nIndustry: ${acc.industry}`;
-          if (acc.employees) context += `\nSize: ${acc.employees} employees`;
+          if (acc.employeeCount) context += `\nSize: ${acc.employeeCount} employees`;
           if (acc.region) context += `\nRegion: ${acc.region}`;
           
           // Parse tech stack
-          if (acc.stack) {
+          if (acc.techStack) {
             try {
-              const stack = typeof acc.stack === 'string' ? JSON.parse(acc.stack) : acc.stack;
+              const stack = typeof acc.techStack === 'string' ? JSON.parse(acc.techStack) : acc.techStack;
               if (stack && typeof stack === 'object') {
                 const techs = Object.values(stack).flat().filter(Boolean);
                 if (techs.length > 0) {
@@ -61,20 +61,7 @@ export const outreachRouter = router({
             }
           }
 
-          // Parse research insights
-          if (acc.research) {
-            try {
-              const research = typeof acc.research === 'string' ? JSON.parse(acc.research) : acc.research;
-              if (research && typeof research === 'object') {
-                const insights = Object.values(research).filter(Boolean);
-                if (insights.length > 0) {
-                  context += `\nResearch: ${insights.slice(0, 2).join("; ")}`;
-                }
-              }
-            } catch (e) {
-              // Ignore parse errors
-            }
-          }
+          // Research field doesn't exist in schema
 
           // Add intent score if available
           if (acc.intentScore) {

@@ -187,19 +187,14 @@ async function storeRFPs(opportunities: SAMOpportunity[]): Promise<number> {
         await db.insert(rfps).values({
           title: opp.title,
           agency: `${opp.department} - ${opp.subTier}`,
-          type: "government",
-          deadline: opp.responseDeadLine ? new Date(opp.responseDeadLine) : null,
-          budget: null, // SAM.gov doesn't always provide budget in search results
+          responseDeadline: opp.responseDeadLine ? new Date(opp.responseDeadLine) : null,
+          awardAmount: null,
           description: opp.description,
           url: opp.uiLink,
-          keywords: JSON.stringify({
-            naicsCode: opp.naicsCode,
-            classificationCode: opp.classificationCode,
-            setAside: opp.typeOfSetAsideDescription,
-            noticeType: opp.type,
-            solicitationNumber: opp.solicitationNumber
-          }),
-          status: opp.active === "Yes" ? "open" : "closed",
+          solicitationNumber: opp.solicitationNumber,
+          postedDate: opp.postedDate ? new Date(opp.postedDate) : null,
+          samGovId: opp.noticeId,
+          status: opp.active === 'Yes' ? 'open' : 'closed',
         });
         inserted++;
       }
@@ -232,16 +227,9 @@ export const rfpRouter = router({
         query = query.where(eq(rfps.status, input.status)) as any;
       }
 
-      if (input?.type) {
-        query = query.where(eq(rfps.type, input.type)) as any;
-      }
-
       const results = await query.orderBy(desc(rfps.createdAt)).limit(input?.limit || 100);
 
-      return results.map(rfp => ({
-        ...rfp,
-        keywords: rfp.keywords ? JSON.parse(rfp.keywords) : null
-      }));
+      return results;
     }),
 
   /**

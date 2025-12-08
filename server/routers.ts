@@ -43,7 +43,7 @@ export const appRouter = router({
       // Parse rawData for buying stage
       const buyingStages = accounts.reduce((acc, account) => {
         let stage = 'Unknown';
-        if (account.rawData) {
+        if (account.rawData && typeof account.rawData === 'string') {
           try {
             const data = JSON.parse(account.rawData);
             stage = data['6sense Buying Stage'] || data.buyingStage || 'Unknown';
