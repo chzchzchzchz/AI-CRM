@@ -79,16 +79,9 @@ export default function Outreach() {
     
     // Filter by selected accounts first
     let filtered = contacts;
-    if (selectedAccounts.length > 0 && accounts) {
-      const selectedAccountNames = accounts
-        .filter(acc => selectedAccounts.includes(acc.id))
-        .map(acc => acc.name.toLowerCase());
-      
+    if (selectedAccounts.length > 0) {
       filtered = contacts.filter(contact => 
-        selectedAccountNames.some(name => 
-          contact.company.toLowerCase().includes(name) || 
-          name.includes(contact.company.toLowerCase())
-        )
+        contact.accountId && selectedAccounts.includes(contact.accountId)
       );
     }
     
