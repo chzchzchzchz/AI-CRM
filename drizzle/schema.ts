@@ -59,7 +59,6 @@ export const contacts = mysqlTable("contacts", {
   phone: varchar("phone", { length: 50 }),
   linkedinUrl: varchar("linkedinUrl", { length: 500 }),
   location: varchar("location", { length: 255 }),
-  company: varchar("company", { length: 255 }),
   department: varchar("department", { length: 100 }),
   rawData: json("rawData"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

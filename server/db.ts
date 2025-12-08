@@ -180,7 +180,19 @@ export async function getPeopleByCompany(companyName: string) {
     return [];
   }
 
-  return await db.select().from(contacts).where(eq(contacts.company, companyName));
+  // Company column doesn't exist - this function is deprecated
+  // Use getContactsByAccountId instead
+  return [];
+}
+
+export async function getContactsByAccountId(accountId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get contacts: database not available");
+    return [];
+  }
+
+  return await db.select().from(contacts).where(eq(contacts.accountId, accountId));
 }
 
 // Clay request queries - COMMENTED OUT (clayRequests table not in schema)

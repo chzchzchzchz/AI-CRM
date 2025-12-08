@@ -28,9 +28,9 @@ export default function AccountDetailEnhanced() {
   const [showFullTranscript, setShowFullTranscript] = useState<Record<number, boolean>>({});
 
   const { data: account, isLoading } = trpc.accounts.getById.useQuery({ id: accountId });
-  const { data: people } = trpc.people.getByCompany.useQuery(
-    { company: account?.name || "" },
-    { enabled: !!account?.name }
+  const { data: people } = trpc.people.getByAccountId.useQuery(
+    { accountId },
+    { enabled: accountId > 0 }
   );
   
   const { data: gongCalls } = trpc.gong.getByAccountId.useQuery(
