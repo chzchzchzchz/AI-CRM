@@ -25,6 +25,7 @@ export const accounts = mysqlTable("accounts", {
   clayTableId: varchar("clayTableId", { length: 255 }),
   name: varchar("name", { length: 255 }).notNull(),
   domain: varchar("domain", { length: 255 }),
+  domainVariations: json("domainVariations"), // Array of domain variations, subdomains, aliases
   industry: varchar("industry", { length: 100 }),
   employeeCount: int("employeeCount"),
   revenue: varchar("revenue", { length: 100 }),
