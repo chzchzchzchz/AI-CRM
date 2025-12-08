@@ -113,6 +113,31 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return await getAccountById(input.id);
       }),
+    getStats: publicProcedure.query(async () => {
+      const accounts = await getAllAccounts();
+      const people = await getAllPeople();
+      const calls = await getAllGongCalls();
+      
+      // Calculate hot leads (intent score >= 70)
+      const hotLeads = accounts.filter(a => {
+        const score = typeof a.intentScore === 'string' ? parseInt(a.intentScore, 10) : a.intentScore;
+        return score && score >= 70;
+      }).length;
+      
+      // Calculate warm leads (intent score 40-69)
+      const warmLeads = accounts.filter(a => {
+        const score = typeof a.intentScore === 'string' ? parseInt(a.intentScore, 10) : a.intentScore;
+        return score && score >= 40 && score < 70;
+      }).length;
+      
+      return {
+        totalAccounts: accounts.length,
+        hotLeads,
+        warmLeads,
+        totalContacts: people.length,
+        totalCalls: calls.length,
+      };
+    }),
     enrichWith6sense: publicProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
@@ -123,6 +148,17 @@ export const appRouter = router({
         
         // AI-powered enrichment will be implemented
         return { message: 'AI enrichment coming soon', accountId: input.id };
+      }),
+  }),
+
+  calls: router({
+    list: publicProcedure.query(async () => {
+      return await getAllGongCalls();
+    }),
+    getByAccountId: publicProcedure
+      .input(z.object({ accountId: z.number() }))
+      .query(async ({ input }) => {
+        return await getGongCallsByAccountId(input.accountId);
       }),
   }),
 

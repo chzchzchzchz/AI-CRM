@@ -60,10 +60,10 @@ export default function Dashboard() {
             borderColor="orange"
           />
           <StatCard
-            title="This Week"
-            value={statsLoading ? "..." : stats?.tasksThisWeek || 8}
-            subtitle="Tasks to complete"
-            icon={Calendar}
+            title="Total Calls"
+            value={statsLoading ? "..." : stats?.totalCalls || 0}
+            subtitle="Gong call recordings"
+            icon={Phone}
             borderColor="cyan"
           />
         </div>
