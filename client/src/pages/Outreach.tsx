@@ -89,7 +89,7 @@ export default function Outreach() {
     if (!contactSearchQuery.trim()) return filtered;
     const query = contactSearchQuery.toLowerCase();
     return filtered.filter(contact =>
-      contact.name.toLowerCase().includes(query) ||
+      (contact.name && contact.name.toLowerCase().includes(query)) ||
       (contact.title && contact.title.toLowerCase().includes(query))
     );
   }, [contacts, contactSearchQuery, selectedAccounts, accounts]);

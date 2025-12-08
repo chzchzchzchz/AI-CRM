@@ -76,14 +76,14 @@ export default function Home() {
   const topAccounts = accounts
     ?.map(a => ({
       ...a,
-      intentScoreNum: parseInt(a.intentScore || "0", 10)
+      intentScoreNum: parseInt(String(a.intentScore || 0), 10)
     }))
     .sort((a, b) => b.intentScoreNum - a.intentScoreNum)
     .slice(0, 15) || [];
 
-  const hotLeads = accounts?.filter(a => parseInt(a.intentScore || "0") >= 70).length || 0;
+  const hotLeads = accounts?.filter(a => parseInt(String(a.intentScore || 0)) >= 70).length || 0;
   const warmLeads = accounts?.filter(a => {
-    const score = parseInt(a.intentScore || "0");
+    const score = parseInt(String(a.intentScore || 0));
     return score >= 40 && score < 70;
   }).length || 0;
 

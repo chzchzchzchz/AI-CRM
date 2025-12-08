@@ -82,7 +82,7 @@ export default function AccountDetailEnhanced() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const parseJSON = (data: string | null | undefined): Record<string, any> => {
+  const parseJSON = (data: unknown): Record<string, any> => {
     if (!data) return {};
     try {
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
@@ -349,7 +349,7 @@ export default function AccountDetailEnhanced() {
               </Card>
             ) : (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {people.map((person) => (
+                {people?.map((person) => (
                   <Link key={person.id} href={`/contacts/${person.id}`}>
                     <Card className="card-elevated hover:scale-[1.02] transition-all cursor-pointer group h-full">
                       <CardHeader>

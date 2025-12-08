@@ -57,7 +57,7 @@ export default function RFPs() {
       rfp.agency.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (rfp.description && rfp.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
-    const matchesCategory = categoryFilter === "all" || rfp.type === categoryFilter;
+    const matchesCategory = categoryFilter === "all" || "government" === categoryFilter;
     
     return matchesSearch && matchesCategory;
   });
@@ -200,11 +200,11 @@ export default function RFPs() {
                           <h3 className="text-lg font-semibold text-white">{rfp.title}</h3>
                           <Badge 
                             variant="outline" 
-                            className={rfp.type === "government" 
+                            className={"government" === "government" 
                               ? "border-cyan-500/30 text-cyan-400" 
                               : "border-purple-500/30 text-purple-400"}
                           >
-                            {rfp.type === "government" ? "Government" : "Private"}
+                            {"government" === "government" ? "Government" : "Private"}
                           </Badge>
                           {rfp.status === "open" && (
                             <Badge variant="outline" className="border-green-500/30 text-green-400">

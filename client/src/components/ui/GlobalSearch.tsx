@@ -55,7 +55,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     return (
       call.title?.toLowerCase().includes(q) ||
       call.accountId?.toLowerCase().includes(q) ||
-      call.participants?.toLowerCase().includes(q)
+      false // participants field removed
     );
   }).slice(0, 5);
 
@@ -185,7 +185,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-white truncate">{call.title || 'Untitled Call'}</div>
                           <div className="text-sm text-slate-400 truncate">
-                            {call.accountId || 'No company'} • {call.participants || 'No speakers'}
+                            {call.accountId || 'No company'}
                           </div>
                         </div>
                       </button>

@@ -65,7 +65,7 @@ export const clayRouter = router({
           const result = await db
             .select()
             .from(accounts)
-            .where(eq(accounts.clayId, input.clayId))
+            .where(eq(accounts.clayRecordId, input.clayId))
             .limit(1);
           existingAccount = result[0];
         } else if (input.domain) {
@@ -86,18 +86,13 @@ export const clayRouter = router({
               domain: input.domain || existingAccount.domain,
               region: input.region || existingAccount.region,
               industry: input.industry || existingAccount.industry,
-              employees: input.employees || existingAccount.employees,
+              employeeCount: input.employees ? parseInt(String(input.employees)) : existingAccount.employeeCount,
               description: input.description || existingAccount.description,
-              url: input.url || existingAccount.url,
-              intentScore: input.intentScore || existingAccount.intentScore,
-              fitScore: input.fitScore || existingAccount.fitScore,
+              website: input.url || existingAccount.website,
+              intentScore: input.intentScore ? parseInt(String(input.intentScore)) : existingAccount.intentScore,
               relationship: input.relationship || existingAccount.relationship,
-              territory: input.territory || existingAccount.territory,
-              segment: input.segment || existingAccount.segment,
-              stack: input.stack || existingAccount.stack,
-              research: input.research || existingAccount.research,
-              trigger: input.trigger || existingAccount.trigger,
-              rawData: rawDataString || existingAccount.rawData,
+              techStack: input.stack || existingAccount.techStack,
+              triggerEvents: input.trigger || existingAccount.triggerEvents,
               updatedAt: new Date(),
             })
             .where(eq(accounts.id, existingAccount.id));
@@ -110,23 +105,18 @@ export const clayRouter = router({
         } else {
           // Insert new account
           await db.insert(accounts).values({
-            clayId: input.clayId || null,
+            clayRecordId: input.clayId || null,
             name: input.name,
             domain: input.domain || null,
             region: input.region || null,
             industry: input.industry || null,
-            employees: input.employees || null,
+            employeeCount: input.employees ? parseInt(String(input.employees)) : null,
             description: input.description || null,
-            url: input.url || null,
-            intentScore: input.intentScore || null,
-            fitScore: input.fitScore || null,
+            website: input.url || null,
+            intentScore: input.intentScore ? parseInt(String(input.intentScore)) : null,
             relationship: input.relationship || "Prospect",
-            territory: input.territory || null,
-            segment: input.segment || "Commercial",
-            stack: input.stack || null,
-            research: input.research || null,
-            trigger: input.trigger || null,
-            rawData: rawDataString,
+            techStack: input.stack || null,
+            triggerEvents: input.trigger || null,
           });
 
           return {

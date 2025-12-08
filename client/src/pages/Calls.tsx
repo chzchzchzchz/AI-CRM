@@ -301,12 +301,7 @@ export default function CallsEnhanced() {
                                 {call.accountId}
                               </span>
                             )}
-                            {call.participants && (
-                              <span className="flex items-center gap-1">
-                                <Users className="h-4 w-4" />
-                                {call.participants}
-                              </span>
-                            )}
+                            {/* participants field removed */}
                           </CardDescription>
                         </div>
                       </div>

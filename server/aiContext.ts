@@ -124,19 +124,19 @@ export async function conversationWithMemory(params: {
 
   if (db) {
     if (accountId) {
-      const { accounts, gongCalls } = await import("../drizzle/schema");
+      const { accounts, calls } = await import("../drizzle/schema");
       const accountResults = await db.select().from(accounts).where(eq(accounts.id, accountId)).limit(1);
       accountData = accountResults[0] || null;
       
-      relatedCalls = await db.select().from(gongCalls).where(eq(gongCalls.accountId, accountId)).limit(5);
+      relatedCalls = await db.select().from(calls).where(eq(calls.accountId, accountId)).limit(5);
     }
 
     if (contactId) {
-      const { people, gongCalls } = await import("../drizzle/schema");
-      const contactResults = await db.select().from(people).where(eq(people.id, contactId)).limit(1);
+      const { contacts, calls } = await import("../drizzle/schema");
+      const contactResults = await db.select().from(contacts).where(eq(contacts.id, contactId)).limit(1);
       contactData = contactResults[0] || null;
       
-      const callResults = await db.select().from(gongCalls).where(eq(gongCalls.personId, contactId)).limit(5);
+      const callResults = await db.select().from(calls).where(eq(calls.contactId, contactId)).limit(5);
       relatedCalls = [...relatedCalls, ...callResults];
     }
   }
@@ -266,13 +266,13 @@ export async function generateAccountSummary(accountId: number): Promise<string>
   const db = await getDb();
   if (!db) return "Unable to generate summary";
 
-  const { accounts, people, gongCalls } = await import("../drizzle/schema");
+  const { accounts, contacts, calls } = await import("../drizzle/schema");
   
   const account = await db.select().from(accounts).where(eq(accounts.id, accountId)).limit(1);
   if (!account[0]) return "Account not found";
 
-  const contacts = await db.select().from(people).where(eq(people.company, account[0].name)).limit(10);
-  const calls = await db.select().from(gongCalls).where(eq(gongCalls.accountId, accountId)).limit(10);
+  const accountContacts = await db.select().from(contacts).where(eq(contacts.accountId, accountId)).limit(10);
+  const accountCalls = await db.select().from(calls).where(eq(calls.accountId, accountId)).limit(10);
 
   // Get stored insights
   const storedInsights = await getContext('account_insight', `account_${accountId}`);
@@ -301,11 +301,11 @@ Generate an executive summary for this account in EXACTLY this format:
 ACCOUNT DATA:
 ${JSON.stringify(account[0], null, 2)}
 
-CONTACTS (${contacts.length}):
-${JSON.stringify(contacts.slice(0, 5), null, 2)}
+CONTACTS (${accountContacts.length}):
+${JSON.stringify(accountContacts.slice(0, 5), null, 2)}
 
-RECENT CALLS (${calls.length}):
-${JSON.stringify(calls.slice(0, 3), null, 2)}
+RECENT CALLS (${accountCalls.length}):
+${JSON.stringify(accountCalls.slice(0, 3), null, 2)}
 
 ${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `- ${i.value}`).join('\n')}` : ''}
 
@@ -344,7 +344,7 @@ export async function generateContactSummary(contactId: number): Promise<string>
   const contact = await db.select().from(contacts).where(eq(contacts.id, contactId)).limit(1);
   if (!contact[0]) return "Contact not found";
 
-  const contactCalls = await db.select().from(calls).where(eq(calls.personId, contactId)).limit(10);
+  const contactCalls = await db.select().from(calls).where(eq(calls.contactId, contactId)).limit(10);
 
   // Get stored insights
   const storedInsights = await getContext('contact_insight', `contact_${contactId}`);

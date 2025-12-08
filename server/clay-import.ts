@@ -157,9 +157,9 @@ export const clayImportRouter = router({
 
     const allAccounts = await db.select().from(accounts);
     
-    const withStack = allAccounts.filter(a => a.stack && a.stack !== '{}').length;
-    const withResearch = allAccounts.filter(a => a.research && a.research !== '{}').length;
-    const withTriggers = allAccounts.filter(a => a.trigger && a.trigger !== '{}').length;
+    const withStack = allAccounts.filter(a => a.techStack && a.techStack !== '{}').length;
+    const withResearch = 0; // research field removed from schema
+    const withTriggers = allAccounts.filter(a => a.triggerEvents && a.triggerEvents !== '{}').length;
 
     return {
       total: allAccounts.length,

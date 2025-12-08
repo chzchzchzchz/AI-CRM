@@ -54,10 +54,10 @@ export default function RFPs() {
   const filteredRFPs = rfps.filter(rfp => {
     const matchesSearch = !searchQuery || 
       rfp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      rfp.agency.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (rfp.agency && rfp.agency.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (rfp.description && rfp.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
-    const matchesCategory = categoryFilter === "all" || rfp.type === categoryFilter;
+    const matchesCategory = true; // type field removed from schema
     
     return matchesSearch && matchesCategory;
   });
@@ -189,7 +189,7 @@ export default function RFPs() {
         ) : (
           <div className="grid gap-4">
             {filteredRFPs.map((rfp) => {
-              const keywords = rfp.keywords ? JSON.parse(rfp.keywords as any) : {};
+              // keywords field removed from schema
               
               return (
                 <Card key={rfp.id} className="bg-slate-900/50 border-slate-800 hover:border-cyan-500/50 transition-all">
@@ -200,11 +200,9 @@ export default function RFPs() {
                           <h3 className="text-lg font-semibold text-white">{rfp.title}</h3>
                           <Badge 
                             variant="outline" 
-                            className={rfp.type === "government" 
-                              ? "border-cyan-500/30 text-cyan-400" 
-                              : "border-purple-500/30 text-purple-400"}
+                            className="border-cyan-500/30 text-cyan-400"
                           >
-                            {rfp.type === "government" ? "Government" : "Private"}
+                            RFP
                           </Badge>
                           {rfp.status === "open" && (
                             <Badge variant="outline" className="border-green-500/30 text-green-400">
@@ -217,16 +215,16 @@ export default function RFPs() {
                             <Building2 className="h-4 w-4" />
                             {rfp.agency}
                           </span>
-                          {rfp.deadline && (
+                          {rfp.responseDeadline && (
                             <span className="flex items-center gap-1">
                               <Calendar className="h-4 w-4" />
-                              Deadline: {new Date(rfp.deadline).toLocaleDateString()}
+                              Deadline: {new Date(rfp.responseDeadline).toLocaleDateString()}
                             </span>
                           )}
-                          {rfp.budget && (
+                          {rfp.awardAmount && (
                             <span className="flex items-center gap-1">
                               <DollarSign className="h-4 w-4" />
-                              {rfp.budget}
+                              ${rfp.awardAmount.toLocaleString()}
                             </span>
                           )}
                         </div>
@@ -235,17 +233,7 @@ export default function RFPs() {
                             {rfp.description}
                           </p>
                         )}
-                        {Object.keys(keywords).length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {(Object.entries(keywords) as [string, any][]).map(([key, value]) => (
-                              value && (
-                                <Badge key={key} variant="secondary" className="bg-slate-800/50 text-slate-300">
-                                  {String(value)}
-                                </Badge>
-                              )
-                            ))}
-                          </div>
-                        )}
+                        {/* Keywords field removed from schema */}
                       </div>
                       <Button
                         variant="outline"
