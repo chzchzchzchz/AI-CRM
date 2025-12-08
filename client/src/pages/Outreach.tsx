@@ -142,12 +142,12 @@ export default function Outreach() {
                   {filteredAccounts.map((account) => (
                     <div
                       key={account.id}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer"
-                      onClick={() => toggleAccount(account.id)}
+                      className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
                     >
                       <Checkbox
                         checked={selectedAccounts.includes(account.id)}
                         onCheckedChange={() => toggleAccount(account.id)}
+                        className="cursor-pointer"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-white truncate">{account.name}</div>
@@ -192,12 +192,12 @@ export default function Outreach() {
                   {filteredContacts.slice(0, 50).map((contact) => (
                     <div
                       key={contact.id}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer"
-                      onClick={() => toggleContact(contact.id)}
+                      className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
                     >
                       <Checkbox
                         checked={selectedContacts.includes(contact.id)}
                         onCheckedChange={() => toggleContact(contact.id)}
+                        className="cursor-pointer"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-white truncate">{contact.name}</div>

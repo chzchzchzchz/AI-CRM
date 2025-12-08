@@ -157,40 +157,46 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Key Stats - Beautiful Cards */}
+        {/* Key Stats - Beautiful Cards - All Clickable */}
         <div className="grid gap-6 md:grid-cols-4">
-          <Card className="card-elevated border-l-4 border-l-indigo-500">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Accounts</CardTitle>
-              <Building2 className="h-5 w-5 text-indigo-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{accounts?.length || 0}</div>
-              <p className="text-xs text-muted-foreground mt-1">Across all territories</p>
-            </CardContent>
-          </Card>
+          <Link href="/accounts">
+            <Card className="card-elevated border-l-4 border-l-indigo-500 cursor-pointer hover:scale-[1.02] transition-transform">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Accounts</CardTitle>
+                <Building2 className="h-5 w-5 text-indigo-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{accounts?.length || 0}</div>
+                <p className="text-xs text-muted-foreground mt-1">Across all territories</p>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card className="card-elevated border-l-4 border-l-red-500">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Hot Leads</CardTitle>
-              <Flame className="h-5 w-5 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-600 dark:text-red-400">{hotLeads}</div>
-              <p className="text-xs text-muted-foreground mt-1">Intent score 70+</p>
-            </CardContent>
-          </Card>
+          <Link href="/accounts?filter=hot">
+            <Card className="card-elevated border-l-4 border-l-red-500 cursor-pointer hover:scale-[1.02] transition-transform">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Hot Leads</CardTitle>
+                <Flame className="h-5 w-5 text-red-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-red-600 dark:text-red-400">{hotLeads}</div>
+                <p className="text-xs text-muted-foreground mt-1">Intent score 70+</p>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card className="card-elevated border-l-4 border-l-orange-500">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Warm Leads</CardTitle>
-              <TrendingUp className="h-5 w-5 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{warmLeads}</div>
-              <p className="text-xs text-muted-foreground mt-1">Intent score 40-69</p>
-            </CardContent>
-          </Card>
+          <Link href="/accounts?filter=warm">
+            <Card className="card-elevated border-l-4 border-l-orange-500 cursor-pointer hover:scale-[1.02] transition-transform">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Warm Leads</CardTitle>
+                <TrendingUp className="h-5 w-5 text-orange-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{warmLeads}</div>
+                <p className="text-xs text-muted-foreground mt-1">Intent score 40-69</p>
+              </CardContent>
+            </Card>
+          </Link>
 
           <Card className="card-elevated border-l-4 border-l-cyan-500">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
