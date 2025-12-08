@@ -324,33 +324,39 @@ export const appRouter = router({
           rawData: account.rawData
         };
 
-        const { invokeLLM } = await import("./_core/llm");
-        // const { searchTool, executeToolCall } = await import("./_core/webSearch");
-        
-        // First call without tool support (webSearch module not available)
-        let response = await invokeLLM({
-          messages: [
-            {
-              role: "system",
-              content: `You are an expert sales intelligence analyst. Analyze this account and provide actionable insights for the sales team.`
-            },
-            {
-              role: "user",
-              content: `Analyze this account and provide insights:\n\n${JSON.stringify(dataContext, null, 2)}`
-            }
-          ]
-        });
+        try {
+          const { invokeLLM } = await import("./_core/llm");
+          // const { searchTool, executeToolCall } = await import("./_core/webSearch");
+          
+          // First call without tool support (webSearch module not available)
+          let response = await invokeLLM({
+            messages: [
+              {
+                role: "system",
+                content: `You are an expert sales intelligence analyst. Analyze this account and provide actionable insights for the sales team.`
+              },
+              {
+                role: "user",
+                content: `Analyze this account and provide insights:\n\n${JSON.stringify(dataContext, null, 2)}`
+              }
+            ]
+          });
 
-        const summary = response.choices[0]?.message?.content;
-        const summaryText = typeof summary === 'string' ? summary : 'Unable to generate summary';
+          const summary = response.choices[0]?.message?.content;
+          const summaryText = typeof summary === 'string' ? summary : 'Unable to generate summary';
 
-        // Store in cache
-        await updateAccount(input.accountId, {
-          aiOverviewCache: summaryText,
-          aiCacheUpdatedAt: new Date()
-        } as any);
+          // Store in cache
+          await updateAccount(input.accountId, {
+            aiOverviewCache: summaryText,
+            aiCacheUpdatedAt: new Date()
+          } as any);
 
-        return { summary: summaryText, cached: false, cacheAge: 0 };
+          return { summary: summaryText, cached: false, cacheAge: 0 };
+        } catch (error) {
+          console.error('Failed to generate AI overview:', error);
+          // Return null so the UI shows "No summary available"
+          return null;
+        }
       }),
 
     compileResearch: publicProcedure

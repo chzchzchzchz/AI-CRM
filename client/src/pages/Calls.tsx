@@ -61,8 +61,8 @@ export default function CallsEnhanced() {
           bVal = b.callDate ? new Date(b.callDate).getTime() : 0;
           break;
         case "duration":
-          aVal = parseInt(a.duration?.replace(/[^0-9]/g, "") || "0");
-          bVal = parseInt(b.duration?.replace(/[^0-9]/g, "") || "0");
+          aVal = typeof a.duration === 'number' ? a.duration : parseInt(String(a.duration || '0').replace(/[^0-9]/g, "") || "0");
+          bVal = typeof b.duration === 'number' ? b.duration : parseInt(String(b.duration || '0').replace(/[^0-9]/g, "") || "0");
           break;
         case "company":
           aVal = a.company?.toLowerCase() || "";
@@ -123,7 +123,7 @@ export default function CallsEnhanced() {
   }
 
   const totalDuration = filteredCalls.reduce((acc, call: any) => {
-    const mins = parseInt(call.duration?.replace(/[^0-9]/g, "") || "0");
+    const mins = typeof call.duration === 'number' ? Math.floor(call.duration / 60) : parseInt(String(call.duration || '0').replace(/[^0-9]/g, "") || "0");
     return acc + mins;
   }, 0);
 
