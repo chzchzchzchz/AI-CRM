@@ -339,12 +339,12 @@ export async function generateContactSummary(contactId: number): Promise<string>
   const db = await getDb();
   if (!db) return "Unable to generate summary";
 
-  const { people, gongCalls } = await import("../drizzle/schema");
+  const { contacts, calls } = await import("../drizzle/schema");
   
-  const contact = await db.select().from(people).where(eq(people.id, contactId)).limit(1);
+  const contact = await db.select().from(contacts).where(eq(contacts.id, contactId)).limit(1);
   if (!contact[0]) return "Contact not found";
 
-  const calls = await db.select().from(gongCalls).where(eq(gongCalls.personId, contactId)).limit(10);
+  const contactCalls = await db.select().from(calls).where(eq(calls.personId, contactId)).limit(10);
 
   // Get stored insights
   const storedInsights = await getContext('contact_insight', `contact_${contactId}`);
@@ -352,7 +352,7 @@ export async function generateContactSummary(contactId: number): Promise<string>
   const prompt = `Generate a comprehensive profile summary for this contact:
 
 CONTACT: ${JSON.stringify(contact[0], null, 2)}
-CALL HISTORY (${calls.length}): ${JSON.stringify(calls.slice(0, 3), null, 2)}
+CALL HISTORY (${contactCalls.length}): ${JSON.stringify(contactCalls.slice(0, 3), null, 2)}
 
 ${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `- ${i.value}`).join('\n')}` : ''}
 
