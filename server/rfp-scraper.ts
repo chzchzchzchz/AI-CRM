@@ -284,8 +284,8 @@ export const rfpRouter = router({
       open: allRfps.filter(r => r.status === "open").length,
       closed: allRfps.filter(r => r.status === "closed").length,
       awarded: allRfps.filter(r => r.status === "awarded").length,
-      government: allRfps.filter(r => r.type === "government").length,
-      private: allRfps.filter(r => r.type === "private").length,
+      government: 0, // type column doesn't exist in schema
+      private: 0, // type column doesn't exist in schema
     };
   }),
 });
