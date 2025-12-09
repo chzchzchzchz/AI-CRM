@@ -123,21 +123,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Disclaimer Banner */}
-      <Alert className="m-4 border-amber-500/30 bg-amber-500/5 backdrop-blur-sm">
-        <AlertCircle className="h-4 w-4 text-amber-500" />
-        <AlertDescription className="text-amber-600 dark:text-amber-400 text-sm">
-          <strong>Demo/WIP:</strong> Work-in-progress demo. Some features are stubbed.{" "}
-          <a 
-            href="https://docs.google.com/document/d/1Brbe8bHVwklhSGbPUQG6ymXxonRVyYTCHnxy0UlDjdM/edit?tab=t.0"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline font-semibold hover:text-amber-700 dark:hover:text-amber-300"
-          >
-            View Known Issues
-          </a>
-        </AlertDescription>
-      </Alert>
+      {/* Disclaimer Banner - Removed for keynote demo */}
 
       <div className="container py-12 space-y-8 max-w-7xl">
         {/* Hero Section */}
