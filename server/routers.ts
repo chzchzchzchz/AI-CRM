@@ -514,16 +514,63 @@ export const appRouter = router({
           }
         };
 
+        // Get tech stack and additional context
+        const techStack = account.techStack ? (typeof account.techStack === 'string' ? JSON.parse(account.techStack) : account.techStack) : [];
+        const triggerEvents = account.triggerEvents ? (typeof account.triggerEvents === 'string' ? JSON.parse(account.triggerEvents) : account.triggerEvents) : [];
+
         const { invokeLLM } = await import("./_core/llm");
         const response = await invokeLLM({
           messages: [
             {
               role: "system",
-              content: "You are a sales strategist. Provide actionable recommendations including: 1) Buying signal strength and timing, 2) Recommended outreach approach and messaging, 3) Key stakeholders to engage, 4) Potential objections and how to address them, 5) Next best actions with priority. Be specific and tactical."
+              content: `You are a sales intelligence analyst. Generate an Account Activation Brief for a COLD PROSPECT we have never spoken to.
+
+Output EXACTLY this structure:
+
+## Why This Account Is Worth Our Time
+[2-3 specific, data-backed triggers that indicate they're in-market or experiencing a problem we solve. Examples: hiring patterns, tech stack changes, intent spikes, funding events, new leadership, pain indicators]
+
+## Who to Contact First
+[Rank 1-3 specific people by name and role, with:
+- Why they're the right wedge
+- What pain point they're likely feeling
+- What their KPIs probably are]
+
+## Predicted Value Prop
+[The best angle of attack based on signals: efficiency, cost reduction, compliance, growth, workflow fix, or competitive displacement - grounded in actual data about this account]
+
+## Conversation Starting Point
+[A specific hypothesis, not generic pitch. Format: "They recently moved from X → Y, which usually creates gaps in Z. They're likely experiencing A and B. Our product directly impacts C and D."]
+
+## Suggested Outreach Message
+[30-50 word message tailored to strongest signal + right persona. Short, sharp, not cringe.]
+
+## Landmine Warnings
+[What might make this a bad prospect: tech mismatch, budget red flags, wrong maturity, recently signed with competitor, tiny org/no need]
+
+## Confidence Level
+[State confidence (High/Medium/Low) and what data is contributing or missing]
+
+Be specific, tactical, and action-oriented. No fluff or generic insights."`
             },
             {
               role: "user",
-              content: `Generate strategic insights for this account:\n\n${JSON.stringify(strategicContext, null, 2)}`
+              content: `Generate Account Activation Brief for this cold prospect:
+
+Account: ${account.name}
+Industry: ${account.industry}
+Employees: ${account.employeeCount}
+Intent Score: ${account.intentScore}
+Region: ${account.region}
+Tech Stack: ${JSON.stringify(techStack)}
+Trigger Events: ${JSON.stringify(triggerEvents)}
+Description: ${account.description}
+
+Contacts (${people.length}):
+${people.slice(0, 5).map((p: any) => `- ${p.name}, ${p.title}`).join('\n')}
+
+Calls: ${calls.length} recorded
+Last Activity: ${calls[0]?.callDate || 'No recent activity'}`
             }
           ]
         });
