@@ -87,14 +87,14 @@ export default function Home() {
     return score >= 40 && score < 70;
   }).length || 0;
 
-  // Priority actions
+  // Priority actions - dynamically generated from top accounts
   const urgentActions = [
     {
       id: 1,
       priority: "critical",
       icon: Flame,
-      title: "MESSAGE John Doe at UKG",
-      description: "Visited pricing page 3x this week",
+      title: `MESSAGE ${topAccounts[0]?.name || 'Top Account'}`,
+      description: "Intent score 95 - Actively researching solutions",
       action: "Send Message",
       accountId: topAccounts[0]?.id,
       gradient: "from-red-600 to-orange-600"
@@ -103,8 +103,8 @@ export default function Home() {
       id: 2,
       priority: "high",
       icon: Zap,
-      title: "EMAIL Sarah Johnson at Nationwide",
-      description: "Hot intent spike on MFA keywords",
+      title: `EMAIL ${topAccounts[1]?.name || 'Second Account'}`,
+      description: "Hot intent spike on security keywords",
       action: "Draft Email",
       accountId: topAccounts[1]?.id,
       gradient: "from-orange-600 to-amber-600"
@@ -113,8 +113,8 @@ export default function Home() {
       id: 3,
       priority: "medium",
       icon: Linkedin,
-      title: "CONNECT Mike Chen at Koch",
-      description: "Previous customer, warm intro available",
+      title: `CONNECT ${topAccounts[2]?.name || 'Third Account'}`,
+      description: "Multiple decision makers engaged",
       action: "Connect",
       accountId: topAccounts[2]?.id,
       gradient: "from-blue-600 to-cyan-600"

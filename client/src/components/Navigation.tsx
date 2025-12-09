@@ -19,7 +19,7 @@ export function Navigation({ onSearchClick }: NavigationProps) {
     { path: "/insights", label: "Insights", icon: BarChart3 },
     { path: "/outreach", label: "Outreach", icon: Send },
     // Admin-only pages
-    { path: "/rfps", label: "RFPs", icon: FileText, adminOnly: true },
+    // { path: "/rfps", label: "RFPs", icon: FileText, adminOnly: true }, // Removed for demo
     { path: "/admin", label: "Admin", icon: Settings, adminOnly: true },
   ];
 
