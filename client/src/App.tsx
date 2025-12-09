@@ -13,6 +13,7 @@ const AccountDetail = lazyLoad(() => import("./pages/AccountDetail"));
 const Contacts = lazyLoad(() => import("./pages/Contacts"));
 const ContactDetail = lazyLoad(() => import("./pages/ContactDetail"));
 const Insights = lazyLoad(() => import("./pages/Insights"));
+const Calls = lazyLoad(() => import("./pages/Calls"));
 const Outreach = lazyLoad(() => import("./pages/Outreach"));
 const Admin = lazyLoad(() => import("./pages/Admin"));
 const SmartSearch = lazyLoad(() => import("./pages/SmartSearch"));
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/accounts/:id" component={AccountDetail} />
       <Route path="/contacts" component={Contacts} />
       <Route path="/contacts/:id" component={ContactDetail} />
+      <Route path="/calls" component={Calls} />
       <Route path="/insights" component={Insights} />
       <Route path="/outreach" component={Outreach} />
       <Route path="/admin" component={Admin} />
