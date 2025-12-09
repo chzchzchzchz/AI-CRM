@@ -21,7 +21,6 @@ interface CustomChart {
 
 export default function Insights() {
   const { data: accounts, isLoading } = trpc.accounts.list.useQuery();
-  const { data: calls } = trpc.gong.list.useQuery();
   const { data: contacts } = trpc.people.list.useQuery();
 
   const [customCharts, setCustomCharts] = useState<CustomChart[]>([]);
@@ -61,7 +60,6 @@ export default function Insights() {
 
   // Calculate metrics
   const totalAccounts = accounts?.length || 0;
-  const totalCalls = calls?.length || 0;
   const totalContacts = contacts?.length || 0;
   const avgIntent = accounts && totalAccounts > 0 ? accounts.reduce((sum, a) => sum + (Number(a.intentScore) || 0), 0) / totalAccounts : 0;
 
@@ -127,16 +125,6 @@ export default function Insights() {
                 <CardContent>
                   <div className="text-3xl font-bold text-white">{totalContacts}</div>
                   <p className="text-xs text-slate-400 mt-1">Decision makers</p>
-                </CardContent>
-              </Card>
-
-              <Card className="card-elevated border-l-4 border-l-purple-500">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-purple-400">Total Calls</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-white">{totalCalls}</div>
-                  <p className="text-xs text-slate-400 mt-1">Gong recordings</p>
                 </CardContent>
               </Card>
 

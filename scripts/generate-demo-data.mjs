@@ -230,63 +230,8 @@ for (let i = 0; i < accountIds.length; i++) {
 }
 console.log(`   📊 Total: ${contactCount} contacts\n`);
 
-// Demo calls data (2-3 per account = ~25 total)
-console.log('4️⃣ Creating demo Gong calls...');
-const callTitles = [
-  'Discovery Call - Product Demo',
-  'Technical Deep Dive - Architecture Review',
-  'Executive Briefing - Strategic Alignment',
-  'Pricing Discussion - Enterprise Plan',
-  'Implementation Planning - Timeline Review'
-];
-
-let callCount = 0;
-for (let i = 0; i < accountIds.length; i++) {
-  const accountId = accountIds[i];
-  const account = demoAccounts[i];
-  const numCalls = i % 3 === 0 ? 3 : 2; // Some accounts have 3 calls, others 2
-  
-  for (let j = 0; j < numCalls; j++) {
-    const daysAgo = Math.floor(Math.random() * 30) + 1;
-    const callDate = new Date();
-    callDate.setDate(callDate.getDate() - daysAgo);
-    
-    const duration = 1800 + Math.floor(Math.random() * 1800); // 30-60 minutes
-    const sentiment = ['Positive', 'Very Positive', 'Neutral'][Math.floor(Math.random() * 3)];
-    const keyTopics = JSON.stringify([
-      'Product capabilities',
-      'Integration requirements',
-      'Security compliance',
-      'Pricing and ROI'
-    ]);
-    const actionItems = JSON.stringify([
-      'Send technical documentation',
-      'Schedule follow-up with CTO',
-      'Prepare custom demo environment'
-    ]);
-    
-    await connection.execute(
-      `INSERT INTO calls (
-        accountId, title, duration, callDate, sentiment, keyTopics, actionItems, recordingUrl, transcriptUrl, gongCallId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        accountId,
-        callTitles[j % callTitles.length],
-        duration,
-        callDate.toISOString(),
-        sentiment,
-        keyTopics,
-        actionItems,
-        `https://demo.gong.io/call/${i}${j}`,
-        `https://demo.gong.io/transcript/${i}${j}`,
-        `demo-call-${i}-${j}`
-      ]
-    );
-    callCount++;
-  }
-  console.log(`   ✅ ${account.name}: ${numCalls} calls created`);
-}
-console.log(`   📊 Total: ${callCount} calls\n`);
+// NO CALLS - Removed completely for demo
+console.log('4️⃣ Skipping call generation (not needed for demo)\n');
 
 // Generate AI cache for top 3 accounts
 console.log('5️⃣ Generating AI Executive Summary cache for top accounts...');
@@ -371,7 +316,7 @@ console.log('✅ Demo data generation complete!\n');
 console.log('📊 Database Statistics:');
 console.log(`   • Accounts: ${stats.accounts}`);
 console.log(`   • Contacts: ${stats.contacts}`);
-console.log(`   • Calls: ${stats.calls}`);
+console.log(`   • Calls: ${stats.calls} (intentionally 0 for demo)`);
 console.log(`   • Hot Leads (85+): ${stats.hotLeads}`);
 console.log(`   • Warm Leads (70-84): ${stats.warmLeads}`);
 console.log(`   • Cold Leads (<70): ${stats.coldLeads}`);

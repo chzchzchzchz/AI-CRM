@@ -403,20 +403,6 @@ export default function Home() {
                 </Button>
 
                 <Button asChild variant="outline" className="w-full justify-start h-auto py-4 hover:border-primary hover:bg-primary/5">
-                  <Link href="/calls">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg">
-                        <Phone className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-semibold">Review Gong Calls</div>
-                        <div className="text-xs text-muted-foreground">Latest conversations</div>
-                      </div>
-                    </div>
-                  </Link>
-                </Button>
-
-                <Button asChild variant="outline" className="w-full justify-start h-auto py-4 hover:border-primary hover:bg-primary/5">
                   <Link href="/insights">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-lg">
