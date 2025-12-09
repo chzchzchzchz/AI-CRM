@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { APP_LOGO } from "@/const";
 import { Users, Phone, Search, BarChart3, Settings, Send, FileText, Home, UserCircle } from "lucide-react";
-import { useAuth } from "@/_core/hooks/useAuth";
+// import { useAuth } from "@/_core/hooks/useAuth";
 
 interface NavigationProps {
   onSearchClick?: () => void;
@@ -10,7 +10,7 @@ interface NavigationProps {
 
 export function Navigation({ onSearchClick }: NavigationProps) {
   const [location] = useLocation();
-  const { user } = useAuth();
+  // const { user } = useAuth();
 
   const navItems = [
     { path: "/", label: "Home", icon: Home },
@@ -35,8 +35,8 @@ export function Navigation({ onSearchClick }: NavigationProps) {
 
           <div className="hidden md:flex items-center gap-1">
             {navItems.filter(item => {
-              // Hide admin-only pages from non-admins
-              if ((item as any).adminOnly && user?.role !== "admin") return false;
+              // Hide admin-only pages (auth removed)
+              if ((item as any).adminOnly) return false;
               return true;
             }).map((item) => {
               const Icon = item.icon;

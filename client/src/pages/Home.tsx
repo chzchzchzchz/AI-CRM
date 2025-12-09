@@ -1,4 +1,4 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+// import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,11 +14,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
  * Daily command center for sales reps with stunning visuals
  */
 export default function Home() {
-  const { user, loading, isAuthenticated } = useAuth();
+  // const { user, loading, isAuthenticated } = useAuth();
   const { data: accounts, isLoading: accountsLoading } = trpc.accounts.list.useQuery();
 
   // Beautiful loading state
-  if (loading || accountsLoading) {
+  if (accountsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
         <div className="container py-12 space-y-8 max-w-7xl">
@@ -50,27 +50,7 @@ export default function Home() {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-background dark:via-background dark:to-background">
-        <div className="text-center space-y-8 max-w-md">
-          <div className="space-y-4">
-            <img src={APP_LOGO} alt={APP_TITLE} className="h-20 mx-auto drop-shadow-lg" />
-            <h1 className="text-5xl font-bold text-gradient">{APP_TITLE}</h1>
-            <p className="text-muted-foreground text-lg">
-              Your AI-powered sales intelligence command center
-            </p>
-          </div>
-          <Button asChild size="lg" className="gradient-primary text-white shadow-lg hover:shadow-xl transition-all">
-            <a href={getLoginUrl()}>
-              <Sparkles className="mr-2 h-5 w-5" />
-              Sign In to Continue
-            </a>
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  // Authentication removed - dashboard is publicly accessible via Manus URL
 
   // Process accounts data
   const topAccounts = accounts
@@ -134,7 +114,7 @@ export default function Home() {
             </div>
             <div>
               <h1 className="text-5xl font-bold tracking-tight">
-                Good morning, {user?.name?.split(" ")[0] || "there"} 👋
+                Good morning 👋
               </h1>
               <p className="text-muted-foreground text-lg mt-1">
                 Here's your sales intelligence for today
