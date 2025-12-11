@@ -42,6 +42,12 @@ export const accounts = mysqlTable("accounts", {
   rawData: json("rawData"),
   aiOverviewCache: text("aiOverviewCache"),
   aiCacheUpdatedAt: timestamp("aiCacheUpdatedAt"),
+  // 6sense integration fields
+  sixsenseId: varchar("sixsenseId", { length: 255 }),
+  sixsenseBuyingStage: varchar("sixsenseBuyingStage", { length: 100 }),
+  sixsenseProfileFit: varchar("sixsenseProfileFit", { length: 100 }),
+  sixsenseSegments: text("sixsenseSegments"), // JSON array of segments
+  lastSixsenseSync: timestamp("lastSixsenseSync"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
