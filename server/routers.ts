@@ -515,6 +515,20 @@ export const appRouter = router({
           location: p.location
         }));
 
+        // Parse tech stack data
+        let techStackData = null;
+        let securityStackData = null;
+        try {
+          if (account.techStack) {
+            techStackData = typeof account.techStack === 'string' ? JSON.parse(account.techStack) : account.techStack;
+          }
+          if ((account as any).securityStack) {
+            securityStackData = typeof (account as any).securityStack === 'string' ? JSON.parse((account as any).securityStack) : (account as any).securityStack;
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+
         const strategicContext = {
           account: {
             name: account.name,
@@ -524,7 +538,9 @@ export const appRouter = router({
             relationship: account.relationship,
             industry: account.industry,
             employeeCount: account.employeeCount,
-            region: (account as any).region
+            region: (account as any).region,
+            techStack: techStackData,
+            securityStack: securityStackData
           },
           contacts: contactList,
           engagement: {
