@@ -141,11 +141,12 @@ export default function ContactDetail() {
                     <div className="flex items-center gap-2">
                       <Building2 className="h-4 w-4" />
                       {relatedAccount ? (
-                        <Link href={`/accounts/${relatedAccount.id}`}>
-                          <span className="hover:text-primary transition-colors cursor-pointer">
-                            {contact.company}
-                          </span>
-                        </Link>
+                        <span 
+                          className="hover:text-primary transition-colors cursor-pointer"
+                          onClick={() => window.location.href = `/accounts/${relatedAccount.id}`}
+                        >
+                          {contact.company}
+                        </span>
                       ) : (
                         <span>{contact.company}</span>
                       )}

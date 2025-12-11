@@ -12,6 +12,10 @@ export default function DataValidation() {
   const summaryQuery = trpc.validation.getSummary.useQuery();
   const validateAccountsMutation = trpc.validation.validateAccounts.useMutation();
   const validateContactsMutation = trpc.validation.validateContacts.useMutation();
+  const validateAllAccountsMutation = trpc.validation.validateAllAccountsBulk.useMutation();
+  
+  const [bulkValidating, setBulkValidating] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
 
   const runAccountValidation = async () => {
     setValidating(true);
@@ -118,41 +122,91 @@ export default function DataValidation() {
           Validate data using web search and AI to verify actual truth (not just format checks).
           This process uses DuckDuckGo search and AI analysis to confirm company domains, employee counts, contact employment, etc.
         </p>
-        <div className="flex gap-4">
-          <Button
-            onClick={runAccountValidation}
-            disabled={validating}
-            className="bg-blue-500 hover:bg-blue-600"
-          >
-            {validating ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Validating...
-              </>
-            ) : (
-              <>
-                <Play className="h-4 w-4 mr-2" />
-                Validate Accounts (20)
-              </>
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            <Button
+              onClick={runAccountValidation}
+              disabled={validating || bulkValidating}
+              className="bg-blue-500 hover:bg-blue-600"
+            >
+              {validating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Validating...
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4 mr-2" />
+                  Validate Accounts (20)
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={runContactValidation}
+              disabled={validating || bulkValidating}
+              className="bg-cyan-500 hover:bg-cyan-600"
+            >
+              {validating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Validating...
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4 mr-2" />
+                  Validate Contacts (30)
+                </>
+              )}
+            </Button>
+          </div>
+          
+          {/* Bulk Validation */}
+          <div className="border-t pt-4">
+            <h3 className="text-sm font-semibold mb-2">Bulk Operations</h3>
+            <Button
+              onClick={async () => {
+                setBulkValidating(true);
+                setBulkProgress(0);
+                try {
+                  const result = await validateAllAccountsMutation.mutateAsync();
+                  setValidationResults(result);
+                  setBulkProgress(100);
+                } catch (error) {
+                  console.error('Bulk validation failed:', error);
+                } finally {
+                  setBulkValidating(false);
+                }
+              }}
+              disabled={validating || bulkValidating}
+              variant="outline"
+              className="w-full border-purple-500 text-purple-500 hover:bg-purple-500/10"
+            >
+              {bulkValidating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Validating All {summaryQuery.data?.totalAccounts || 709} Accounts...
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4 mr-2" />
+                  Validate All {summaryQuery.data?.totalAccounts || 709} Accounts
+                </>
+              )}
+            </Button>
+            {bulkValidating && (
+              <div className="mt-2">
+                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-purple-500 transition-all duration-300"
+                    style={{ width: `${bulkProgress}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Processing... This may take several minutes.
+                </p>
+              </div>
             )}
-          </Button>
-          <Button
-            onClick={runContactValidation}
-            disabled={validating}
-            className="bg-cyan-500 hover:bg-cyan-600"
-          >
-            {validating ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Validating...
-              </>
-            ) : (
-              <>
-                <Play className="h-4 w-4 mr-2" />
-                Validate Contacts (30)
-              </>
-            )}
-          </Button>
+          </div>
         </div>
         <p className="text-xs text-muted-foreground mt-3">
           ⚠️ Validation takes ~2 seconds per record (web search + AI analysis). 
