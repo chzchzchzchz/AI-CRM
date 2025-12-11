@@ -277,39 +277,59 @@ export async function generateAccountSummary(accountId: number): Promise<string>
   // Get stored insights
   const storedInsights = await getContext('account_insight', `account_${accountId}`);
 
+  const contactNames = accountContacts.map((c: any) => `${c.name} - ${c.title || 'No title'}`).join('\n');
+
   const prompt = `You are a sales intelligence analyst for the company, a passwordless MFA/SSO security company.
 
-Generate an executive summary for this account in EXACTLY this format:
+Generate an executive summary using this EXACT structure:
 
-## Executive Summary: [Company Name]
+## Executive Summary: ${account[0].name}
 
-### Account Overview and Strategic Fit
-[ONE paragraph: Intent score, fit score, industry, employee count, region/segment, current tech stack (especially SSO/MFA providers like Azure AD, OneLogin, Okta), and WHY they need passwordless MFA NOW. Focus on the security/compliance opportunity, not generic company description.]
+### Account Intelligence
+- **Company:** ${account[0].name}
+- **Industry:** ${account[0].industry || 'Unknown'}
+- **Employee Count:** ${account[0].employeeCount || 'Unknown'}
+- **Region:** ${(account[0] as any).region || 'Unknown'}
+- **Intent Score:** ${account[0].intentScore || 0}/100
+- **Relationship:** ${account[0].relationship || 'Prospect'}
+- **Domain:** ${account[0].domain || 'Unknown'}
 
-### Key Stakeholders and Decision-Making Unit (DMU)
-[ONE paragraph: List the key contacts with titles and roles. Identify the primary executive target (CISO, VP Security), technical decision-makers (VP IAM, Dir Security Engineering), and potential champions (Dir Innovation, Head of Research). Explain the sales motion (who to engage first).]
+### Key Stakeholders (${accountContacts.length} contacts)
+| Name (EXACT) | Title (EXACT) | Role in Decision |
+|---|---|---|
+${accountContacts.slice(0, 5).map((c: any) => `| ${c.name} | ${c.title || 'No title'} | [Analyze role] |`).join('\n')}
 
-### Engagement Status and Buying Signals
-[ONE paragraph: Current relationship status (Prospect/Customer/etc), number of calls, research triggers. Analyze the high intent score - what does it mean? Are they actively evaluating solutions? What's driving the need (compliance, security maturity, friction with current MFA)? If no public triggers, explain the proactive outreach angle.]
+### Strategic Fit & Why Now
+[ONE paragraph: Based on intent score ${account[0].intentScore}, industry ${account[0].industry}, and employee count ${account[0].employeeCount}, explain WHY they need passwordless MFA NOW. Reference their current tech stack if available. Focus on security/compliance opportunity.]
 
-### Recommended Next Actions
-[THREE bullet points with specific actions:
-- Immediate Outreach Strategy: Who to contact, what messaging (reference their tech stack)
-- Discovery Focus: What pain points to confirm in first meeting
-- Technical Validation Path: How to get to technical validation/POC]
+### Engagement Status
+- **Total Contacts:** ${accountContacts.length}
+- **Recent Calls:** ${accountCalls.length}
+- **Last Activity:** ${accountCalls[0]?.callDate || 'No recent activity'}
+- **Buying Signals:** [Analyze based on intent score and activity]
+
+### Next Best Actions
+1. **Immediate Outreach:** Contact ${accountContacts[0]?.name || 'primary stakeholder'} (${accountContacts[0]?.title || 'decision maker'}) with [specific messaging]
+2. **Discovery Focus:** [Pain points to confirm based on their industry and size]
+3. **Technical Path:** [How to get to POC/validation]
+
+CRITICAL RULES:
+- Use EXACT contact names from data: ${contactNames}
+- Use EXACT metrics: Intent ${account[0].intentScore}, ${accountContacts.length} contacts, ${accountCalls.length} calls
+- Reference REAL call data if available: ${accountCalls.length > 0 ? accountCalls[0]?.callDate : 'No calls yet'}
+- NEVER use placeholder names like 'Jennifer Smith' or 'John Doe'
+- If data missing, state 'Data not available' - do NOT invent
 
 ACCOUNT DATA:
 ${JSON.stringify(account[0], null, 2)}
 
-CONTACTS (${accountContacts.length}):
-${JSON.stringify(accountContacts.slice(0, 5), null, 2)}
+REAL CONTACTS:
+${contactNames}
 
-RECENT CALLS (${accountCalls.length}):
-${JSON.stringify(accountCalls.slice(0, 3), null, 2)}
+RECENT CALLS:
+${accountCalls.length > 0 ? JSON.stringify(accountCalls.slice(0, 3), null, 2) : 'No calls recorded'}
 
-${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `- ${i.value}`).join('\n')}` : ''}
-
-Be concise, actionable, and focused on WHY they need us NOW, not generic company descriptions.`;
+${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `- ${i.value}`).join('\n')}` : ''}`;
 
   const response = await invokeLLM({
     messages: [
