@@ -153,16 +153,18 @@ export default function Home() {
             </Card>
           </Link>
 
-          <Card className="card-elevated border-l-4 border-l-cyan-500">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">This Week</CardTitle>
-              <Calendar className="h-5 w-5 text-cyan-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-cyan-600 dark:text-cyan-400">8</div>
-              <p className="text-xs text-muted-foreground mt-1">Tasks to complete</p>
-            </CardContent>
-          </Card>
+          <Link href="/accounts?filter=intent-spikes">
+            <Card className="card-elevated border-l-4 border-l-purple-500 cursor-pointer hover:scale-[1.02] transition-transform">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Intent Spikes</CardTitle>
+                <Zap className="h-5 w-5 text-purple-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">12</div>
+                <p className="text-xs text-muted-foreground mt-1">20+ point jumps this week</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Main Content Grid */}

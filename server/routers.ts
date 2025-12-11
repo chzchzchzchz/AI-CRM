@@ -663,48 +663,6 @@ CRITICAL RULES:
       }),
   }),
 
-  sixsense: router({
-    // Enrich single account with live 6sense data
-    enrichAccount: publicProcedure
-      .input(z.object({ accountId: z.number() }))
-      .mutation(async ({ input }) => {
-        // const { enrichAccountWith6sense } = await import("./intelligence/sixsenseSync");
-        // const result = await enrichAccountWith6sense(input.accountId);
-        return { success: false, message: "6sense enrichment module not available" };
-      }),
-    
-    // Enrich all high-priority accounts
-    // enrichAllAccounts: publicProcedure
-    //   .input(z.object({ highPriorityOnly: z.boolean().optional() }))
-    //   .mutation(async ({ input }) => {
-    //     const { enrichAllAccountsWith6sense } = await import("./intelligence/sixsenseSync");
-    //     await enrichAllAccountsWith6sense(input.highPriorityOnly || false);
-    //     return { success: true, message: "Enrichment started" };
-    //   }),
-    
-    // // Queue enrichment jobs for all accounts
-    // queueEnrichmentJobs: publicProcedure
-    //   .mutation(async () => {
-    //     const { queue6senseEnrichmentJobs } = await import("./intelligence/sixsenseSync");
-    //     await queue6senseEnrichmentJobs();
-    //     return { success: true, message: "Jobs queued" };
-    //   }),
-    
-    // // Process enrichment queue
-    // processQueue: publicProcedure
-    //   .input(z.object({ limit: z.number().optional() }))
-    //   .mutation(async ({ input }) => {
-    //     const { processEnrichmentQueue } = await import("./intelligence/sixsenseSync");
-    //     await processEnrichmentQueue(input.limit || 10);
-    //     return { success: true, message: "Queue processed" };
-    //   }),
-   enrich: publicProcedure
-      .input(z.object({ domain: z.string() }))
-      .query(async ({ input }) => {
-        return await enrichAccount(input.domain);
-      }),
-  }),
-
   // Clay data import
   clayImport: clayImportRouter,
   sequences: sequencesRouter,
