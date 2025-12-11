@@ -346,7 +346,7 @@ export const appRouter = router({
         }
 
         // Generate new summary
-        const people = await getPeopleByCompany(account.name);
+        const people = await getContactsByAccountId(input.accountId);
         const calls = await getGongCallsByAccountId(input.accountId);
 
         const dataContext = {
@@ -498,19 +498,31 @@ export const appRouter = router({
           };
         }
 
-        const people = await getPeopleByCompany(account.name);
+        const people = await getContactsByAccountId(input.accountId);
         const calls = await getGongCallsByAccountId(input.accountId);
+
+        // Prepare contact list with real names and titles
+        const contactList = people.slice(0, 10).map((p: any) => ({
+          name: p.name,
+          title: p.title,
+          email: p.email,
+          location: p.location
+        }));
 
         const strategicContext = {
           account: {
             name: account.name,
+            domain: account.domain,
             intentScore: account.intentScore,
             buyingStage: (account as any).buyingStage || 'Unknown',
             relationship: account.relationship,
-            industry: account.industry
+            industry: account.industry,
+            employeeCount: account.employeeCount,
+            region: (account as any).region
           },
+          contacts: contactList,
           engagement: {
-            contacts: people.length,
+            totalContacts: people.length,
             recentCalls: calls.length,
             lastActivity: calls[0]?.callDate || 'No recent activity'
           }
@@ -521,11 +533,11 @@ export const appRouter = router({
           messages: [
             {
               role: "system",
-              content: "You are a sales strategist. Provide actionable recommendations including: 1) Buying signal strength and timing, 2) Recommended outreach approach and messaging, 3) Key stakeholders to engage, 4) Potential objections and how to address them, 5) Next best actions with priority. Be specific and tactical."
+              content: "You are a sales strategist. Provide actionable recommendations including: 1) Buying signal strength and timing, 2) Recommended outreach approach and messaging, 3) Key stakeholders to engage, 4) Potential objections and how to address them, 5) Next best actions with priority. Be specific and tactical. CRITICAL: When mentioning contacts, you MUST use the EXACT names and titles from the provided contact list. DO NOT make up example names like 'Jennifer Smith' or 'Michael Chen'. Use ONLY the real contact data provided."
             },
             {
               role: "user",
-              content: `Generate strategic insights for this account:\n\n${JSON.stringify(strategicContext, null, 2)}`
+              content: `Generate strategic insights for this account. Use the EXACT contact names and titles provided below - do not invent placeholder names.\n\nACCOUNT DATA:\n${JSON.stringify(strategicContext, null, 2)}`
             }
           ]
         });
