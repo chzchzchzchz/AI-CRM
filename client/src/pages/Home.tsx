@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 export default function Home() {
   // const { user, loading, isAuthenticated } = useAuth(); // Disabled - no auth required
   const { data: accounts, isLoading: accountsLoading } = trpc.accounts.list.useQuery();
+  const { data: enrichedPriorityActions, isLoading: priorityLoading } = trpc.priorityActions.getEnriched.useQuery({ limit: 3 });
 
   // Beautiful loading state
   if (accountsLoading) {
@@ -67,22 +68,11 @@ export default function Home() {
     return score >= 40 && score < 70;
   }).length || 0;
 
-  // Get top 3 hot accounts for priority actions
-  const priorityAccountsData = accounts
-    ?.filter(a => a.intentScore >= 70)
-    .sort((a, b) => (b.intentScore || 0) - (a.intentScore || 0))
-    .slice(0, 3) || [];
-
-  const priorityActions = priorityAccountsData.map((account, index) => ({
-    id: account.id,
-    accountId: account.id,
+  // Use enriched priority actions with contact data
+  const priorityActions = (enrichedPriorityActions || []).map((action, index) => ({
+    ...action,
     priority: index === 0 ? "critical" : index === 1 ? "high" : "medium",
     icon: index === 0 ? Flame : index === 1 ? Zap : Linkedin,
-    title: `ENGAGE ${account.name}`,
-    description: `Intent score: ${account.intentScore} | ${account.industry || 'Unknown industry'}`,
-    action: "View Account",
-    link: `/accounts/${account.id}`,
-    actionLink: `/accounts/${account.id}`,
     gradient: index === 0 ? "from-red-600 to-orange-600" : index === 1 ? "from-amber-600 to-yellow-600" : "from-blue-600 to-cyan-600",
   }));
 
@@ -199,54 +189,54 @@ export default function Home() {
                           <div className={`p-3 bg-gradient-to-br ${action.gradient} rounded-xl shadow-lg group-hover:shadow-xl transition-shadow`}>
                             <Icon className="h-6 w-6 text-white" />
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-lg mb-1">{action.title}</h3>
-                            <p className="text-sm text-muted-foreground mb-3">{action.description}</p>
-                            <div className="flex items-center gap-3">
-                              {action.accountId && (
-                                <Button asChild variant="outline" size="sm" className="group-hover:border-primary group-hover:text-primary">
-                                  <Link href={`/accounts/${action.accountId}`}>
-                                    View Account
-                                    <ArrowRight className="ml-2 h-4 w-4" />
-                                  </Link>
-                                </Button>
-                              )}
-                              {action.action === "Send Message" && (
-                                <Button 
-                                  size="sm" 
-                                  className={`bg-gradient-to-r ${action.gradient} text-white border-0`}
-                                  onClick={() => {
-                                    // In a real app, this would open a messaging interface
-                                    // For now, navigate to the account page
-                                    window.location.href = `/accounts/${action.accountId}`;
-                                  }}
-                                >
-                                  {action.action}
-                                </Button>
-                              )}
-                              {action.action === "Draft Email" && (
-                                <Button 
-                                  asChild
-                                  size="sm" 
-                                  className={`bg-gradient-to-r ${action.gradient} text-white border-0`}
-                                >
-                                  <Link href="/outreach">
-                                    {action.action}
-                                  </Link>
-                                </Button>
-                              )}
-                              {action.action === "Connect" && (
-                                <Button 
-                                  size="sm" 
-                                  className={`bg-gradient-to-r ${action.gradient} text-white border-0`}
-                                  onClick={() => {
-                                    // In a real app, this would open LinkedIn or contact modal
-                                    window.location.href = `/accounts/${action.accountId}`;
-                                  }}
-                                >
-                                  {action.action}
-                                </Button>
-                              )}
+                          <div className="flex-1 min-w-0 space-y-3">
+                            {/* Account Header */}
+                            <div>
+                              <h3 className="font-semibold text-lg mb-1">ENGAGE {action.name}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                Intent: {action.intentScore} | {action.industry} | {action.employeeCount?.toLocaleString()} employees | {action.region}
+                              </p>
+                            </div>
+
+                            {/* Top Contacts */}
+                            {action.topContacts && action.topContacts.length > 0 && (
+                              <div className="space-y-1">
+                                <p className="text-xs font-semibold text-muted-foreground uppercase">Top Contacts ({action.contactCount}):</p>
+                                {action.topContacts.map((contact: any, idx: number) => (
+                                  <p key={idx} className="text-sm">
+                                    • <span className="font-medium">{contact.name}</span> - {contact.title}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Why Now */}
+                            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                              <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">Why Now:</p>
+                              <p className="text-sm text-foreground">{action.whyNow}</p>
+                            </div>
+
+                            {/* Next Best Action */}
+                            <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                              <p className="text-xs font-semibold text-primary mb-1">Next Best Action:</p>
+                              <p className="text-sm text-foreground">{action.nextBestAction}</p>
+                            </div>
+
+                            {/* Activity Stats */}
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <span>Last Activity: {action.callCount > 0 && action.lastCallDate ? new Date(action.lastCallDate).toLocaleDateString() : 'No calls recorded'}</span>
+                              <span>•</span>
+                              <span>{action.contactCount} contacts identified</span>
+                            </div>
+
+                            {/* Action Button */}
+                            <div>
+                              <Button asChild variant="outline" size="sm" className="group-hover:border-primary group-hover:text-primary">
+                                <Link href={`/accounts/${action.id}`}>
+                                  View Full Account
+                                  <ArrowRight className="ml-2 h-4 w-4" />
+                                </Link>
+                              </Button>
                             </div>
                           </div>
                         </div>
