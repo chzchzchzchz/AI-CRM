@@ -14,11 +14,13 @@ import { rfpRouter } from "./rfp-scraper";
 import { outreachRouter } from "./outreach";
 import { geminiRouter } from "./gemini";
 import { clayRouter } from "./clay";
+import { validationRouter } from "./validation-router";
 
 
 export const appRouter = router({
   clay: clayRouter,
   gemini: geminiRouter,
+  validation: validationRouter,
   analytics: router({
     overview: publicProcedure.query(async () => {
       const accounts = await getAllAccounts();

@@ -18,6 +18,7 @@ const Outreach = lazyLoad(() => import("./pages/Outreach"));
 const RFPs = lazyLoad(() => import("./pages/RFPs"));
 const Admin = lazyLoad(() => import("./pages/Admin"));
 const SmartSearch = lazyLoad(() => import("./pages/SmartSearch"));
+const DataValidation = lazyLoad(() => import("./pages/DataValidation"));
 import { GlobalSearch } from "./components/GlobalSearch";
 import { GlobalAIChat } from "./components/GlobalAIChat";
 import { useState, useEffect } from "react";
@@ -36,6 +37,7 @@ function Router() {
       <Route path="/rfps" component={RFPs} />
       <Route path="/admin" component={Admin} />
       <Route path="/search" component={SmartSearch} />
+      <Route path="/validation" component={DataValidation} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

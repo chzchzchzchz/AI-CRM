@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, tinyint, decimal } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -175,6 +175,25 @@ export const enrichmentLogs = mysqlTable("enrichmentLogs", {
 
 export type EnrichmentLog = typeof enrichmentLogs.$inferSelect;
 export type InsertEnrichmentLog = typeof enrichmentLogs.$inferInsert;
+
+// Validation Cache table - stores web search validation results
+export const validationCache = mysqlTable("validationCache", {
+  id: int("id").autoincrement().primaryKey(),
+  entityType: varchar("entityType", { length: 50 }).notNull(), // 'account', 'contact'
+  entityId: int("entityId").notNull(),
+  field: varchar("field", { length: 100 }).notNull(), // 'domain', 'employeeCount', 'email', etc.
+  isValid: boolean("isValid").notNull(), // true = valid, false = invalid
+  severity: varchar("severity", { length: 20 }), // 'critical', 'warning', 'info'
+  issue: text("issue"), // Description of the problem
+  suggestion: text("suggestion"), // How to fix it
+  evidence: text("evidence"), // Search results or API response
+  confidence: decimal("confidence", { precision: 3, scale: 2 }), // 0.00-1.00
+  checkedAt: timestamp("checkedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ValidationCache = typeof validationCache.$inferSelect;
+export type InsertValidationCache = typeof validationCache.$inferInsert;
 
 // Context Store for AI learning
 export const contextStore = mysqlTable("contextStore", {
