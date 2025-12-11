@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { getCompanyByDomain, getCompanyByIP, enrichAccount } from "./sixsense";
+import { detectAndNotifyIntentSpikes, getRecentIntentSpikes } from "./intent-spike-tracker";
 import { getDb } from "./db";
 import { accounts } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -234,4 +235,26 @@ export const sixsenseRouter = router({
       };
     }
   }),
+
+  /**
+   * Detect and notify about intent spikes (20+ point increases)
+   */
+  detectIntentSpikes: publicProcedure
+    .mutation(async () => {
+      const spikes = await detectAndNotifyIntentSpikes();
+      return {
+        success: true,
+        spikesDetected: spikes.length,
+        spikes,
+      };
+    }),
+
+  /**
+   * Get recent intent spikes for AI assistant queries
+   */
+  getRecentSpikes: publicProcedure
+    .input(z.object({ limit: z.number().optional().default(10) }))
+    .query(async ({ input }) => {
+      return await getRecentIntentSpikes(input.limit);
+    }),
 });

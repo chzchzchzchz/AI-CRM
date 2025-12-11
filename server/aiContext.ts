@@ -116,6 +116,23 @@ export async function conversationWithMemory(params: {
   // Build context from storage
   const storedContext = await buildAIContext({ accountId, contactId, includeHistory: true });
 
+  // Check for intent spike queries
+  let intentSpikeContext = '';
+  const intentSpikeKeywords = ['intent spike', 'intent increase', 'intent jump', 'buying signal', 'score increase', '6sense spike', 'recent spikes'];
+  if (intentSpikeKeywords.some(keyword => query.toLowerCase().includes(keyword))) {
+    const recentSpikes = await getRecentIntentSpikes(10);
+    
+    if (recentSpikes.length > 0) {
+      intentSpikeContext = `\n\nRECENT 6SENSE INTENT SPIKES (20+ point increases in 24 hours):\n`;
+      recentSpikes.forEach((spike, index) => {
+        intentSpikeContext += `${index + 1}. ${spike.accountName}: ${spike.previousScore} → ${spike.currentScore} (+${spike.scoreDelta} points)\n`;
+      });
+      intentSpikeContext += `\nThese accounts are showing strong buying signals and should be prioritized for immediate outreach.`;
+    } else {
+      intentSpikeContext = `\n\nNo recent intent spikes detected (no accounts with 20+ point increases in 24 hours).`;
+    }
+  }
+
   // Get relevant data
   const db = await getDb();
   let accountData = null;
@@ -163,7 +180,8 @@ Provide actionable, specific answers. When making recommendations, cite specific
 
 ${accountData ? `\nACCOUNT DATA:\n${JSON.stringify(accountData, null, 2)}` : ''}
 ${contactData ? `\nCONTACT DATA:\n${JSON.stringify(contactData, null, 2)}` : ''}
-${relatedCalls.length > 0 ? `\nRECENT CALLS (${relatedCalls.length}):\n${JSON.stringify(relatedCalls.slice(0, 3), null, 2)}` : ''}`;
+${relatedCalls.length > 0 ? `\nRECENT CALLS (${relatedCalls.length}):\n${JSON.stringify(relatedCalls.slice(0, 3), null, 2)}` : ''}
+${intentSpikeContext}`;
 
   const messages = [
     { role: "system" as const, content: systemPrompt },
