@@ -32,36 +32,58 @@ export interface ValidationCache {
 }
 
 /**
- * Search the web for verification data using Manus search
+ * Search the web for verification data using direct HTTP scraping
  */
 async function searchWeb(query: string): Promise<string> {
   try {
-    // Use DuckDuckGo instant answer API (no key required)
-    const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`);
-    const data = await response.json();
+    // Use Google search HTML scraping (no API key needed)
+    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=5`;
+    const response = await fetch(searchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
     
-    // Extract relevant text from search results
-    let results = '';
-    
-    // Abstract (summary)
-    if (data.Abstract) {
-      results += data.Abstract + '\n';
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
     
-    // Related topics
-    if (data.RelatedTopics && data.RelatedTopics.length > 0) {
-      const topics = data.RelatedTopics
-        .slice(0, 5)
-        .filter((t: any) => t.Text)
-        .map((t: any) => t.Text)
-        .join('\n');
-      results += topics;
+    const html = await response.text();
+    
+    // Extract search result snippets using regex
+    const snippetRegex = /<div class="[^"]*BNeawe[^"]*"[^>]*>([^<]+)<\/div>/g;
+    const snippets: string[] = [];
+    let match;
+    
+    while ((match = snippetRegex.exec(html)) !== null && snippets.length < 10) {
+      const text = match[1].trim();
+      if (text.length > 20 && !snippets.includes(text)) {
+        snippets.push(text);
+      }
+    }
+    
+    // Also try to extract domain mentions
+    const domainRegex = /https?:\/\/([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+    const domains = new Set<string>();
+    let domainMatch;
+    
+    while ((domainMatch = domainRegex.exec(html)) !== null && domains.size < 5) {
+      domains.add(domainMatch[1]);
+    }
+    
+    let results = '';
+    if (snippets.length > 0) {
+      results += 'Search snippets:\n' + snippets.join('\n') + '\n\n';
+    }
+    if (domains.size > 0) {
+      results += 'Found domains: ' + Array.from(domains).join(', ');
     }
     
     return results || 'No results found';
   } catch (error) {
     console.error('Web search failed:', error);
-    return 'Search failed';
+    // Fallback: Just check if domain resolves
+    return `Search unavailable. Domain check needed.`;
   }
 }
 

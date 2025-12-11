@@ -125,6 +125,35 @@ export const validationRouter = router({
     }),
 
   /**
+   * Validate ALL accounts (bulk operation with progress tracking)
+   */
+  validateAllAccountsBulk: publicProcedure
+    .mutation(async () => {
+      const accounts = await getAllAccounts();
+      const totalAccounts = accounts.length;
+      
+      // Process in batches of 50 to avoid timeout
+      const batchSize = 50;
+      const allIssues: ValidationIssue[] = [];
+      
+      for (let i = 0; i < totalAccounts; i += batchSize) {
+        const batch = accounts.slice(i, i + batchSize);
+        const batchIssues = await Promise.all(
+          batch.map(account => validateAccount(account))
+        );
+        allIssues.push(...batchIssues.flat());
+      }
+      
+      return {
+        totalAccounts,
+        totalIssues: allIssues.length,
+        criticalIssues: allIssues.filter(i => i.severity === 'critical').length,
+        warningIssues: allIssues.filter(i => i.severity === 'warning').length,
+        issues: allIssues
+      };
+    }),
+
+  /**
    * Get all validation issues (from memory, not cached yet)
    */
   getAllIssues: publicProcedure.query(async () => {
