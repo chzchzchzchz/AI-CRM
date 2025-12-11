@@ -7,17 +7,16 @@ describe("6sense API Integration", () => {
     expect(apiKey).toBeDefined();
     expect(apiKey).toBeTruthy();
     
-    // Test API call to 6sense
-    const response = await fetch("https://api.6sense.com/v1/company/identify", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        domain: "microsoft.com"
-      })
-    });
+    // Test API call to 6sense Company Identification API
+    // Using a test IP address (8.8.8.8 - Google DNS)
+    const response = await fetch(
+      "https://epsilon.6sense.com/v3/company/details?ip=8.8.8.8",
+      {
+        headers: {
+          Authorization: `Token ${apiKey}`,
+        },
+      }
+    );
     
     // 6sense should return 200 or 401 (if key is invalid)
     expect(response.status).not.toBe(401);
