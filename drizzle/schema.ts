@@ -78,7 +78,7 @@ export const calls = mysqlTable("calls", {
   title: varchar("title", { length: 255 }),
   duration: int("duration"), // in seconds
   recordingUrl: varchar("recordingUrl", { length: 500 }),
-  transcriptUrl: text("transcriptUrl"),
+  transcriptUrl: varchar("transcriptUrl", { length: 500 }),
   gongCallId: varchar("gongCallId", { length: 255 }).unique(),
   sentiment: varchar("sentiment", { length: 50 }),
   keyTopics: text("keyTopics"), // JSON string

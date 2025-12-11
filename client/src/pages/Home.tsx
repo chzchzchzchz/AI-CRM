@@ -1,4 +1,4 @@
-// import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,11 +14,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
  * Daily command center for sales reps with stunning visuals
  */
 export default function Home() {
-  // const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading, isAuthenticated } = useAuth();
   const { data: accounts, isLoading: accountsLoading } = trpc.accounts.list.useQuery();
 
   // Beautiful loading state
-  if (accountsLoading) {
+  if (loading || accountsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
         <div className="container py-12 space-y-8 max-w-7xl">
@@ -50,7 +50,27 @@ export default function Home() {
     );
   }
 
-  // Authentication removed - dashboard is publicly accessible via Manus URL
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-background dark:via-background dark:to-background">
+        <div className="text-center space-y-8 max-w-md">
+          <div className="space-y-4">
+            <img src={APP_LOGO} alt={APP_TITLE} className="h-20 mx-auto drop-shadow-lg" />
+            <h1 className="text-5xl font-bold text-gradient">{APP_TITLE}</h1>
+            <p className="text-muted-foreground text-lg">
+              Your AI-powered sales intelligence command center
+            </p>
+          </div>
+          <Button asChild size="lg" className="gradient-primary text-white shadow-lg hover:shadow-xl transition-all">
+            <a href={getLoginUrl()}>
+              <Sparkles className="mr-2 h-5 w-5" />
+              Sign In to Continue
+            </a>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // Process accounts data
   const topAccounts = accounts
@@ -67,14 +87,14 @@ export default function Home() {
     return score >= 40 && score < 70;
   }).length || 0;
 
-  // Priority actions - dynamically generated from top accounts
+  // Priority actions
   const urgentActions = [
     {
       id: 1,
       priority: "critical",
       icon: Flame,
-      title: `MESSAGE ${topAccounts[0]?.name || 'Top Account'}`,
-      description: "Intent score 95 - Actively researching solutions",
+      title: "MESSAGE John Doe at UKG",
+      description: "Visited pricing page 3x this week",
       action: "Send Message",
       accountId: topAccounts[0]?.id,
       gradient: "from-red-600 to-orange-600"
@@ -83,8 +103,8 @@ export default function Home() {
       id: 2,
       priority: "high",
       icon: Zap,
-      title: `EMAIL ${topAccounts[1]?.name || 'Second Account'}`,
-      description: "Hot intent spike on security keywords",
+      title: "EMAIL Sarah Johnson at Nationwide",
+      description: "Hot intent spike on MFA keywords",
       action: "Draft Email",
       accountId: topAccounts[1]?.id,
       gradient: "from-orange-600 to-amber-600"
@@ -93,8 +113,8 @@ export default function Home() {
       id: 3,
       priority: "medium",
       icon: Linkedin,
-      title: `CONNECT ${topAccounts[2]?.name || 'Third Account'}`,
-      description: "Multiple decision makers engaged",
+      title: "CONNECT Mike Chen at Koch",
+      description: "Previous customer, warm intro available",
       action: "Connect",
       accountId: topAccounts[2]?.id,
       gradient: "from-blue-600 to-cyan-600"
@@ -103,7 +123,21 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Disclaimer Banner - Removed for keynote demo */}
+      {/* Disclaimer Banner */}
+      <Alert className="m-4 border-amber-500/30 bg-amber-500/5 backdrop-blur-sm">
+        <AlertCircle className="h-4 w-4 text-amber-500" />
+        <AlertDescription className="text-amber-600 dark:text-amber-400 text-sm">
+          <strong>Demo/WIP:</strong> Work-in-progress demo. Some features are stubbed.{" "}
+          <a 
+            href="https://docs.google.com/document/d/1Brbe8bHVwklhSGbPUQG6ymXxonRVyYTCHnxy0UlDjdM/edit?tab=t.0"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline font-semibold hover:text-amber-700 dark:hover:text-amber-300"
+          >
+            View Known Issues
+          </a>
+        </AlertDescription>
+      </Alert>
 
       <div className="container py-12 space-y-8 max-w-7xl">
         {/* Hero Section */}
@@ -114,7 +148,7 @@ export default function Home() {
             </div>
             <div>
               <h1 className="text-5xl font-bold tracking-tight">
-                Good morning 👋
+                Good morning, {user?.name?.split(" ")[0] || "there"} 👋
               </h1>
               <p className="text-muted-foreground text-lg mt-1">
                 Here's your sales intelligence for today
@@ -363,6 +397,20 @@ export default function Home() {
                       <div className="text-left">
                         <div className="font-semibold">Generate Outreach</div>
                         <div className="text-xs text-muted-foreground">AI-powered email drafts</div>
+                      </div>
+                    </div>
+                  </Link>
+                </Button>
+
+                <Button asChild variant="outline" className="w-full justify-start h-auto py-4 hover:border-primary hover:bg-primary/5">
+                  <Link href="/calls">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg">
+                        <Phone className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <div className="font-semibold">Review Gong Calls</div>
+                        <div className="text-xs text-muted-foreground">Latest conversations</div>
                       </div>
                     </div>
                   </Link>

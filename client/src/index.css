@@ -54,30 +54,30 @@
   --chart-5: var(--color-green-500);
   --radius: 0.65rem;
   
-  /* Light theme by default */
-  --background: oklch(1 0 0); /* White background */
-  --foreground: oklch(0.235 0.015 65); /* Dark text */
-  --card: oklch(1 0 0); /* White cards */
-  --card-foreground: oklch(0.235 0.015 65);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.015 65);
-  --secondary: oklch(0.98 0.001 286.375);
-  --secondary-foreground: oklch(0.4 0.015 65);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938); /* Gray text */
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.141 0.005 285.823);
-  --destructive: oklch(0.577 0.245 27.325); /* Red */
+  /* Dark theme by default */
+  --background: oklch(0.05 0 0); /* Very dark background #0a0a0a */
+  --foreground: oklch(0.95 0 0); /* White text */
+  --card: oklch(0.10 0 0); /* Slightly lighter than background */
+  --card-foreground: oklch(0.95 0 0);
+  --popover: oklch(0.10 0 0);
+  --popover-foreground: oklch(0.95 0 0);
+  --secondary: oklch(0.15 0 0);
+  --secondary-foreground: oklch(0.85 0 0);
+  --muted: oklch(0.20 0 0);
+  --muted-foreground: oklch(0.60 0 0); /* Gray text */
+  --accent: oklch(0.20 0 0);
+  --accent-foreground: oklch(0.95 0 0);
+  --destructive: oklch(0.60 0.25 27); /* Red */
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.004 286.32); /* Light gray borders */
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815); /* Purple ring */
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
+  --border: oklch(0.25 0 0); /* Dark gray borders */
+  --input: oklch(0.15 0 0);
+  --ring: oklch(0.60 0.24 264); /* Purple ring */
+  --sidebar: oklch(0.08 0 0);
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-accent: oklch(0.15 0 0);
+  --sidebar-accent-foreground: oklch(0.95 0 0);
+  --sidebar-border: oklch(0.20 0 0);
+  --sidebar-ring: oklch(0.60 0.24 264);
   
   /* Custom colors for dashboard */
   --color-blue: #3B82F6;

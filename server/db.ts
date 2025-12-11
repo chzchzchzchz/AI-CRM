@@ -304,29 +304,7 @@ export async function getAllGongCalls() {
     return [];
   }
 
-  const callsWithAccounts = await db
-    .select({
-      id: calls.id,
-      accountId: calls.accountId,
-      contactId: calls.contactId,
-      title: calls.title,
-      duration: calls.duration,
-      recordingUrl: calls.recordingUrl,
-      transcriptUrl: calls.transcriptUrl,
-      gongCallId: calls.gongCallId,
-      sentiment: calls.sentiment,
-      keyTopics: calls.keyTopics,
-      actionItems: calls.actionItems,
-      callDate: calls.callDate,
-      createdAt: calls.createdAt,
-      updatedAt: calls.updatedAt,
-      company: accounts.name,
-    })
-    .from(calls)
-    .leftJoin(accounts, eq(calls.accountId, accounts.id))
-    .orderBy(desc(calls.callDate));
-
-  return callsWithAccounts;
+  return await db.select().from(calls).orderBy(desc(calls.callDate));
 }
 
 export async function getGongCallsByCompany(companyName: string) {
