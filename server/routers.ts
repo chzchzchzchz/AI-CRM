@@ -16,6 +16,7 @@ import { geminiRouter } from "./gemini";
 import { clayRouter } from "./clay";
 import { validationRouter } from "./validation-router";
 import { priorityActionsRouter } from "./priority-actions-router";
+import { bulkInsightsRouter } from "./bulk-insights-router";
 
 
 export const appRouter = router({
@@ -23,6 +24,7 @@ export const appRouter = router({
   gemini: geminiRouter,
   validation: validationRouter,
   priorityActions: priorityActionsRouter,
+  bulkInsights: bulkInsightsRouter,
   analytics: router({
     overview: publicProcedure.query(async () => {
       const accounts = await getAllAccounts();
