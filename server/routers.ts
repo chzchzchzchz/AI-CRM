@@ -15,12 +15,14 @@ import { outreachRouter } from "./outreach";
 import { geminiRouter } from "./gemini";
 import { clayRouter } from "./clay";
 import { validationRouter } from "./validation-router";
+import { priorityActionsRouter } from "./priority-actions-router";
 
 
 export const appRouter = router({
   clay: clayRouter,
   gemini: geminiRouter,
   validation: validationRouter,
+  priorityActions: priorityActionsRouter,
   analytics: router({
     overview: publicProcedure.query(async () => {
       const accounts = await getAllAccounts();
