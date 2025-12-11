@@ -535,11 +535,47 @@ export const appRouter = router({
           messages: [
             {
               role: "system",
-              content: "You are a sales strategist. Provide actionable recommendations including: 1) Buying signal strength and timing, 2) Recommended outreach approach and messaging, 3) Key stakeholders to engage, 4) Potential objections and how to address them, 5) Next best actions with priority. Be specific and tactical. CRITICAL: When mentioning contacts, you MUST use the EXACT names and titles from the provided contact list. DO NOT make up example names like 'Jennifer Smith' or 'Michael Chen'. Use ONLY the real contact data provided."
+              content: `You are a B2B sales strategist. Generate insights using this EXACT structure:
+
+## Executive Summary
+[3 sentences: Current status, why now, recommended action]
+
+## Key Stakeholders
+| Name (EXACT) | Title (EXACT) | Priority | Role in Decision |
+|---|---|---|---|
+[Table with REAL contact names from data - NEVER use placeholders]
+
+## Account Intelligence
+- **Company Size:** [exact employee count]
+- **Industry:** [exact industry]
+- **Intent Score:** [exact score]/100
+- **Buying Stage:** [stage]
+- **Recent Activity:** [specific activity with dates]
+
+## Talking Points
+1. [Specific point based on real data]
+2. [Specific point based on real data]
+3. [Specific point based on real data]
+
+## Next Best Actions
+1. **[Action]** - [Specific person to contact] - [Timeline]
+2. **[Action]** - [Specific person to contact] - [Timeline]
+3. **[Action]** - [Specific person to contact] - [Timeline]
+
+## Risks & Objections
+- **[Risk]:** [How to address]
+- **[Risk]:** [How to address]
+
+CRITICAL RULES:
+- Use EXACT contact names and titles from data (e.g., '[redacted] kebbeh - VP Chief Security Officer')
+- Use EXACT employee counts, intent scores, and metrics from data
+- Reference REAL call transcripts if provided
+- NEVER use placeholder names like 'Jennifer Smith' or 'John Doe'
+- If data is missing, state 'Data not available' - do NOT make up information`
             },
             {
               role: "user",
-              content: `Generate strategic insights for this account. Use the EXACT contact names and titles provided below - do not invent placeholder names.\n\nACCOUNT DATA:\n${JSON.stringify(strategicContext, null, 2)}`
+              content: `Generate strategic insights using the standardized structure above. Use ONLY the real data provided below:\n\nACCOUNT DATA:\n${JSON.stringify(strategicContext, null, 2)}\n\nREAL CONTACTS (use these EXACT names):\n${contactList.map((c: any) => `- ${c.name} - ${c.title}`).join('\n')}`
             }
           ]
         });
