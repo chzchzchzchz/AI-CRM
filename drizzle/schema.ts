@@ -171,8 +171,8 @@ export const aiContext = mysqlTable("aiContext", {
 export type AIContext = typeof aiContext.$inferSelect;
 export type InsertAIContext = typeof aiContext.$inferInsert;
 
-// Documents table
-export const documents = mysqlTable("documents", {
+// Attachments table (files attached to accounts/contacts/calls)
+export const attachments = mysqlTable("attachments", {
   id: int("id").autoincrement().primaryKey(),
   accountId: int("accountId"),
   contactId: int("contactId"),
@@ -186,8 +186,8 @@ export const documents = mysqlTable("documents", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export type Document = typeof documents.$inferSelect;
-export type InsertDocument = typeof documents.$inferInsert;
+export type Attachment = typeof attachments.$inferSelect;
+export type InsertAttachment = typeof attachments.$inferInsert;
 
 // Enrichment Logs table
 export const enrichmentLogs = mysqlTable("enrichmentLogs", {
@@ -305,3 +305,158 @@ export const newsItems = mysqlTable("newsItems", {
 
 export type NewsItem = typeof newsItems.$inferSelect;
 export type InsertNewsItem = typeof newsItems.$inferInsert;
+
+
+// ============================================
+// ELITE RAG SYSTEM - "Haribo Battery"
+// ============================================
+
+// Document categories for intelligent routing
+export const documentCategoryEnum = mysqlEnum("documentCategory", [
+  "product_docs",      // Product documentation, features, specs
+  "competitive_intel", // Competitor analysis, battlecards
+  "case_studies",      // Customer success stories
+  "pricing",           // Pricing docs, ROI calculators
+  "technical",         // Technical whitepapers, architecture
+  "sales_playbook",    // Sales methodologies, scripts
+  "objection_handling", // Common objections and responses
+  "general"            // Uncategorized
+]);
+
+// Knowledge Base documents table (RAG system)
+export const knowledgeBase = mysqlTable("knowledgeBase", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 500 }).notNull(),
+  category: documentCategoryEnum.default("general").notNull(),
+  fileUrl: varchar("fileUrl", { length: 1000 }), // S3 URL
+  fileKey: varchar("fileKey", { length: 500 }), // S3 key
+  fileType: varchar("fileType", { length: 50 }), // pdf, docx, txt, md, etc.
+  fileSize: int("fileSize"), // bytes
+  contentRaw: text("contentRaw"), // Full extracted text
+  summary: text("summary"), // AI-generated document summary
+  tags: json("tags"), // Array of tags for filtering
+  metadata: json("metadata"), // Author, version, date, etc.
+  freshnessScore: decimal("freshnessScore", { precision: 3, scale: 2 }).default("1.00"), // 0.00-1.00, decays over time
+  chunkCount: int("chunkCount").default(0),
+  isProcessed: boolean("isProcessed").default(false),
+  processingError: text("processingError"),
+  uploadedBy: int("uploadedBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type KnowledgeDoc = typeof knowledgeBase.$inferSelect;
+export type InsertKnowledgeDoc = typeof knowledgeBase.$inferInsert;
+
+// Chunk types for hierarchical retrieval
+export const chunkTypeEnum = mysqlEnum("chunkType", [
+  "document_summary", // Top-level document summary
+  "section_summary",  // Section/chapter summary
+  "content",          // Actual content chunk
+  "table",            // Extracted table data
+  "list",             // Extracted list/bullet points
+  "quote"             // Important quotes or callouts
+]);
+
+// Document chunks with embeddings
+export const documentChunks = mysqlTable("documentChunks", {
+  id: int("id").autoincrement().primaryKey(),
+  documentId: int("documentId").notNull(),
+  chunkType: chunkTypeEnum.default("content").notNull(),
+  content: text("content").notNull(), // The actual chunk text
+  sectionPath: varchar("sectionPath", { length: 500 }), // e.g., "Chapter 1 > Section 2 > Subsection A"
+  sectionTitle: varchar("sectionTitle", { length: 255 }), // Current section title
+  tokenCount: int("tokenCount"), // For context window management
+  chunkIndex: int("chunkIndex"), // Order within document
+  // Embedding stored as JSON array (MySQL doesn't have native vector type)
+  // For production, consider using a vector DB like Pinecone or pgvector
+  embedding: json("embedding"), // Array of floats
+  embeddingModel: varchar("embeddingModel", { length: 100 }), // Which model generated it
+  // Metadata for retrieval optimization
+  parentChunkId: int("parentChunkId"), // For hierarchical retrieval
+  importance: decimal("importance", { precision: 3, scale: 2 }).default("0.50"), // 0.00-1.00
+  usageCount: int("usageCount").default(0), // How often this chunk is retrieved
+  successScore: decimal("successScore", { precision: 3, scale: 2 }).default("0.50"), // Feedback loop score
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DocumentChunk = typeof documentChunks.$inferSelect;
+export type InsertDocumentChunk = typeof documentChunks.$inferInsert;
+
+// Track which chunks were used in AI responses (for feedback loop)
+export const chunkUsage = mysqlTable("chunkUsage", {
+  id: int("id").autoincrement().primaryKey(),
+  chunkId: int("chunkId").notNull(),
+  usageContext: varchar("usageContext", { length: 50 }).notNull(), // 'outreach', 'insights', 'analysis', 'chat'
+  entityType: varchar("entityType", { length: 50 }), // 'account', 'contact', 'call'
+  entityId: int("entityId"),
+  wasHelpful: boolean("wasHelpful"), // User feedback
+  responseId: varchar("responseId", { length: 100 }), // To group chunks used in same response
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChunkUsage = typeof chunkUsage.$inferSelect;
+export type InsertChunkUsage = typeof chunkUsage.$inferInsert;
+
+
+// ==========================================
+// USER HISTORY & MEMORY TABLES
+// ==========================================
+
+// Generated email history
+export const emailHistory = mysqlTable("emailHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  accountId: int("accountId"),
+  contactId: int("contactId"),
+  recipientEmail: varchar("recipientEmail", { length: 255 }),
+  subject: varchar("subject", { length: 500 }),
+  body: text("body"),
+  context: text("context"), // User-provided context for generation
+  attachmentNames: json("attachmentNames"), // Array of attachment filenames
+  status: varchar("status", { length: 50 }).default("generated"), // generated, sent, draft
+  sentAt: timestamp("sentAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EmailHistory = typeof emailHistory.$inferSelect;
+export type InsertEmailHistory = typeof emailHistory.$inferInsert;
+
+// AI Assistant chat history
+export const chatHistory = mysqlTable("chatHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  sessionId: varchar("sessionId", { length: 100 }).notNull(), // Group messages by session
+  role: varchar("role", { length: 20 }).notNull(), // 'user' or 'assistant'
+  content: text("content").notNull(),
+  // Context about what the user was viewing when they asked
+  contextType: varchar("contextType", { length: 50 }), // 'account', 'contact', 'call', 'general'
+  contextId: int("contextId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChatHistory = typeof chatHistory.$inferSelect;
+export type InsertChatHistory = typeof chatHistory.$inferInsert;
+
+// User preferences and saved filters
+export const userPreferences = mysqlTable("userPreferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  // Saved filter presets
+  savedFilters: json("savedFilters"), // Array of {name, filters} objects
+  // Default view preferences
+  defaultRegion: varchar("defaultRegion", { length: 100 }),
+  defaultIndustry: varchar("defaultIndustry", { length: 100 }),
+  defaultSort: varchar("defaultSort", { length: 50 }).default("intentScore"),
+  // Notification preferences
+  notifyOnIntentSpike: boolean("notifyOnIntentSpike").default(true),
+  notifyOnNewContact: boolean("notifyOnNewContact").default(false),
+  // Recently viewed
+  recentAccountIds: json("recentAccountIds"), // Array of account IDs
+  recentContactIds: json("recentContactIds"), // Array of contact IDs
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserPreferences = typeof userPreferences.$inferSelect;
+export type InsertUserPreferences = typeof userPreferences.$inferInsert;

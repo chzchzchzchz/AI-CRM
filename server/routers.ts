@@ -19,6 +19,7 @@ import { priorityActionsRouter } from "./priority-actions-router";
 import { bulkInsightsRouter } from "./bulk-insights-router";
 import { sixsenseRouter } from "./sixsense-router";
 import { linkedinScraperRouter } from "./linkedin-scraper";
+import { emailHistoryRouter } from "./email-history";
 import { REVENUE_ARCHITECT_CORE, ACCOUNT_ANALYSIS_PROMPT, RESEARCH_SYNTHESIS_PROMPT, TECH_STACK_ANALYSIS_PROMPT } from "./revenueArchitect";
 
 
@@ -30,6 +31,7 @@ export const appRouter = router({
   bulkInsights: bulkInsightsRouter,
   sixsense: sixsenseRouter,
   linkedinScraper: linkedinScraperRouter,
+  emailHistory: emailHistoryRouter,
   analytics: router({
     overview: publicProcedure.query(async () => {
       const accounts = await getAllAccounts();

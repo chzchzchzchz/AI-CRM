@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles, Building2, Loader2, Copy, Check, Search, Users, Paperclip, X, FileText, File, Mail, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface Attachment {
   name: string;
@@ -21,8 +20,9 @@ export default function Outreach() {
   const { data: accounts, isLoading } = trpc.accounts.list.useQuery();
   const { data: contacts } = trpc.people.list.useQuery();
   
-  const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
-  const [selectedContacts, setSelectedContacts] = useState<number[]>([]);
+  // Single selection - only one account and one contact at a time
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
   const [context, setContext] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [contactSearchQuery, setContactSearchQuery] = useState("");
@@ -36,19 +36,17 @@ export default function Outreach() {
   const generateMutation = trpc.outreach.generateEmail.useMutation({
     onSuccess: (data: any) => {
       const content = typeof data.content === 'string' ? data.content : '';
-      // Use subject from API response if available
       if (data.subject) {
         setGeneratedSubject(data.subject);
       } else {
-        // Fallback to default subject
-        const selectedAccount = accounts?.find(a => selectedAccounts.includes(a.id));
+        const selectedAccount = accounts?.find(a => a.id === selectedAccountId);
         setGeneratedSubject(selectedAccount ? `Security at ${selectedAccount.name}` : 'Quick question');
       }
       setGeneratedContent(content.trim());
       
       // Auto-fill recipient if a contact is selected
-      if (selectedContacts.length > 0) {
-        const selectedContact = contacts?.find(c => selectedContacts.includes(c.id));
+      if (selectedContactId) {
+        const selectedContact = contacts?.find(c => c.id === selectedContactId);
         if (selectedContact?.email) {
           setRecipientEmail(selectedContact.email);
         }
@@ -62,12 +60,11 @@ export default function Outreach() {
   });
 
   const handleGenerate = () => {
-    if (selectedAccounts.length === 0) {
-      toast.error("Please select at least one account");
+    if (!selectedAccountId) {
+      toast.error("Please select an account");
       return;
     }
 
-    // Include attachment names in the context for AI to reference
     let enhancedContext = context;
     if (attachments.length > 0) {
       const attachmentList = attachments.map(a => a.name).join(", ");
@@ -75,8 +72,8 @@ export default function Outreach() {
     }
 
     generateMutation.mutate({
-      accountIds: selectedAccounts,
-      contactIds: selectedContacts,
+      accountIds: [selectedAccountId],
+      contactIds: selectedContactId ? [selectedContactId] : [],
       prompt: enhancedContext || undefined,
     });
   };
@@ -147,50 +144,82 @@ export default function Outreach() {
     return <File className="h-4 w-4 text-slate-400" />;
   };
 
-  const toggleAccount = (id: number) => {
-    setSelectedAccounts(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  };
-
-  const toggleContact = (id: number) => {
-    setSelectedContacts(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-    // Auto-fill email when contact is selected
-    const contact = contacts?.find(c => c.id === id);
-    if (contact?.email && !selectedContacts.includes(id)) {
-      setRecipientEmail(contact.email);
+  // Single selection for account
+  const selectAccount = (id: number) => {
+    if (selectedAccountId === id) {
+      // Deselect
+      setSelectedAccountId(null);
+      setSelectedContactId(null); // Clear contact when account is deselected
+    } else {
+      setSelectedAccountId(id);
+      setSelectedContactId(null); // Clear contact when switching accounts
     }
   };
 
+  // Single selection for contact - also auto-selects their account
+  const selectContact = (id: number, accountId: number | null) => {
+    if (selectedContactId === id) {
+      // Deselect
+      setSelectedContactId(null);
+    } else {
+      setSelectedContactId(id);
+      // Auto-select the contact's account if different
+      if (accountId && accountId !== selectedAccountId) {
+        setSelectedAccountId(accountId);
+      }
+      // Auto-fill email
+      const contact = contacts?.find(c => c.id === id);
+      if (contact?.email) {
+        setRecipientEmail(contact.email);
+      }
+    }
+  };
+
+  // Filter and sort accounts - hot leads first, filter out invalid names
   const filteredAccounts = useMemo(() => {
     if (!accounts) return [];
-    if (!searchQuery.trim()) return accounts;
-    const query = searchQuery.toLowerCase();
-    return accounts.filter(account =>
-      account.name.toLowerCase().includes(query) ||
-      (account.industry && account.industry.toLowerCase().includes(query))
-    );
-  }, [accounts, searchQuery]);
-
-  const filteredContacts = useMemo(() => {
-    if (!contacts) return [];
     
-    let filtered = contacts;
-    if (selectedAccounts.length > 0) {
-      filtered = contacts.filter(contact => 
-        contact.accountId && selectedAccounts.includes(contact.accountId)
+    // Filter out invalid account names
+    const invalidNames = ['CHECK', '#N/A', 'Unknown', 'MATCH', 'N/A', ''];
+    let filtered = accounts.filter(account => 
+      account.name && 
+      !invalidNames.includes(account.name.trim()) &&
+      !account.name.startsWith('#')
+    );
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(account =>
+        account.name.toLowerCase().includes(query) ||
+        (account.industry && account.industry.toLowerCase().includes(query))
       );
     }
     
-    if (!contactSearchQuery.trim()) return filtered;
-    const query = contactSearchQuery.toLowerCase();
-    return filtered.filter(contact =>
-      (contact.name && contact.name.toLowerCase().includes(query)) ||
-      (contact.title && contact.title.toLowerCase().includes(query))
+    // Sort by intent score (highest first)
+    return filtered.sort((a, b) => (b.intentScore || 0) - (a.intentScore || 0));
+  }, [accounts, searchQuery]);
+
+  // Only show contacts when an account is selected
+  const filteredContacts = useMemo(() => {
+    if (!contacts || !selectedAccountId) return [];
+    
+    // Filter to only contacts from selected account
+    let filtered = contacts.filter(contact => 
+      contact.accountId === selectedAccountId
     );
-  }, [contacts, contactSearchQuery, selectedAccounts, accounts]);
+    
+    // Apply search filter
+    if (contactSearchQuery.trim()) {
+      const query = contactSearchQuery.toLowerCase();
+      filtered = filtered.filter(contact =>
+        (contact.name && contact.name.toLowerCase().includes(query)) ||
+        (contact.title && contact.title.toLowerCase().includes(query))
+      );
+    }
+    
+    return filtered;
+  }, [contacts, contactSearchQuery, selectedAccountId]);
 
   if (isLoading) {
     return (
@@ -200,121 +229,150 @@ export default function Outreach() {
     );
   }
 
+  const selectedAccount = accounts?.find(a => a.id === selectedAccountId);
+  const selectedContact = contacts?.find(c => c.id === selectedContactId);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <Navigation />
-      <div className="container py-8 max-w-7xl">
+      <main className="container py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3">
-            <Sparkles className="h-10 w-10 text-cyan-400" />
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <Sparkles className="h-8 w-8 text-purple-400" />
             AI-Powered Outreach
           </h1>
-          <p className="text-slate-400">Generate personalized emails using account data and AI</p>
+          <p className="text-slate-400 mt-2">Generate personalized emails using account data and AI</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column - Selection */}
           <div className="space-y-6">
-            {/* Step 1: Select Accounts */}
-            <Card className="card-elevated">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
+            {/* Account Selection */}
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2 text-white">
                   <Building2 className="h-5 w-5 text-cyan-400" />
-                  1. Select Target Accounts
+                  1. Select Target Account
                 </CardTitle>
-                <CardDescription>Choose accounts to personalize outreach</CardDescription>
+                <CardDescription>Choose one account to personalize outreach</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="mb-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input
-                      placeholder="Search accounts by name or industry..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-                    />
-                  </div>
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                  <Input
+                    placeholder="Search accounts by name or industry..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 bg-slate-800/50 border-slate-700 text-white"
+                  />
                 </div>
-                <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {filteredAccounts.map((account) => (
+                <div className="max-h-64 overflow-y-auto space-y-1">
+                  {filteredAccounts.slice(0, 50).map((account) => (
                     <div
                       key={account.id}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
+                      onClick={() => selectAccount(account.id)}
+                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
+                        selectedAccountId === account.id
+                          ? "bg-cyan-500/20 border border-cyan-500/50"
+                          : "hover:bg-slate-800/50"
+                      }`}
                     >
-                      <Checkbox
-                        checked={selectedAccounts.includes(account.id)}
-                        onCheckedChange={() => toggleAccount(account.id)}
-                        className="cursor-pointer"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-white truncate">{account.name}</div>
-                        <div className="text-sm text-slate-400">{account.industry || "Unknown"}</div>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                          selectedAccountId === account.id ? "bg-cyan-400" : "bg-slate-600"
+                        }`} />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{account.name}</p>
+                          <p className="text-xs text-slate-500 truncate">
+                            {account.industry && account.industry !== 'MATCH' ? account.industry : 'Unknown Industry'}
+                          </p>
+                        </div>
                       </div>
-                      {account.intentScore && Number(account.intentScore) >= 70 && (
-                        <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                          Hot
+                      {(account.intentScore || 0) >= 70 && (
+                        <Badge variant="outline" className="bg-orange-500/20 text-orange-400 border-orange-500/50 flex-shrink-0 ml-2">
+                          {account.intentScore} Hot
                         </Badge>
                       )}
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 text-sm text-slate-400">
-                  {selectedAccounts.length} account{selectedAccounts.length !== 1 ? 's' : ''} selected
-                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  {selectedAccountId ? "1 account selected" : "0 accounts selected"}
+                </p>
               </CardContent>
             </Card>
 
-            {/* Step 2: Select Contacts (Optional) */}
-            <Card className="card-elevated">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
+            {/* Contact Selection - Only shows when account is selected */}
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2 text-white">
                   <Users className="h-5 w-5 text-purple-400" />
-                  2. Select Contacts (Optional)
+                  2. Select Contact (Optional)
                 </CardTitle>
-                <CardDescription>Choose specific decision makers to personalize for</CardDescription>
+                <CardDescription>
+                  {selectedAccountId 
+                    ? `Choose a decision maker from ${selectedAccount?.name || 'selected account'}`
+                    : "Select an account first to see contacts"
+                  }
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="mb-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input
-                      placeholder="Search contacts by name or title..."
-                      value={contactSearchQuery}
-                      onChange={(e) => setContactSearchQuery(e.target.value)}
-                      className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {filteredContacts.slice(0, 50).map((contact) => (
-                    <div
-                      key={contact.id}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
-                    >
-                      <Checkbox
-                        checked={selectedContacts.includes(contact.id)}
-                        onCheckedChange={() => toggleContact(contact.id)}
-                        className="cursor-pointer"
+                {selectedAccountId ? (
+                  <>
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                      <Input
+                        placeholder="Search contacts by name or title..."
+                        value={contactSearchQuery}
+                        onChange={(e) => setContactSearchQuery(e.target.value)}
+                        className="pl-9 bg-slate-800/50 border-slate-700 text-white"
                       />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-white truncate">{contact.name}</div>
-                        <div className="text-sm text-slate-400 truncate">{contact.title || "No title"}</div>
-                      </div>
                     </div>
-                  ))}
-                </div>
-                <div className="mt-4 text-sm text-slate-400">
-                  {selectedContacts.length} contact{selectedContacts.length !== 1 ? 's' : ''} selected
-                </div>
+                    <div className="max-h-48 overflow-y-auto space-y-1">
+                      {filteredContacts.length === 0 ? (
+                        <p className="text-sm text-slate-500 text-center py-4">
+                          No contacts found for this account
+                        </p>
+                      ) : (
+                        filteredContacts.slice(0, 30).map((contact) => (
+                          <div
+                            key={contact.id}
+                            onClick={() => selectContact(contact.id, contact.accountId)}
+                            className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                              selectedContactId === contact.id
+                                ? "bg-purple-500/20 border border-purple-500/50"
+                                : "hover:bg-slate-800/50"
+                            }`}
+                          >
+                            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                              selectedContactId === contact.id ? "bg-purple-400" : "bg-slate-600"
+                            }`} />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-white truncate">{contact.name}</p>
+                              <p className="text-xs text-slate-500 truncate">{contact.title}</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      {selectedContactId ? "1 contact selected" : `${filteredContacts.length} contacts available`}
+                    </p>
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">
+                    <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Select an account to see available contacts</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Step 3: Add Attachments */}
-            <Card className="card-elevated">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Paperclip className="h-5 w-5 text-orange-400" />
+            {/* Attachments */}
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2 text-white">
+                  <Paperclip className="h-5 w-5 text-amber-400" />
                   3. Add Attachments (Optional)
                 </CardTitle>
                 <CardDescription>Attach case studies, one-pagers, or other collateral</CardDescription>
@@ -325,52 +383,45 @@ export default function Outreach() {
                   ref={fileInputRef}
                   onChange={handleFileSelect}
                   multiple
-                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg"
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md"
                   className="hidden"
                 />
                 <Button
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-dashed border-2 border-slate-600 hover:border-orange-500 bg-slate-800/30 text-slate-300 hover:text-white py-6"
+                  className="w-full border-dashed border-slate-700 text-slate-400 hover:text-white hover:border-slate-600"
                 >
-                  <Paperclip className="h-5 w-5 mr-2" />
+                  <Paperclip className="h-4 w-4 mr-2" />
                   Click to add attachments
                 </Button>
-                
                 {attachments.length > 0 && (
-                  <div className="mt-4 space-y-2">
+                  <div className="mt-3 space-y-2">
                     {attachments.map((attachment, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700"
-                      >
-                        {getFileIcon(attachment.type)}
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-white truncate text-sm">{attachment.name}</div>
-                          <div className="text-xs text-slate-500">{formatFileSize(attachment.size)}</div>
+                      <div key={index} className="flex items-center justify-between p-2 bg-slate-800/50 rounded-lg">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {getFileIcon(attachment.type)}
+                          <span className="text-sm text-white truncate">{attachment.name}</span>
+                          <span className="text-xs text-slate-500">({formatFileSize(attachment.size)})</span>
                         </div>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => removeAttachment(index)}
-                          className="h-8 w-8 p-0 text-slate-400 hover:text-red-400"
+                          className="h-6 w-6 p-0 text-slate-400 hover:text-red-400"
                         >
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
-                    <p className="text-xs text-slate-500 mt-2">
-                      AI will reference these attachments in the generated email
-                    </p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Step 4: Optional Context */}
-            <Card className="card-elevated">
-              <CardHeader>
-                <CardTitle className="text-white">4. Add Context (Optional)</CardTitle>
+            {/* Context */}
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg text-white">4. Add Context (Optional)</CardTitle>
                 <CardDescription>Describe pain points, goals, or specific messaging</CardDescription>
               </CardHeader>
               <CardContent>
@@ -378,25 +429,24 @@ export default function Outreach() {
                   placeholder="e.g., Focus on phishing prevention, mention recent breaches, emphasize passwordless benefits..."
                   value={context}
                   onChange={(e) => setContext(e.target.value)}
-                  className="min-h-[120px] bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                  className="min-h-[100px] bg-slate-800/50 border-slate-700 text-white"
                 />
               </CardContent>
             </Card>
 
-            {/* Step 5: Generate */}
             <Button
               onClick={handleGenerate}
-              disabled={generateMutation.isPending || selectedAccounts.length === 0}
-              className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white py-6 text-lg"
+              disabled={!selectedAccountId || generateMutation.isPending}
+              className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white"
             >
               {generateMutation.isPending ? (
                 <>
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-5 w-5 mr-2" />
+                  <Sparkles className="mr-2 h-4 w-4" />
                   Generate Personalized Email
                 </>
               )}
@@ -404,81 +454,66 @@ export default function Outreach() {
           </div>
 
           {/* Right Column - Generated Content */}
-          <div>
-            <Card className="bg-slate-900/50 border-slate-800 sticky top-8">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Mail className="h-5 w-5 text-cyan-400" />
-                  Generated Email
-                </CardTitle>
-                <CardDescription>Review and send via your email client</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {generatedContent ? (
-                  <>
-                    {/* Recipient Email */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300">To:</label>
-                      <Input
-                        type="email"
-                        placeholder="recipient@company.com"
-                        value={recipientEmail}
-                        onChange={(e) => setRecipientEmail(e.target.value)}
-                        className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-                      />
-                    </div>
+          <Card className="bg-slate-900/50 border-slate-800 h-fit sticky top-4">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2 text-white">
+                <Mail className="h-5 w-5 text-cyan-400" />
+                Generated Email
+              </CardTitle>
+              <CardDescription>Review and send via your email client</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {generatedContent ? (
+                <div className="space-y-4">
+                  {/* To Field */}
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1 block">To:</label>
+                    <Input
+                      type="email"
+                      placeholder="recipient@company.com"
+                      value={recipientEmail}
+                      onChange={(e) => setRecipientEmail(e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white"
+                    />
+                  </div>
 
-                    {/* Subject Line */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300">Subject:</label>
-                      <Input
-                        type="text"
-                        placeholder="Email subject"
-                        value={generatedSubject}
-                        onChange={(e) => setGeneratedSubject(e.target.value)}
-                        className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-                      />
-                    </div>
+                  {/* Subject Field */}
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1 block">Subject:</label>
+                    <Input
+                      type="text"
+                      placeholder="Email subject"
+                      value={generatedSubject}
+                      onChange={(e) => setGeneratedSubject(e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white"
+                    />
+                  </div>
 
-                    {/* Email Body */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300">Body:</label>
-                      <Textarea
-                        value={generatedContent}
-                        onChange={(e) => setGeneratedContent(e.target.value)}
-                        className="min-h-[250px] bg-slate-800/50 border-slate-700 text-white font-mono text-sm"
-                      />
-                    </div>
+                  {/* Body */}
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1 block">Body:</label>
+                    <Textarea
+                      value={generatedContent}
+                      onChange={(e) => setGeneratedContent(e.target.value)}
+                      className="min-h-[200px] bg-slate-800/50 border-slate-700 text-white font-mono text-sm"
+                    />
+                  </div>
 
-                    {/* Attachments Note */}
-                    {attachments.length > 0 && (
-                      <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-                        <p className="text-sm text-orange-400 font-medium mb-2">
-                          <Paperclip className="h-4 w-4 inline mr-1" />
-                          Remember to attach these files:
-                        </p>
-                        <ul className="text-sm text-slate-400 space-y-1">
-                          {attachments.map((a, i) => (
-                            <li key={i}>• {a.name}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="grid grid-cols-2 gap-3 pt-4">
+                  {/* Action Buttons */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
                       <Button
                         onClick={handleOpenInGmail}
-                        className="bg-red-600 hover:bg-red-700 text-white"
+                        className="flex-1 bg-red-600 hover:bg-red-500 text-white"
                       >
-                        <ExternalLink className="h-4 w-4 mr-2" />
+                        <ExternalLink className="mr-2 h-4 w-4" />
                         Open in Gmail
                       </Button>
                       <Button
                         onClick={handleOpenInOutlook}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-white"
                       >
-                        <ExternalLink className="h-4 w-4 mr-2" />
+                        <ExternalLink className="mr-2 h-4 w-4" />
                         Open in Outlook
                       </Button>
                     </div>
@@ -489,30 +524,28 @@ export default function Outreach() {
                     >
                       {copied ? (
                         <>
-                          <Check className="h-4 w-4 mr-2" />
+                          <Check className="mr-2 h-4 w-4" />
                           Copied!
                         </>
                       ) : (
                         <>
-                          <Copy className="h-4 w-4 mr-2" />
+                          <Copy className="mr-2 h-4 w-4" />
                           Copy to Clipboard
                         </>
                       )}
                     </Button>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Sparkles className="h-12 w-12 text-slate-600 mb-4" />
-                    <p className="text-slate-500">
-                      Select accounts and click Generate to create personalized content
-                    </p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-slate-500">
+                  <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                  <p>Select an account and click Generate to create personalized content</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
