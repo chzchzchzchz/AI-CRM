@@ -6,6 +6,8 @@
  * deep analysis for any account using all available data.
  */
 
+import { getAssignedRep, formatRepAssignment } from './repAssignment';
+
 export interface VectorScores {
   engagement: number;      // 0-100: How engaged is this account?
   conversion: number;      // 0-100: How likely to convert?
@@ -204,7 +206,19 @@ export function calculateVectorScores(data: AccountData): VectorScores {
  * Generate the master deep analysis prompt for an account
  */
 export function generateDeepAnalysisPrompt(data: AccountData, scores: VectorScores): string {
-  const contactsList = (data.contacts || []).slice(0, 15).map(c => 
+  // Prioritize contacts: executives first, then by title seniority
+  const prioritizedContacts = (data.contacts || [])
+    .sort((a, b) => {
+      const levelOrder: Record<string, number> = {
+        'C-Level': 1, 'VP': 2, 'Director': 3, 'Senior Manager': 4, 'Manager': 5
+      };
+      const aLevel = levelOrder[a.managementLevel || ''] || 10;
+      const bLevel = levelOrder[b.managementLevel || ''] || 10;
+      return aLevel - bLevel;
+    })
+    .slice(0, 10); // TOP 10 ONLY
+  
+  const contactsList = prioritizedContacts.map(c => 
     `- ${c.name} | ${c.title || 'No title'} | ${c.email || 'No email'}`
   ).join('\n');
   
@@ -221,6 +235,12 @@ export function generateDeepAnalysisPrompt(data: AccountData, scores: VectorScor
     intentNum >= 20 ? 'Awareness' :
     'Target'
   );
+  
+  // Get assigned rep based on territory and company size
+  const assignedRep = getAssignedRep(data.region || null, data.employeeCount || null);
+  const repAssignment = assignedRep 
+    ? `${assignedRep.name} (${assignedRep.type === 'enterprise' ? 'Enterprise' : 'Commercial'} - ${assignedRep.territory})`
+    : 'Unassigned (territory not mapped)';
   
   return `You are an elite B2B sales intelligence analyst. Perform a DEEP analysis of this account and generate tactical, actionable intelligence.
 
@@ -246,7 +266,8 @@ ACCOUNT DATA:
 • Industry: ${data.industry || 'Unknown'}
 • Employees: ${data.employeeCount?.toLocaleString() || 'Unknown'}
 • Region: ${data.region || 'Unknown'}
-• Relationship: ${data.relationship || 'Prospect'}
+• Relationship: ${data.relationship || 'Prospect'}${data.relationship === 'Lost Opp' ? ' ⚠️ CHECK SALESFORCE FOR HISTORY - data not fully synced' : ''}
+• ASSIGNED REP: ${repAssignment}${data.relationship === 'SFDC Services' ? ' (Auto-assigned based on territory/size - was unassigned)' : ''}
 
 INTENT & BUYING SIGNALS:
 • Intent Score: ${data.intentScore || 0}/100

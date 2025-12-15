@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { Sparkles, RefreshCw, Clock, Target } from "lucide-react";
+import { RefreshCw, Clock, Target } from "lucide-react";
 import { Streamdown } from "streamdown";
 
 interface AIInsightsTabProps {
@@ -10,10 +11,24 @@ interface AIInsightsTabProps {
 }
 
 export function AIInsightsTab({ accountId }: AIInsightsTabProps) {
-  const { data, isLoading, refetch } = trpc.ai.generateStrategicInsights.useQuery({ accountId });
+  const [forceRefresh, setForceRefresh] = useState(false);
+  const utils = trpc.useUtils();
+  
+  const { data, isLoading, isFetching } = trpc.ai.generateStrategicInsights.useQuery(
+    { accountId, forceRefresh },
+    { 
+      staleTime: forceRefresh ? 0 : 5 * 60 * 1000, // 5 min cache unless forcing
+      refetchOnWindowFocus: false
+    }
+  );
 
-  const handleRefresh = () => {
-    refetch();
+  const handleRefresh = async () => {
+    // Set forceRefresh to true to bypass cache
+    setForceRefresh(true);
+    // Invalidate the cache
+    await utils.ai.generateStrategicInsights.invalidate({ accountId });
+    // Reset forceRefresh after a delay so next normal load uses cache
+    setTimeout(() => setForceRefresh(false), 1000);
   };
 
   return (
@@ -31,28 +46,31 @@ export function AIInsightsTab({ accountId }: AIInsightsTabProps) {
                 AI-powered buying signals, outreach strategies, and next best actions
               </CardDescription>
             </div>
-            {data && (
-              <div className="flex items-center gap-2">
-                {data.cached && (
-                  <Badge variant="outline" className="gap-1">
-                    <Clock className="h-3 w-3" />
-                    Cached ({data.cacheAge}m ago)
-                  </Badge>
-                )}
-                <Button
-                  onClick={handleRefresh}
-                  variant="outline"
-                  size="sm"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {data?.cached && (
+                <Badge variant="outline" className="gap-1">
+                  <Clock className="h-3 w-3" />
+                  Cached ({data.cacheAge}m ago)
+                </Badge>
+              )}
+              <Button
+                onClick={handleRefresh}
+                variant="outline"
+                size="sm"
+                disabled={isLoading || isFetching}
+              >
+                <RefreshCw className={`h-4 w-4 ${(isLoading || isFetching) ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isLoading ? (
+          {(isLoading || isFetching) ? (
             <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                {forceRefresh ? "Regenerating insights..." : "Loading insights..."}
+              </div>
               <div className="h-4 bg-muted rounded animate-pulse" />
               <div className="h-4 bg-muted rounded animate-pulse w-5/6" />
               <div className="h-4 bg-muted rounded animate-pulse w-4/6" />
