@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Building2, Loader2, Copy, Check, Search, Users, Paperclip, X, FileText, File } from "lucide-react";
+import { Sparkles, Building2, Loader2, Copy, Check, Search, Users, Paperclip, X, FileText, File, Mail, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,14 +27,34 @@ export default function Outreach() {
   const [searchQuery, setSearchQuery] = useState("");
   const [contactSearchQuery, setContactSearchQuery] = useState("");
   const [generatedContent, setGeneratedContent] = useState("");
+  const [generatedSubject, setGeneratedSubject] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
   const [copied, setCopied] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const generateMutation = trpc.outreach.generateEmail.useMutation({
-    onSuccess: (data) => {
-      setGeneratedContent(typeof data.content === 'string' ? data.content : '');
-      toast.success("Email generated successfully!");
+    onSuccess: (data: any) => {
+      const content = typeof data.content === 'string' ? data.content : '';
+      // Use subject from API response if available
+      if (data.subject) {
+        setGeneratedSubject(data.subject);
+      } else {
+        // Fallback to default subject
+        const selectedAccount = accounts?.find(a => selectedAccounts.includes(a.id));
+        setGeneratedSubject(selectedAccount ? `Security at ${selectedAccount.name}` : 'Quick question');
+      }
+      setGeneratedContent(content.trim());
+      
+      // Auto-fill recipient if a contact is selected
+      if (selectedContacts.length > 0) {
+        const selectedContact = contacts?.find(c => selectedContacts.includes(c.id));
+        if (selectedContact?.email) {
+          setRecipientEmail(selectedContact.email);
+        }
+      }
+      
+      toast.success("Email generated!");
     },
     onError: (error) => {
       toast.error(`Failed to generate: ${error.message}`);
@@ -62,15 +82,29 @@ export default function Outreach() {
   };
 
   const handleCopy = () => {
-    // Include attachment note in copied content
-    let copyContent = generatedContent;
-    if (attachments.length > 0) {
-      copyContent += `\n\n---\nAttachments:\n${attachments.map(a => `• ${a.name}`).join('\n')}`;
-    }
-    navigator.clipboard.writeText(copyContent);
+    const fullEmail = `Subject: ${generatedSubject}\n\n${generatedContent}`;
+    navigator.clipboard.writeText(fullEmail);
     setCopied(true);
-    toast.success("Copied to clipboard!");
+    toast.success("Email copied to clipboard!");
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleOpenInGmail = () => {
+    if (!recipientEmail) {
+      toast.error("Please enter a recipient email address");
+      return;
+    }
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail)}&su=${encodeURIComponent(generatedSubject)}&body=${encodeURIComponent(generatedContent)}`;
+    window.open(gmailUrl, '_blank');
+  };
+
+  const handleOpenInOutlook = () => {
+    if (!recipientEmail) {
+      toast.error("Please enter a recipient email address");
+      return;
+    }
+    const outlookUrl = `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(recipientEmail)}&subject=${encodeURIComponent(generatedSubject)}&body=${encodeURIComponent(generatedContent)}`;
+    window.open(outlookUrl, '_blank');
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,7 +114,6 @@ export default function Outreach() {
     const newAttachments: Attachment[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      // Limit file size to 10MB
       if (file.size > 10 * 1024 * 1024) {
         toast.error(`${file.name} is too large. Max 10MB.`);
         continue;
@@ -94,7 +127,6 @@ export default function Outreach() {
     }
 
     setAttachments(prev => [...prev, ...newAttachments]);
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -125,6 +157,11 @@ export default function Outreach() {
     setSelectedContacts(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
+    // Auto-fill email when contact is selected
+    const contact = contacts?.find(c => c.id === id);
+    if (contact?.email && !selectedContacts.includes(id)) {
+      setRecipientEmail(contact.email);
+    }
   };
 
   const filteredAccounts = useMemo(() => {
@@ -140,7 +177,6 @@ export default function Outreach() {
   const filteredContacts = useMemo(() => {
     if (!contacts) return [];
     
-    // Filter by selected accounts first
     let filtered = contacts;
     if (selectedAccounts.length > 0) {
       filtered = contacts.filter(contact => 
@@ -148,7 +184,6 @@ export default function Outreach() {
       );
     }
     
-    // Then apply search query
     if (!contactSearchQuery.trim()) return filtered;
     const query = contactSearchQuery.toLowerCase();
     return filtered.filter(contact =>
@@ -372,14 +407,85 @@ export default function Outreach() {
           <div>
             <Card className="bg-slate-900/50 border-slate-800 sticky top-8">
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-white">Generated Email</CardTitle>
-                  {generatedContent && (
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-cyan-400" />
+                  Generated Email
+                </CardTitle>
+                <CardDescription>Review and send via your email client</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {generatedContent ? (
+                  <>
+                    {/* Recipient Email */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-300">To:</label>
+                      <Input
+                        type="email"
+                        placeholder="recipient@company.com"
+                        value={recipientEmail}
+                        onChange={(e) => setRecipientEmail(e.target.value)}
+                        className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                      />
+                    </div>
+
+                    {/* Subject Line */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-300">Subject:</label>
+                      <Input
+                        type="text"
+                        placeholder="Email subject"
+                        value={generatedSubject}
+                        onChange={(e) => setGeneratedSubject(e.target.value)}
+                        className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                      />
+                    </div>
+
+                    {/* Email Body */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-300">Body:</label>
+                      <Textarea
+                        value={generatedContent}
+                        onChange={(e) => setGeneratedContent(e.target.value)}
+                        className="min-h-[250px] bg-slate-800/50 border-slate-700 text-white font-mono text-sm"
+                      />
+                    </div>
+
+                    {/* Attachments Note */}
+                    {attachments.length > 0 && (
+                      <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                        <p className="text-sm text-orange-400 font-medium mb-2">
+                          <Paperclip className="h-4 w-4 inline mr-1" />
+                          Remember to attach these files:
+                        </p>
+                        <ul className="text-sm text-slate-400 space-y-1">
+                          {attachments.map((a, i) => (
+                            <li key={i}>• {a.name}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-2 gap-3 pt-4">
+                      <Button
+                        onClick={handleOpenInGmail}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Open in Gmail
+                      </Button>
+                      <Button
+                        onClick={handleOpenInOutlook}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Open in Outlook
+                      </Button>
+                    </div>
                     <Button
                       variant="outline"
-                      size="sm"
                       onClick={handleCopy}
-                      className="border-slate-700"
+                      className="w-full border-slate-700 text-slate-300 hover:text-white"
                     >
                       {copied ? (
                         <>
@@ -389,34 +495,11 @@ export default function Outreach() {
                       ) : (
                         <>
                           <Copy className="h-4 w-4 mr-2" />
-                          Copy
+                          Copy to Clipboard
                         </>
                       )}
                     </Button>
-                  )}
-                </div>
-                <CardDescription>AI-personalized using account data</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {generatedContent ? (
-                  <div className="prose prose-invert max-w-none">
-                    <div className="whitespace-pre-wrap text-slate-300 bg-slate-800/50 p-4 rounded-lg border border-slate-700">
-                      {generatedContent}
-                    </div>
-                    {attachments.length > 0 && (
-                      <div className="mt-4 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-                        <p className="text-sm text-orange-400 font-medium mb-2">
-                          <Paperclip className="h-4 w-4 inline mr-1" />
-                          Attachments to include:
-                        </p>
-                        <ul className="text-sm text-slate-400 space-y-1">
-                          {attachments.map((a, i) => (
-                            <li key={i}>• {a.name}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
+                  </>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <Sparkles className="h-12 w-12 text-slate-600 mb-4" />
