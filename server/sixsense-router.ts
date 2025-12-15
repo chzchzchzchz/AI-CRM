@@ -45,7 +45,7 @@ export const sixsenseRouter = router({
             ...(sixsenseData.industry && { industry: sixsenseData.industry }),
             ...(sixsenseData.region && { region: sixsenseData.region }),
             ...(sixsenseData.annualRevenue && {
-              revenue: sixsenseData.annualRevenue,
+              revenue: String(sixsenseData.annualRevenue),
             }),
             // Intent and scoring
             ...(sixsenseData.intentScore !== undefined && {
@@ -132,7 +132,7 @@ export const sixsenseRouter = router({
                 ...(sixsenseData.industry && { industry: sixsenseData.industry }),
                 ...(sixsenseData.region && { region: sixsenseData.region }),
                 ...(sixsenseData.annualRevenue && {
-                  revenue: sixsenseData.annualRevenue,
+                  revenue: String(sixsenseData.annualRevenue),
                 }),
                 ...(sixsenseData.intentScore !== undefined && {
                   intentScore: sixsenseData.intentScore,

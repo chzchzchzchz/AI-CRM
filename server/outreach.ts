@@ -1,4 +1,4 @@
-import { router, protectedProcedure } from "./_core/trpc";
+import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { eq, inArray } from "drizzle-orm";
@@ -6,7 +6,7 @@ import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
 
 export const outreachRouter = router({
-  generateEmail: protectedProcedure
+  generateEmail: publicProcedure
     .input(
       z.object({
         accountIds: z.array(z.number()),
