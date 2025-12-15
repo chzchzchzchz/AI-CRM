@@ -21,7 +21,7 @@ const SmartSearch = lazyLoad(() => import("./pages/SmartSearch"));
 const DataValidation = lazyLoad(() => import("./pages/DataValidation"));
 const BulkInsights = lazyLoad(() => import("./pages/BulkInsights"));
 const SixsenseSync = lazyLoad(() => import("./pages/SixsenseSync"));
-const LinkedInScraper = lazyLoad(() => import("./pages/LinkedInScraper"));
+const SixsenseAnalytics = lazyLoad(() => import("./pages/SixsenseAnalytics"));
 import { GlobalSearch } from "./components/GlobalSearch";
 import { GlobalAIChat } from "./components/GlobalAIChat";
 import { useState, useEffect } from "react";
@@ -43,7 +43,7 @@ function Router() {
       <Route path="/validation" component={DataValidation} />
       <Route path="/bulk-insights" component={BulkInsights} />
       <Route path="/sixsense-sync" component={SixsenseSync} />
-      <Route path="/linkedin-scraper" component={LinkedInScraper} />
+      <Route path="/sixsense-analytics" component={SixsenseAnalytics} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

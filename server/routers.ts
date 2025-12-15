@@ -18,9 +18,7 @@ import { validationRouter } from "./validation-router";
 import { priorityActionsRouter } from "./priority-actions-router";
 import { bulkInsightsRouter } from "./bulk-insights-router";
 import { sixsenseRouter } from "./sixsense-router";
-import { linkedinScraperRouter } from "./linkedin-scraper";
-import { emailHistoryRouter } from "./email-history";
-import { REVENUE_ARCHITECT_CORE, ACCOUNT_ANALYSIS_PROMPT, RESEARCH_SYNTHESIS_PROMPT, TECH_STACK_ANALYSIS_PROMPT } from "./revenueArchitect";
+import { sixsenseAnalyticsRouter } from "./sixsense-analytics";
 
 
 export const appRouter = router({
@@ -30,8 +28,7 @@ export const appRouter = router({
   priorityActions: priorityActionsRouter,
   bulkInsights: bulkInsightsRouter,
   sixsense: sixsenseRouter,
-  linkedinScraper: linkedinScraperRouter,
-  emailHistory: emailHistoryRouter,
+  sixsenseAnalytics: sixsenseAnalyticsRouter,
   analytics: router({
     overview: publicProcedure.query(async () => {
       const accounts = await getAllAccounts();
@@ -137,25 +134,10 @@ export const appRouter = router({
         return score && score >= 70;
       }).length;
       
-      // Calculate warm leads: accounts with engagement OR intent 70+ OR previous calls
-      // Get account IDs that have Gong calls
-      const accountsWithCalls = new Set(calls.map(c => c.accountId).filter(Boolean));
-      
-      // Get account IDs that have contacts with engagement (from 6sense)
-      const accountsWithEngagement = new Set(
-        people.filter(p => 
-          (p.engagementScore && p.engagementScore > 0) || 
-          (p.engagementActivities && p.engagementActivities > 0) ||
-          (p.salesActivities && p.salesActivities > 0)
-        ).map(p => p.accountId).filter(Boolean)
-      );
-      
+      // Calculate warm leads (intent score 40-69)
       const warmLeads = accounts.filter(a => {
         const score = typeof a.intentScore === 'string' ? parseInt(a.intentScore, 10) : a.intentScore;
-        // Warm if: has engagement OR intent 70+ OR has previous calls
-        return accountsWithEngagement.has(a.id) || 
-               (score && score >= 70) || 
-               accountsWithCalls.has(a.id);
+        return score && score >= 40 && score < 70;
       }).length;
       
       return {
@@ -375,49 +357,6 @@ export const appRouter = router({
         const people = await getContactsByAccountId(input.accountId);
         const calls = await getGongCallsByAccountId(input.accountId);
 
-        // Get TOP contacts by engagement score - ACTUAL NAMES AND TITLES
-        const topContacts = people
-          .sort((a: any, b: any) => (b.engagementScore || 0) - (a.engagementScore || 0))
-          .slice(0, 15)
-          .map((c: any) => ({
-            name: c.name || c.firstName + ' ' + c.lastName,
-            title: c.title,
-            email: c.email,
-            engagementScore: c.engagementScore,
-            engagementGrade: c.engagementGrade,
-            profileFit: c.profileFit,
-            followscompany: c.followscompany,
-            linkedinUrl: c.linkedinUrl
-          }));
-
-        // Get ACTUAL security stack from database
-        let securityStack: string[] = [];
-        try {
-          if (account.securityStack) {
-            securityStack = typeof account.securityStack === 'string' 
-              ? JSON.parse(account.securityStack) 
-              : account.securityStack;
-          }
-        } catch {}
-
-        // Get ACTUAL tech stack from database
-        let techStack: string[] = [];
-        try {
-          if (account.techStack) {
-            techStack = typeof account.techStack === 'string' 
-              ? JSON.parse(account.techStack) 
-              : account.techStack;
-          }
-        } catch {}
-
-        // Get recent call summaries
-        const recentCalls = calls.slice(0, 5).map((c: any) => ({
-          date: c.callDate,
-          duration: c.duration,
-          participants: c.participants,
-          summary: c.summary || c.transcript?.substring(0, 200)
-        }));
-
         const dataContext = {
           company: {
             name: account.name,
@@ -426,29 +365,14 @@ export const appRouter = router({
             employees: account.employeeCount,
             description: account.description,
             intentScore: account.intentScore,
-            buyingStage: (account as any).buyingStage || (account as any).sixsenseBuyingStage || 'Unknown',
-            profileFit: (account as any).sixsenseProfileFit || 'Unknown',
-            relationship: account.relationship,
-            owner: (account as any).owner || 'Unassigned'
+            buyingStage: (account as any).buyingStage || 'Unknown',
+            relationship: account.relationship
           },
-          // ACTUAL SECURITY STACK - competitors they use
-          securityStack: securityStack.length > 0 ? securityStack : ['No security stack data'],
-          // ACTUAL TECH STACK
-          techStack: techStack.length > 0 ? techStack : ['No tech stack data'],
-          // ACTUAL CONTACTS with names and titles
-          topContacts: topContacts.length > 0 ? topContacts : [{name: 'No contacts in database', title: 'N/A'}],
-          totalContacts: people.length,
-          contactsFollowingcompany: people.filter((p: any) => p.followscompany).length,
-          // ACTUAL CALLS
-          recentCalls: recentCalls.length > 0 ? recentCalls : [],
-          totalCalls: calls.length,
-          // 6sense data
-          sixsenseData: {
-            engagementActivities: (account as any).engagementActivities,
-            salesActivities: (account as any).salesActivities,
-            reachedContacts: (account as any).reachedContacts,
-            lastSixsenseSync: (account as any).lastSixsenseSync
-          }
+          contacts: people.length,
+          recentCalls: calls.length,
+          techStack: account.techStack ? 'Available' : 'Not available',
+          triggers: account.triggerEvents ? 'Available' : 'None',
+          rawData: account.rawData
         };
 
         try {
@@ -460,7 +384,7 @@ export const appRouter = router({
             messages: [
               {
                 role: "system",
-                content: ACCOUNT_ANALYSIS_PROMPT
+                content: `You are an expert sales intelligence analyst. Analyze this account and provide actionable insights for the sales team.`
               },
               {
                 role: "user",
@@ -537,7 +461,7 @@ export const appRouter = router({
           messages: [
             {
               role: "system",
-              content: RESEARCH_SYNTHESIS_PROMPT
+              content: "You are a competitive intelligence analyst. Synthesize the research data into a clear narrative covering: 1) Recent trigger events and what they mean, 2) Funding/growth signals and implications, 3) Market position and competitive landscape, 4) Strategic opportunities for engagement. Be concise and actionable."
             },
             {
               role: "user",
@@ -715,7 +639,7 @@ CRITICAL RULES:
           messages: [
             {
               role: "system",
-              content: TECH_STACK_ANALYSIS_PROMPT
+              content: "You are a technology stack analyst. Analyze the provided technology stack data and categorize it into clear, useful categories. Always include these categories even if empty: MFA Providers, SSO Providers, EDR/Security, CRM, Communication Tools, Development Tools, Cloud Infrastructure. For each category, list the relevant technologies found. If a category has no technologies, explicitly state 'None'. Be concise and filter out noise."
             },
             {
               role: "user",
