@@ -510,11 +510,12 @@ export const appRouter = router({
         const calls = await getGongCallsByAccountId(input.accountId);
 
         // Prepare contact list with real names and titles
-        const contactList = people.slice(0, 10).map((p: any) => ({
+        const contactList = people.slice(0, 15).map((p: any) => ({
           name: p.name,
           title: p.title,
           email: p.email,
-          location: p.location
+          department: p.department,
+          managementLevel: p.managementLevel
         }));
 
         // Parse tech stack data
@@ -531,73 +532,46 @@ export const appRouter = router({
           // Ignore parse errors
         }
 
-        const strategicContext = {
-          account: {
-            name: account.name,
-            domain: account.domain,
-            intentScore: account.intentScore,
-            buyingStage: (account as any).buyingStage || 'Unknown',
-            relationship: account.relationship,
-            industry: account.industry,
-            employeeCount: account.employeeCount,
-            region: (account as any).region,
-            techStack: techStackData,
-            securityStack: securityStackData
-          },
+        // Import VECTOR scoring
+        const { calculateVectorScores, generateDeepAnalysisPrompt } = await import('./vectorScoring');
+        
+        // Prepare account data for VECTOR scoring
+        const accountData = {
+          name: account.name,
+          domain: account.domain || undefined,
+          industry: account.industry || undefined,
+          employeeCount: account.employeeCount || undefined,
+          region: (account as any).region || undefined,
+          relationship: account.relationship || undefined,
+          intentScore: account.intentScore || undefined,
+          buyingStage: (account as any).buyingStage || undefined,
+          temperature: (account as any).temperature || undefined,
+          totalContacts: people.length,
+          totalCalls: calls.length,
+          lastCallDate: calls[0]?.callDate || undefined,
+          engagementActivities: (account as any).engagementActivities || 0,
+          techStack: techStackData,
+          securityStack: securityStackData,
           contacts: contactList,
-          engagement: {
-            totalContacts: people.length,
-            recentCalls: calls.length,
-            lastActivity: calls[0]?.callDate || 'No recent activity'
-          }
+          calls: calls.slice(0, 5).map((c: any) => ({
+            date: c.callDate,
+            duration: c.duration,
+            summary: c.summary
+          }))
         };
+        
+        // Calculate VECTOR scores
+        const vectorScores = calculateVectorScores(accountData);
+        
+        // Generate deep analysis prompt
+        const analysisPrompt = generateDeepAnalysisPrompt(accountData, vectorScores);
 
         const { invokeLLM } = await import("./_core/llm");
         const response = await invokeLLM({
           messages: [
             {
-              role: "system",
-              content: `You are a B2B sales strategist. Generate insights using this EXACT structure:
-
-## Executive Summary
-[3 sentences: Current status, why now, recommended action]
-
-## Key Stakeholders
-| Name (EXACT) | Title (EXACT) | Priority | Role in Decision |
-|---|---|---|---|
-[Table with REAL contact names from data - NEVER use placeholders]
-
-## Account Intelligence
-- **Company Size:** [exact employee count]
-- **Industry:** [exact industry]
-- **Intent Score:** [exact score]/100
-- **Buying Stage:** [stage]
-- **Recent Activity:** [specific activity with dates]
-
-## Talking Points
-1. [Specific point based on real data]
-2. [Specific point based on real data]
-3. [Specific point based on real data]
-
-## Next Best Actions
-1. **[Action]** - [Specific person to contact] - [Timeline]
-2. **[Action]** - [Specific person to contact] - [Timeline]
-3. **[Action]** - [Specific person to contact] - [Timeline]
-
-## Risks & Objections
-- **[Risk]:** [How to address]
-- **[Risk]:** [How to address]
-
-CRITICAL RULES:
-- Use EXACT contact names and titles from data (e.g., '[redacted] kebbeh - VP Chief Security Officer')
-- Use EXACT employee counts, intent scores, and metrics from data
-- Reference REAL call transcripts if provided
-- NEVER use placeholder names like 'Jennifer Smith' or 'John Doe'
-- If data is missing, state 'Data not available' - do NOT make up information`
-            },
-            {
               role: "user",
-              content: `Generate strategic insights using the standardized structure above. Use ONLY the real data provided below:\n\nACCOUNT DATA:\n${JSON.stringify(strategicContext, null, 2)}\n\nREAL CONTACTS (use these EXACT names):\n${contactList.map((c: any) => `- ${c.name} - ${c.title}`).join('\n')}`
+              content: analysisPrompt
             }
           ]
         });

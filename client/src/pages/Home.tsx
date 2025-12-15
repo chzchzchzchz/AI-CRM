@@ -17,6 +17,8 @@ export default function Home() {
   // const { user, loading, isAuthenticated } = useAuth(); // Disabled - no auth required
   const { data: accounts, isLoading: accountsLoading } = trpc.accounts.list.useQuery();
   const { data: enrichedPriorityActions, isLoading: priorityLoading } = trpc.priorityActions.getEnriched.useQuery({ limit: 3 });
+  const { data: sixsenseSummary } = trpc.sixsenseAnalytics.getSummary.useQuery();
+  const { data: topKeywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 10 });
 
   // Beautiful loading state
   if (accountsLoading) {
@@ -153,15 +155,17 @@ export default function Home() {
             </Card>
           </Link>
 
-          <Link href="/accounts?filter=intent-spikes">
-            <Card className="card-elevated border-l-4 border-l-purple-500 cursor-pointer hover:scale-[1.02] transition-transform">
+          <Link href="/sixsense-analytics">
+            <Card className="card-elevated border-l-4 border-l-cyan-500 cursor-pointer hover:scale-[1.02] transition-transform">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Intent Spikes</CardTitle>
-                <Zap className="h-5 w-5 text-purple-500" />
+                <CardTitle className="text-sm font-medium text-muted-foreground">6QA Opportunity Gap</CardTitle>
+                <Target className="h-5 w-5 text-cyan-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">12</div>
-                <p className="text-xs text-muted-foreground mt-1">20+ point jumps this week</p>
+                <div className="text-3xl font-bold text-red-500">{sixsenseSummary?.sixQA?.unworked || 0}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {sixsenseSummary?.sixQA?.total ? `${Math.round(((sixsenseSummary.sixQA.unworked || 0) / sixsenseSummary.sixQA.total) * 100)}%` : '0%'} unworked 6QAs
+                </p>
               </CardContent>
             </Card>
           </Link>
@@ -332,6 +336,28 @@ export default function Home() {
                     Schedule demos for warm leads (3 accounts)
                   </label>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Trending Intent Keywords */}
+            <Card className="card-elevated border-l-4 border-l-cyan-500">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <TrendingUp className="h-5 w-5 text-cyan-500" />
+                  Trending Intent Keywords
+                </CardTitle>
+                <CardDescription className="text-xs">What your accounts are researching</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {topKeywords?.keywords?.slice(0, 8).map((kw: any) => (
+                  <div key={kw.keyword} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground truncate">{kw.keyword}</span>
+                    <Badge variant="outline" className="text-xs ml-2">{kw.totalAccounts}</Badge>
+                  </div>
+                ))}
+                {(!topKeywords?.keywords || topKeywords.keywords.length === 0) && (
+                  <p className="text-sm text-muted-foreground">No keyword data available</p>
+                )}
               </CardContent>
             </Card>
 
