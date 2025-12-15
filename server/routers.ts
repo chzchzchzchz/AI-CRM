@@ -509,8 +509,8 @@ export const appRouter = router({
         const people = await getContactsByAccountId(input.accountId);
         const calls = await getGongCallsByAccountId(input.accountId);
 
-        // Prepare contact list with real names and titles
-        const contactList = people.slice(0, 15).map((p: any) => ({
+        // Prepare contact list with real names and titles (TOP 10 ONLY)
+        const contactList = people.slice(0, 10).map((p: any) => ({
           name: p.name,
           title: p.title,
           email: p.email,
