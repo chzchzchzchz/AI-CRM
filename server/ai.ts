@@ -133,28 +133,72 @@ Provide a JSON response with:
  * Generate personalized outreach email
  */
 export async function generateOutreachEmail(accountData: any, contactData: any, context?: string): Promise<string> {
-  const prompt = `${COMPANY_CONTEXT}
+  // Extract ACTUAL security stack from account data
+  let securityStack: string[] = [];
+  try {
+    if (accountData.securityStack) {
+      securityStack = typeof accountData.securityStack === 'string' 
+        ? JSON.parse(accountData.securityStack) 
+        : accountData.securityStack;
+    }
+  } catch {}
 
-Generate a personalized outreach email for this prospect:
+  // Extract ACTUAL tech stack
+  let techStack: string[] = [];
+  try {
+    if (accountData.techStack) {
+      techStack = typeof accountData.techStack === 'string' 
+        ? JSON.parse(accountData.techStack) 
+        : accountData.techStack;
+    }
+  } catch {}
 
-ACCOUNT: ${JSON.stringify(accountData, null, 2)}
-CONTACT: ${JSON.stringify(contactData, null, 2)}
+  // Build context with ONLY real data
+  const realDataContext = {
+    contact: {
+      name: contactData.name || `${contactData.firstName} ${contactData.lastName}`,
+      title: contactData.title,
+      email: contactData.email,
+      engagementScore: contactData.engagementScore,
+      followscompany: contactData.followscompany
+    },
+    account: {
+      name: accountData.name,
+      industry: accountData.industry,
+      employeeCount: accountData.employeeCount,
+      intentScore: accountData.intentScore,
+      buyingStage: accountData.buyingStage || accountData.sixsenseBuyingStage || 'Unknown'
+    },
+    securityStack: securityStack.length > 0 ? securityStack : ['No security stack data - lead with value prop'],
+    techStack: techStack.length > 0 ? techStack : ['No tech stack data']
+  };
+
+  const prompt = `CRITICAL: Use ONLY the data provided below. Do NOT invent or assume anything.
+
+REAL DATA:
+${JSON.stringify(realDataContext, null, 2)}
 ${context ? `ADDITIONAL CONTEXT: ${context}` : ''}
 
-Write a compelling, personalized email that:
-1. References specific details about their company/role
-2. Addresses a likely pain point based on their profile
-3. Offers clear value proposition
-4. Includes a specific, low-friction call to action
-5. Keeps it under 150 words
-6. Professional but conversational tone
+RULES:
+1. Use the EXACT contact name: ${realDataContext.contact.name}
+2. Reference their EXACT title: ${realDataContext.contact.title}
+3. If securityStack contains Okta/Duo/Ping/Entra, use competitive angle
+4. If securityStack says "No security stack data", lead with value prop NOT competitor displacement
+5. If they follow the company (followscompany=true), mention you noticed they're interested
+6. Reference ACTUAL employee count: ${realDataContext.account.employeeCount}
+7. Reference ACTUAL intent score: ${realDataContext.account.intentScore}
 
-Return only the email body (no subject line).
-`;
+Write a 3-4 sentence email that:
+- Opens with something SPECIFIC to their situation (not generic)
+- Gets to the point fast
+- Has ONE clear ask
+- NO fluff, NO "hope this finds you well"
+
+Return only the email body.`;
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: REVENUE_ARCHITECT_CORE + "\n\nTASK: Write a killer opening email. No fluff. Hook them in the first line with something specific to their situation." },
+      { role: "system", content: REVENUE_ARCHITECT_CORE + "\n\nTASK: Write a killer opening email. No fluff. Hook them in the first line with something specific to their situation. Use ONLY the data provided - never guess or assume." },
       { role: "user", content: prompt }
     ]
   });

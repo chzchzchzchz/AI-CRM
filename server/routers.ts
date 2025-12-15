@@ -358,6 +358,49 @@ export const appRouter = router({
         const people = await getContactsByAccountId(input.accountId);
         const calls = await getGongCallsByAccountId(input.accountId);
 
+        // Get TOP contacts by engagement score - ACTUAL NAMES AND TITLES
+        const topContacts = people
+          .sort((a: any, b: any) => (b.engagementScore || 0) - (a.engagementScore || 0))
+          .slice(0, 15)
+          .map((c: any) => ({
+            name: c.name || c.firstName + ' ' + c.lastName,
+            title: c.title,
+            email: c.email,
+            engagementScore: c.engagementScore,
+            engagementGrade: c.engagementGrade,
+            profileFit: c.profileFit,
+            followscompany: c.followscompany,
+            linkedinUrl: c.linkedinUrl
+          }));
+
+        // Get ACTUAL security stack from database
+        let securityStack: string[] = [];
+        try {
+          if (account.securityStack) {
+            securityStack = typeof account.securityStack === 'string' 
+              ? JSON.parse(account.securityStack) 
+              : account.securityStack;
+          }
+        } catch {}
+
+        // Get ACTUAL tech stack from database
+        let techStack: string[] = [];
+        try {
+          if (account.techStack) {
+            techStack = typeof account.techStack === 'string' 
+              ? JSON.parse(account.techStack) 
+              : account.techStack;
+          }
+        } catch {}
+
+        // Get recent call summaries
+        const recentCalls = calls.slice(0, 5).map((c: any) => ({
+          date: c.callDate,
+          duration: c.duration,
+          participants: c.participants,
+          summary: c.summary || c.transcript?.substring(0, 200)
+        }));
+
         const dataContext = {
           company: {
             name: account.name,
@@ -366,14 +409,29 @@ export const appRouter = router({
             employees: account.employeeCount,
             description: account.description,
             intentScore: account.intentScore,
-            buyingStage: (account as any).buyingStage || 'Unknown',
-            relationship: account.relationship
+            buyingStage: (account as any).buyingStage || (account as any).sixsenseBuyingStage || 'Unknown',
+            profileFit: (account as any).sixsenseProfileFit || 'Unknown',
+            relationship: account.relationship,
+            owner: (account as any).owner || 'Unassigned'
           },
-          contacts: people.length,
-          recentCalls: calls.length,
-          techStack: account.techStack ? 'Available' : 'Not available',
-          triggers: account.triggerEvents ? 'Available' : 'None',
-          rawData: account.rawData
+          // ACTUAL SECURITY STACK - competitors they use
+          securityStack: securityStack.length > 0 ? securityStack : ['No security stack data'],
+          // ACTUAL TECH STACK
+          techStack: techStack.length > 0 ? techStack : ['No tech stack data'],
+          // ACTUAL CONTACTS with names and titles
+          topContacts: topContacts.length > 0 ? topContacts : [{name: 'No contacts in database', title: 'N/A'}],
+          totalContacts: people.length,
+          contactsFollowingcompany: people.filter((p: any) => p.followscompany).length,
+          // ACTUAL CALLS
+          recentCalls: recentCalls.length > 0 ? recentCalls : [],
+          totalCalls: calls.length,
+          // 6sense data
+          sixsenseData: {
+            engagementActivities: (account as any).engagementActivities,
+            salesActivities: (account as any).salesActivities,
+            reachedContacts: (account as any).reachedContacts,
+            lastSixsenseSync: (account as any).lastSixsenseSync
+          }
         };
 
         try {
