@@ -57,6 +57,16 @@ export default function ContactsEnhanced() {
     return Array.from(keywords).sort();
   }, [contacts]);
 
+  // Create a priority map from AI prioritization results
+  const priorityMap = useMemo(() => {
+    if (!prioritizedContacts || !showAIPriority) return new Map();
+    const map = new Map<number, { priority: number; reasoning: string }>();
+    prioritizedContacts.forEach((p: any, index: number) => {
+      map.set(p.contactId, { priority: index + 1, reasoning: p.reasoning || '' });
+    });
+    return map;
+  }, [prioritizedContacts, showAIPriority]);
+
   // Filter and sort contacts
   const filteredContacts = useMemo(() => {
     if (!contacts) return [];
@@ -75,34 +85,43 @@ export default function ContactsEnhanced() {
       return matchesSearch && matchesCompany && matchesTitle;
     });
 
-    // Sort
-    filtered.sort((a, b) => {
-      let aVal: string, bVal: string;
+    // Sort by AI priority if enabled, otherwise use standard sorting
+    if (showAIPriority && priorityMap.size > 0) {
+      filtered.sort((a, b) => {
+        const aPriority = priorityMap.get(a.id)?.priority ?? 9999;
+        const bPriority = priorityMap.get(b.id)?.priority ?? 9999;
+        return aPriority - bPriority;
+      });
+    } else {
+      // Standard sort
+      filtered.sort((a, b) => {
+        let aVal: string, bVal: string;
 
-      switch (sortField) {
-        case "name":
-          aVal = (a.name || "").toLowerCase();
-          bVal = (b.name || "").toLowerCase();
-          break;
-        case "title":
-          aVal = a.title?.toLowerCase() || "";
-          bVal = b.title?.toLowerCase() || "";
-          break;
-        case "company":
-          aVal = (a.company || "").toLowerCase();
-          bVal = (b.company || "").toLowerCase();
-          break;
-        default:
-          return 0;
-      }
+        switch (sortField) {
+          case "name":
+            aVal = (a.name || "").toLowerCase();
+            bVal = (b.name || "").toLowerCase();
+            break;
+          case "title":
+            aVal = a.title?.toLowerCase() || "";
+            bVal = b.title?.toLowerCase() || "";
+            break;
+          case "company":
+            aVal = (a.company || "").toLowerCase();
+            bVal = (b.company || "").toLowerCase();
+            break;
+          default:
+            return 0;
+        }
 
-      if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
-      if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
-      return 0;
-    });
+        if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
 
     return filtered;
-  }, [contacts, searchQuery, companyFilter, titleFilter, sortField, sortOrder]);
+  }, [contacts, searchQuery, companyFilter, titleFilter, sortField, sortOrder, showAIPriority, priorityMap]);
 
   const handleToggleSort = useCallback((field: SortField) => {
     if (sortField === field) {
@@ -156,12 +175,18 @@ export default function ContactsEnhanced() {
           </div>
           <div className="flex gap-3">
             <Button
-              onClick={() => setShowAIPriority(!showAIPriority)}
+              onClick={() => {
+                if (!showAIPriority) {
+                  toast.info("Analyzing contacts with AI...", { duration: 2000 });
+                }
+                setShowAIPriority(!showAIPriority);
+              }}
               variant={showAIPriority ? "default" : "outline"}
               className={showAIPriority ? "gradient-primary text-white" : ""}
+              disabled={isPrioritizing}
             >
-              <Sparkles className="mr-2 h-4 w-4" />
-              {showAIPriority ? "AI Priority On" : "AI Priority Off"}
+              <Sparkles className={`mr-2 h-4 w-4 ${isPrioritizing ? 'animate-spin' : ''}`} />
+              {isPrioritizing ? "Analyzing..." : showAIPriority ? "AI Priority On" : "AI Priority Off"}
             </Button>
             <Button asChild className="gradient-primary text-white shadow-lg hover:shadow-xl">
               <Link href="/outreach">
@@ -310,13 +335,22 @@ export default function ContactsEnhanced() {
           </Card>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredContacts.map((contact) => (
+            {filteredContacts.map((contact, index) => {
+              const priorityInfo = priorityMap.get(contact.id);
+              return (
               <Link key={contact.id} href={`/contacts/${contact.id}`}>
                 <Card className="card-elevated hover:scale-[1.02] transition-all cursor-pointer group h-full">
                   <CardHeader>
                     <div className="flex items-start gap-3">
-                      <div className="p-3 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl shadow-lg flex-shrink-0">
-                        <User className="h-6 w-6 text-white" />
+                      <div className="relative">
+                        <div className="p-3 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl shadow-lg flex-shrink-0">
+                          <User className="h-6 w-6 text-white" />
+                        </div>
+                        {showAIPriority && priorityInfo && (
+                          <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                            {priorityInfo.priority}
+                          </div>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <CardTitle className="text-xl group-hover:text-primary transition-colors line-clamp-1">
@@ -383,7 +417,8 @@ export default function ContactsEnhanced() {
                   </CardContent>
                 </Card>
               </Link>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>

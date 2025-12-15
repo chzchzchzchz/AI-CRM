@@ -1,4 +1,4 @@
-import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
+import { router, publicProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { eq, inArray } from "drizzle-orm";
