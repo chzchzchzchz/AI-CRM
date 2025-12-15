@@ -27,18 +27,12 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   const [industryFilter, setIndustryFilter] = useState<string>("all");
   const [relationshipFilter, setRelationshipFilter] = useState<string>("all");
   const [intentFilter, setIntentFilter] = useState<string>("all");
-  const [competitorFilter, setCompetitorFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("intentScore");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
-
-  // Known competitors for the company
-  const competitors = ["Okta", "Duo", "Ping Identity", "Microsoft Entra", "CrowdStrike", "Palo Alto"];
 
   const { data: accounts, isLoading } = trpc.accounts.list.useQuery(undefined, {
     staleTime: 3 * 60 * 1000
   });
-  // Warm leads = engagement + intent 70+ + previous calls (calculated on server)
-  const { data: stats } = trpc.accounts.getStats.useQuery();
 
   // Extract unique values for filters
   const regions = useMemo(() => {
@@ -94,31 +88,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
         else if (intentFilter === "cold") matchesIntent = score < 40;
       }
 
-      // Competitor filter - check security stack for competitor presence
-      let matchesCompetitor = true;
-      if (competitorFilter !== "all") {
-        try {
-          const securityStack = account.securityStack 
-            ? (typeof account.securityStack === 'string' 
-                ? JSON.parse(account.securityStack) 
-                : account.securityStack)
-            : [];
-          const stackString = Array.isArray(securityStack) ? securityStack.join(' ').toLowerCase() : '';
-          
-          if (competitorFilter === "has_competitor") {
-            matchesCompetitor = competitors.some(c => stackString.includes(c.toLowerCase()));
-          } else if (competitorFilter === "no_competitor") {
-            matchesCompetitor = !competitors.some(c => stackString.includes(c.toLowerCase()));
-          } else {
-            // Specific competitor selected
-            matchesCompetitor = stackString.includes(competitorFilter.toLowerCase());
-          }
-        } catch {
-          matchesCompetitor = competitorFilter === "no_competitor";
-        }
-      }
-
-      return matchesSearch && matchesRegion && matchesIndustry && matchesRelationship && matchesIntent && matchesCompetitor;
+      return matchesSearch && matchesRegion && matchesIndustry && matchesRelationship && matchesIntent;
     });
 
     // Sort
@@ -152,7 +122,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     });
 
     return filtered;
-  }, [accounts, searchQuery, regionFilter, industryFilter, relationshipFilter, intentFilter, competitorFilter, competitors, sortField, sortOrder]);
+  }, [accounts, searchQuery, regionFilter, industryFilter, relationshipFilter, intentFilter, sortField, sortOrder]);
 
   const getIntentBadge = (score: string) => {
     const numScore = parseInt(score);
@@ -207,8 +177,10 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   }
 
   const hotCount = filteredAccounts.filter(a => parseInt(a.intentScore || "0") >= 70).length;
-  // Warm leads = accounts with engagement OR intent 70+ OR previous calls
-  const warmCount = stats?.warmLeads || 0;
+  const warmCount = filteredAccounts.filter(a => {
+    const score = parseInt(a.intentScore || "0");
+    return score >= 40 && score < 70;
+  }).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
@@ -268,7 +240,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{warmCount}</div>
-              <p className="text-xs text-muted-foreground mt-1">Engagement + Intent 70+ + Calls</p>
+              <p className="text-xs text-muted-foreground mt-1">Intent score 40-69 • Click to filter</p>
             </CardContent>
           </Card>
 
@@ -292,7 +264,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
         {/* Filters */}
         <Card className="card-elevated">
           <CardContent className="p-6">
-            <div className="grid md:grid-cols-7 gap-4">
+            <div className="grid md:grid-cols-6 gap-4">
               {/* Search */}
               <div className="md:col-span-2">
                 <div className="relative">
@@ -352,23 +324,6 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                   <SelectItem value="hot">Hot (70+)</SelectItem>
                   <SelectItem value="warm">Warm (40-69)</SelectItem>
                   <SelectItem value="cold">Cold (&lt;40)</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={competitorFilter} onValueChange={setCompetitorFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Competitor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Competitors</SelectItem>
-                  <SelectItem value="has_competitor">Has Competitor</SelectItem>
-                  <SelectItem value="no_competitor">No Competitor</SelectItem>
-                  <SelectItem value="okta">Okta</SelectItem>
-                  <SelectItem value="duo">Duo</SelectItem>
-                  <SelectItem value="ping">Ping Identity</SelectItem>
-                  <SelectItem value="entra">Microsoft Entra</SelectItem>
-                  <SelectItem value="crowdstrike">CrowdStrike</SelectItem>
-                  <SelectItem value="palo alto">Palo Alto</SelectItem>
                 </SelectContent>
               </Select>
             </div>

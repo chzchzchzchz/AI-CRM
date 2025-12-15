@@ -1,4 +1,4 @@
-import { int, mysqlTable, text, varchar, timestamp, json, mysqlEnum, boolean, decimal } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, tinyint, decimal } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -36,9 +36,6 @@ export const accounts = mysqlTable("accounts", {
   description: text("description"),
   website: varchar("website", { length: 500 }),
   linkedinUrl: varchar("linkedinUrl", { length: 500 }),
-  linkedinCompanyUrl: varchar("linkedinCompanyUrl", { length: 512 }),
-  linkedinCompanyId: varchar("linkedinCompanyId", { length: 64 }),
-  salesNavUrl: varchar("salesNavUrl", { length: 512 }),
   techStack: text("techStack"),
   securityStack: text("securityStack"),
   triggerEvents: text("triggerEvents"),
@@ -72,25 +69,6 @@ export const contacts = mysqlTable("contacts", {
   linkedinUrl: varchar("linkedinUrl", { length: 500 }),
   location: varchar("location", { length: 255 }),
   department: varchar("department", { length: 100 }),
-  source: varchar("source", { length: 100 }),
-  followscompany: boolean("followscompany").default(false),
-  // 6sense enrichment fields
-  sixsenseMid: varchar("sixsenseMid", { length: 100 }),
-  engagementScore: int("engagementScore"),
-  profileFit: varchar("profileFit", { length: 50 }),
-  profileScore: int("profileScore"),
-  engagementGrade: varchar("engagementGrade", { length: 10 }),
-  engagementTrend: varchar("engagementTrend", { length: 50 }),
-  personaImportance: varchar("personaImportance", { length: 50 }),
-  engagementActivities: int("engagementActivities"),
-  salesActivities: int("salesActivities"),
-  daysSinceLastEngagement: int("daysSinceLastEngagement"),
-  daysSinceLastSalesActivity: int("daysSinceLastSalesActivity"),
-  lastSalesActivity: varchar("lastSalesActivity", { length: 255 }),
-  lastEngagementActivity: varchar("lastEngagementActivity", { length: 255 }),
-  city: varchar("city", { length: 100 }),
-  state: varchar("state", { length: 100 }),
-  country: varchar("country", { length: 100 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -171,8 +149,8 @@ export const aiContext = mysqlTable("aiContext", {
 export type AIContext = typeof aiContext.$inferSelect;
 export type InsertAIContext = typeof aiContext.$inferInsert;
 
-// Attachments table (files attached to accounts/contacts/calls)
-export const attachments = mysqlTable("attachments", {
+// Documents table
+export const documents = mysqlTable("documents", {
   id: int("id").autoincrement().primaryKey(),
   accountId: int("accountId"),
   contactId: int("contactId"),
@@ -186,8 +164,8 @@ export const attachments = mysqlTable("attachments", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export type Attachment = typeof attachments.$inferSelect;
-export type InsertAttachment = typeof attachments.$inferInsert;
+export type Document = typeof documents.$inferSelect;
+export type InsertDocument = typeof documents.$inferInsert;
 
 // Enrichment Logs table
 export const enrichmentLogs = mysqlTable("enrichmentLogs", {
@@ -307,156 +285,122 @@ export type NewsItem = typeof newsItems.$inferSelect;
 export type InsertNewsItem = typeof newsItems.$inferInsert;
 
 
-// ============================================
-// ELITE RAG SYSTEM - "Haribo Battery"
-// ============================================
-
-// Document categories for intelligent routing
-export const documentCategoryEnum = mysqlEnum("documentCategory", [
-  "product_docs",      // Product documentation, features, specs
-  "competitive_intel", // Competitor analysis, battlecards
-  "case_studies",      // Customer success stories
-  "pricing",           // Pricing docs, ROI calculators
-  "technical",         // Technical whitepapers, architecture
-  "sales_playbook",    // Sales methodologies, scripts
-  "objection_handling", // Common objections and responses
-  "general"            // Uncategorized
-]);
-
-// Knowledge Base documents table (RAG system)
-export const knowledgeBase = mysqlTable("knowledgeBase", {
+// 6sense 6QA (Qualified Accounts) tracking
+export const sixsense6QA = mysqlTable("sixsense6QA", {
   id: int("id").autoincrement().primaryKey(),
-  title: varchar("title", { length: 500 }).notNull(),
-  category: documentCategoryEnum.default("general").notNull(),
-  fileUrl: varchar("fileUrl", { length: 1000 }), // S3 URL
-  fileKey: varchar("fileKey", { length: 500 }), // S3 key
-  fileType: varchar("fileType", { length: 50 }), // pdf, docx, txt, md, etc.
-  fileSize: int("fileSize"), // bytes
-  contentRaw: text("contentRaw"), // Full extracted text
-  summary: text("summary"), // AI-generated document summary
-  tags: json("tags"), // Array of tags for filtering
-  metadata: json("metadata"), // Author, version, date, etc.
-  freshnessScore: decimal("freshnessScore", { precision: 3, scale: 2 }).default("1.00"), // 0.00-1.00, decays over time
-  chunkCount: int("chunkCount").default(0),
-  isProcessed: boolean("isProcessed").default(false),
-  processingError: text("processingError"),
-  uploadedBy: int("uploadedBy"),
+  accountName: varchar("accountName", { length: 255 }).notNull(),
+  sixsenseId: varchar("sixsenseId", { length: 64 }),
+  crmAccountId: varchar("crmAccountId", { length: 64 }),
+  dateCreated: timestamp("dateCreated"),
+  responseTimeDays: int("responseTimeDays").default(0),
+  lastActiveDaysAgo: int("lastActiveDaysAgo").default(0),
+  salesActivities: int("salesActivities").default(0),
+  reachedContacts: int("reachedContacts").default(0),
+  owner: varchar("owner", { length: 255 }),
+  domain: varchar("domain", { length: 255 }),
+  country: varchar("country", { length: 100 }),
+  isWorked: boolean("isWorked").default(false),
+  dataAsOf: timestamp("dataAsOf").notNull(), // When this data was exported from 6sense
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
-export type KnowledgeDoc = typeof knowledgeBase.$inferSelect;
-export type InsertKnowledgeDoc = typeof knowledgeBase.$inferInsert;
+export type Sixsense6QA = typeof sixsense6QA.$inferSelect;
+export type InsertSixsense6QA = typeof sixsense6QA.$inferInsert;
 
-// Chunk types for hierarchical retrieval
-export const chunkTypeEnum = mysqlEnum("chunkType", [
-  "document_summary", // Top-level document summary
-  "section_summary",  // Section/chapter summary
-  "content",          // Actual content chunk
-  "table",            // Extracted table data
-  "list",             // Extracted list/bullet points
-  "quote"             // Important quotes or callouts
-]);
-
-// Document chunks with embeddings
-export const documentChunks = mysqlTable("documentChunks", {
+// 6sense Keyword Performance
+export const sixsenseKeywords = mysqlTable("sixsenseKeywords", {
   id: int("id").autoincrement().primaryKey(),
-  documentId: int("documentId").notNull(),
-  chunkType: chunkTypeEnum.default("content").notNull(),
-  content: text("content").notNull(), // The actual chunk text
-  sectionPath: varchar("sectionPath", { length: 500 }), // e.g., "Chapter 1 > Section 2 > Subsection A"
-  sectionTitle: varchar("sectionTitle", { length: 255 }), // Current section title
-  tokenCount: int("tokenCount"), // For context window management
-  chunkIndex: int("chunkIndex"), // Order within document
-  // Embedding stored as JSON array (MySQL doesn't have native vector type)
-  // For production, consider using a vector DB like Pinecone or pgvector
-  embedding: json("embedding"), // Array of floats
-  embeddingModel: varchar("embeddingModel", { length: 100 }), // Which model generated it
-  // Metadata for retrieval optimization
-  parentChunkId: int("parentChunkId"), // For hierarchical retrieval
-  importance: decimal("importance", { precision: 3, scale: 2 }).default("0.50"), // 0.00-1.00
-  usageCount: int("usageCount").default(0), // How often this chunk is retrieved
-  successScore: decimal("successScore", { precision: 3, scale: 2 }).default("0.50"), // Feedback loop score
+  keyword: varchar("keyword", { length: 255 }).notNull(),
+  totalAccounts: int("totalAccounts").default(0),
+  accountsWithWebVisits: int("accountsWithWebVisits").default(0),
+  accountsWith6QA: int("accountsWith6QA").default(0),
+  accountsWithOpportunities: int("accountsWithOpportunities").default(0),
+  accountsWithRelevantOpportunities: int("accountsWithRelevantOpportunities").default(0),
+  category: varchar("category", { length: 100 }), // 'competitor', 'product', 'pain_point', 'compliance', etc.
+  dataAsOf: timestamp("dataAsOf").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export type DocumentChunk = typeof documentChunks.$inferSelect;
-export type InsertDocumentChunk = typeof documentChunks.$inferInsert;
+export type SixsenseKeyword = typeof sixsenseKeywords.$inferSelect;
+export type InsertSixsenseKeyword = typeof sixsenseKeywords.$inferInsert;
 
-// Track which chunks were used in AI responses (for feedback loop)
-export const chunkUsage = mysqlTable("chunkUsage", {
+// 6sense Buying Stage Metrics (time series)
+export const sixsenseBuyingStageMetrics = mysqlTable("sixsenseBuyingStageMetrics", {
   id: int("id").autoincrement().primaryKey(),
-  chunkId: int("chunkId").notNull(),
-  usageContext: varchar("usageContext", { length: 50 }).notNull(), // 'outreach', 'insights', 'analysis', 'chat'
-  entityType: varchar("entityType", { length: 50 }), // 'account', 'contact', 'call'
-  entityId: int("entityId"),
-  wasHelpful: boolean("wasHelpful"), // User feedback
-  responseId: varchar("responseId", { length: 100 }), // To group chunks used in same response
+  timeframe: varchar("timeframe", { length: 100 }).notNull(), // "Nov 30 - Dec 6, 2025"
+  buyingStage: varchar("buyingStage", { length: 50 }).notNull(), // Target, Awareness, Consideration, Decision, Purchase
+  numberOfAccounts: int("numberOfAccounts").default(0),
+  newPipelineUSD: decimal("newPipelineUSD", { precision: 15, scale: 2 }),
+  totalWonUSD: decimal("totalWonUSD", { precision: 15, scale: 2 }),
+  dataAsOf: timestamp("dataAsOf").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export type ChunkUsage = typeof chunkUsage.$inferSelect;
-export type InsertChunkUsage = typeof chunkUsage.$inferInsert;
+export type SixsenseBuyingStageMetric = typeof sixsenseBuyingStageMetrics.$inferSelect;
+export type InsertSixsenseBuyingStageMetric = typeof sixsenseBuyingStageMetrics.$inferInsert;
 
+// 6sense Engagement Metrics (time series)
+export const sixsenseEngagementMetrics = mysqlTable("sixsenseEngagementMetrics", {
+  id: int("id").autoincrement().primaryKey(),
+  timeWindow: varchar("timeWindow", { length: 100 }).notNull(),
+  engagementState: varchar("engagementState", { length: 100 }).notNull(), // No Engagement, Intent, Anonymous Website Visit, Known Engagement, Opps Created, Opps Won
+  accounts: int("accounts").default(0),
+  amountUSD: decimal("amountUSD", { precision: 15, scale: 2 }),
+  dataAsOf: timestamp("dataAsOf").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
 
-// ==========================================
-// USER HISTORY & MEMORY TABLES
-// ==========================================
+export type SixsenseEngagementMetric = typeof sixsenseEngagementMetrics.$inferSelect;
+export type InsertSixsenseEngagementMetric = typeof sixsenseEngagementMetrics.$inferInsert;
 
-// Generated email history
+// 6sense 6QA Performance (daily metrics)
+export const sixsense6QAPerformance = mysqlTable("sixsense6QAPerformance", {
+  id: int("id").autoincrement().primaryKey(),
+  day: timestamp("day").notNull(),
+  total6QAs: int("total6QAs").default(0),
+  new6QAs: int("new6QAs").default(0),
+  worked: int("worked").default(0),
+  unworked: int("unworked").default(0),
+  avgSalesActivities: decimal("avgSalesActivities", { precision: 5, scale: 1 }),
+  avgContactsReached: decimal("avgContactsReached", { precision: 5, scale: 1 }),
+  avgDaysToFirstActivity: decimal("avgDaysToFirstActivity", { precision: 5, scale: 1 }),
+  avgDaysSinceLastActivity: decimal("avgDaysSinceLastActivity", { precision: 5, scale: 1 }),
+  dataAsOf: timestamp("dataAsOf").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Sixsense6QAPerformance = typeof sixsense6QAPerformance.$inferSelect;
+export type InsertSixsense6QAPerformance = typeof sixsense6QAPerformance.$inferInsert;
+
+// Email History (generated outreach emails)
 export const emailHistory = mysqlTable("emailHistory", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   accountId: int("accountId"),
   contactId: int("contactId"),
-  recipientEmail: varchar("recipientEmail", { length: 255 }),
+  recipientEmail: varchar("recipientEmail", { length: 320 }),
   subject: varchar("subject", { length: 500 }),
   body: text("body"),
-  context: text("context"), // User-provided context for generation
-  attachmentNames: json("attachmentNames"), // Array of attachment filenames
-  status: varchar("status", { length: 50 }).default("generated"), // generated, sent, draft
+  attachments: json("attachments"), // Array of attachment URLs
+  status: varchar("status", { length: 50 }).default("generated"), // generated, sent, opened, replied
   sentAt: timestamp("sentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export type EmailHistory = typeof emailHistory.$inferSelect;
+export type EmailHistoryRecord = typeof emailHistory.$inferSelect;
 export type InsertEmailHistory = typeof emailHistory.$inferInsert;
 
-// AI Assistant chat history
-export const chatHistory = mysqlTable("chatHistory", {
+// AI Chat History
+export const aiChatHistory = mysqlTable("aiChatHistory", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  sessionId: varchar("sessionId", { length: 100 }).notNull(), // Group messages by session
+  sessionId: varchar("sessionId", { length: 64 }).notNull(),
   role: varchar("role", { length: 20 }).notNull(), // 'user' or 'assistant'
   content: text("content").notNull(),
-  // Context about what the user was viewing when they asked
-  contextType: varchar("contextType", { length: 50 }), // 'account', 'contact', 'call', 'general'
-  contextId: int("contextId"),
+  metadata: json("metadata"), // Additional context like account/contact references
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export type ChatHistory = typeof chatHistory.$inferSelect;
-export type InsertChatHistory = typeof chatHistory.$inferInsert;
-
-// User preferences and saved filters
-export const userPreferences = mysqlTable("userPreferences", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().unique(),
-  // Saved filter presets
-  savedFilters: json("savedFilters"), // Array of {name, filters} objects
-  // Default view preferences
-  defaultRegion: varchar("defaultRegion", { length: 100 }),
-  defaultIndustry: varchar("defaultIndustry", { length: 100 }),
-  defaultSort: varchar("defaultSort", { length: 50 }).default("intentScore"),
-  // Notification preferences
-  notifyOnIntentSpike: boolean("notifyOnIntentSpike").default(true),
-  notifyOnNewContact: boolean("notifyOnNewContact").default(false),
-  // Recently viewed
-  recentAccountIds: json("recentAccountIds"), // Array of account IDs
-  recentContactIds: json("recentContactIds"), // Array of contact IDs
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type UserPreferences = typeof userPreferences.$inferSelect;
-export type InsertUserPreferences = typeof userPreferences.$inferInsert;
+export type AIChatHistoryRecord = typeof aiChatHistory.$inferSelect;
+export type InsertAIChatHistory = typeof aiChatHistory.$inferInsert;

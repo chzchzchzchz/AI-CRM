@@ -17,8 +17,6 @@ export default function Home() {
   // const { user, loading, isAuthenticated } = useAuth(); // Disabled - no auth required
   const { data: accounts, isLoading: accountsLoading } = trpc.accounts.list.useQuery();
   const { data: enrichedPriorityActions, isLoading: priorityLoading } = trpc.priorityActions.getEnriched.useQuery({ limit: 3 });
-  // Warm leads now calculated on server with engagement + calls data
-  const { data: stats } = trpc.accounts.getStats.useQuery();
 
   // Beautiful loading state
   if (accountsLoading) {
@@ -65,8 +63,10 @@ export default function Home() {
     .slice(0, 15) || [];
 
   const hotLeads = accounts?.filter(a => parseInt(String(a.intentScore || 0)) >= 70).length || 0;
-  // Warm leads = engagement + intent 70+ + previous calls (calculated on server)
-  const warmLeads = stats?.warmLeads || 0;
+  const warmLeads = accounts?.filter(a => {
+    const score = parseInt(String(a.intentScore || 0));
+    return score >= 40 && score < 70;
+  }).length || 0;
 
   // Use enriched priority actions with contact data
   const priorityActions = (enrichedPriorityActions || []).map((action, index) => ({
@@ -148,7 +148,7 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{warmLeads}</div>
-                <p className="text-xs text-muted-foreground mt-1">Engaged accounts</p>
+                <p className="text-xs text-muted-foreground mt-1">Intent score 40-69</p>
               </CardContent>
             </Card>
           </Link>

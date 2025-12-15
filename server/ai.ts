@@ -1,14 +1,42 @@
 import { invokeLLM } from "./_core/llm";
 import { getAllAccounts, getAllPeople, getAllGongCalls } from "./db";
-import { REVENUE_ARCHITECT_CORE, ACCOUNT_ANALYSIS_PROMPT, CONTACT_PRIORITIZATION_PROMPT } from "./revenueArchitect";
 
 /**
- * AI Service Layer - Revenue Architect Mode
- * Ruthlessly efficient sales intelligence. No fluff. Only kill shots.
+ * AI Service Layer
+ * Handles all intelligent processing, learning, and recommendations
  */
 
-// Legacy context kept for backward compatibility
-const COMPANY_CONTEXT = REVENUE_ARCHITECT_CORE;
+// Company context - the company's sales methodology and ICP
+const COMPANY_CONTEXT = `
+the company is a passwordless authentication and identity security company.
+
+TARGET CUSTOMER PROFILE:
+- Enterprise companies (1000+ employees)
+- Industries: Financial Services, Healthcare, Technology, Government
+- Key pain points: Password security, phishing attacks, compliance (SOC 2, HIPAA, FedRAMP)
+- Tech stack indicators: Okta, Azure AD, legacy VPN, MFA solutions
+- Buying signals: Recent security incidents, compliance deadlines, digital transformation initiatives
+
+IDEAL DECISION MAKERS:
+- CISO (Chief Information Security Officer)
+- VP/Director of Security
+- VP/Director of IT
+- Identity & Access Management leads
+
+SALES METHODOLOGY:
+- Focus on passwordless security and zero trust architecture
+- Emphasize ROI: reduced help desk costs, improved security posture
+- Competitive against: Okta, Ping Identity, Microsoft Azure AD
+- Key differentiators: Phishing-resistant MFA, device trust, seamless UX
+
+BUYING SIGNALS TO WATCH:
+- Security job openings (especially IAM, Zero Trust roles)
+- Recent funding rounds (budget availability)
+- Security incidents or breaches in the news
+- Compliance initiatives (SOC 2, FedRAMP certification)
+- Technology stack changes (moving to cloud, adopting zero trust)
+- Executive changes (new CISO, new CTO)
+`;
 
 interface EnrichmentResult {
   summary: string;
@@ -98,7 +126,7 @@ Provide a JSON response with:
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: REVENUE_ARCHITECT_CORE + "\n\nTASK: Analyze this call. Find the leverage points and blockers. No fluff." },
+      { role: "system", content: "You are a sales call analyzer for the company. Extract insights from call transcripts." },
       { role: "user", content: prompt }
     ],
     response_format: {
@@ -133,72 +161,28 @@ Provide a JSON response with:
  * Generate personalized outreach email
  */
 export async function generateOutreachEmail(accountData: any, contactData: any, context?: string): Promise<string> {
-  // Extract ACTUAL security stack from account data
-  let securityStack: string[] = [];
-  try {
-    if (accountData.securityStack) {
-      securityStack = typeof accountData.securityStack === 'string' 
-        ? JSON.parse(accountData.securityStack) 
-        : accountData.securityStack;
-    }
-  } catch {}
+  const prompt = `${COMPANY_CONTEXT}
 
-  // Extract ACTUAL tech stack
-  let techStack: string[] = [];
-  try {
-    if (accountData.techStack) {
-      techStack = typeof accountData.techStack === 'string' 
-        ? JSON.parse(accountData.techStack) 
-        : accountData.techStack;
-    }
-  } catch {}
+Generate a personalized outreach email for this prospect:
 
-  // Build context with ONLY real data
-  const realDataContext = {
-    contact: {
-      name: contactData.name || `${contactData.firstName} ${contactData.lastName}`,
-      title: contactData.title,
-      email: contactData.email,
-      engagementScore: contactData.engagementScore,
-      followscompany: contactData.followscompany
-    },
-    account: {
-      name: accountData.name,
-      industry: accountData.industry,
-      employeeCount: accountData.employeeCount,
-      intentScore: accountData.intentScore,
-      buyingStage: accountData.buyingStage || accountData.sixsenseBuyingStage || 'Unknown'
-    },
-    securityStack: securityStack.length > 0 ? securityStack : ['No security stack data - lead with value prop'],
-    techStack: techStack.length > 0 ? techStack : ['No tech stack data']
-  };
-
-  const prompt = `CRITICAL: Use ONLY the data provided below. Do NOT invent or assume anything.
-
-REAL DATA:
-${JSON.stringify(realDataContext, null, 2)}
+ACCOUNT: ${JSON.stringify(accountData, null, 2)}
+CONTACT: ${JSON.stringify(contactData, null, 2)}
 ${context ? `ADDITIONAL CONTEXT: ${context}` : ''}
 
-RULES:
-1. Use the EXACT contact name: ${realDataContext.contact.name}
-2. Reference their EXACT title: ${realDataContext.contact.title}
-3. If securityStack contains Okta/Duo/Ping/Entra, use competitive angle
-4. If securityStack says "No security stack data", lead with value prop NOT competitor displacement
-5. If they follow the company (followscompany=true), mention you noticed they're interested
-6. Reference ACTUAL employee count: ${realDataContext.account.employeeCount}
-7. Reference ACTUAL intent score: ${realDataContext.account.intentScore}
+Write a compelling, personalized email that:
+1. References specific details about their company/role
+2. Addresses a likely pain point based on their profile
+3. Offers clear value proposition
+4. Includes a specific, low-friction call to action
+5. Keeps it under 150 words
+6. Professional but conversational tone
 
-Write a 3-4 sentence email that:
-- Opens with something SPECIFIC to their situation (not generic)
-- Gets to the point fast
-- Has ONE clear ask
-- NO fluff, NO "hope this finds you well"
-
-Return only the email body.`;
+Return only the email body (no subject line).
+`;
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: REVENUE_ARCHITECT_CORE + "\n\nTASK: Write a killer opening email. No fluff. Hook them in the first line with something specific to their situation. Use ONLY the data provided - never guess or assume." },
+      { role: "system", content: "You are a sales email writer for the company. Write personalized, high-converting outreach emails." },
       { role: "user", content: prompt }
     ]
   });
@@ -239,7 +223,7 @@ Examples:
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a search query interpreter. Translate user intent to database filters. Be precise." },
+      { role: "system", content: "You are a search query interpreter. Understand user intent and translate to database filters." },
       { role: "user", content: prompt }
     ],
     response_format: {
@@ -282,7 +266,7 @@ Return a JSON array of contact IDs sorted by priority (highest first), with reas
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: CONTACT_PRIORITIZATION_PROMPT },
+      { role: "system", content: "You are a contact prioritization AI. Rank contacts by likelihood to engage and influence deals." },
       { role: "user", content: prompt }
     ],
     response_format: {

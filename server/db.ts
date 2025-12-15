@@ -189,10 +189,6 @@ export async function getAllPeople() {
       updatedAt: contacts.updatedAt,
       company: accounts.name,
       companyDomain: accounts.domain,
-      // 6sense engagement fields
-      engagementScore: contacts.engagementScore,
-      engagementActivities: contacts.engagementActivities,
-      salesActivities: contacts.salesActivities,
     })
     .from(contacts)
     .leftJoin(accounts, eq(contacts.accountId, accounts.id))
