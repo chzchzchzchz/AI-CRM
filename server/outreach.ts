@@ -4,7 +4,7 @@ import { invokeLLM } from "./_core/llm";
 import { eq, inArray } from "drizzle-orm";
 import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
-import { REVENUE_ARCHITECT_CORE, OUTREACH_PROMPT } from "./revenueArchitect";
+import { REVENUE_ARCHITECT_CORE } from "./revenueArchitect";
 
 export const outreachRouter = router({
   generateEmail: publicProcedure
@@ -39,90 +39,55 @@ export const outreachRouter = router({
           .where(inArray(contacts.id, input.contactIds));
       }
 
-      // Build context from account data
-      const accountContext = accountData
-        .map((acc) => {
-          let context = `Company: ${acc.name}`;
-          if (acc.industry) context += `\nIndustry: ${acc.industry}`;
-          if (acc.employeeCount) context += `\nSize: ${acc.employeeCount} employees`;
-          if (acc.region) context += `\nRegion: ${acc.region}`;
-          
-          // Parse tech stack
-          if (acc.techStack) {
-            try {
-              const stack = typeof acc.techStack === 'string' ? JSON.parse(acc.techStack) : acc.techStack;
-              if (stack && typeof stack === 'object') {
-                const techs = Object.values(stack).flat().filter(Boolean);
-                if (techs.length > 0) {
-                  context += `\nTech Stack: ${techs.slice(0, 5).join(", ")}`;
-                }
-              }
-            } catch (e) {
-              // Ignore parse errors
-            }
-          }
+      const account = accountData[0];
+      const contact = contactData[0];
 
-          // Research field doesn't exist in schema
+      // Parse security stack
+      let securityStack: string[] = [];
+      try {
+        if (account.securityStack) {
+          securityStack = typeof account.securityStack === 'string' 
+            ? JSON.parse(account.securityStack) 
+            : account.securityStack;
+        }
+      } catch {}
 
-          // Add intent score if available
-          if (acc.intentScore) {
-            const score = typeof acc.intentScore === 'string' ? parseInt(acc.intentScore) : acc.intentScore;
-            if (!isNaN(score) && score >= 40) {
-              const level = score >= 70 ? "High" : "Medium";
-              context += `\nBuying Intent: ${level} (${score}/100)`;
-            }
-          }
+      // Build the actual email generation prompt
+      const systemPrompt = `You are writing a REAL EMAIL that will be sent to a prospect. 
+This is NOT internal strategy notes - this is the actual email the prospect will receive.
 
-          // Add raw data insights (6sense, buying stage, trigger events, etc.)
-          if (acc.rawData) {
-            try {
-              const raw = typeof acc.rawData === 'string' ? JSON.parse(acc.rawData) : acc.rawData;
-              if (raw && typeof raw === 'object') {
-                if (raw['6sense Buying Stage']) {
-                  context += `\nBuying Stage: ${raw['6sense Buying Stage']}`;
-                }
-                if (raw.keywords && Array.isArray(raw.keywords)) {
-                  context += `\nKeywords: ${raw.keywords.slice(0, 3).join(", ")}`;
-                }
-              }
-            } catch (e) {
-              // Ignore parse errors
-            }
-          }
+RULES:
+1. Write ONLY the email body - no headers, no "Subject:", no internal notes
+2. Keep it SHORT - 3-5 sentences max
+3. First line must hook them with something SPECIFIC to their situation
+4. NO "Hope this finds you well" or "I'd love to learn more"
+5. ONE clear ask at the end (usually a meeting)
+6. Sound like a human, not a sales robot
+7. Reference their actual company/role/situation
 
-          return context;
-        })
-        .join("\n\n");
+TONE: Direct, confident, peer-to-peer. You're an expert talking to an expert.`;
 
-      // Build contact context
-      let contactContext = "";
-      if (contactData.length > 0) {
-        contactContext = "\n\nTarget Contacts:\n" + contactData
-          .map((contact) => {
-            let ctx = `- ${contact.name}`;
-            if (contact.title) ctx += ` (${contact.title})`;
-            if (contact.company) ctx += ` at ${contact.company}`;
-            return ctx;
-          })
-          .join("\n");
-      }
+      const userPrompt = `Write a cold email to send to this prospect:
 
-      // Build LLM prompt with Revenue Architect methodology
-      const systemPrompt = OUTREACH_PROMPT;
+RECIPIENT:
+- Name: ${contact?.name || 'Unknown'}
+- Title: ${contact?.title || 'Unknown'}
+- Company: ${account.name}
+- Industry: ${account.industry || 'Unknown'}
+- Company Size: ${account.employeeCount || 'Unknown'} employees
 
-      const userPrompt = `Generate TARGETING INTELLIGENCE for this account:
+CONTEXT:
+- Intent Score: ${account.intentScore || 'Unknown'}/100 (higher = more actively researching solutions)
+- Security Stack: ${securityStack.length > 0 ? securityStack.join(', ') : 'Unknown'}
+${input.prompt ? `- Additional context: ${input.prompt}` : ''}
 
-${accountContext}${contactContext}
+WHAT WE SELL: the company - Passwordless MFA that eliminates phishing risk. Competes with Okta, Duo, Ping Identity.
 
-Additional Context: ${input.prompt || "Focus on passwordless MFA and Zero Trust security."}
+${securityStack.some(s => ['Okta', 'Duo', 'Ping', 'Microsoft Entra', 'Azure AD'].some(c => s.toLowerCase().includes(c.toLowerCase()))) 
+  ? 'ANGLE: They have a competitor product - use displacement angle (their current MFA is still phishable)' 
+  : 'ANGLE: Lead with value prop - passwordless = zero phishing risk'}
 
-Remember:
-- Interpret their Intent Score specifically
-- Map to the RIGHT persona based on their business
-- Form hypothesis from their ACTUAL tech stack
-- Generate TWO ingress strategies (Rip & Replace + Innovation)
-- Write a copy-paste ready cold opener with subject line
-- Use their real data points, not generic templates`;
+Write the email body only. No subject line. No signature. Just the message.`;
 
       // Call LLM
       const response = await invokeLLM({
@@ -134,8 +99,20 @@ Remember:
 
       const generatedContent = response.choices[0]?.message?.content || "";
 
+      // Generate a subject line separately
+      const subjectResponse = await invokeLLM({
+        messages: [
+          { role: "system", content: "Generate a SHORT email subject line (under 50 chars). No quotes. No emojis. Make it specific to the recipient's company or role. Sound human, not salesy." },
+          { role: "user", content: `Company: ${account.name}\nRecipient: ${contact?.name || 'Prospect'} (${contact?.title || 'Security Leader'})\nTopic: Passwordless MFA / eliminating phishing\n\nWrite just the subject line, nothing else.` },
+        ],
+      });
+
+      const subjectContent = subjectResponse.choices[0]?.message?.content;
+const subjectLine = (typeof subjectContent === 'string' ? subjectContent.trim() : `Security at ${account.name}`);
+
       return {
         content: generatedContent,
+        subject: subjectLine,
         accountCount: accountData.length,
       };
     }),
