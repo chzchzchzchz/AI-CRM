@@ -18,6 +18,7 @@ import { validationRouter } from "./validation-router";
 import { priorityActionsRouter } from "./priority-actions-router";
 import { bulkInsightsRouter } from "./bulk-insights-router";
 import { sixsenseRouter } from "./sixsense-router";
+import { linkedinScraperRouter } from "./linkedin-scraper";
 
 
 export const appRouter = router({
@@ -27,6 +28,7 @@ export const appRouter = router({
   priorityActions: priorityActionsRouter,
   bulkInsights: bulkInsightsRouter,
   sixsense: sixsenseRouter,
+  linkedinScraper: linkedinScraperRouter,
   analytics: router({
     overview: publicProcedure.query(async () => {
       const accounts = await getAllAccounts();
