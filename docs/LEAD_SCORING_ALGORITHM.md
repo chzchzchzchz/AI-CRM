@@ -9,9 +9,21 @@
 
 ## Executive Summary
 
-This document presents a novel, algorithmic lead scoring system designed specifically for B2B enterprise security sales. Unlike traditional single-score approaches that collapse complex buying signals into a single number, this system employs **multi-dimensional scoring** across four distinct axes: **Engagement Propensity (EP)**, **Conversion Probability (CP)**, **Strategic Value (SV)**, and **Timing Alignment (TA)**. The composite framework enables sales teams to prioritize leads not just by "hotness" but by the specific type of action required—immediate outreach, nurturing, strategic cultivation, or timing-based follow-up.
+This document presents a novel, algorithmic lead scoring system designed specifically for B2B enterprise security sales, built to complement and extend 6sense's native scoring capabilities. The system integrates 6sense's core scores (Account Profile Fit, Contact Profile Fit, Account In-Market, Contact Engagement, Account Reach) with the company-specific signals to create a **unified prioritization framework**.
 
-The system incorporates 47 distinct variables across 8 categories, with dynamic weighting that adapts based on historical conversion patterns and real-time market signals. Validation methodology includes backtesting against historical closed-won/closed-lost data, A/B testing frameworks, and continuous feedback loops from sales outcomes.
+Unlike traditional single-score approaches that collapse complex buying signals into a single number, this system employs **multi-dimensional scoring** across four distinct axes: **Engagement Propensity (EP)**, **Conversion Probability (CP)**, **Strategic Value (SV)**, and **Timing Alignment (TA)**. The composite framework enables sales teams to prioritize leads not just by "hotness" but by the specific type of action required—immediate outreach, nurturing, strategic cultivation, or timing-based follow-up.
+
+The system incorporates 47 distinct variables across 8 categories, with dynamic weighting that adapts based on historical conversion patterns and real-time market signals. It aligns with 6sense's buying stage framework (Target → Awareness → Consideration → Decision → Purchase) and 6QA qualification methodology.
+
+### 6sense Integration Points
+
+| 6sense Score | Our Dimension | Integration Method |
+|--------------|---------------|--------------------|
+| Account Profile Fit | Strategic Value (SV) | Direct input - firmographic/technographic ICP match |
+| Contact Profile Fit | Engagement Propensity (EP) | Weighted input - persona alignment |
+| Account In-Market Score | Conversion Probability (CP) | Primary driver - buying stage + intent |
+| Contact Engagement Score | Engagement Propensity (EP) | Direct input - first-party engagement |
+| Account Reach Score | Timing Alignment (TA) | Modifier - outreach effectiveness indicator |
 
 ---
 
@@ -711,3 +723,103 @@ Lead scoring systems raise ethical questions that deserve acknowledgment:
 ---
 
 *This document represents a comprehensive framework for multi-dimensional lead scoring. Implementation should be adapted to specific organizational context, data availability, and sales process requirements. Continuous iteration based on outcome data is essential for maintaining model effectiveness.*
+
+
+---
+
+## Appendix A: 6sense Buying Stage Alignment
+
+This section documents how our scoring system aligns with 6sense's official buying stage framework.
+
+### 6sense Buying Stages (Official Definition)
+
+| Stage | Intent Score | 6sense Definition | Our Recommended Action |
+|-------|-------------|-------------------|----------------------|
+| **Target** | 0-19 | Little to no activity. Not actively in-market. | Broad awareness messaging. Low priority for sales. |
+| **Awareness** | 20-49 | Some activity, top of funnel. Lower conversion probability. | Broad-based engagement. Marketing nurture. |
+| **Consideration** | 50-69 | Significant activity above baseline. First mid-funnel band. | Content syndication, buyer's guides. SDR qualification. |
+| **Decision** | 70-85 | Significant digital research activity across data sources. | Marketing air cover + sales outbound prospecting. |
+| **Purchase** | 86-100 | Bottom of funnel. Most likely to open opportunity soon. | High-value engagement: phone, personalized outreach. |
+
+### 6QA (6sense Qualified Account) Default Criteria
+
+Per 6sense documentation, the default 6QA definition includes:
+
+**Qualification Triggers:**
+- Buying Stage = Purchase OR Decision (reached in last 60 days)
+- Profile Fit = Strong OR Moderate
+- No opportunities created or lost in last 90 days
+- Was not qualified in last 60 days
+
+**Disqualification Trigger:**
+- Relevant opportunity opened
+
+**Our Extension:**
+We extend 6QA with the company-specific signals:
+- Competitive tech stack presence (Okta, Duo, Ping, Microsoft Entra)
+- Security-focused contact engagement (CISO, Security Director, etc.)
+- Trigger events (breach news, compliance audit, funding)
+
+### Mapping Our Tiers to 6sense Stages
+
+| Our Tier | 6sense Buying Stage | Additional Criteria |
+|----------|--------------------|--------------------|
+| **Tier 1: Immediate** | Purchase (86-100) | EP ≥ 70, multi-threaded, recent engagement |
+| **Tier 2: High Priority** | Decision (70-85) | Strong profile fit, competitive displacement opportunity |
+| **Tier 3: Strategic** | Any | SV ≥ 80, large enterprise, regardless of current stage |
+| **Tier 4: Nurture** | Consideration (50-69) | Good fit but low engagement |
+| **Tier 5: Monitor** | Awareness (20-49) | Some signals but not ready |
+| **Tier 6: Archive** | Target (0-19) | No meaningful signals |
+
+---
+
+## Appendix B: 6sense Score Definitions
+
+### Account Profile Fit Score
+**Source:** 6sense Predictive  
+**Definition:** Measures how similar a company is to your ideal customer profile using firmographic and technographic factors plus historical opportunity history.  
+**Use in Our System:** Primary input to Strategic Value (SV) dimension.
+
+### Contact Profile Fit Score
+**Source:** 6sense Predictive  
+**Definition:** Measures how similar a person is to your typical buyer or buying committee members using demographic factors and historical opportunity history.  
+**Use in Our System:** Weighted input to Engagement Propensity (EP) dimension.
+
+### Contact Engagement Score
+**Source:** 6sense Predictive  
+**Definition:** Measures how engaged a person is with your first-party sales and marketing tactics.  
+**Use in Our System:** Direct input to Engagement Propensity (EP) dimension.
+
+### Account In-Market Score
+**Source:** 6sense Predictive  
+**Definition:** Measures an account's buying stage and likelihood of being in-market using relevant signals across known and anonymous intent and engagement.  
+**Use in Our System:** Primary driver of Conversion Probability (CP) dimension.
+
+### Account Reach Score
+**Source:** 6sense Predictive  
+**Definition:** Measures appropriate sales and marketing outreach activities compared against optimal quality, quantity, and diversity of outreach as defined by historical success.  
+**Use in Our System:** Modifier for Timing Alignment (TA) - indicates whether we've reached the account appropriately.
+
+---
+
+## Appendix C: Data Sources Integration
+
+### Primary Data Sources
+
+| Source | Data Type | Update Frequency | Integration Method |
+|--------|-----------|------------------|-------------------|
+| 6sense | Intent, Buying Stage, Profile Fit | Real-time | API |
+| ZoomInfo | Firmographic, Contact Data | Daily | API |
+| Gong | Call Transcripts, Engagement | Real-time | Webhook |
+| Salesforce | CRM Data, Opportunity History | Real-time | API |
+| Website Analytics | First-party Engagement | Real-time | WebTag |
+| News APIs | Trigger Events | Daily | Scheduled Job |
+
+### 6sense Signalverse Data
+
+6sense processes over 650B intent signals monthly from:
+- Keyword research across millions of B2B publisher pages
+- G2, TrustRadius, Bombora, PeerSpot, Gartner Digital Markets partnerships
+- Firmographic and technographic partner data
+
+This data feeds directly into our Conversion Probability (CP) dimension through the Account In-Market Score.
