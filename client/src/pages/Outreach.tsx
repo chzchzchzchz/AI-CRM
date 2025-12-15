@@ -1,14 +1,21 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Building2, Loader2, Copy, Check, Search, Users } from "lucide-react";
+import { Sparkles, Building2, Loader2, Copy, Check, Search, Users, Paperclip, X, FileText, File } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Checkbox } from "@/components/ui/checkbox";
+
+interface Attachment {
+  name: string;
+  size: number;
+  type: string;
+  file: File;
+}
 
 export default function Outreach() {
   const { data: accounts, isLoading } = trpc.accounts.list.useQuery();
@@ -21,6 +28,8 @@ export default function Outreach() {
   const [contactSearchQuery, setContactSearchQuery] = useState("");
   const [generatedContent, setGeneratedContent] = useState("");
   const [copied, setCopied] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const generateMutation = trpc.outreach.generateEmail.useMutation({
     onSuccess: (data) => {
@@ -38,18 +47,72 @@ export default function Outreach() {
       return;
     }
 
+    // Include attachment names in the context for AI to reference
+    let enhancedContext = context;
+    if (attachments.length > 0) {
+      const attachmentList = attachments.map(a => a.name).join(", ");
+      enhancedContext = `${context}\n\n[ATTACHMENTS TO REFERENCE: ${attachmentList}]`;
+    }
+
     generateMutation.mutate({
       accountIds: selectedAccounts,
       contactIds: selectedContacts,
-      prompt: context || undefined,
+      prompt: enhancedContext || undefined,
     });
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(generatedContent);
+    // Include attachment note in copied content
+    let copyContent = generatedContent;
+    if (attachments.length > 0) {
+      copyContent += `\n\n---\nAttachments:\n${attachments.map(a => `• ${a.name}`).join('\n')}`;
+    }
+    navigator.clipboard.writeText(copyContent);
     setCopied(true);
     toast.success("Copied to clipboard!");
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newAttachments: Attachment[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      // Limit file size to 10MB
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`${file.name} is too large. Max 10MB.`);
+        continue;
+      }
+      newAttachments.push({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        file: file,
+      });
+    }
+
+    setAttachments(prev => [...prev, ...newAttachments]);
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const getFileIcon = (type: string) => {
+    if (type.includes('pdf')) return <FileText className="h-4 w-4 text-red-400" />;
+    return <File className="h-4 w-4 text-slate-400" />;
   };
 
   const toggleAccount = (id: number) => {
@@ -212,10 +275,67 @@ export default function Outreach() {
               </CardContent>
             </Card>
 
-            {/* Step 3: Optional Context */}
+            {/* Step 3: Add Attachments */}
             <Card className="card-elevated">
               <CardHeader>
-                <CardTitle className="text-white">3. Add Context (Optional)</CardTitle>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Paperclip className="h-5 w-5 text-orange-400" />
+                  3. Add Attachments (Optional)
+                </CardTitle>
+                <CardDescription>Attach case studies, one-pagers, or other collateral</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  multiple
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg"
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full border-dashed border-2 border-slate-600 hover:border-orange-500 bg-slate-800/30 text-slate-300 hover:text-white py-6"
+                >
+                  <Paperclip className="h-5 w-5 mr-2" />
+                  Click to add attachments
+                </Button>
+                
+                {attachments.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {attachments.map((attachment, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700"
+                      >
+                        {getFileIcon(attachment.type)}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-white truncate text-sm">{attachment.name}</div>
+                          <div className="text-xs text-slate-500">{formatFileSize(attachment.size)}</div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeAttachment(index)}
+                          className="h-8 w-8 p-0 text-slate-400 hover:text-red-400"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <p className="text-xs text-slate-500 mt-2">
+                      AI will reference these attachments in the generated email
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Step 4: Optional Context */}
+            <Card className="card-elevated">
+              <CardHeader>
+                <CardTitle className="text-white">4. Add Context (Optional)</CardTitle>
                 <CardDescription>Describe pain points, goals, or specific messaging</CardDescription>
               </CardHeader>
               <CardContent>
@@ -228,7 +348,7 @@ export default function Outreach() {
               </CardContent>
             </Card>
 
-            {/* Step 4: Generate */}
+            {/* Step 5: Generate */}
             <Button
               onClick={handleGenerate}
               disabled={generateMutation.isPending || selectedAccounts.length === 0}
@@ -283,6 +403,19 @@ export default function Outreach() {
                     <div className="whitespace-pre-wrap text-slate-300 bg-slate-800/50 p-4 rounded-lg border border-slate-700">
                       {generatedContent}
                     </div>
+                    {attachments.length > 0 && (
+                      <div className="mt-4 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                        <p className="text-sm text-orange-400 font-medium mb-2">
+                          <Paperclip className="h-4 w-4 inline mr-1" />
+                          Attachments to include:
+                        </p>
+                        <ul className="text-sm text-slate-400 space-y-1">
+                          {attachments.map((a, i) => (
+                            <li key={i}>• {a.name}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-center">

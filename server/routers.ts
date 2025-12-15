@@ -135,10 +135,25 @@ export const appRouter = router({
         return score && score >= 70;
       }).length;
       
-      // Calculate warm leads (intent score 40-69)
+      // Calculate warm leads: accounts with engagement OR intent 70+ OR previous calls
+      // Get account IDs that have Gong calls
+      const accountsWithCalls = new Set(calls.map(c => c.accountId).filter(Boolean));
+      
+      // Get account IDs that have contacts with engagement (from 6sense)
+      const accountsWithEngagement = new Set(
+        people.filter(p => 
+          (p.engagementScore && p.engagementScore > 0) || 
+          (p.engagementActivities && p.engagementActivities > 0) ||
+          (p.salesActivities && p.salesActivities > 0)
+        ).map(p => p.accountId).filter(Boolean)
+      );
+      
       const warmLeads = accounts.filter(a => {
         const score = typeof a.intentScore === 'string' ? parseInt(a.intentScore, 10) : a.intentScore;
-        return score && score >= 40 && score < 70;
+        // Warm if: has engagement OR intent 70+ OR has previous calls
+        return accountsWithEngagement.has(a.id) || 
+               (score && score >= 70) || 
+               accountsWithCalls.has(a.id);
       }).length;
       
       return {

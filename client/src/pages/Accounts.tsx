@@ -37,6 +37,8 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   const { data: accounts, isLoading } = trpc.accounts.list.useQuery(undefined, {
     staleTime: 3 * 60 * 1000
   });
+  // Warm leads = engagement + intent 70+ + previous calls (calculated on server)
+  const { data: stats } = trpc.accounts.getStats.useQuery();
 
   // Extract unique values for filters
   const regions = useMemo(() => {
@@ -205,10 +207,8 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   }
 
   const hotCount = filteredAccounts.filter(a => parseInt(a.intentScore || "0") >= 70).length;
-  const warmCount = filteredAccounts.filter(a => {
-    const score = parseInt(a.intentScore || "0");
-    return score >= 40 && score < 70;
-  }).length;
+  // Warm leads = accounts with engagement OR intent 70+ OR previous calls
+  const warmCount = stats?.warmLeads || 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
@@ -268,7 +268,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{warmCount}</div>
-              <p className="text-xs text-muted-foreground mt-1">Intent score 40-69 • Click to filter</p>
+              <p className="text-xs text-muted-foreground mt-1">Engagement + Intent 70+ + Calls</p>
             </CardContent>
           </Card>
 
