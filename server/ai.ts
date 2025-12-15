@@ -1,42 +1,14 @@
 import { invokeLLM } from "./_core/llm";
 import { getAllAccounts, getAllPeople, getAllGongCalls } from "./db";
+import { REVENUE_ARCHITECT_CORE, ACCOUNT_ANALYSIS_PROMPT, CONTACT_PRIORITIZATION_PROMPT } from "./revenueArchitect";
 
 /**
- * AI Service Layer
- * Handles all intelligent processing, learning, and recommendations
+ * AI Service Layer - Revenue Architect Mode
+ * Ruthlessly efficient sales intelligence. No fluff. Only kill shots.
  */
 
-// Company context - the company's sales methodology and ICP
-const COMPANY_CONTEXT = `
-the company is a passwordless authentication and identity security company.
-
-TARGET CUSTOMER PROFILE:
-- Enterprise companies (1000+ employees)
-- Industries: Financial Services, Healthcare, Technology, Government
-- Key pain points: Password security, phishing attacks, compliance (SOC 2, HIPAA, FedRAMP)
-- Tech stack indicators: Okta, Azure AD, legacy VPN, MFA solutions
-- Buying signals: Recent security incidents, compliance deadlines, digital transformation initiatives
-
-IDEAL DECISION MAKERS:
-- CISO (Chief Information Security Officer)
-- VP/Director of Security
-- VP/Director of IT
-- Identity & Access Management leads
-
-SALES METHODOLOGY:
-- Focus on passwordless security and zero trust architecture
-- Emphasize ROI: reduced help desk costs, improved security posture
-- Competitive against: Okta, Ping Identity, Microsoft Azure AD
-- Key differentiators: Phishing-resistant MFA, device trust, seamless UX
-
-BUYING SIGNALS TO WATCH:
-- Security job openings (especially IAM, Zero Trust roles)
-- Recent funding rounds (budget availability)
-- Security incidents or breaches in the news
-- Compliance initiatives (SOC 2, FedRAMP certification)
-- Technology stack changes (moving to cloud, adopting zero trust)
-- Executive changes (new CISO, new CTO)
-`;
+// Legacy context kept for backward compatibility
+const COMPANY_CONTEXT = REVENUE_ARCHITECT_CORE;
 
 interface EnrichmentResult {
   summary: string;
@@ -126,7 +98,7 @@ Provide a JSON response with:
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a sales call analyzer for the company. Extract insights from call transcripts." },
+      { role: "system", content: REVENUE_ARCHITECT_CORE + "\n\nTASK: Analyze this call. Find the leverage points and blockers. No fluff." },
       { role: "user", content: prompt }
     ],
     response_format: {
@@ -182,7 +154,7 @@ Return only the email body (no subject line).
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a sales email writer for the company. Write personalized, high-converting outreach emails." },
+      { role: "system", content: REVENUE_ARCHITECT_CORE + "\n\nTASK: Write a killer opening email. No fluff. Hook them in the first line with something specific to their situation." },
       { role: "user", content: prompt }
     ]
   });
@@ -223,7 +195,7 @@ Examples:
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a search query interpreter. Understand user intent and translate to database filters." },
+      { role: "system", content: "You are a search query interpreter. Translate user intent to database filters. Be precise." },
       { role: "user", content: prompt }
     ],
     response_format: {
@@ -266,7 +238,7 @@ Return a JSON array of contact IDs sorted by priority (highest first), with reas
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a contact prioritization AI. Rank contacts by likelihood to engage and influence deals." },
+      { role: "system", content: CONTACT_PRIORITIZATION_PROMPT },
       { role: "user", content: prompt }
     ],
     response_format: {

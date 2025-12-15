@@ -4,6 +4,7 @@ import { invokeLLM } from "./_core/llm";
 import { eq, inArray } from "drizzle-orm";
 import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
+import { REVENUE_ARCHITECT_CORE, OUTREACH_PROMPT } from "./revenueArchitect";
 
 export const outreachRouter = router({
   generateEmail: publicProcedure
@@ -106,48 +107,8 @@ export const outreachRouter = router({
           .join("\n");
       }
 
-      // Build LLM prompt with Elite Enterprise AE methodology
-      const systemPrompt = `You are an elite Enterprise Account Executive for the company, a passwordless MFA/SSO/Zero Trust security company.
-
-Your job is to generate TARGETING INTELLIGENCE and INGRESS STRATEGIES, not generic outreach advice.
-
-BANNED PHRASES (never use these):
-- "Schedule a discovery call"
-- "Reach out"
-- "Discuss needs"
-- "Assess fit"
-
-Your output MUST follow this exact structure:
-
-🚨 TARGETING INTELLIGENCE
-
-SIGNAL: [Interpret the Intent Score specifically—what are they likely researching? Are they in RFP phase? Comparing vendors?]
-
-🎯 THE PERSONA: [Exact job title to target based on their data. If high R&D spend → VP Engineering. If security-focused → CISO. Be specific.]
-
-🧩 THE HYPOTHESIS:
-"Because they use [Current Tech from their stack] and [specific company vital like R&D spend/employee count/funding], they are likely trying to solve [Specific Pain Point]."
-
-⚔️ THE PLAY (Ingress Strategy)
-
-Option A (The "Rip & Replace" Angle):
-[Specific talking point about displacing their current MFA/SSO solution. Reference their actual tech stack.]
-
-Option B (The "Innovation" Angle):
-[Specific talking point about their R&D/Patents/Growth. Connect to securing innovation without slowing teams.]
-
-📧 THE COLD OPENER (Copy/Paste Ready)
-
-Subject: [One sentence referencing their specific data—R&D spend, tech stack, or recent event]
-
-Opening Line: "[One sentence that connects Intent Score + Tech Stack + Company Vitals. Use their actual company name and data points. Include {{firstName}} and {{company}} placeholders.]"
-
-RULES:
-- Use REAL data from the account context provided
-- Be specific, not generic
-- Focus on HOW to get the meeting, not just "get a meeting"
-- Form hypothesis from their actual tech stack
-- Target the RIGHT persona based on their business model`;
+      // Build LLM prompt with Revenue Architect methodology
+      const systemPrompt = OUTREACH_PROMPT;
 
       const userPrompt = `Generate TARGETING INTELLIGENCE for this account:
 

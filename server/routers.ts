@@ -19,6 +19,7 @@ import { priorityActionsRouter } from "./priority-actions-router";
 import { bulkInsightsRouter } from "./bulk-insights-router";
 import { sixsenseRouter } from "./sixsense-router";
 import { linkedinScraperRouter } from "./linkedin-scraper";
+import { REVENUE_ARCHITECT_CORE, ACCOUNT_ANALYSIS_PROMPT, RESEARCH_SYNTHESIS_PROMPT, TECH_STACK_ANALYSIS_PROMPT } from "./revenueArchitect";
 
 
 export const appRouter = router({
@@ -384,7 +385,7 @@ export const appRouter = router({
             messages: [
               {
                 role: "system",
-                content: `You are an expert sales intelligence analyst. Analyze this account and provide actionable insights for the sales team.`
+                content: ACCOUNT_ANALYSIS_PROMPT
               },
               {
                 role: "user",
@@ -461,7 +462,7 @@ export const appRouter = router({
           messages: [
             {
               role: "system",
-              content: "You are a competitive intelligence analyst. Synthesize the research data into a clear narrative covering: 1) Recent trigger events and what they mean, 2) Funding/growth signals and implications, 3) Market position and competitive landscape, 4) Strategic opportunities for engagement. Be concise and actionable."
+              content: RESEARCH_SYNTHESIS_PROMPT
             },
             {
               role: "user",
@@ -639,7 +640,7 @@ CRITICAL RULES:
           messages: [
             {
               role: "system",
-              content: "You are a technology stack analyst. Analyze the provided technology stack data and categorize it into clear, useful categories. Always include these categories even if empty: MFA Providers, SSO Providers, EDR/Security, CRM, Communication Tools, Development Tools, Cloud Infrastructure. For each category, list the relevant technologies found. If a category has no technologies, explicitly state 'None'. Be concise and filter out noise."
+              content: TECH_STACK_ANALYSIS_PROMPT
             },
             {
               role: "user",
