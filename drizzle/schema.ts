@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, tinyint, decimal } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -72,6 +72,25 @@ export const contacts = mysqlTable("contacts", {
   linkedinUrl: varchar("linkedinUrl", { length: 500 }),
   location: varchar("location", { length: 255 }),
   department: varchar("department", { length: 100 }),
+  source: varchar("source", { length: 100 }),
+  followscompany: boolean("followscompany").default(false),
+  // 6sense enrichment fields
+  sixsenseMid: varchar("sixsenseMid", { length: 100 }),
+  engagementScore: int("engagementScore"),
+  profileFit: varchar("profileFit", { length: 50 }),
+  profileScore: int("profileScore"),
+  engagementGrade: varchar("engagementGrade", { length: 10 }),
+  engagementTrend: varchar("engagementTrend", { length: 50 }),
+  personaImportance: varchar("personaImportance", { length: 50 }),
+  engagementActivities: int("engagementActivities"),
+  salesActivities: int("salesActivities"),
+  daysSinceLastEngagement: int("daysSinceLastEngagement"),
+  daysSinceLastSalesActivity: int("daysSinceLastSalesActivity"),
+  lastSalesActivity: varchar("lastSalesActivity", { length: 255 }),
+  lastEngagementActivity: varchar("lastEngagementActivity", { length: 255 }),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 100 }),
+  country: varchar("country", { length: 100 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
