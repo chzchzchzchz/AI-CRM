@@ -43,24 +43,38 @@ export const ACCOUNT_ANALYSIS_PROMPT = `${REVENUE_ARCHITECT_CORE}
 
 TASK: Analyze this account. Find the kill shot.
 
+CRITICAL RULES:
+1. ONLY use contact names from the "topContacts" array provided. NEVER invent names.
+2. ONLY reference security tools from the "securityStack" array. If empty, say "No security stack data - need discovery."
+3. "Zero calls" means "haven't engaged yet" NOT "blocked access."
+4. "Unassigned" owner means no one owns it yet, not a blocker.
+5. If data is missing, say "DATA GAP: [what's missing]" - don't guess.
+6. Contacts who "followscompany: true" are warm leads - call them out.
+
 OUTPUT FORMAT:
 ## VERDICT: [HOT/WARM/COLD/DEAD] - [One sentence why]
 
-**LEVERAGE POINTS:**
-- [Specific pressure point 1]
-- [Specific pressure point 2]
+**SECURITY STACK (from data):**
+- [List EXACTLY what's in securityStack array, or "No data"]
+- Competitive angle: [Only if we see Okta/Duo/Ping/Entra in the data]
 
-**BLOCKERS:**
-- [What could kill this deal]
+**CHAMPION CANDIDATES (from contacts):**
+[List 3-5 ACTUAL names from topContacts with highest engagement scores]
+- [ACTUAL NAME] - [ACTUAL TITLE] - Engagement: [score] - [Why target them]
 
-**CHAMPION CANDIDATES:**
-- [Name] - [Title] - [Why they'd champion us]
+**WARM LEADS (follow the company):**
+- [List any contacts where followscompany is true]
 
-**COMPETITIVE WEDGE:**
-- [If using Okta/Duo/etc]: [Specific attack angle]
+**ENGAGEMENT STATUS:**
+- Total contacts: [number]
+- Calls completed: [number] - [If 0: "No calls yet - virgin territory"]
+- 6sense activities: [engagementActivities]
+
+**DATA GAPS:**
+- [List what's missing that we need to find]
 
 **KILL SHOT:**
-[The exact message/angle to force a decision. Be specific.]`;
+[Specific message using ACTUAL contact name and ACTUAL security stack]`;
 
 export const CONTACT_PRIORITIZATION_PROMPT = `${REVENUE_ARCHITECT_CORE}
 
@@ -77,21 +91,33 @@ export const OUTREACH_PROMPT = `${REVENUE_ARCHITECT_CORE}
 
 TASK: Generate targeting intelligence and ingress strategy. Not generic outreach.
 
+CRITICAL RULES:
+1. PRIMARY/BACKUP TARGET must be ACTUAL names from the contacts provided. NEVER invent names.
+2. COMPETITIVE WEDGE must reference ACTUAL tools from securityStack. If no data, say "Need discovery - no security stack data."
+3. Use ACTUAL employee count, industry, and intent score from the data.
+4. If contact followscompany=true, mention they already follow us.
+
 OUTPUT FORMAT:
 ## INGRESS STRATEGY
 
-**PRIMARY TARGET:** [Name, Title, Why]
-**BACKUP TARGET:** [Name, Title, Why]
+**PRIMARY TARGET:** [ACTUAL NAME from contacts] - [ACTUAL TITLE] - [Why: engagement score, follows us, etc.]
+**BACKUP TARGET:** [ACTUAL NAME from contacts] - [ACTUAL TITLE] - [Why]
 
-**TRIGGER EVENT:** [What happened that creates urgency]
+**ACCOUNT CONTEXT:**
+- Industry: [from data]
+- Size: [ACTUAL employee count]
+- Intent: [ACTUAL score]
+- Security Stack: [ACTUAL tools from securityStack or "Unknown - need discovery"]
 
-**OPENING HOOK:** [First line that gets a response - specific to their situation]
+**COMPETITIVE WEDGE:** 
+[ONLY if securityStack contains Okta/Duo/Ping/Entra - otherwise say "No competitor data - lead with value prop"]
 
-**COMPETITIVE WEDGE:** [If they use competitor X, attack with Y]
+**OPENING HOOK:** 
+[Specific to their ACTUAL situation - reference real data points]
 
 **OBJECTION PRELOAD:** [What they'll say no to, and your counter]
 
-**TIMELINE PRESSURE:** [Why they need to act now]`;
+**TIMELINE PRESSURE:** [Why they need to act now - use intent score and buying stage]`;
 
 export const RESEARCH_SYNTHESIS_PROMPT = `${REVENUE_ARCHITECT_CORE}
 
