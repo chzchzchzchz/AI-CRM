@@ -219,6 +219,17 @@ export default function AccountDetailEnhanced() {
                   <Badge className={intentBadge.color}>
                     {account.intentScore} {intentBadge.label}
                   </Badge>
+                  {account.buyingStage && (
+                    <Badge variant="outline" className={`
+                      ${account.buyingStage === 'Purchase' ? 'border-green-500 text-green-500' : ''}
+                      ${account.buyingStage === 'Decision' ? 'border-cyan-500 text-cyan-500' : ''}
+                      ${account.buyingStage === 'Consideration' ? 'border-yellow-500 text-yellow-500' : ''}
+                      ${account.buyingStage === 'Awareness' ? 'border-orange-500 text-orange-500' : ''}
+                      ${account.buyingStage === 'Target' ? 'border-gray-500 text-gray-500' : ''}
+                    `}>
+                      {account.buyingStage} Stage
+                    </Badge>
+                  )}
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
@@ -311,13 +322,36 @@ export default function AccountDetailEnhanced() {
           <Card className="card-elevated border-l-4 border-l-emerald-500">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-emerald-500" />
-                Relationship
+                <Target className="h-4 w-4 text-emerald-500" />
+                Buying Stage
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{account.relationship || "Prospect"}</div>
-              <p className="text-xs text-muted-foreground mt-1">Current status</p>
+              {(() => {
+                // Infer buying stage from intent score if not set
+                const intentNum = parseInt(String(account.intentScore || 0));
+                const stage = account.buyingStage || (
+                  intentNum >= 86 ? 'Purchase' :
+                  intentNum >= 70 ? 'Decision' :
+                  intentNum >= 50 ? 'Consideration' :
+                  intentNum >= 20 ? 'Awareness' :
+                  'Target'
+                );
+                const stageColor = 
+                  stage === 'Purchase' ? 'text-green-500' :
+                  stage === 'Decision' ? 'text-cyan-500' :
+                  stage === 'Consideration' ? 'text-yellow-500' :
+                  stage === 'Awareness' ? 'text-orange-500' :
+                  'text-gray-500';
+                return (
+                  <>
+                    <div className={`text-2xl font-bold ${stageColor}`}>{stage}</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {account.buyingStage ? '6sense' : 'Inferred from intent'}
+                    </p>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>
