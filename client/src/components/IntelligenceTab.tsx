@@ -31,7 +31,15 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
   const insightsQuery = trpc.ai.generateStrategicInsights.useQuery({ accountId, forceRefresh: false });
 
   // Parse 6sense data from rawData
-  const rawData = account.rawData || {};
+  let rawData: Record<string, any> = {};
+  try {
+    if (account.rawData) {
+      rawData = typeof account.rawData === 'string' ? JSON.parse(account.rawData) : account.rawData;
+    }
+  } catch (e) {
+    console.error('Failed to parse rawData:', e);
+  }
+  
   const sixsenseData = {
     buyingStage: account.sixsenseBuyingStage || rawData['Buying Stage'] || rawData['6sense Buying Stage'],
     profileFit: account.sixsenseProfileFit || rawData['Profile Fit'] || rawData['6sense Profile Fit'],
