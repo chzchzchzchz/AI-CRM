@@ -15,6 +15,7 @@ interface ActiveFilter {
   type: FilterType;
   value: string;
   label: string;
+  category?: string; // For keyword filtering
 }
 
 export default function Insights() {
@@ -104,17 +105,68 @@ export default function Insights() {
           return (account.region || "Unknown") === activeFilter.value;
         case "buyingStage":
           return (account.sixsenseBuyingStage || "Unknown") === activeFilter.value;
+        case "keyword":
+          // Smart keyword filtering based on category and keyword content
+          const keyword = activeFilter.value.toLowerCase();
+          const category = activeFilter.category?.toLowerCase() || "";
+          const securityStack = (account.securityStack || "").toLowerCase();
+          const techStack = (account.techStack || "").toLowerCase();
+          const rawData = account.rawData as Record<string, unknown> | null;
+          const ssoProvider = (rawData?.['SSO Provider'] as string || "").toLowerCase();
+          const intentScore = Number(account.intentScore) || 0;
+          const buyingStage = (account.sixsenseBuyingStage || "").toLowerCase();
+          
+          // Competitor keywords - match accounts using that competitor
+          if (category === "competitor") {
+            const competitorMatches = 
+              securityStack.includes(keyword) ||
+              ssoProvider.includes(keyword) ||
+              techStack.includes(keyword);
+            if (competitorMatches) return true;
+            // Also include high-intent accounts in Decision/Purchase stage
+            if (intentScore >= 60 && ["decision", "purchase"].includes(buyingStage)) return true;
+            return false;
+          }
+          
+          // Threat keywords - show high-intent accounts (likely researching threats)
+          if (category === "threat") {
+            return intentScore >= 50; // Show accounts with moderate+ intent
+          }
+          
+          // Compliance keywords - show accounts in regulated industries
+          if (category === "compliance") {
+            const regulatedIndustries = ["finance", "financial services", "healthcare", "insurance", "government", "banking"];
+            const industry = (account.industry || "").toLowerCase();
+            if (regulatedIndustries.some(ri => industry.includes(ri))) return true;
+            return intentScore >= 60;
+          }
+          
+          // Product keywords - show accounts in active buying stages
+          if (category === "product") {
+            const activeBuyingStages = ["consideration", "decision", "purchase"];
+            if (activeBuyingStages.includes(buyingStage)) return true;
+            return intentScore >= 70; // Hot leads
+          }
+          
+          // Brand keywords (the company) - show engaged accounts
+          if (category === "brand") {
+            const engagementActivities = Number(rawData?.engagementActivities) || 0;
+            return engagementActivities > 0 || intentScore >= 60;
+          }
+          
+          // Default: show high-intent accounts
+          return intentScore >= 60;
         default:
           return false;
       }
     }).sort((a, b) => (Number(b.intentScore) || 0) - (Number(a.intentScore) || 0));
   }, [accounts, activeFilter]);
 
-  const handleFilterClick = (type: FilterType, value: string, label: string) => {
+  const handleFilterClick = (type: FilterType, value: string, label: string, category?: string) => {
     if (activeFilter?.type === type && activeFilter?.value === value) {
       setActiveFilter(null);
     } else {
-      setActiveFilter({ type, value, label });
+      setActiveFilter({ type, value, label, category });
     }
   };
 
@@ -574,7 +626,8 @@ export default function Insights() {
                   {filteredKeywords.map((kw, idx) => (
                     <div
                       key={idx}
-                      className="p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-slate-900 border border-purple-500/20 hover:border-purple-500/50 transition-all cursor-pointer group"
+                      onClick={() => handleFilterClick("keyword", kw.keyword, `Keyword: ${kw.keyword}`, kw.category || undefined)}
+                      className={`p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-slate-900 border transition-all cursor-pointer group ${activeFilter?.type === "keyword" && activeFilter?.value === kw.keyword ? "border-purple-500 ring-2 ring-purple-500/50" : "border-purple-500/20 hover:border-purple-500/50"}`}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-2">
@@ -617,6 +670,103 @@ export default function Insights() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Filtered Accounts Table for Keywords */}
+            {activeFilter?.type === "keyword" && filteredAccounts.length > 0 && (
+              <Card className="card-elevated">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Building2 className="h-5 w-5 text-purple-400" />
+                        Accounts Researching "{activeFilter.value}"
+                      </CardTitle>
+                      <CardDescription>
+                        {filteredAccounts.length} accounts likely researching this topic based on {activeFilter.category || "intent"} signals
+                      </CardDescription>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={clearFilter} className="gap-2 border-purple-500/50 text-purple-400 hover:bg-purple-500/10">
+                      <X className="h-4 w-4" />
+                      Clear
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-slate-800">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Company</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Industry</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Buying Stage</th>
+                          <th className="text-center py-3 px-4 text-sm font-medium text-slate-400">Intent</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Security Stack</th>
+                          <th className="text-right py-3 px-4 text-sm font-medium text-slate-400">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredAccounts.slice(0, 25).map((account) => (
+                          <tr key={account.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-bold text-sm">
+                                  {account.name?.charAt(0) || "?"}
+                                </div>
+                                <div>
+                                  <div className="font-medium text-white">{account.name}</div>
+                                  <div className="text-xs text-slate-500">{account.domain}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-sm text-slate-300">{account.industry || "Unknown"}</td>
+                            <td className="py-3 px-4">
+                              <Badge variant="outline" className="text-xs">
+                                {account.sixsenseBuyingStage || "Unknown"}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <span className={`font-bold ${getIntentColor(Number(account.intentScore) || 0)}`}>
+                                {account.intentScore || 0}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-sm text-slate-300 max-w-[200px] truncate">
+                              {(() => {
+                                const rawData = account.rawData as Record<string, unknown> | null;
+                                const sso = rawData?.['SSO Provider'] as string || '';
+                                return sso || account.securityStack?.slice(0, 50) || '-';
+                              })()}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <Link href={`/accounts/${account.id}`}>
+                                <Button variant="ghost" size="sm" className="gap-1 text-purple-400 hover:text-purple-300">
+                                  View <ExternalLink className="h-3 w-3" />
+                                </Button>
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {filteredAccounts.length > 25 && (
+                      <div className="text-center py-4 text-sm text-slate-400">
+                        Showing 25 of {filteredAccounts.length} accounts. 
+                        <Link href="/accounts" className="text-purple-400 hover:underline ml-1">View all in Accounts</Link>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Empty state when keyword filter has no results */}
+            {activeFilter?.type === "keyword" && filteredAccounts.length === 0 && (
+              <Card className="card-elevated">
+                <CardContent className="py-12 text-center">
+                  <div className="text-slate-400 mb-4">No accounts found researching "{activeFilter.value}"</div>
+                  <Button variant="outline" onClick={clearFilter} className="border-purple-500/50 text-purple-400">Clear Filter</Button>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Engagement Tab */}
