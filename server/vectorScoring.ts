@@ -417,30 +417,32 @@ INTENT & BUYING SIGNALS:
 • Buying Stage: ${inferredStage}
 • Temperature: ${data.temperature || 'Unknown'}
 
-ENGAGEMENT DATA (REAL DATA FROM DATABASE):
-• Total Contacts in Database: ${data.totalContacts || 0}
+ENGAGEMENT DATA (FROM 6SENSE + GONG):
+
+📞 GONG CALL DATA:
 • Total Calls Recorded: ${data.totalCalls || 0}
-• Last Call Date: ${(data as any)._lastCallDateFormatted || 'NEVER - NO CALLS RECORDED'}
-• Total Engagement Activities: ${data.engagementActivities || 0}${data.engagementActivities ? '' : ' (NO ENGAGEMENT DATA)'}
-• Total Sales Activities: ${data.salesActivities || 0}${data.salesActivities ? '' : ' (NO SALES ACTIVITY DATA)'}
-• Days Since Last Engagement: ${data.mostRecentEngagementDays !== null && data.mostRecentEngagementDays !== undefined ? data.mostRecentEngagementDays + ' days ago' : 'NO ENGAGEMENT DATA'}
-• Days Since Last Sales Activity: ${data.mostRecentSalesActivityDays !== null && data.mostRecentSalesActivityDays !== undefined ? data.mostRecentSalesActivityDays + ' days ago' : 'NO SALES ACTIVITY DATA'}
-• Last Sales Activity Type: ${data.lastSalesActivity || 'NO DATA'}
-• Last Engagement Activity Type: ${data.lastEngagementActivity || 'NO DATA'}
+• Last Call Date: ${(data as any)._lastCallDateFormatted || 'No calls recorded'}
 
-${data.engagementActivities === 0 && data.salesActivities === 0 && data.totalCalls === 0 ? '⚠️ THIS ACCOUNT HAS NO RECORDED ENGAGEMENT DATA - Do not make up activity counts or dates' : ''}
+📧 6SENSE SALES ACTIVITIES (Outbound emails your team SENT):
+• Total Sales Activities: ${data.salesActivities || 0}
+• Days Since Last Sales Activity: ${data.mostRecentSalesActivityDays !== null && data.mostRecentSalesActivityDays !== undefined ? data.mostRecentSalesActivityDays + ' days' : 'N/A'}
+• Last Sales Activity Type: ${data.lastSalesActivity || 'N/A'}
 
-✅ DATA SOURCES WE HAVE:
-• Intent Score from 6sense: YES
-• Contacts from database: YES (${data.totalContacts || 0} contacts)
-• Calls from Gong: ${data.totalCalls ? 'YES (' + data.totalCalls + ' calls)' : 'NO'}
-• Engagement Activities from 6sense: ${data.engagementActivities ? 'YES (' + data.engagementActivities + ')' : 'NO'}
-• Sales Activities from 6sense: ${data.salesActivities ? 'YES (' + data.salesActivities + ')' : 'NO'}
+👁️ 6SENSE ENGAGEMENT ACTIVITIES (Prospect responses - opens, clicks, web visits):
+• Total Engagement Activities: ${data.engagementActivities || 0}
+• Days Since Last Engagement: ${data.mostRecentEngagementDays !== null && data.mostRecentEngagementDays !== undefined ? data.mostRecentEngagementDays + ' days' : 'N/A'}
+• Last Engagement Type: ${data.lastEngagementActivity || 'N/A'}
 
-❌ DATA WE DO NOT TRACK (NEVER MENTION):
-• Email opens/clicks - We do not have email tracking
-• Website visits - We do not track web activity
-• Meeting data - We do not track meetings
+👥 CONTACTS:
+• Total Contacts in Database: ${data.totalContacts || 0}
+
+${data.engagementActivities === 0 && data.salesActivities === 0 && data.totalCalls === 0 ? '⚠️ THIS ACCOUNT HAS NO RECORDED ENGAGEMENT DATA' : ''}
+
+✅ DATA SOURCE LEGEND:
+• Gong = Recorded sales calls (we have ${data.totalCalls || 0})
+• 6sense Sales Activities = Emails SENT by our team (we have ${data.salesActivities || 0})
+• 6sense Engagement = Prospect RESPONSES like email opens, web visits (we have ${data.engagementActivities || 0})
+• Intent Score = 6sense buying intent signal (we have ${data.intentScore || 0})
 
 TECHNOLOGY STACK:
 ${data.techStack ? JSON.stringify(data.techStack, null, 2) : 'Not available'}
