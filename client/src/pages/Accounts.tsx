@@ -101,7 +101,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
           bVal = b.name.toLowerCase();
           break;
         case "intentScore":
-          aVal = parseInt(a.intentScore || "0");
+          aVal = parseInt(String(a.intentScore || "0"));
           bVal = parseInt(b.intentScore || "0");
           break;
         case "employees":
@@ -176,9 +176,9 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     );
   }
 
-  const hotCount = filteredAccounts.filter(a => parseInt(a.intentScore || "0") >= 70).length;
+  const hotCount = filteredAccounts.filter(a => parseInt(String(a.intentScore || "0")) >= 70).length;
   const warmCount = filteredAccounts.filter(a => {
-    const score = parseInt(a.intentScore || "0");
+    const score = parseInt(String(a.intentScore || "0"));
     return score >= 40 && score < 70;
   }).length;
 

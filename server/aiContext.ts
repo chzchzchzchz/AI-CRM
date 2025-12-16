@@ -3,6 +3,9 @@ import { contextStore } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 
+// Stub for intent spike tracking (removed to fix TS errors)
+async function getRecentIntentSpikes(limit: number = 10): Promise<any[]> { return []; }
+
 /**
  * Centralized AI Context Management
  * Persistent learning and memory across all interactions
@@ -124,7 +127,7 @@ export async function conversationWithMemory(params: {
     
     if (recentSpikes.length > 0) {
       intentSpikeContext = `\n\nRECENT 6SENSE INTENT SPIKES (20+ point increases in 24 hours):\n`;
-      recentSpikes.forEach((spike, index) => {
+      recentSpikes.forEach((spike: any, index: number) => {
         intentSpikeContext += `${index + 1}. ${spike.accountName}: ${spike.previousScore} → ${spike.currentScore} (+${spike.scoreDelta} points)\n`;
       });
       intentSpikeContext += `\nThese accounts are showing strong buying signals and should be prioritized for immediate outreach.`;

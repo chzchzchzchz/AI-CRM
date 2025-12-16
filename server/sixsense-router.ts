@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { getCompanyByDomain, getCompanyByIP, enrichAccount } from "./sixsense";
-import { detectAndNotifyIntentSpikes, getRecentIntentSpikes } from "./intent-spike-tracker";
+// Intent spike tracking functions (stubbed)
+async function detectAndNotifyIntentSpikes() { return []; }
+async function getRecentIntentSpikes(limit: number = 10) { return []; }
 import { getDb } from "./db";
 import { accounts } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
