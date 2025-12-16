@@ -299,5 +299,7 @@ Return a JSON array of contact IDs sorted by priority (highest first), with reas
   });
 
   const content = response.choices[0].message.content;
-  return JSON.parse(typeof content === 'string' ? content : JSON.stringify(content)).rankings;
+  const rankings = JSON.parse(typeof content === 'string' ? content : JSON.stringify(content)).rankings;
+  // Ensure we only return top 10 contacts
+  return rankings.slice(0, 10);
 }

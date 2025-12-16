@@ -23,12 +23,18 @@ export function AIInsightsTab({ accountId }: AIInsightsTabProps) {
   );
 
   const handleRefresh = async () => {
-    // Set forceRefresh to true to bypass cache
-    setForceRefresh(true);
-    // Invalidate the cache
-    await utils.ai.generateStrategicInsights.invalidate({ accountId });
-    // Reset forceRefresh after a delay so next normal load uses cache
-    setTimeout(() => setForceRefresh(false), 1000);
+    try {
+      // Invalidate the cache first
+      await utils.ai.generateStrategicInsights.invalidate({ accountId });
+      // Set forceRefresh to true to bypass cache
+      setForceRefresh(true);
+      // Refetch the data
+      await utils.ai.generateStrategicInsights.refetch({ accountId, forceRefresh: true });
+      // Reset forceRefresh after a delay so next normal load uses cache
+      setTimeout(() => setForceRefresh(false), 500);
+    } catch (error) {
+      console.error('Failed to refresh insights:', error);
+    }
   };
 
   return (
