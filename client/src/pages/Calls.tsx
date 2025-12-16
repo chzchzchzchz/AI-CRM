@@ -9,7 +9,7 @@ import { Link } from "wouter";
 import {
   Phone, Calendar, Clock, Building2, User, Search,
   ArrowUpDown, ExternalLink, PlayCircle,
-  ChevronDown, ChevronUp, Users, MessageSquare
+  ChevronDown, ChevronUp, Users, MessageSquare, Plus
 } from "lucide-react";
 import {
   Select,
@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Streamdown } from "streamdown";
+import { toast } from "sonner";
 
 type SortField = "callDate" | "duration" | "company";
 type SortOrder = "asc" | "desc";
@@ -147,9 +148,16 @@ export default function CallsEnhanced() {
               </div>
             </div>
           </div>
+          <Button 
+            className="gradient-primary text-white"
+            onClick={() => toast.info("Call logging feature coming soon! For now, calls sync automatically from Gong.")}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Log Call
+          </Button>
         </div>
 
-        {/* Quick Stats */}
+        {/* Stats Cards */}
         <div className="grid gap-6 md:grid-cols-3">
           <Card className="card-elevated border-l-4 border-l-cyan-500">
             <CardHeader className="pb-3">

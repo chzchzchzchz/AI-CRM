@@ -222,7 +222,7 @@
 6. [ ] No "Log Call" button for manual entry
 
 ### Data Quality Issues:
-- 492/709 accounts (69%) have "Unknown" industry
+- 332/709 accounts (47%) have "Unknown" industry (enriched 160 accounts)
 - Many well-known companies (EPAM, PayPal, GitLab, etc.) show Unknown
 
 ### Recommended Next Steps:
