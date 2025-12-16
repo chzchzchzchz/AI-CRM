@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { Sparkles, Send, Loader2, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, Send, Loader2, X, ChevronDown, ChevronUp, Paperclip, FileText, File } from "lucide-react";
 import { Streamdown } from "streamdown";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 interface ContextualAIProps {
   context: "accounts" | "contacts" | "home" | "calls" | "insights" | "account-detail" | "contact-detail";
@@ -56,8 +58,33 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
   const [query, setQuery] = useState("");
   const [response, setResponse] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const chatMutation = trpc.ai.chat.useMutation();
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter(f => {
+      const ext = f.name.split('.').pop()?.toLowerCase();
+      return ['pdf', 'docx', 'pptx', 'txt', 'md', 'csv'].includes(ext || '');
+    });
+    if (validFiles.length < files.length) {
+      toast.error("Some files were skipped. Supported: PDF, DOCX, PPTX, TXT, MD, CSV");
+    }
+    setAttachedFiles(prev => [...prev, ...validFiles]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const getFileIcon = (filename: string) => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (ext === 'pdf') return <FileText className="h-3 w-3" />;
+    return <File className="h-3 w-3" />;
+  };
 
   const handleAsk = async (question?: string) => {
     const q = question || query;
@@ -67,8 +94,17 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
     setResponse(null);
 
     try {
+      // Read file contents if attached
+      let fileContext = "";
+      if (attachedFiles.length > 0) {
+        for (const file of attachedFiles) {
+          const text = await file.text();
+          fileContext += `\n\n--- ${file.name} ---\n${text.slice(0, 10000)}`; // Limit to 10k chars per file
+        }
+      }
+
       const result = await chatMutation.mutateAsync({
-        query: q,
+        query: fileContext ? `${q}\n\nAttached files context:${fileContext}` : q,
         accountId,
         contactId,
       });
@@ -78,6 +114,7 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
     } finally {
       setIsLoading(false);
       setQuery("");
+      setAttachedFiles([]);
     }
   };
 
@@ -92,6 +129,23 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept=".pdf,.docx,.pptx,.txt,.md,.csv"
+                multiple
+                className="hidden"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-purple-400 hover:text-purple-300"
+                title="Attach files (PDF, DOCX, PPTX)"
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -115,6 +169,20 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
                 {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
             </div>
+            {/* Attached Files */}
+            {attachedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {attachedFiles.map((file, i) => (
+                  <Badge key={i} variant="secondary" className="flex items-center gap-1 bg-purple-900/50">
+                    {getFileIcon(file.name)}
+                    <span className="max-w-[100px] truncate text-xs">{file.name}</span>
+                    <button onClick={() => removeFile(i)} className="ml-1 hover:text-red-400">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

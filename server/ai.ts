@@ -300,6 +300,20 @@ Return a JSON array of contact IDs sorted by priority (highest first), with reas
 
   const content = response.choices[0].message.content;
   const rankings = JSON.parse(typeof content === 'string' ? content : JSON.stringify(content)).rankings;
-  // Ensure we only return top 10 contacts
-  return rankings.slice(0, 10);
+  
+  // Map rankings back to full contact objects, sorted by priority
+  const contactMap = new Map(contacts.map(c => [c.id, c]));
+  const sortedContacts = rankings
+    .sort((a: any, b: any) => b.priority - a.priority)
+    .map((r: any) => {
+      const contact = contactMap.get(r.contactId);
+      if (contact) {
+        return { ...contact, aiPriority: r.priority, aiReasoning: r.reasoning };
+      }
+      return null;
+    })
+    .filter(Boolean);
+  
+  // Return top 10 prioritized contacts with full data
+  return sortedContacts.slice(0, 10);
 }

@@ -8,7 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import {
   User, Mail, Linkedin, MapPin, Building2, Search,
-  Filter, ArrowUpDown, ExternalLink, Briefcase, Eye, Users, Sparkles
+  Filter, ArrowUpDown, ExternalLink, Briefcase, Eye, Users, Sparkles, Phone, TrendingUp
 } from "lucide-react";
 import { ContextualAI } from "@/components/ContextualAI";
 import {
@@ -60,9 +60,11 @@ export default function ContactsEnhanced() {
 
   // Filter and sort contacts
   const filteredContacts = useMemo(() => {
-    if (!contacts) return [];
+    // Use prioritized contacts when AI Priority is on
+    const sourceContacts = showAIPriority && prioritizedContacts ? prioritizedContacts : contacts;
+    if (!sourceContacts) return [];
 
-    let filtered = contacts.filter(contact => {
+    let filtered = sourceContacts.filter(contact => {
       const matchesSearch = !searchQuery || 
         (contact.name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
         (contact.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
@@ -76,34 +78,36 @@ export default function ContactsEnhanced() {
       return matchesSearch && matchesCompany && matchesTitle;
     });
 
-    // Sort
-    filtered.sort((a, b) => {
-      let aVal: string, bVal: string;
+    // Skip manual sorting if AI Priority is on (already sorted by priority)
+    if (!showAIPriority) {
+      filtered.sort((a, b) => {
+        let aVal: string, bVal: string;
 
-      switch (sortField) {
-        case "name":
-          aVal = a.name?.toLowerCase() || "";
-          bVal = b.name?.toLowerCase() || "";
-          break;
-        case "title":
-          aVal = a.title?.toLowerCase() || "";
-          bVal = b.title?.toLowerCase() || "";
-          break;
-        case "company":
-          aVal = a.company?.toLowerCase() || "";
-          bVal = b.company?.toLowerCase() || "";
-          break;
-        default:
-          return 0;
-      }
+        switch (sortField) {
+          case "name":
+            aVal = a.name?.toLowerCase() || "";
+            bVal = b.name?.toLowerCase() || "";
+            break;
+          case "title":
+            aVal = a.title?.toLowerCase() || "";
+            bVal = b.title?.toLowerCase() || "";
+            break;
+          case "company":
+            aVal = a.company?.toLowerCase() || "";
+            bVal = b.company?.toLowerCase() || "";
+            break;
+          default:
+            return 0;
+        }
 
-      if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
-      if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
-      return 0;
-    });
+        if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
 
     return filtered;
-  }, [contacts, searchQuery, companyFilter, titleFilter, sortField, sortOrder]);
+  }, [contacts, prioritizedContacts, showAIPriority, searchQuery, companyFilter, titleFilter, sortField, sortOrder]);
 
   const handleToggleSort = useCallback((field: SortField) => {
     if (sortField === field) {
@@ -333,10 +337,31 @@ export default function ContactsEnhanced() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Company */}
-                    <div className="flex items-center gap-2 text-sm">
-                      <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <span className="line-clamp-1 font-medium">{contact.company}</span>
+                    {/* Company with Intent Score */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-sm flex-1 min-w-0">
+                        <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="line-clamp-1 font-medium">{contact.company}</span>
+                      </div>
+                      {(contact as any).accountIntentScore && (
+                        <Badge variant={Number((contact as any).accountIntentScore) >= 70 ? "default" : Number((contact as any).accountIntentScore) >= 40 ? "secondary" : "outline"} className={Number((contact as any).accountIntentScore) >= 70 ? "bg-red-500" : Number((contact as any).accountIntentScore) >= 40 ? "bg-amber-500" : ""}>
+                          {(contact as any).accountIntentScore}%
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Department & Industry */}
+                    <div className="flex flex-wrap gap-2">
+                      {contact.department && (
+                        <Badge variant="outline" className="text-xs">
+                          {contact.department}
+                        </Badge>
+                      )}
+                      {(contact as any).accountIndustry && (contact as any).accountIndustry !== "Unknown" && (
+                        <Badge variant="outline" className="text-xs">
+                          {(contact as any).accountIndustry}
+                        </Badge>
+                      )}
                     </div>
 
                     {/* Email */}
@@ -344,6 +369,14 @@ export default function ContactsEnhanced() {
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Mail className="h-4 w-4 flex-shrink-0" />
                         <span className="line-clamp-1">{contact.email}</span>
+                      </div>
+                    )}
+
+                    {/* Phone */}
+                    {(contact.phone || (contact as any).mobilePhone || (contact as any).directPhone) && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Phone className="h-4 w-4 flex-shrink-0" />
+                        <span className="line-clamp-1">{contact.phone || (contact as any).mobilePhone || (contact as any).directPhone}</span>
                       </div>
                     )}
 
@@ -371,6 +404,7 @@ export default function ContactsEnhanced() {
                         <span className="line-clamp-1">{contact.location}</span>
                       </div>
                     )}
+
 
                     {/* Action Button */}
                     <Button 
