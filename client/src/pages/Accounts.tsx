@@ -82,7 +82,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
 
       let matchesIntent = true;
       if (intentFilter !== "all" && account.intentScore) {
-        const score = parseInt(account.intentScore);
+        const score = parseInt(String(account.intentScore));
         if (intentFilter === "hot") matchesIntent = score >= 70;
         else if (intentFilter === "warm") matchesIntent = score >= 40 && score < 70;
         else if (intentFilter === "cold") matchesIntent = score < 40;
@@ -102,11 +102,11 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
           break;
         case "intentScore":
           aVal = parseInt(String(a.intentScore || "0"));
-          bVal = parseInt(b.intentScore || "0");
+          bVal = parseInt(String(b.intentScore || "0"));
           break;
         case "employees":
-          aVal = parseInt(a.employeeCount?.replace(/[^0-9]/g, "") || "0");
-          bVal = parseInt(b.employeeCount?.replace(/[^0-9]/g, "") || "0");
+          aVal = parseInt(String(a.employeeCount || "0").replace(/[^0-9]/g, "") || "0");
+          bVal = parseInt(String(b.employeeCount || "0").replace(/[^0-9]/g, "") || "0");
           break;
         case "industry":
           aVal = a.industry || "";
@@ -377,7 +377,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredAccounts.map((account) => {
-              const intentBadge = getIntentBadge(account.intentScore || "0");
+              const intentBadge = getIntentBadge(String(account.intentScore || "0"));
               const IntentIcon = intentBadge.icon;
 
               return (

@@ -217,15 +217,15 @@ export default function AccountDetailEnhanced() {
                   <Badge className={intentBadge.color}>
                     {account.intentScore} {intentBadge.label}
                   </Badge>
-                  {account.buyingStage && (
+                  {(account as any).buyingStage && (
                     <Badge variant="outline" className={`
-                      ${account.buyingStage === 'Purchase' ? 'border-green-500 text-green-500' : ''}
-                      ${account.buyingStage === 'Decision' ? 'border-cyan-500 text-cyan-500' : ''}
-                      ${account.buyingStage === 'Consideration' ? 'border-yellow-500 text-yellow-500' : ''}
-                      ${account.buyingStage === 'Awareness' ? 'border-orange-500 text-orange-500' : ''}
-                      ${account.buyingStage === 'Target' ? 'border-gray-500 text-gray-500' : ''}
+                      ${(account as any).buyingStage === 'Purchase' ? 'border-green-500 text-green-500' : ''}
+                      ${(account as any).buyingStage === 'Decision' ? 'border-cyan-500 text-cyan-500' : ''}
+                      ${(account as any).buyingStage === 'Consideration' ? 'border-yellow-500 text-yellow-500' : ''}
+                      ${(account as any).buyingStage === 'Awareness' ? 'border-orange-500 text-orange-500' : ''}
+                      ${(account as any).buyingStage === 'Target' ? 'border-gray-500 text-gray-500' : ''}
                     `}>
-                      {account.buyingStage} Stage
+                      {(account as any).buyingStage} Stage
                     </Badge>
                   )}
                 </div>
@@ -344,7 +344,7 @@ export default function AccountDetailEnhanced() {
               {(() => {
                 // Infer buying stage from intent score if not set
                 const intentNum = parseInt(String(account.intentScore || 0));
-                const stage = account.buyingStage || (
+                const stage = (account as any).buyingStage || (
                   intentNum >= 86 ? 'Purchase' :
                   intentNum >= 70 ? 'Decision' :
                   intentNum >= 50 ? 'Consideration' :
@@ -361,7 +361,7 @@ export default function AccountDetailEnhanced() {
                   <>
                     <div className={`text-2xl font-bold ${stageColor}`}>{stage}</div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {account.buyingStage ? '6sense' : 'Inferred from intent'}
+                      {(account as any).buyingStage ? '6sense' : 'Inferred from intent'}
                     </p>
                   </>
                 );
