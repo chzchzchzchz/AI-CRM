@@ -110,7 +110,7 @@ export default function ContactDetail() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <Navigation />
-      <AIAssistant context={{ type: "contact", id: personId, name: contact.name }} />
+      <AIAssistant context={{ type: "contact", id: personId, name: contact.name || undefined }} />
 
       <div className="container py-12 space-y-8 max-w-7xl">
         {/* Header */}
