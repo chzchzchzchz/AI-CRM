@@ -48,6 +48,8 @@ export const accounts = mysqlTable("accounts", {
   sixsenseProfileFit: varchar("sixsenseProfileFit", { length: 100 }),
   sixsenseSegments: text("sixsenseSegments"), // JSON array of segments
   lastSixsenseSync: timestamp("lastSixsenseSync"),
+  // Salesforce integration fields
+  sfdcAccountId: varchar("sfdcAccountId", { length: 18 }), // Salesforce 18-char ID
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -69,6 +71,10 @@ export const contacts = mysqlTable("contacts", {
   linkedinUrl: varchar("linkedinUrl", { length: 500 }),
   location: varchar("location", { length: 255 }),
   department: varchar("department", { length: 100 }),
+  // Salesforce integration fields
+  sfdcContactId: varchar("sfdcContactId", { length: 18 }), // Salesforce 18-char ID
+  mobilePhone: varchar("mobilePhone", { length: 50 }),
+  directPhone: varchar("directPhone", { length: 50 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

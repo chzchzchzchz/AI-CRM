@@ -3,11 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertCircle, Mail, Linkedin, Phone, TrendingUp, Building2, Users, Flame, Zap, ArrowRight, Sparkles, Target, Calendar } from "lucide-react";
+import { Mail, Linkedin, Phone, TrendingUp, Building2, Users, Flame, Zap, ArrowRight, Sparkles, Target, Calendar } from "lucide-react";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+
 
 /**
  * War Room Dashboard - Beautiful modern redesign
@@ -80,22 +80,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Disclaimer Banner */}
-      <Alert className="m-4 border-amber-500/30 bg-amber-500/5 backdrop-blur-sm">
-        <AlertCircle className="h-4 w-4 text-amber-500" />
-        <AlertDescription className="text-amber-600 dark:text-amber-400 text-sm">
-          <strong>Demo/WIP:</strong> Work-in-progress demo. Some features are stubbed.{" "}
-          <a 
-            href="https://docs.google.com/document/d/1Brbe8bHVwklhSGbPUQG6ymXxonRVyYTCHnxy0UlDjdM/edit?tab=t.0"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline font-semibold hover:text-amber-700 dark:hover:text-amber-300"
-          >
-            View Known Issues
-          </a>
-        </AlertDescription>
-      </Alert>
-
       <div className="container py-12 space-y-8 max-w-7xl">
         {/* Hero Section */}
         <div className="space-y-3">
@@ -150,12 +134,12 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{warmLeads}</div>
-                <p className="text-xs text-muted-foreground mt-1">Intent score 40-69</p>
+                <p className="text-xs text-muted-foreground mt-1">Engagement, intent 70+, or calls</p>
               </CardContent>
             </Card>
           </Link>
 
-          <Link href="/sixsense-analytics">
+          <Link href="/accounts?filter=unworked">
             <Card className="card-elevated border-l-4 border-l-cyan-500 cursor-pointer hover:scale-[1.02] transition-transform">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">6QA Opportunity Gap</CardTitle>
