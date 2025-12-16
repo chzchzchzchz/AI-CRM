@@ -76,12 +76,22 @@ export function calculateVectorScores(data: AccountData): VectorScores {
   engagement += Math.min(25, callCount * 5);
   
   // Recency of last activity (max 25 points)
+  // HARD THRESHOLDS: 7 days = hot, 14 days = warm, 30 days = cooling, 90+ days = cold
   if (data.lastCallDate) {
-    const daysSinceCall = Math.floor((Date.now() - new Date(data.lastCallDate).getTime()) / (1000 * 60 * 60 * 24));
-    if (daysSinceCall <= 7) engagement += 25;
-    else if (daysSinceCall <= 30) engagement += 20;
-    else if (daysSinceCall <= 90) engagement += 10;
-    else engagement += 5;
+    const lastCallTime = new Date(data.lastCallDate).getTime();
+    const daysSinceCall = Math.floor((Date.now() - lastCallTime) / (1000 * 60 * 60 * 24));
+    // Store for later use in prompt
+    (data as any)._daysSinceLastCall = daysSinceCall;
+    (data as any)._lastCallDateFormatted = new Date(data.lastCallDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    
+    if (daysSinceCall <= 7) engagement += 25;      // HOT: Within 1 week
+    else if (daysSinceCall <= 14) engagement += 20; // WARM: Within 2 weeks
+    else if (daysSinceCall <= 30) engagement += 15; // COOLING: Within 1 month
+    else if (daysSinceCall <= 90) engagement += 8;  // COLD: Within 3 months
+    else engagement += 2;                           // DORMANT: 90+ days
+  } else {
+    (data as any)._daysSinceLastCall = null;
+    (data as any)._lastCallDateFormatted = 'Never';
   }
   
   // Engagement activities (max 25 points)
@@ -119,6 +129,65 @@ export function calculateVectorScores(data: AccountData): VectorScores {
   // 3. STRATEGIC VALUE (0-100)
   // Based on: company size, industry fit, tech stack compatibility
   let strategic = 0;
+  
+  // AUTO-ENRICH: If industry is Unknown but we have a known enterprise, infer it
+  let enrichedIndustry = data.industry;
+  if (!enrichedIndustry || enrichedIndustry === 'Unknown' || enrichedIndustry === 'Unknown (Need to Verify)') {
+    // Known enterprise mappings
+    const knownEnterprises: Record<string, string> = {
+      'epam': 'IT Services/Consulting',
+      'accenture': 'IT Services/Consulting',
+      'deloitte': 'Professional Services',
+      'pwc': 'Professional Services',
+      'kpmg': 'Professional Services',
+      'ey': 'Professional Services',
+      'ibm': 'Technology',
+      'microsoft': 'Technology',
+      'google': 'Technology',
+      'amazon': 'Technology/E-commerce',
+      'apple': 'Technology',
+      'meta': 'Technology',
+      'nvidia': 'Technology/Semiconductors',
+      'intel': 'Technology/Semiconductors',
+      'salesforce': 'Technology/SaaS',
+      'oracle': 'Technology/Enterprise Software',
+      'sap': 'Technology/Enterprise Software',
+      'cisco': 'Technology/Networking',
+      'jpmorgan': 'Financial Services',
+      'goldman': 'Financial Services',
+      'morgan stanley': 'Financial Services',
+      'bank of america': 'Financial Services',
+      'wells fargo': 'Financial Services',
+      'citibank': 'Financial Services',
+      'unitedhealth': 'Healthcare',
+      'kaiser': 'Healthcare',
+      'anthem': 'Healthcare/Insurance',
+      'walmart': 'Retail',
+      'target': 'Retail',
+      'costco': 'Retail',
+      'boeing': 'Aerospace/Defense',
+      'lockheed': 'Aerospace/Defense',
+      'raytheon': 'Aerospace/Defense',
+      'northrop': 'Aerospace/Defense',
+    };
+    const companyLower = (data.name || '').toLowerCase();
+    const domainLower = (data.domain || '').toLowerCase().replace('.com', '').replace('.net', '').replace('.org', '');
+    
+    for (const [key, industry] of Object.entries(knownEnterprises)) {
+      if (companyLower.includes(key) || domainLower.includes(key)) {
+        enrichedIndustry = industry;
+        (data as any)._industryEnriched = true;
+        break;
+      }
+    }
+    
+    // If still unknown and large company (1000+), flag but don't leave as "Unknown"
+    if ((!enrichedIndustry || enrichedIndustry === 'Unknown') && (data.employeeCount || 0) >= 1000) {
+      enrichedIndustry = 'Enterprise (Industry TBD)';
+      (data as any)._industryNeedsVerification = true;
+    }
+  }
+  (data as any)._enrichedIndustry = enrichedIndustry;
   
   // Company size (max 40 points)
   const employees = data.employeeCount || 0;
@@ -242,6 +311,38 @@ export function generateDeepAnalysisPrompt(data: AccountData, scores: VectorScor
     ? `${assignedRep.name} (${assignedRep.type === 'enterprise' ? 'Enterprise' : 'Commercial'} - ${assignedRep.territory})`
     : 'Unassigned (territory not mapped)';
   
+  // CONTEXT AWARENESS: Determine account maturity based on engagement history
+  const daysSinceLastCall = (data as any)._daysSinceLastCall;
+  const totalCalls = data.totalCalls || 0;
+  const totalContacts = data.totalContacts || 0;
+  const relationship = data.relationship || 'Prospect';
+  
+  let accountMaturity: 'new' | 'developing' | 'active' | 'deep' | 'stale' = 'new';
+  let maturityContext = '';
+  
+  if (totalCalls >= 5 || (totalCalls >= 2 && totalContacts >= 10)) {
+    accountMaturity = 'deep';
+    maturityContext = 'DEEP IN PIPELINE - Do NOT recommend basic discovery or initial outreach. Focus on deal progression, objection handling, and closing.';
+  } else if (totalCalls >= 2 || (totalCalls >= 1 && totalContacts >= 5)) {
+    accountMaturity = 'active';
+    maturityContext = 'ACTIVE ENGAGEMENT - Account is being worked. Focus on next steps, not initial outreach.';
+  } else if (totalCalls >= 1 || totalContacts >= 3) {
+    accountMaturity = 'developing';
+    maturityContext = 'DEVELOPING - Some engagement exists. Build on existing relationships.';
+  } else if (daysSinceLastCall && daysSinceLastCall > 90) {
+    accountMaturity = 'stale';
+    maturityContext = 'STALE ACCOUNT - Was engaged but dormant 90+ days. May need re-engagement strategy.';
+  } else {
+    accountMaturity = 'new';
+    maturityContext = 'NEW/UNTOUCHED - Initial outreach appropriate.';
+  }
+  
+  // Check if relationship indicates we already have history
+  if (relationship === 'Customer' || relationship === 'Opportunity' || relationship === 'Lost Opp') {
+    accountMaturity = 'deep';
+    maturityContext = `${relationship.toUpperCase()} - This account has CRM history. Check Salesforce for full context before any outreach.`;
+  }
+  
   return `You are an elite B2B sales intelligence analyst. Perform a DEEP analysis of this account and generate tactical, actionable intelligence.
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -260,24 +361,28 @@ VECTOR SCORES (Pre-calculated):
 │ COMPOSITE       │ ${String(scores.composite).padStart(3)}/100 │ TIER ${scores.tier} PRIORITY                                    │
 └─────────────────┴────────┴──────────────────────────────────────────────────┘
 
+⚠️ ACCOUNT MATURITY: ${accountMaturity.toUpperCase()}
+${maturityContext}
+
 ACCOUNT DATA:
 • Company: ${data.name}
 • Domain: ${data.domain || 'Unknown'}
-• Industry: ${data.industry || 'Unknown'}
+• Industry: ${(data as any)._enrichedIndustry || data.industry || 'Unknown'}${(data as any)._industryEnriched ? ' (auto-enriched)' : ''}
 • Employees: ${data.employeeCount?.toLocaleString() || 'Unknown'}
 • Region: ${data.region || 'Unknown'}
-• Relationship: ${data.relationship || 'Prospect'}${data.relationship === 'Lost Opp' ? ' ⚠️ CHECK SALESFORCE FOR HISTORY - data not fully synced' : ''}
-• ASSIGNED REP: ${repAssignment}${data.relationship === 'SFDC Services' ? ' (Auto-assigned based on territory/size - was unassigned)' : ''}
+• Relationship: ${data.relationship || 'Prospect'}${data.relationship === 'Lost Opp' ? ' ⚠️ CHECK SALESFORCE FOR HISTORY' : ''}
+• ASSIGNED REP: ${repAssignment}
 
 INTENT & BUYING SIGNALS:
 • Intent Score: ${data.intentScore || 0}/100
 • Buying Stage: ${inferredStage}
 • Temperature: ${data.temperature || 'Unknown'}
 
-ENGAGEMENT METRICS:
+ENGAGEMENT METRICS (HARD THRESHOLDS):
 • Total Contacts: ${data.totalContacts || 0}
 • Total Calls: ${data.totalCalls || 0}
-• Last Call: ${data.lastCallDate || 'No calls recorded'}
+• Last Call: ${(data as any)._lastCallDateFormatted || 'Never'} (${(data as any)._daysSinceLastCall !== null ? `${(data as any)._daysSinceLastCall} days ago` : 'no calls'})
+• Recency Status: ${(data as any)._daysSinceLastCall === null ? '❄️ NO ENGAGEMENT' : (data as any)._daysSinceLastCall <= 7 ? '🔥 HOT (within 7 days)' : (data as any)._daysSinceLastCall <= 14 ? '🟠 WARM (within 14 days)' : (data as any)._daysSinceLastCall <= 30 ? '🟡 COOLING (within 30 days)' : (data as any)._daysSinceLastCall <= 90 ? '🔵 COLD (30-90 days)' : '❄️ DORMANT (90+ days)'}
 
 TECHNOLOGY STACK:
 ${data.techStack ? JSON.stringify(data.techStack, null, 2) : 'Not available'}
@@ -339,14 +444,31 @@ Three specific conversation starters based on their actual situation:
 | 3 | [Specific action] | AE | [Exact contact name] | [Timeframe] |
 
 ═══════════════════════════════════════════════════════════════════════════════
-CRITICAL RULES
+CRITICAL RULES - FOLLOW EXACTLY
 ═══════════════════════════════════════════════════════════════════════════════
 1. Use EXACT contact names from data - NEVER make up names
-2. Use EXACT numbers from data - NEVER estimate
+2. Use EXACT numbers and dates from data - NEVER estimate or calculate relatively
 3. If data is missing, say "Data not available" - NEVER fabricate
-4. Be tactical and specific - no generic advice
-5. Every recommendation must reference real data points
+4. Be tactical and specific - NO GENERIC SALES ADVICE like "build relationships" or "identify buying center"
+5. Every recommendation must reference SPECIFIC data points from this account
 6. Focus on the company's value prop: phishing-resistant MFA, passwordless auth
+
+⚠️ MATURITY-AWARE RULES (CRITICAL):
+7. If ACCOUNT MATURITY is "DEEP" or "ACTIVE" - DO NOT recommend:
+   - Initial outreach or cold calling
+   - "Assign a dedicated AE" (already done)
+   - Basic discovery questions
+   - "Research the company" (we have the data)
+   Instead focus on: deal progression, objection handling, executive alignment, closing
+
+8. If ACCOUNT MATURITY is "NEW" - Initial outreach IS appropriate
+
+9. RECENCY INTERPRETATION:
+   - "4 days ago" is NOT "excellent recency" unless there's a pattern of engagement
+   - Use the HARD THRESHOLDS provided (7/14/30/90 days)
+   - Single touch 4 days ago with no prior history = COLD START, not active engagement
+
+10. NEVER say "Unknown (Need to Verify)" for major enterprises - use auto-enriched data
 `;
 }
 

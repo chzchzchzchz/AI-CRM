@@ -87,57 +87,41 @@ export default function Home() {
     return score >= 40 && score < 70;
   }).length || 0;
 
-  // Priority actions
-  const urgentActions = [
-    {
-      id: 1,
-      priority: "critical",
-      icon: Flame,
-      title: "MESSAGE John Doe at UKG",
-      description: "Visited pricing page 3x this week",
-      action: "Send Message",
-      accountId: topAccounts[0]?.id,
-      gradient: "from-red-600 to-orange-600"
-    },
-    {
-      id: 2,
-      priority: "high",
-      icon: Zap,
-      title: "EMAIL Sarah Johnson at Nationwide",
-      description: "Hot intent spike on MFA keywords",
-      action: "Draft Email",
-      accountId: topAccounts[1]?.id,
-      gradient: "from-orange-600 to-amber-600"
-    },
-    {
-      id: 3,
-      priority: "medium",
-      icon: Linkedin,
-      title: "CONNECT Mike Chen at Koch",
-      description: "Previous customer, warm intro available",
-      action: "Connect",
-      accountId: topAccounts[2]?.id,
-      gradient: "from-blue-600 to-cyan-600"
-    }
+  // Calculate dynamic weekly focus tasks based on real data
+  const purchaseStageAccounts = accounts?.filter(a => a.sixsenseBuyingStage === 'Purchase').length || 0;
+  const decisionStageAccounts = accounts?.filter(a => a.sixsenseBuyingStage === 'Decision').length || 0;
+  const newIntentSpikes = accounts?.filter(a => parseInt(a.intentScore || '0') >= 80).length || 0;
+  
+  const weeklyFocusTasks = [
+    { id: 'hot', label: `Follow up with hot leads from last week (${hotLeads} accounts)`, count: hotLeads },
+    { id: 'spikes', label: `Review new intent spikes (${newIntentSpikes} accounts)`, count: newIntentSpikes },
+    { id: 'crm', label: 'Update CRM with latest activities', count: 0 },
+    { id: 'demos', label: `Schedule demos for warm leads (${warmLeads > 10 ? Math.floor(warmLeads / 10) : warmLeads} accounts)`, count: warmLeads },
   ];
+
+  // Priority actions - now using real top accounts
+  const urgentActions = topAccounts.slice(0, 3).map((account, index) => {
+    const priorities = ['critical', 'high', 'medium'] as const;
+    const icons = [Flame, Zap, Linkedin];
+    const gradients = ['from-red-600 to-orange-600', 'from-orange-600 to-amber-600', 'from-blue-600 to-cyan-600'];
+    const actions = ['Send Message', 'Draft Email', 'Connect'];
+    const titles = ['ENGAGE', 'EMAIL', 'CONNECT'];
+    
+    return {
+      id: index + 1,
+      priority: priorities[index],
+      icon: icons[index],
+      title: `${titles[index]} ${account.name}`,
+      description: `Intent: ${account.intentScore} | ${account.sixsenseBuyingStage || 'Unknown'} stage | ${account.employeeCount?.toLocaleString() || 'Unknown'} employees`,
+      action: actions[index],
+      accountId: account.id,
+      gradient: gradients[index]
+    };
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Disclaimer Banner */}
-      <Alert className="m-4 border-amber-500/30 bg-amber-500/5 backdrop-blur-sm">
-        <AlertCircle className="h-4 w-4 text-amber-500" />
-        <AlertDescription className="text-amber-600 dark:text-amber-400 text-sm">
-          <strong>Demo/WIP:</strong> Work-in-progress demo. Some features are stubbed.{" "}
-          <a 
-            href="https://docs.google.com/document/d/1Brbe8bHVwklhSGbPUQG6ymXxonRVyYTCHnxy0UlDjdM/edit?tab=t.0"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline font-semibold hover:text-amber-700 dark:hover:text-amber-300"
-          >
-            View Known Issues
-          </a>
-        </AlertDescription>
-      </Alert>
+
 
       <div className="container py-12 space-y-8 max-w-7xl">
         {/* Hero Section */}
@@ -345,30 +329,14 @@ export default function Home() {
                 <CardDescription>Your priorities for the week</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-start gap-3 group">
-                  <Checkbox id="task1" className="mt-1" />
-                  <label htmlFor="task1" className="text-sm font-medium leading-relaxed cursor-pointer group-hover:text-primary transition-colors">
-                    Follow up with hot leads from last week (5 accounts)
-                  </label>
-                </div>
-                <div className="flex items-start gap-3 group">
-                  <Checkbox id="task2" className="mt-1" />
-                  <label htmlFor="task2" className="text-sm font-medium leading-relaxed cursor-pointer group-hover:text-primary transition-colors">
-                    Review new intent spikes (12 accounts)
-                  </label>
-                </div>
-                <div className="flex items-start gap-3 group">
-                  <Checkbox id="task3" className="mt-1" />
-                  <label htmlFor="task3" className="text-sm font-medium leading-relaxed cursor-pointer group-hover:text-primary transition-colors">
-                    Update CRM with latest activities
-                  </label>
-                </div>
-                <div className="flex items-start gap-3 group">
-                  <Checkbox id="task4" className="mt-1" />
-                  <label htmlFor="task4" className="text-sm font-medium leading-relaxed cursor-pointer group-hover:text-primary transition-colors">
-                    Schedule demos for warm leads (3 accounts)
-                  </label>
-                </div>
+                {weeklyFocusTasks.map((task, index) => (
+                  <div key={task.id} className="flex items-start gap-3 group">
+                    <Checkbox id={`task${index}`} className="mt-1" />
+                    <label htmlFor={`task${index}`} className="text-sm font-medium leading-relaxed cursor-pointer group-hover:text-primary transition-colors">
+                      {task.label}
+                    </label>
+                  </div>
+                ))}
               </CardContent>
             </Card>
 

@@ -40,9 +40,19 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
     console.error('Failed to parse rawData:', e);
   }
   
+  // Infer buying stage from intent score if not set
+  const intentScore = account.intentScore || 0;
+  const inferredBuyingStage = 
+    intentScore >= 86 ? 'Purchase' :
+    intentScore >= 70 ? 'Decision' :
+    intentScore >= 50 ? 'Consideration' :
+    intentScore >= 20 ? 'Awareness' :
+    'Target';
+  
   const sixsenseData = {
-    buyingStage: account.sixsenseBuyingStage || rawData['Buying Stage'] || rawData['6sense Buying Stage'],
-    profileFit: account.sixsenseProfileFit || rawData['Profile Fit'] || rawData['6sense Profile Fit'],
+    buyingStage: account.sixsenseBuyingStage || rawData['Buying Stage'] || rawData['6sense Buying Stage'] || inferredBuyingStage,
+    buyingStageSource: account.sixsenseBuyingStage ? '6sense' : (rawData['Buying Stage'] || rawData['6sense Buying Stage']) ? 'rawData' : 'inferred',
+    profileFit: account.sixsenseProfileFit || rawData['Profile Fit'] || rawData['6sense Profile Fit'] || 'Unknown',
     segments: account.sixsenseSegments,
     mfaSolution: rawData['MFA Solution'],
     ssoProvider: rawData['SSO Provider'],
@@ -159,11 +169,14 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50">
                   <div className="text-sm text-muted-foreground mb-1">Buying Stage</div>
-                  <div className="text-xl font-semibold">{sixsenseData.buyingStage || 'Unknown'}</div>
+                  <div className="text-xl font-semibold">{sixsenseData.buyingStage}</div>
+                  {sixsenseData.buyingStageSource === 'inferred' && (
+                    <div className="text-xs text-muted-foreground">Inferred from intent</div>
+                  )}
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50">
                   <div className="text-sm text-muted-foreground mb-1">Profile Fit</div>
-                  <div className="text-xl font-semibold">{sixsenseData.profileFit || 'Unknown'}</div>
+                  <div className="text-xl font-semibold">{sixsenseData.profileFit}</div>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50">
                   <div className="text-sm text-muted-foreground mb-1">Relationship</div>
@@ -295,16 +308,25 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
             <CardContent>
               {overviewQuery.isLoading ? (
                 <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Generating AI analysis...
+                  </div>
                   <div className="h-4 bg-muted rounded animate-pulse" />
                   <div className="h-4 bg-muted rounded animate-pulse w-5/6" />
                   <div className="h-4 bg-muted rounded animate-pulse w-4/6" />
                 </div>
-              ) : overviewQuery.data ? (
+              ) : overviewQuery.isError ? (
+                <div className="text-red-500 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Failed to load summary. <Button variant="link" className="p-0 h-auto" onClick={() => overviewQuery.refetch()}>Retry</Button>
+                </div>
+              ) : overviewQuery.data?.summary ? (
                 <div className="prose prose-sm dark:prose-invert max-w-none">
                   <Streamdown>{overviewQuery.data.summary}</Streamdown>
                 </div>
               ) : (
-                <p className="text-muted-foreground">No summary available</p>
+                <p className="text-muted-foreground">No summary available. Click refresh to generate.</p>
               )}
             </CardContent>
           </CollapsibleContent>

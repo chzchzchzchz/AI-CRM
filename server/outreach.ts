@@ -81,6 +81,34 @@ export const outreachRouter = router({
         } catch (e) {}
       }
 
+      // Parse rawData for additional intelligence
+      let rawData: Record<string, any> = {};
+      try {
+        if (account.rawData) {
+          rawData = typeof account.rawData === 'string' ? JSON.parse(account.rawData) : account.rawData;
+        }
+      } catch (e) {}
+
+      // Add 6sense intelligence to context
+      if (rawData['SSO Provider']) {
+        accountContext += `\nCurrent SSO: ${rawData['SSO Provider']}`;
+      }
+      if (rawData['MFA Solution']) {
+        accountContext += `\nCurrent MFA: ${rawData['MFA Solution']}`;
+      }
+      if (rawData['Security Incidents & Breaches']) {
+        accountContext += `\nRecent Security Issues: ${rawData['Security Incidents & Breaches']}`;
+      }
+      if (rawData['Company Cybersecurity Insights']) {
+        accountContext += `\nCybersecurity Context: ${rawData['Company Cybersecurity Insights'].slice(0, 500)}`;
+      }
+      if (rawData['ABM Intelligence Brief']) {
+        accountContext += `\nABM Brief: ${rawData['ABM Intelligence Brief'].slice(0, 500)}`;
+      }
+      if (rawData['Zero Trust']) {
+        accountContext += `\nZero Trust Status: ${rawData['Zero Trust']}`;
+      }
+
       // Contact context
       let contactContext = "";
       if (contact) {
