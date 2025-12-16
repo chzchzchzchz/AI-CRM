@@ -426,7 +426,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
                 </div>
               ) : insightsQuery.data ? (
                 <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <Streamdown>{insightsQuery.data.insights}</Streamdown>
+                  <Streamdown>{(insightsQuery.data as any).insights || insightsQuery.data.recommendations}</Streamdown>
                 </div>
               ) : (
                 <p className="text-muted-foreground">No insights available</p>
