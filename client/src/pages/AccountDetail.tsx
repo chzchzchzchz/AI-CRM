@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { TechStackAnalysis } from "@/components/TechStackAnalysis";
-import { OverviewTab } from "@/components/OverviewTab";
-import { ResearchTab } from "@/components/ResearchTab";
-import { AIInsightsTab } from "@/components/AIInsightsTab";
+import { IntelligenceTab } from "@/components/IntelligenceTab";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -373,18 +371,16 @@ export default function AccountDetailEnhanced() {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs defaultValue="intelligence" className="space-y-6">
           <TabsList className="bg-card border">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="intelligence">Intelligence</TabsTrigger>
             <TabsTrigger value="contacts">Contacts ({people?.length || 0})</TabsTrigger>
             <TabsTrigger value="calls">Calls ({gongCalls?.length || 0})</TabsTrigger>
-            <TabsTrigger value="research">Research</TabsTrigger>
-            <TabsTrigger value="ai">AI Insights</TabsTrigger>
           </TabsList>
 
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            <OverviewTab accountId={accountId} account={account} />
+          {/* Intelligence Tab */}
+          <TabsContent value="intelligence" className="space-y-6">
+            <IntelligenceTab accountId={accountId} account={account} />
           </TabsContent>
 
           {/* Contacts Tab */}
@@ -527,15 +523,7 @@ export default function AccountDetailEnhanced() {
             )}
           </TabsContent>
 
-          {/* Research Tab */}
-          <TabsContent value="research" className="space-y-6">
-            <ResearchTab accountId={accountId} />
-          </TabsContent>
 
-          {/* AI Insights Tab */}
-          <TabsContent value="ai" className="space-y-6">
-            <AIInsightsTab accountId={accountId} />
-          </TabsContent>
         </Tabs>
       </div>
     </div>
