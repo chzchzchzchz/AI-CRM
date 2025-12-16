@@ -10,6 +10,7 @@ import {
   User, Mail, Linkedin, MapPin, Building2, Search,
   Filter, ArrowUpDown, ExternalLink, Briefcase, Eye, Users, Sparkles
 } from "lucide-react";
+import { ContextualAI } from "@/components/ContextualAI";
 import {
   Select,
   SelectContent,
@@ -171,6 +172,9 @@ export default function ContactsEnhanced() {
             </Button>
           </div>
         </div>
+
+        {/* AI Assistant Bar */}
+        <ContextualAI context="contacts" placeholder="Ask AI: Who are the key decision makers?" />
 
         {/* Quick Stats */}
         <div className="grid gap-6 md:grid-cols-3">
