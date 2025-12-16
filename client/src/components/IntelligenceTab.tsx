@@ -235,7 +235,20 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
                     Recent Security Incidents
                   </h4>
                   <div className="p-3 rounded-lg border bg-red-500/10 border-red-500/30">
-                    <p className="text-sm">{sixsenseData.securityIncidents}</p>
+                    {(() => {
+                      // Try to parse JSON if it's a JSON string
+                      let incidents = sixsenseData.securityIncidents;
+                      try {
+                        if (typeof incidents === 'string' && incidents.startsWith('{')) {
+                          const parsed = JSON.parse(incidents);
+                          if (parsed.description) {
+                            return <p className="text-sm">{parsed.description}</p>;
+                          }
+                        }
+                      } catch (e) {}
+                      // Fallback to raw string
+                      return <p className="text-sm">{String(incidents)}</p>;
+                    })()}
                   </div>
                 </div>
               )}

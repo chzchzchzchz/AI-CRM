@@ -63,10 +63,10 @@ export default function ContactsEnhanced() {
 
     let filtered = contacts.filter(contact => {
       const matchesSearch = !searchQuery || 
-        contact.name?.toLowerCase() || "".includes(searchQuery.toLowerCase()) ||
-        contact.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        contact.company?.toLowerCase() || "".includes(searchQuery.toLowerCase()) ||
-        contact.email?.toLowerCase().includes(searchQuery.toLowerCase());
+        (contact.name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+        (contact.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+        (contact.company?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+        (contact.email?.toLowerCase() || "").includes(searchQuery.toLowerCase());
 
       const matchesCompany = companyFilter === "all" || contact.company === companyFilter;
       const matchesTitle = titleFilter === "all" || 
