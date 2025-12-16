@@ -10,6 +10,7 @@ import {
   Building2, Users, MapPin, TrendingUp, ExternalLink, Search,
   Filter, ArrowUpDown, Target, Zap, Eye, Flame, Mail, Sparkles
 } from "lucide-react";
+import { ContextualAI } from "@/components/ContextualAI";
 import {
   Select,
   SelectContent,
@@ -209,6 +210,9 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
             </Link>
           </Button>
         </div>
+
+        {/* AI Assistant Bar */}
+        <ContextualAI context="accounts" placeholder="Ask AI: Which accounts have the highest intent?" />
 
         {/* Quick Stats - All Clickable */}
         <div className="grid gap-6 md:grid-cols-3">

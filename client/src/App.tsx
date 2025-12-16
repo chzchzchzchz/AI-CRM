@@ -24,6 +24,7 @@ const SixsenseSync = lazyLoad(() => import("./pages/SixsenseSync"));
 const SixsenseAnalytics = lazyLoad(() => import("./pages/SixsenseAnalytics"));
 import { GlobalSearch } from "./components/GlobalSearch";
 import { GlobalAIChat } from "./components/GlobalAIChat";
+import { SupportBot } from "./components/SupportBot";
 import { useState, useEffect } from "react";
 
 function Router() {
@@ -80,6 +81,7 @@ function App() {
           <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
           <Router />
           <GlobalAIChat />
+          <SupportBot />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

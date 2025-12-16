@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Linkedin, Phone, TrendingUp, Building2, Users, Flame, Zap, ArrowRight, Sparkles, Target, Calendar } from "lucide-react";
+import { ContextualAI } from "@/components/ContextualAI";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
@@ -97,6 +98,9 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* AI Assistant Bar */}
+        <ContextualAI context="home" placeholder="Ask AI: What should I prioritize today?" />
 
         {/* Key Stats - Beautiful Cards - All Clickable */}
         <div className="grid gap-6 md:grid-cols-4">
