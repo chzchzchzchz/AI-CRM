@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Sparkles, Building2, Loader2, Copy, Check, Search, Users, Mail, ExternalLink, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { Sparkles, Building2, Loader2, Copy, Check, Search, Users, Mail, ExternalLink, ChevronDown, ChevronUp, FileText, Paperclip, X, File } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
@@ -26,6 +26,27 @@ export default function Outreach() {
   const [generatedEmail, setGeneratedEmail] = useState("");
   const [isStrategyOpen, setIsStrategyOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  
+  // File attachments
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter(f => {
+      const ext = f.name.split('.').pop()?.toLowerCase();
+      return ['pdf', 'docx', 'pptx', 'txt', 'md', 'csv'].includes(ext || '');
+    });
+    if (validFiles.length < files.length) {
+      toast.error("Some files were skipped. Supported: PDF, DOCX, PPTX, TXT, MD, CSV");
+    }
+    setAttachedFiles(prev => [...prev, ...validFiles]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const generateMutation = trpc.outreach.generateEmail.useMutation({
     onSuccess: (data) => {
@@ -49,16 +70,33 @@ export default function Outreach() {
     },
   });
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!selectedAccountId) {
       toast.error("Please select an account first");
       return;
     }
 
+    // Read file contents if attached
+    let fileContext = "";
+    if (attachedFiles.length > 0) {
+      for (const file of attachedFiles) {
+        try {
+          const text = await file.text();
+          fileContext += `\n\n--- ${file.name} ---\n${text.slice(0, 10000)}`;
+        } catch (e) {
+          console.error(`Failed to read ${file.name}`);
+        }
+      }
+    }
+
+    const fullContext = fileContext 
+      ? `${context || ''}\n\nAttached reference materials:${fileContext}`
+      : context || undefined;
+
     generateMutation.mutate({
       accountIds: [selectedAccountId],
       contactIds: selectedContactId ? [selectedContactId] : [],
-      prompt: context || undefined,
+      prompt: fullContext,
     });
   };
 
@@ -310,15 +348,51 @@ export default function Outreach() {
             <Card className="card-elevated">
               <CardHeader>
                 <CardTitle className="text-white">3. Add Context (Optional)</CardTitle>
-                <CardDescription>Pain points, goals, or specific messaging angle</CardDescription>
+                <CardDescription>Pain points, goals, messaging angle, or attach reference docs</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <Textarea
                   placeholder="e.g., Focus on phishing prevention, mention recent breaches, emphasize passwordless benefits..."
                   value={context}
                   onChange={(e) => setContext(e.target.value)}
                   className="min-h-[100px] bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
                 />
+                
+                {/* File Attachments */}
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept=".pdf,.docx,.pptx,.txt,.md,.csv"
+                    multiple
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                  >
+                    <Paperclip className="h-4 w-4 mr-2" />
+                    Attach Reference Docs (PDF, DOCX, PPTX)
+                  </Button>
+                  
+                  {attachedFiles.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {attachedFiles.map((file, i) => (
+                        <Badge key={i} variant="secondary" className="flex items-center gap-1 bg-slate-800">
+                          <File className="h-3 w-3" />
+                          <span className="max-w-[150px] truncate text-xs">{file.name}</span>
+                          <button onClick={() => removeFile(i)} className="ml-1 hover:text-red-400">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-slate-500">Attach case studies, product docs, or competitor info to enhance the email</p>
+                </div>
               </CardContent>
             </Card>
 

@@ -170,7 +170,7 @@ export async function getAllPeople() {
     return [];
   }
 
-  // Join with accounts to get company information
+  // Join with accounts to get company information AND account-level engagement data
   const results = await db
     .select({
       id: contacts.id,
@@ -185,10 +185,21 @@ export async function getAllPeople() {
       linkedinUrl: contacts.linkedinUrl,
       location: contacts.location,
       department: contacts.department,
+      sfdcContactId: contacts.sfdcContactId,
+      mobilePhone: contacts.mobilePhone,
+      directPhone: contacts.directPhone,
       createdAt: contacts.createdAt,
       updatedAt: contacts.updatedAt,
+      // Account data
       company: accounts.name,
       companyDomain: accounts.domain,
+      accountIntentScore: accounts.intentScore,
+      accountIndustry: accounts.industry,
+      accountRegion: accounts.region,
+      accountEmployeeCount: accounts.employeeCount,
+      accountTechStack: accounts.techStack,
+      accountSecurityStack: accounts.securityStack,
+      accountSfdcAccountId: accounts.sfdcAccountId,
     })
     .from(contacts)
     .leftJoin(accounts, eq(contacts.accountId, accounts.id))
