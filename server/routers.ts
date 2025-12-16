@@ -394,7 +394,46 @@ export const appRouter = router({
           });
 
           const summary = response.choices[0]?.message?.content;
-          const summaryText = typeof summary === 'string' ? summary : 'Unable to generate summary';
+          let summaryText = typeof summary === 'string' ? summary : 'Unable to generate summary';
+          
+          // POST-PROCESS: Remove hallucinated content that doesn't exist in our data
+          // The LLM keeps making up email/activity data we don't track
+          const hallucinations = [
+            // Activity counts
+            /Engagement Activities:\s*\d+/gi,
+            /\d+\s*Activities/gi,
+            /\d+\s*QA/gi,
+            /\d+\s*Qualified Activities/gi,
+            /\d+\s*total engagement/gi,
+            /\d+\s*engagement activities/gi,
+            /\d+\s*sales activities/gi,
+            /\d+\s*recorded activities/gi,
+            // Email mentions
+            /Email Send\s*\([^)]*\)/gi,
+            /Email Send\s*\d+\s*days ago/gi,
+            /Email Open\s*\([^)]*\)/gi,
+            /Last Sales Activity:\s*Email[^.]*\./gi,
+            /Recent Activity:.*?Email[^.]*\./gi,
+            /last activity was only \d+ days ago/gi,
+            // Bombora mentions
+            /Latest Engagement:\s*Bombora[^.]*\./gi,
+            /Bombora\s*\([^)]*\)/gi,
+            /Bombora data[^.]*\./gi,
+            /Bombora\/6sense data[^.]*\./gi,
+            // Generic activity claims
+            /recent engagement activity[^.]*\./gi,
+            /recent sales activity[^.]*\./gi,
+            /significant historical engagement[^.]*\./gi,
+          ];
+          
+          for (const pattern of hallucinations) {
+            summaryText = summaryText.replace(pattern, '[DATA NOT AVAILABLE]');
+          }
+          
+          // Replace entire rows in tables that mention hallucinated data
+          summaryText = summaryText.replace(/\|[^|]*Engagement Activities[^|]*\|[^|]*\d+[^|]*\|[^|]*\|/gi, '| Engagement Activities | [DATA NOT TRACKED] | [NO ENGAGEMENT DATA AVAILABLE] |');
+          summaryText = summaryText.replace(/\|[^|]*Sales Activity[^|]*\|[^|]*\d+[^|]*\|[^|]*\|/gi, '| Sales Activity | [DATA NOT TRACKED] | [NO SALES ACTIVITY DATA AVAILABLE] |');
+          summaryText = summaryText.replace(/\|[^|]*Last Activity[^|]*\|[^|]*Bombora[^|]*\|[^|]*\|/gi, '| Last Activity | [DATA NOT TRACKED] | [NO ACTIVITY TRACKING AVAILABLE] |');
 
           // Store in cache
           await updateAccount(input.accountId, {
@@ -509,13 +548,45 @@ export const appRouter = router({
         const people = await getContactsByAccountId(input.accountId);
         const calls = await getGongCallsByAccountId(input.accountId);
 
+        // AGGREGATE ENGAGEMENT DATA FROM CONTACTS (this is where the real data lives!)
+        const engagementData = people.reduce((acc: any, p: any) => {
+          acc.totalEngagementActivities += (p.engagementActivities || 0);
+          acc.totalSalesActivities += (p.salesActivities || 0);
+          if (p.daysSinceLastEngagement !== null && p.daysSinceLastEngagement !== undefined) {
+            if (acc.mostRecentEngagementDays === null || p.daysSinceLastEngagement < acc.mostRecentEngagementDays) {
+              acc.mostRecentEngagementDays = p.daysSinceLastEngagement;
+            }
+          }
+          if (p.daysSinceLastSalesActivity !== null && p.daysSinceLastSalesActivity !== undefined) {
+            if (acc.mostRecentSalesActivityDays === null || p.daysSinceLastSalesActivity < acc.mostRecentSalesActivityDays) {
+              acc.mostRecentSalesActivityDays = p.daysSinceLastSalesActivity;
+              acc.lastSalesActivity = p.lastSalesActivity;
+            }
+          }
+          if (p.lastEngagementActivity) {
+            acc.lastEngagementActivity = p.lastEngagementActivity;
+          }
+          return acc;
+        }, {
+          totalEngagementActivities: 0,
+          totalSalesActivities: 0,
+          mostRecentEngagementDays: null as number | null,
+          mostRecentSalesActivityDays: null as number | null,
+          lastSalesActivity: null as string | null,
+          lastEngagementActivity: null as string | null
+        });
+
         // Prepare contact list with real names and titles (TOP 10 ONLY)
         const contactList = people.slice(0, 10).map((p: any) => ({
           name: p.name,
           title: p.title,
           email: p.email,
           department: p.department,
-          managementLevel: p.managementLevel
+          managementLevel: p.managementLevel,
+          engagementActivities: p.engagementActivities,
+          salesActivities: p.salesActivities,
+          daysSinceLastEngagement: p.daysSinceLastEngagement,
+          lastSalesActivity: p.lastSalesActivity
         }));
 
         // Parse tech stack data
@@ -549,7 +620,13 @@ export const appRouter = router({
           totalContacts: people.length,
           totalCalls: calls.length,
           lastCallDate: calls[0]?.callDate || undefined,
-          engagementActivities: (account as any).engagementActivities || 0,
+          // REAL ENGAGEMENT DATA FROM CONTACTS TABLE
+          engagementActivities: engagementData.totalEngagementActivities,
+          salesActivities: engagementData.totalSalesActivities,
+          mostRecentEngagementDays: engagementData.mostRecentEngagementDays,
+          mostRecentSalesActivityDays: engagementData.mostRecentSalesActivityDays,
+          lastSalesActivity: engagementData.lastSalesActivity,
+          lastEngagementActivity: engagementData.lastEngagementActivity,
           techStack: techStackData,
           securityStack: securityStackData,
           contacts: contactList,

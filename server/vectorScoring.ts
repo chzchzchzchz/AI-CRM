@@ -31,11 +31,16 @@ export interface AccountData {
   buyingStage?: string;
   temperature?: string;
   
-  // Engagement data
+  // Engagement data (aggregated from contacts table)
   totalContacts?: number;
   totalCalls?: number;
   lastCallDate?: Date | string;
   engagementActivities?: number;
+  salesActivities?: number;
+  mostRecentEngagementDays?: number | null;
+  mostRecentSalesActivityDays?: number | null;
+  lastSalesActivity?: string | null;
+  lastEngagementActivity?: string | null;
   
   // Tech stack
   techStack?: any;
@@ -343,7 +348,41 @@ export function generateDeepAnalysisPrompt(data: AccountData, scores: VectorScor
     maturityContext = `${relationship.toUpperCase()} - This account has CRM history. Check Salesforce for full context before any outreach.`;
   }
   
-  return `You are an elite B2B sales intelligence analyst. Perform a DEEP analysis of this account and generate tactical, actionable intelligence.
+  // Build the available data sources list
+  const availableDataSources = [
+    'Intent Score (from 6sense)',
+    'Contacts (from database)',
+    data.totalCalls && data.totalCalls > 0 ? `Calls (${data.totalCalls} recorded)` : null,
+    data.techStack ? 'Tech Stack' : null,
+    data.securityStack ? 'Security Stack' : null
+  ].filter(Boolean).join(', ');
+
+  const unavailableData = [
+    'Email tracking (NOT AVAILABLE)',
+    'Website visits (NOT AVAILABLE)',
+    'Meeting data (NOT AVAILABLE)',
+    'Engagement activities count (NOT AVAILABLE)',
+    'Last sales activity (NOT AVAILABLE - we only track CALLS)'
+  ].join(', ');
+
+  return `
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ ⚠️  CRITICAL DATA INTEGRITY WARNING - READ BEFORE ANALYSIS                   ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║ AVAILABLE DATA: ${availableDataSources.padEnd(60)}║
+║ NOT AVAILABLE: Email tracking, website visits, meetings, engagement counts   ║
+║                                                                              ║
+║ YOU MUST NOT:                                                                ║
+║ • Mention "Email Send" or "Email Open" - WE DO NOT TRACK EMAILS             ║
+║ • Mention "Engagement Activities: X" - WE DO NOT HAVE THIS DATA             ║
+║ • Mention "Last Sales Activity" unless it's a CALL from our data            ║
+║ • Mention "Website Visit" or "Page View" - WE DO NOT TRACK THIS             ║
+║ • Make up any metrics not explicitly provided below                          ║
+║                                                                              ║
+║ IF TOTAL CALLS = 0: Say "NO RECORDED SALES ENGAGEMENT" - do not fabricate   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+You are an elite B2B sales intelligence analyst. Perform a DEEP analysis of this account and generate tactical, actionable intelligence.
 
 ═══════════════════════════════════════════════════════════════════════════════
 ACCOUNT: ${data.name}
@@ -378,11 +417,30 @@ INTENT & BUYING SIGNALS:
 • Buying Stage: ${inferredStage}
 • Temperature: ${data.temperature || 'Unknown'}
 
-ENGAGEMENT METRICS (HARD THRESHOLDS):
-• Total Contacts: ${data.totalContacts || 0}
-• Total Calls: ${data.totalCalls || 0}
-• Last Call: ${(data as any)._lastCallDateFormatted || 'Never'} (${(data as any)._daysSinceLastCall !== null ? `${(data as any)._daysSinceLastCall} days ago` : 'no calls'})
-• Recency Status: ${(data as any)._daysSinceLastCall === null ? '❄️ NO ENGAGEMENT' : (data as any)._daysSinceLastCall <= 7 ? '🔥 HOT (within 7 days)' : (data as any)._daysSinceLastCall <= 14 ? '🟠 WARM (within 14 days)' : (data as any)._daysSinceLastCall <= 30 ? '🟡 COOLING (within 30 days)' : (data as any)._daysSinceLastCall <= 90 ? '🔵 COLD (30-90 days)' : '❄️ DORMANT (90+ days)'}
+ENGAGEMENT DATA (REAL DATA FROM DATABASE):
+• Total Contacts in Database: ${data.totalContacts || 0}
+• Total Calls Recorded: ${data.totalCalls || 0}
+• Last Call Date: ${(data as any)._lastCallDateFormatted || 'NEVER - NO CALLS RECORDED'}
+• Total Engagement Activities: ${data.engagementActivities || 0}${data.engagementActivities ? '' : ' (NO ENGAGEMENT DATA)'}
+• Total Sales Activities: ${data.salesActivities || 0}${data.salesActivities ? '' : ' (NO SALES ACTIVITY DATA)'}
+• Days Since Last Engagement: ${data.mostRecentEngagementDays !== null && data.mostRecentEngagementDays !== undefined ? data.mostRecentEngagementDays + ' days ago' : 'NO ENGAGEMENT DATA'}
+• Days Since Last Sales Activity: ${data.mostRecentSalesActivityDays !== null && data.mostRecentSalesActivityDays !== undefined ? data.mostRecentSalesActivityDays + ' days ago' : 'NO SALES ACTIVITY DATA'}
+• Last Sales Activity Type: ${data.lastSalesActivity || 'NO DATA'}
+• Last Engagement Activity Type: ${data.lastEngagementActivity || 'NO DATA'}
+
+${data.engagementActivities === 0 && data.salesActivities === 0 && data.totalCalls === 0 ? '⚠️ THIS ACCOUNT HAS NO RECORDED ENGAGEMENT DATA - Do not make up activity counts or dates' : ''}
+
+✅ DATA SOURCES WE HAVE:
+• Intent Score from 6sense: YES
+• Contacts from database: YES (${data.totalContacts || 0} contacts)
+• Calls from Gong: ${data.totalCalls ? 'YES (' + data.totalCalls + ' calls)' : 'NO'}
+• Engagement Activities from 6sense: ${data.engagementActivities ? 'YES (' + data.engagementActivities + ')' : 'NO'}
+• Sales Activities from 6sense: ${data.salesActivities ? 'YES (' + data.salesActivities + ')' : 'NO'}
+
+❌ DATA WE DO NOT TRACK (NEVER MENTION):
+• Email opens/clicks - We do not have email tracking
+• Website visits - We do not track web activity
+• Meeting data - We do not track meetings
 
 TECHNOLOGY STACK:
 ${data.techStack ? JSON.stringify(data.techStack, null, 2) : 'Not available'}
@@ -469,6 +527,23 @@ CRITICAL RULES - FOLLOW EXACTLY
    - Single touch 4 days ago with no prior history = COLD START, not active engagement
 
 10. NEVER say "Unknown (Need to Verify)" for major enterprises - use auto-enriched data
+
+11. DATA INTEGRITY - CRITICAL:
+    - We have CALLS data ONLY - NO email tracking, NO meeting data, NO website visits
+    - NEVER mention "Email Send", "Email Open", "Meeting Scheduled", or "Website Visit" - we don't track these
+    - The ONLY engagement data available is: Calls (date, duration, participants)
+    - If you see "Total Calls: 0" - say "NO RECORDED ENGAGEMENT" not "recent email activity"
+    - NEVER fabricate activities that don't exist in the data
+
+12. INDUSTRY HANDLING:
+    - If industry shows "Unknown" for a Fortune 500 or well-known enterprise, AUTO-FILL it
+    - EPAM = IT Services/Consulting
+    - Never output "Unknown (Need to Verify)" - either know it or say "Industry: Not in database"
+
+13. ACCOUNT OWNER HANDLING:
+    - "SFDC Services" as owner means it's in a system queue, NOT that it needs assignment
+    - Check the ASSIGNED REP field for actual territory assignment
+    - NEVER recommend "assign a dedicated AE" if ASSIGNED REP shows a name
 `;
 }
 
