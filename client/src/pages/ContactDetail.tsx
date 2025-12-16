@@ -163,12 +163,20 @@ export default function ContactDetail() {
             </div>
           </div>
 
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 flex-shrink-0 flex-wrap">
+            {contact.phone && (
+              <Button variant="outline" className="border-green-500 text-green-600 hover:bg-green-50" asChild>
+                <a href={`tel:${contact.phone}`}>
+                  <Phone className="mr-2 h-4 w-4" />
+                  Call
+                </a>
+              </Button>
+            )}
             {contact.email && (
               <Button className="gradient-primary text-white" asChild>
                 <a href={`mailto:${contact.email}`}>
                   <Mail className="mr-2 h-4 w-4" />
-                  Send Email
+                  Email
                 </a>
               </Button>
             )}
@@ -177,7 +185,14 @@ export default function ContactDetail() {
                 <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer">
                   <Linkedin className="mr-2 h-4 w-4" />
                   LinkedIn
-                  <ExternalLink className="ml-2 h-3 w-3" />
+                </a>
+              </Button>
+            )}
+            {(contact as any).sfdcContactId && (
+              <Button variant="outline" className="border-blue-500 text-blue-600 hover:bg-blue-50" asChild>
+                <a href={`https://company.lightning.force.com/lightning/r/Contact/${(contact as any).sfdcContactId}/view`} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Salesforce
                 </a>
               </Button>
             )}

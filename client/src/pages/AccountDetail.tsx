@@ -268,13 +268,29 @@ export default function AccountDetailEnhanced() {
             </div>
           </div>
 
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 flex-shrink-0 flex-wrap">
             <Button className="gradient-primary text-white" asChild>
               <Link href="/outreach">
                 <Mail className="mr-2 h-4 w-4" />
                 Generate Outreach
               </Link>
             </Button>
+            {account.linkedinUrl && (
+              <Button variant="outline" asChild>
+                <a href={account.linkedinUrl} target="_blank" rel="noopener noreferrer">
+                  <Linkedin className="mr-2 h-4 w-4" />
+                  LinkedIn
+                </a>
+              </Button>
+            )}
+            {(account as any).sfdcAccountId && (
+              <Button variant="outline" className="border-blue-500 text-blue-600 hover:bg-blue-50" asChild>
+                <a href={`https://company.lightning.force.com/lightning/r/Account/${(account as any).sfdcAccountId}/view`} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Salesforce
+                </a>
+              </Button>
+            )}
           </div>
         </div>
 

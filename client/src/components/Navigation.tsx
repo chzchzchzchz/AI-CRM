@@ -19,7 +19,7 @@ export function Navigation({ onSearchClick }: NavigationProps) {
     { path: "/calls", label: "Calls", icon: Phone },
     { path: "/insights", label: "Insights", icon: BarChart3 },
     { path: "/outreach", label: "Outreach", icon: Send },
-    { path: "/sixsense-analytics", label: "6sense", icon: BarChart3 },
+
     // Admin-only pages
     { path: "/rfps", label: "RFPs", icon: FileText, adminOnly: true },
     { path: "/admin", label: "Admin", icon: Settings, adminOnly: true },
