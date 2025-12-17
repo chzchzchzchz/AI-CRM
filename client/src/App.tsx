@@ -22,6 +22,7 @@ const DataValidation = lazyLoad(() => import("./pages/DataValidation"));
 const BulkInsights = lazyLoad(() => import("./pages/BulkInsights"));
 const SixsenseSync = lazyLoad(() => import("./pages/SixsenseSync"));
 const SixsenseAnalytics = lazyLoad(() => import("./pages/SixsenseAnalytics"));
+const CsvProcessor = lazyLoad(() => import("./pages/CsvProcessor"));
 import { GlobalSearch } from "./components/GlobalSearch";
 import { GlobalAIChat } from "./components/GlobalAIChat";
 import { SupportBot } from "./components/SupportBot";
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/bulk-insights" component={BulkInsights} />
       <Route path="/sixsense-sync" component={SixsenseSync} />
       <Route path="/sixsense-analytics" component={SixsenseAnalytics} />
+      <Route path="/csv-processor" component={CsvProcessor} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

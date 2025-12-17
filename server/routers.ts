@@ -19,6 +19,7 @@ import { priorityActionsRouter } from "./priority-actions-router";
 import { bulkInsightsRouter } from "./bulk-insights-router";
 import { sixsenseRouter } from "./sixsense-router";
 import { sixsenseAnalyticsRouter } from "./sixsense-analytics";
+import { csvProcessorRouter } from "./csv-processor-router";
 
 
 export const appRouter = router({
@@ -28,6 +29,7 @@ export const appRouter = router({
   priorityActions: priorityActionsRouter,
   bulkInsights: bulkInsightsRouter,
   sixsense: sixsenseRouter,
+  csvProcessor: csvProcessorRouter,
   sixsenseAnalytics: sixsenseAnalyticsRouter,
   analytics: router({
     overview: publicProcedure.query(async () => {
