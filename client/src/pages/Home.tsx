@@ -186,9 +186,65 @@ export default function Home() {
           </Link>
         </div>
 
+        {/* Quick Actions Bar - Horizontal at top */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Link href="/outreach">
+            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg">
+                  <Mail className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm">Generate Outreach</div>
+                  <div className="text-xs text-muted-foreground">AI-powered emails</div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/calls">
+            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg">
+                  <Phone className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm">Review Gong Calls</div>
+                  <div className="text-xs text-muted-foreground">Latest conversations</div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/insights">
+            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-lg">
+                  <TrendingUp className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm">View Analytics</div>
+                  <div className="text-xs text-muted-foreground">Pipeline insights</div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/csv-processor">
+            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-red-600 to-orange-600 rounded-lg">
+                  <FileSpreadsheet className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm">CSV Processor</div>
+                  <div className="text-xs text-muted-foreground">Transform data</div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+
         {/* Main Content Grid */}
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left Column - Priority Actions & Tasks */}
+          {/* Left Column - Priority Actions */}
           <div className="lg:col-span-2 space-y-6">
             {/* Urgent Actions */}
             <div className="space-y-4">
@@ -376,73 +432,7 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            {/* Quick Actions */}
-            <Card className="card-elevated">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-primary" />
-                  Quick Actions
-                </CardTitle>
-                <CardDescription>Common workflows</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button asChild variant="outline" className="w-full justify-start h-auto py-4 hover:border-primary hover:bg-primary/5">
-                  <Link href="/outreach">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg">
-                        <Mail className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-semibold">Generate Outreach</div>
-                        <div className="text-xs text-muted-foreground">AI-powered email drafts</div>
-                      </div>
-                    </div>
-                  </Link>
-                </Button>
 
-                <Button asChild variant="outline" className="w-full justify-start h-auto py-4 hover:border-primary hover:bg-primary/5">
-                  <Link href="/calls">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg">
-                        <Phone className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-semibold">Review Gong Calls</div>
-                        <div className="text-xs text-muted-foreground">Latest conversations</div>
-                      </div>
-                    </div>
-                  </Link>
-                </Button>
-
-                <Button asChild variant="outline" className="w-full justify-start h-auto py-4 hover:border-primary hover:bg-primary/5">
-                  <Link href="/insights">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-lg">
-                        <TrendingUp className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-semibold">View Analytics</div>
-                        <div className="text-xs text-muted-foreground">Pipeline insights</div>
-                      </div>
-                    </div>
-                  </Link>
-                </Button>
-
-                <Button asChild variant="outline" className="w-full justify-start h-auto py-4 hover:border-primary hover:bg-primary/5">
-                  <Link href="/csv-processor">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-gradient-to-br from-red-600 to-orange-600 rounded-lg">
-                        <FileSpreadsheet className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-semibold">CSV Processor</div>
-                        <div className="text-xs text-muted-foreground">Transform webinar data</div>
-                      </div>
-                    </div>
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
