@@ -18,6 +18,8 @@ interface ContextualAIProps {
 interface AIResponse {
   answer: string;
   reasoning?: string;
+  cached?: boolean;
+  cacheHitCount?: number;
 }
 
 const contextSuggestions: Record<string, string[]> = {
@@ -128,7 +130,9 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
 
       setResponse({
         answer: result.answer || "I couldn't find relevant information.",
-        reasoning: result.reasoning
+        reasoning: result.reasoning,
+        cached: result.cached,
+        cacheHitCount: result.cacheHitCount
       });
     } catch (error) {
       setResponse({
@@ -236,6 +240,20 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
         {/* Response */}
         {response && (
           <div className="mt-4 p-4 bg-slate-900/50 rounded-lg border border-purple-500/20">
+            {/* Cache indicator */}
+            {response.cached && (
+              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-purple-500/10">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-[10px] font-medium">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Instant response (cached)
+                </span>
+                {response.cacheHitCount && response.cacheHitCount > 1 && (
+                  <span className="text-[10px] text-slate-500">• Served {response.cacheHitCount} times</span>
+                )}
+              </div>
+            )}
             <div className="flex items-start justify-between gap-2">
               <div className="prose prose-sm dark:prose-invert max-w-none flex-1">
                 <SafeStreamdown>{response.answer}</SafeStreamdown>
