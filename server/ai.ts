@@ -1,6 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import { getAllAccounts, getAllPeople, getAllGongCalls } from "./db";
-import { withRCP } from "./ai-system-prompt";
+import { withRCP, asRevenueArchitect, REVENUE_ARCHITECT_PERSONA } from "./ai-system-prompt";
 
 /**
  * AI Service Layer
@@ -75,7 +75,7 @@ Focus on:
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: withRCP("You are a sales intelligence AI for the company. Analyze accounts and provide actionable insights.") },
+      { role: "system", content: asRevenueArchitect("Analyze this target account and provide tactical sales intelligence. Use REAL data only.") },
       { role: "user", content: prompt }
     ],
     response_format: {
@@ -183,7 +183,7 @@ Return only the email body (no subject line).
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: withRCP("You are a sales email writer for the company. Write personalized, high-converting outreach emails.") },
+      { role: "system", content: asRevenueArchitect("Write a personalized outreach email. Use REAL contact names and account data provided. Never fabricate details.") },
       { role: "user", content: prompt }
     ]
   });

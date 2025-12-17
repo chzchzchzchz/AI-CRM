@@ -1,6 +1,7 @@
 import { router, publicProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getAllAccounts, getContactsByAccountId, getGongCallsByAccountId } from "./db";
+import { calculateVectorScores, type AccountData } from "./vectorScoring";
 
 // Rep territory assignments
 // Under 2000 employees: Zane (Central), Morgan (West), Miranda (East)
@@ -15,6 +16,24 @@ const REP_TERRITORIES: Record<string, { region: string; minEmployees: number; ma
   "dan.hamilton@company.com": { region: "West", minEmployees: 2000, maxEmployees: Infinity },
   "kevin.huelster@company.com": { region: "East", minEmployees: 2000, maxEmployees: Infinity },
 };
+
+// Key executive titles to prioritize
+const KEY_TITLES = [
+  'ciso', 'cto', 'cio', 'cso', 'vp', 'vice president', 'director', 
+  'head of security', 'head of it', 'chief', 'svp', 'evp'
+];
+
+function isKeyTitle(title: string | null | undefined): boolean {
+  if (!title) return false;
+  const lower = title.toLowerCase();
+  return KEY_TITLES.some(t => lower.includes(t));
+}
+
+function formatKeyContact(contact: { name: string | null; title: string | null }): string {
+  const name = contact.name || 'Unknown';
+  const title = contact.title || 'No title';
+  return `${name} (${title})`;
+}
 
 export const priorityActionsRouter = router({
   getEnriched: publicProcedure
@@ -46,37 +65,94 @@ export const priorityActionsRouter = router({
       const enrichedActions = await Promise.all(
         hotAccounts.map(async (account) => {
           const contacts = await getContactsByAccountId(account.id);
-          const topContacts = contacts.slice(0, 3).map(c => ({
+          const calls = await getGongCallsByAccountId(account.id);
+          
+          // Sort contacts: key titles first, then by name
+          const sortedContacts = [...contacts].sort((a, b) => {
+            const aIsKey = isKeyTitle(a.title);
+            const bIsKey = isKeyTitle(b.title);
+            if (aIsKey && !bIsKey) return -1;
+            if (!aIsKey && bIsKey) return 1;
+            return (a.name || '').localeCompare(b.name || '');
+          });
+          
+          const topContacts = sortedContacts.slice(0, 5).map(c => ({
             name: c.name,
             title: c.title,
             email: c.email,
             location: c.location,
+            isKeyTitle: isKeyTitle(c.title),
           }));
 
-          const calls = await getGongCallsByAccountId(account.id);
+          // Find the primary contact (first key title or first contact)
+          const primaryContact = topContacts.find(c => c.isKeyTitle) || topContacts[0];
+          
+          // Calculate last call date and days since
           const lastCallDate = calls.length > 0 
             ? new Date(Math.max(...calls.map(c => new Date(c.callDate || 0).getTime())))
             : null;
+          
+          const daysSinceLastCall = lastCallDate 
+            ? Math.floor((Date.now() - lastCallDate.getTime()) / (1000 * 60 * 60 * 24))
+            : null;
 
-          // Generate "Why Now" reasoning
-          const whyNow = calls.length === 0
-            ? `Extremely high intent (${account.intentScore}) + Zero recent engagement = Must act today`
-            : `High intent (${account.intentScore}) + Last call ${lastCallDate ? new Date(lastCallDate).toLocaleDateString() : 'unknown'} = Follow up this week`;
+          // Calculate VECTOR scores
+          const accountData: AccountData = {
+            name: account.name,
+            domain: account.domain || undefined,
+            industry: account.industry || undefined,
+            employeeCount: account.employeeCount || undefined,
+            region: account.region || undefined,
+            relationship: account.relationship || undefined,
+            intentScore: account.intentScore || undefined,
+            buyingStage: (account.rawData as any)?.buyingStage || undefined,
+            temperature: (account.intentScore || 0) >= 70 ? 'Hot' : (account.intentScore || 0) >= 40 ? 'Warm' : 'Cold',
+            totalContacts: contacts.length,
+            totalCalls: calls.length,
+            lastCallDate: lastCallDate || undefined,
+            techStack: account.techStack ? JSON.parse(account.techStack) : undefined,
+            securityStack: account.securityStack ? JSON.parse(account.securityStack) : undefined,
+          };
+          
+          const vectorScores = calculateVectorScores(accountData);
 
-          // Generate Next Best Action
+          // Generate "Why Now" reasoning with VECTOR context
+          let whyNow: string;
+          if (calls.length === 0) {
+            whyNow = `VECTOR ${vectorScores.composite}/100 (Tier ${vectorScores.tier}) • Intent ${account.intentScore} + Zero engagement = Act today`;
+          } else if (daysSinceLastCall !== null && daysSinceLastCall <= 7) {
+            whyNow = `VECTOR ${vectorScores.composite}/100 • Hot momentum - last call ${daysSinceLastCall} days ago`;
+          } else if (daysSinceLastCall !== null && daysSinceLastCall <= 30) {
+            whyNow = `VECTOR ${vectorScores.composite}/100 • Intent ${account.intentScore} + ${daysSinceLastCall} days since last call = Follow up`;
+          } else {
+            whyNow = `VECTOR ${vectorScores.composite}/100 • High intent (${account.intentScore}) + ${daysSinceLastCall || 'No'} days cold = Re-engage`;
+          }
+
+          // Generate Next Best Action with specific contact
           let nextBestAction = 'Identify key contacts in security/IT leadership';
-          if (topContacts.length > 0) {
-            const topContact = topContacts[0];
+          if (primaryContact) {
             const isSecurityFocused = 
               account.industry?.toLowerCase().includes('security') ||
               account.industry?.toLowerCase().includes('software') ||
-              topContact.title?.toLowerCase().includes('security') ||
-              topContact.title?.toLowerCase().includes('ciso') ||
-              topContact.title?.toLowerCase().includes('cto');
+              primaryContact.title?.toLowerCase().includes('security') ||
+              primaryContact.title?.toLowerCase().includes('ciso') ||
+              primaryContact.title?.toLowerCase().includes('cto');
             
             const messageType = isSecurityFocused ? 'security risk-focused' : 'value-driven';
-            nextBestAction = `Email ${topContact.name} (${topContact.title}) with ${messageType} message`;
+            nextBestAction = `Email ${formatKeyContact(primaryContact)} with ${messageType} message`;
           }
+
+          // Calculate engagement metrics
+          const engagementMetrics = {
+            totalCalls: calls.length,
+            lastCallDate: lastCallDate ? lastCallDate.toISOString() : null,
+            daysSinceLastCall,
+            lastCallFormatted: lastCallDate 
+              ? lastCallDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              : 'Never',
+            // Response rate placeholder - would need email tracking data
+            responseRate: null as number | null,
+          };
 
           return {
             id: account.id,
@@ -87,10 +163,23 @@ export const priorityActionsRouter = router({
             region: account.region,
             intentScore: account.intentScore,
             relationship: account.relationship,
+            // VECTOR Scoring
+            vectorScores: {
+              composite: vectorScores.composite,
+              tier: vectorScores.tier,
+              engagement: vectorScores.engagement,
+              conversion: vectorScores.conversion,
+              strategic: vectorScores.strategic,
+              timing: vectorScores.timing,
+            },
+            // Contact info
             contactCount: contacts.length,
             topContacts,
-            callCount: calls.length,
-            lastCallDate: lastCallDate ? lastCallDate.toISOString() : null,
+            primaryContact: primaryContact ? formatKeyContact(primaryContact) : null,
+            keyContactsCount: topContacts.filter(c => c.isKeyTitle).length,
+            // Engagement metrics
+            engagementMetrics,
+            // Actions
             whyNow,
             nextBestAction,
           };
