@@ -260,6 +260,17 @@ export default function Home() {
               <div className="space-y-3">
                 {priorityActions.map((action) => {
                   const Icon = action.icon;
+                  const vectorScores = (action as any).vectorScores;
+                  const engagementMetrics = (action as any).engagementMetrics;
+                  const primaryContact = (action as any).primaryContact;
+                  const keyContactsCount = (action as any).keyContactsCount || 0;
+                  
+                  // Determine VECTOR tier color
+                  const tierColor = vectorScores?.tier === 1 ? 'text-green-500' : 
+                                   vectorScores?.tier === 2 ? 'text-emerald-500' : 
+                                   vectorScores?.tier === 3 ? 'text-yellow-500' : 
+                                   vectorScores?.tier === 4 ? 'text-orange-500' : 'text-red-500';
+                  
                   return (
                     <Card key={action.id} className="card-elevated hover:scale-[1.01] transition-transform cursor-pointer group">
                       <CardContent className="p-6">
@@ -268,27 +279,54 @@ export default function Home() {
                             <Icon className="h-6 w-6 text-white" />
                           </div>
                           <div className="flex-1 min-w-0 space-y-3">
-                            {/* Account Header */}
-                            <div>
-                              <h3 className="font-semibold text-lg mb-1">ENGAGE {action.name}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                Intent: {action.intentScore} | {action.industry} | {action.employeeCount?.toLocaleString()} employees | {action.region}
-                              </p>
+                            {/* Account Header with VECTOR Score */}
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="font-semibold text-lg">ENGAGE {action.name}</h3>
+                                  {vectorScores && (
+                                    <Badge variant="outline" className={`${tierColor} border-current font-bold`}>
+                                      VECTOR {vectorScores.composite}/100
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  Intent: {action.intentScore} | {action.industry} | {action.employeeCount?.toLocaleString() || ''} employees | {action.region}
+                                </p>
+                              </div>
+                              {vectorScores && (
+                                <div className="text-right text-xs text-muted-foreground">
+                                  <span className={tierColor}>Tier {vectorScores.tier}</span>
+                                </div>
+                              )}
                             </div>
+
+                            {/* Primary Contact Highlight */}
+                            {primaryContact && (
+                              <div className="p-2 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                                <p className="text-sm">
+                                  <span className="font-semibold text-purple-400">Contact:</span>{' '}
+                                  <span className="font-medium">{primaryContact}</span>
+                                </p>
+                              </div>
+                            )}
 
                             {/* Top Contacts */}
                             {action.topContacts && action.topContacts.length > 0 && (
                               <div className="space-y-1">
-                                <p className="text-xs font-semibold text-muted-foreground uppercase">Top Contacts ({action.contactCount}):</p>
-                                {action.topContacts.map((contact: any, idx: number) => (
+                                <p className="text-xs font-semibold text-muted-foreground uppercase">
+                                  Top Contacts ({action.contactCount}){keyContactsCount > 0 && ` • ${keyContactsCount} executives`}:
+                                </p>
+                                {action.topContacts.slice(0, 3).map((contact: any, idx: number) => (
                                   <p key={idx} className="text-sm">
-                                    • <span className="font-medium">{contact.name}</span> - {contact.title}
+                                    • <span className={`font-medium ${contact.isKeyTitle ? 'text-purple-400' : ''}`}>{contact.name}</span>
+                                    {contact.title && <span className="text-muted-foreground"> - {contact.title}</span>}
                                   </p>
                                 ))}
                               </div>
                             )}
 
-                            {/* Why Now */}
+                            {/* Why Now with VECTOR context */}
                             <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                               <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">Why Now:</p>
                               <p className="text-sm text-foreground">{action.whyNow}</p>
@@ -300,12 +338,44 @@ export default function Home() {
                               <p className="text-sm text-foreground">{action.nextBestAction}</p>
                             </div>
 
-                            {/* Activity Stats */}
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>Last Activity: {action.callCount > 0 && action.lastCallDate ? new Date(action.lastCallDate).toLocaleDateString() : 'No calls recorded'}</span>
+                            {/* Engagement Metrics */}
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                Last: {engagementMetrics?.lastCallFormatted || 'Never'}
+                              </span>
+                              {engagementMetrics?.daysSinceLastCall !== null && engagementMetrics?.daysSinceLastCall !== undefined && (
+                                <Badge variant="outline" className={`text-xs ${
+                                  engagementMetrics.daysSinceLastCall <= 7 ? 'border-green-500 text-green-500' :
+                                  engagementMetrics.daysSinceLastCall <= 30 ? 'border-yellow-500 text-yellow-500' :
+                                  'border-red-500 text-red-500'
+                                }`}>
+                                  {engagementMetrics.daysSinceLastCall}d ago
+                                </Badge>
+                              )}
                               <span>•</span>
-                              <span>{action.contactCount} contacts identified</span>
+                              <span>{engagementMetrics?.totalCalls || 0} calls</span>
+                              <span>•</span>
+                              <span>{action.contactCount} contacts</span>
                             </div>
+
+                            {/* VECTOR Score Breakdown (compact) */}
+                            {vectorScores && (
+                              <div className="flex gap-2 text-xs">
+                                <span className="px-2 py-0.5 bg-blue-500/20 rounded" title="Engagement">
+                                  E:{vectorScores.engagement}
+                                </span>
+                                <span className="px-2 py-0.5 bg-green-500/20 rounded" title="Conversion">
+                                  C:{vectorScores.conversion}
+                                </span>
+                                <span className="px-2 py-0.5 bg-purple-500/20 rounded" title="Strategic">
+                                  S:{vectorScores.strategic}
+                                </span>
+                                <span className="px-2 py-0.5 bg-orange-500/20 rounded" title="Timing">
+                                  T:{vectorScores.timing}
+                                </span>
+                              </div>
+                            )}
 
                             {/* Action Button */}
                             <div>
