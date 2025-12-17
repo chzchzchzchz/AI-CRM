@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { Sparkles, Send, Loader2, X, ChevronDown, ChevronUp, Paperclip, FileText, File } from "lucide-react";
-import { Streamdown } from "streamdown";
+import { SafeStreamdown } from "@/components/SafeStreamdown";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
@@ -211,7 +211,7 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
           <div className="mt-4 p-4 bg-slate-900/50 rounded-lg border border-purple-500/20">
             <div className="flex items-start justify-between gap-2">
               <div className="prose prose-sm dark:prose-invert max-w-none flex-1">
-                <Streamdown>{response}</Streamdown>
+                <SafeStreamdown>{response}</SafeStreamdown>
               </div>
               <Button
                 variant="ghost"

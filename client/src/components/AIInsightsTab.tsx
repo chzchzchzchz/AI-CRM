@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { RefreshCw, Clock, Target } from "lucide-react";
-import { Streamdown } from "streamdown";
+import { SafeStreamdown } from "@/components/SafeStreamdown";
 
 interface AIInsightsTabProps {
   accountId: number;
@@ -85,7 +85,7 @@ export function AIInsightsTab({ accountId }: AIInsightsTabProps) {
             </div>
           ) : data ? (
             <div className="prose prose-sm dark:prose-invert max-w-none">
-              <Streamdown>{data.recommendations}</Streamdown>
+              <SafeStreamdown>{data.recommendations}</SafeStreamdown>
             </div>
           ) : (
             <div className="p-4 rounded-lg bg-muted/50 text-center text-muted-foreground">

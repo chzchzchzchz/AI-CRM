@@ -9,7 +9,7 @@ import {
   Shield, Zap, ChevronDown, ChevronUp, Database,
   AlertTriangle, Building2, Layers
 } from "lucide-react";
-import { Streamdown } from "streamdown";
+import { SafeStreamdown } from "@/components/SafeStreamdown";
 import { TechStackDisplay } from "./TechStackDisplay";
 
 interface IntelligenceTabProps {
@@ -336,7 +336,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
                 </div>
               ) : overviewQuery.data?.summary ? (
                 <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <Streamdown>{overviewQuery.data.summary}</Streamdown>
+                  <SafeStreamdown>{overviewQuery.data.summary}</SafeStreamdown>
                 </div>
               ) : (
                 <p className="text-muted-foreground">No summary available. Click refresh to generate.</p>
@@ -390,7 +390,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
                 </div>
               ) : researchQuery.data ? (
                 <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <Streamdown>{researchQuery.data.research}</Streamdown>
+                  <SafeStreamdown>{researchQuery.data.research}</SafeStreamdown>
                 </div>
               ) : (
                 <p className="text-muted-foreground">No research available</p>
@@ -426,7 +426,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
                 </div>
               ) : insightsQuery.data ? (
                 <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <Streamdown>{(insightsQuery.data as any).insights || insightsQuery.data.recommendations}</Streamdown>
+                  <SafeStreamdown>{(insightsQuery.data as any).insights || insightsQuery.data.recommendations}</SafeStreamdown>
                 </div>
               ) : (
                 <p className="text-muted-foreground">No insights available</p>

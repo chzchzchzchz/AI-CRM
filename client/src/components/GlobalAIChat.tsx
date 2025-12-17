@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { MessageSquare, X, Maximize2, Minimize2, Bot, Send, Loader2, Sparkles, Zap } from "lucide-react";
 import { useLocation } from "wouter";
-import { Streamdown } from "streamdown";
+import { SafeStreamdown } from "@/components/SafeStreamdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -258,7 +258,7 @@ export function GlobalAIChat() {
                           : "bg-slate-900 border border-slate-800 text-slate-300"
                       }`}>
                         {msg.role === "assistant" ? (
-                          <Streamdown className="text-sm leading-relaxed">{msg.content}</Streamdown>
+                          <SafeStreamdown className="text-sm leading-relaxed">{msg.content}</SafeStreamdown>
                         ) : (
                           <p className="text-sm leading-relaxed">{msg.content}</p>
                         )}
@@ -389,7 +389,7 @@ export function GlobalAIChat() {
                     : "bg-slate-950 border border-slate-800 text-slate-300"
                 }`}>
                   {msg.role === "assistant" ? (
-                    <Streamdown className="text-sm">{msg.content}</Streamdown>
+                    <SafeStreamdown className="text-sm">{msg.content}</SafeStreamdown>
                   ) : (
                     <p className="text-sm">{msg.content}</p>
                   )}
