@@ -18,7 +18,7 @@ import { useRep, REP_TERRITORIES } from "@/contexts/RepContext";
  */
 export default function Home() {
   const { user } = useAuth();
-  const { selectedRep, repInfo: globalRepInfo } = useRep();
+  const { selectedRep, repInfo: globalRepInfo, matchesTerritory } = useRep();
   
   // Get the effective email based on selection
   const userEmail = selectedRep || user?.email || '';
@@ -69,9 +69,10 @@ export default function Home() {
   const repTerritory = globalRepInfo?.region || '';
   const repSize = globalRepInfo?.label.includes('<2K') ? '<2K employees' : '2K+ employees';
 
-  // Process accounts data
+  // Process accounts data - filtered by rep territory
   const topAccounts = accounts
-    ?.map(a => ({
+    ?.filter(a => matchesTerritory(a.region || '', a.employeeCount || 0))
+    .map(a => ({
       ...a,
       intentScoreNum: parseInt(String(a.intentScore || 0), 10)
     }))
@@ -386,25 +387,25 @@ export default function Home() {
                 <div className="flex items-start gap-3 group">
                   <Checkbox id="task1" className="mt-1" />
                   <label htmlFor="task1" className="text-sm font-medium leading-relaxed cursor-pointer group-hover:text-primary transition-colors">
-                    Follow up with hot leads from last week (5 accounts)
+                    Follow up with hot leads ({hotLeads} accounts{globalRepInfo ? ` in ${globalRepInfo.region}` : ''})
                   </label>
                 </div>
                 <div className="flex items-start gap-3 group">
                   <Checkbox id="task2" className="mt-1" />
                   <label htmlFor="task2" className="text-sm font-medium leading-relaxed cursor-pointer group-hover:text-primary transition-colors">
-                    Review new intent spikes (12 accounts)
+                    Review warm leads ({warmLeads} accounts{globalRepInfo ? ` in ${globalRepInfo.region}` : ''})
                   </label>
                 </div>
                 <div className="flex items-start gap-3 group">
                   <Checkbox id="task3" className="mt-1" />
                   <label htmlFor="task3" className="text-sm font-medium leading-relaxed cursor-pointer group-hover:text-primary transition-colors">
-                    Update CRM with latest activities
+                    Work unworked 6QAs ({sixsenseSummary?.sixQA?.unworked || 0} accounts)
                   </label>
                 </div>
                 <div className="flex items-start gap-3 group">
                   <Checkbox id="task4" className="mt-1" />
                   <label htmlFor="task4" className="text-sm font-medium leading-relaxed cursor-pointer group-hover:text-primary transition-colors">
-                    Schedule demos for warm leads (3 accounts)
+                    Engage priority accounts ({priorityActions.length} urgent)
                   </label>
                 </div>
               </CardContent>
@@ -417,7 +418,9 @@ export default function Home() {
                   <TrendingUp className="h-5 w-5 text-cyan-500" />
                   Trending Intent Keywords
                 </CardTitle>
-                <CardDescription className="text-xs">What your accounts are researching</CardDescription>
+                <CardDescription className="text-xs">
+                  {globalRepInfo ? 'Company-wide trends (all territories)' : 'What accounts are researching'}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 {topKeywords?.keywords?.slice(0, 8).map((kw: any) => (
