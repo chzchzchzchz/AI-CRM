@@ -2,6 +2,7 @@ import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { getAccountById, getContactsByAccountId, getGongCallsByAccountId } from "./db";
 import { invokeLLM } from "./_core/llm";
+import { withRCP } from "./ai-system-prompt";
 
 export const bulkInsightsRouter = router({
   generateForTopLeads: publicProcedure
@@ -64,7 +65,7 @@ export const bulkInsightsRouter = router({
             messages: [
               {
                 role: "system",
-                content: `You are a B2B sales strategist. Generate insights using this EXACT structure:
+                content: withRCP(`You are a B2B sales strategist. Generate insights using this EXACT structure:
 
 ## Executive Summary
 [3 sentences: Current status, why now, recommended action]
@@ -100,7 +101,7 @@ CRITICAL RULES:
 - Use EXACT employee counts, intent scores, and metrics from data
 - Reference REAL call transcripts if provided
 - NEVER use placeholder names like 'Jennifer Smith' or 'John Doe'
-- If data is missing, state 'Data not available' - do NOT make up information`
+- If data is missing, state 'Data not available' - do NOT make up information`)
               },
               {
                 role: "user",

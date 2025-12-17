@@ -379,6 +379,7 @@ export const appRouter = router({
 
         try {
           const { invokeLLM } = await import("./_core/llm");
+          const { withRCP } = await import("./ai-system-prompt");
           // const { searchTool, executeToolCall } = await import("./_core/webSearch");
           
           // First call without tool support (webSearch module not available)
@@ -386,7 +387,7 @@ export const appRouter = router({
             messages: [
               {
                 role: "system",
-                content: `You are an expert sales intelligence analyst. Analyze this account and provide actionable insights for the sales team.`
+                content: withRCP(`You are an expert sales intelligence analyst. Analyze this account and provide actionable insights for the sales team.`)
               },
               {
                 role: "user",
@@ -498,11 +499,12 @@ export const appRouter = router({
         };
 
         const { invokeLLM } = await import("./_core/llm");
+        const { withRCP } = await import("./ai-system-prompt");
         const response = await invokeLLM({
           messages: [
             {
               role: "system",
-              content: "You are a competitive intelligence analyst. Synthesize the research data into a clear narrative covering: 1) Recent trigger events and what they mean, 2) Funding/growth signals and implications, 3) Market position and competitive landscape, 4) Strategic opportunities for engagement. Be concise and actionable."
+              content: withRCP("You are a competitive intelligence analyst. Synthesize the research data into a clear narrative covering: 1) Recent trigger events and what they mean, 2) Funding/growth signals and implications, 3) Market position and competitive landscape, 4) Strategic opportunities for engagement. Be concise and actionable.")
             },
             {
               role: "user",
@@ -646,8 +648,13 @@ export const appRouter = router({
         const analysisPrompt = generateDeepAnalysisPrompt(accountData, vectorScores);
 
         const { invokeLLM } = await import("./_core/llm");
+        const { withRCP } = await import("./ai-system-prompt");
         const response = await invokeLLM({
           messages: [
+            {
+              role: "system",
+              content: withRCP("You are a strategic sales intelligence analyst. Provide deep, actionable insights.")
+            },
             {
               role: "user",
               content: analysisPrompt
@@ -688,11 +695,12 @@ export const appRouter = router({
 
         // Use AI to categorize and filter the tech stack
         const { invokeLLM } = await import("./_core/llm");
+        const { withRCP } = await import("./ai-system-prompt");
         const response = await invokeLLM({
           messages: [
             {
               role: "system",
-              content: "You are a technology stack analyst. Analyze the provided technology stack data and categorize it into clear, useful categories. Always include these categories even if empty: MFA Providers, SSO Providers, EDR/Security, CRM, Communication Tools, Development Tools, Cloud Infrastructure. For each category, list the relevant technologies found. If a category has no technologies, explicitly state 'None'. Be concise and filter out noise."
+              content: withRCP("You are a technology stack analyst. Analyze the provided technology stack data and categorize it into clear, useful categories. Always include these categories even if empty: MFA Providers, SSO Providers, EDR/Security, CRM, Communication Tools, Development Tools, Cloud Infrastructure. For each category, list the relevant technologies found. If a category has no technologies, explicitly state 'None'. Be concise and filter out noise.")
             },
             {
               role: "user",

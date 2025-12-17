@@ -2,6 +2,7 @@ import { getDb } from "./db";
 import { contextStore } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
+import { withRCP } from "./ai-system-prompt";
 
 // Stub for intent spike tracking (removed to fix TS errors)
 async function getRecentIntentSpikes(limit: number = 10): Promise<any[]> { return []; }
@@ -162,7 +163,7 @@ export async function conversationWithMemory(params: {
   }
 
   // Build comprehensive prompt
-  const systemPrompt = `You are an AI sales intelligence assistant for the company, a passwordless authentication company.
+  const systemPrompt = withRCP(`You are an AI sales intelligence assistant for the company, a passwordless authentication company.
 
 COMPANY CONTEXT:
 - Target customers: Enterprise (1000+ employees) in Financial Services, Healthcare, Technology, Government
@@ -177,7 +178,7 @@ You have access to:
 - Historical insights and learnings from previous interactions
 - Buying signals, tech stack data, and engagement history
 
-Provide actionable, specific answers. When making recommendations, cite specific data points.`;
+Provide actionable, specific answers. When making recommendations, cite specific data points.`);
 
   const userPrompt = `${query}
 
@@ -220,7 +221,7 @@ Return a JSON array of insight strings.`;
     try {
       const learningResponse = await invokeLLM({
         messages: [
-          { role: "system", content: "Extract key learnings from conversations." },
+          { role: "system", content: withRCP("Extract key learnings from conversations.") },
           { role: "user", content: learningPrompt }
         ],
         response_format: {
@@ -354,7 +355,7 @@ ${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a sales intelligence analyst. Create comprehensive account summaries." },
+      { role: "system", content: withRCP("You are a sales intelligence analyst. Create comprehensive account summaries.") },
       { role: "user", content: prompt }
     ]
   });
@@ -407,7 +408,7 @@ Be specific and personalized.`;
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a sales intelligence analyst. Create detailed contact profiles." },
+      { role: "system", content: withRCP("You are a sales intelligence analyst. Create detailed contact profiles.") },
       { role: "user", content: prompt }
     ]
   });
