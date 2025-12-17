@@ -18,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useRep } from "@/contexts/RepContext";
+import { RepSwitcher } from "@/components/RepSwitcher";
 
 type SortField = "name" | "intentScore" | "employees" | "industry";
 type SortOrder = "asc" | "desc";
@@ -30,6 +32,9 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   const [intentFilter, setIntentFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("intentScore");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  
+  // Get rep context for territory filtering
+  const { matchesTerritory, repInfo, isRepMode } = useRep();
 
   const { data: accounts, isLoading } = trpc.accounts.list.useQuery(undefined, {
     staleTime: 3 * 60 * 1000
@@ -70,6 +75,11 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     if (!accounts) return [];
 
     let filtered = accounts.filter(account => {
+      // Rep territory filter (if in rep mode)
+      const employeeCount = parseInt(String(account.employeeCount || '0').replace(/[^0-9]/g, '') || '0');
+      const matchesRepTerritory = matchesTerritory(account.region || '', employeeCount);
+      if (!matchesRepTerritory) return false;
+      
       const matchesSearch = !searchQuery || 
         account.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         account.domain?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -198,17 +208,20 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
               <div>
                 <h1 className="text-5xl font-bold tracking-tight">Target Accounts</h1>
                 <p className="text-muted-foreground text-lg mt-1">
-                  {filteredAccounts.length} of {accounts?.length || 0} accounts
+                  {filteredAccounts.length} accounts{isRepMode && ` • ${repInfo?.region} territory`}
                 </p>
               </div>
             </div>
           </div>
-          <Button asChild className="gradient-primary text-white shadow-lg hover:shadow-xl">
-            <Link href="/outreach">
-              <Mail className="mr-2 h-5 w-5" />
-              Generate Outreach
-            </Link>
-          </Button>
+          <div className="flex items-center gap-4">
+            <RepSwitcher />
+            <Button asChild className="gradient-primary text-white shadow-lg hover:shadow-xl">
+              <Link href="/outreach">
+                <Mail className="mr-2 h-5 w-5" />
+                Generate Outreach
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* AI Assistant Bar */}

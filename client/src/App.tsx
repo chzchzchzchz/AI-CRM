@@ -26,6 +26,7 @@ const CsvProcessor = lazyLoad(() => import("./pages/CsvProcessor"));
 import { GlobalSearch } from "./components/GlobalSearch";
 import { GlobalAIChat } from "./components/GlobalAIChat";
 import { SupportBot } from "./components/SupportBot";
+import { RepProvider } from "./contexts/RepContext";
 import { useState, useEffect } from "react";
 
 function Router() {
@@ -78,13 +79,15 @@ function App() {
       <ThemeProvider
         defaultTheme="dark"
       >
-        <TooltipProvider>
-          <Toaster />
-          <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
-          <Router />
-          <GlobalAIChat />
-          <SupportBot />
-        </TooltipProvider>
+        <RepProvider>
+          <TooltipProvider>
+            <Toaster />
+            <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+            <Router />
+            <GlobalAIChat />
+            <SupportBot />
+          </TooltipProvider>
+        </RepProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
