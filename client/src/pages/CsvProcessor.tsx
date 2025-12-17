@@ -230,7 +230,7 @@ export default function CsvProcessor() {
         transformations,
         eventName,
         defaultStatus,
-        contactOwner: contactOwner || undefined,
+        contactOwner: contactOwner === "__blank__" ? "" : (contactOwner || undefined),
       });
 
       if (result.success) {
@@ -423,7 +423,7 @@ export default function CsvProcessor() {
                         <SelectValue placeholder="Leave blank for SDR routing" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Leave blank (SDR routing)</SelectItem>
+                        <SelectItem value="__blank__">Leave blank (SDR routing)</SelectItem>
                         {templateInfo?.contactOwners.map(owner => (
                           <SelectItem key={owner} value={owner}>{owner}</SelectItem>
                         ))}
@@ -510,14 +510,14 @@ export default function CsvProcessor() {
                       </div>
                       <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       <Select
-                        value={mappings[field.name] || ""}
-                        onValueChange={(v) => updateMapping(field.name, v || null)}
+                        value={mappings[field.name] || "__unmapped__"}
+                        onValueChange={(v) => updateMapping(field.name, v === "__unmapped__" ? null : v)}
                       >
                         <SelectTrigger className="w-[200px]">
                           <SelectValue placeholder="Select source column" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">-- Not mapped --</SelectItem>
+                          <SelectItem value="__unmapped__">-- Not mapped --</SelectItem>
                           {combinedData?.headers.map(h => (
                             <SelectItem key={h} value={h}>{h}</SelectItem>
                           ))}
