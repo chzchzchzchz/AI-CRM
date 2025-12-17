@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,21 +19,42 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useRep, REP_OPTIONS } from "@/contexts/RepContext";
+import { RepSwitcher } from "@/components/RepSwitcher";
 
 type SortField = "name" | "title" | "company";
 type SortOrder = "asc" | "desc";
 
 export default function ContactsEnhanced() {
+  const { selectedRep, repInfo, matchesTerritory, isRepMode } = useRep();
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [titleFilter, setTitleFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [showAIPriority, setShowAIPriority] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const CONTACTS_PER_PAGE = 50;
 
   const { data: contacts, isLoading } = trpc.people.list.useQuery(undefined, {
     staleTime: 3 * 60 * 1000
   });
+
+  // Get accounts for territory filtering
+  const { data: accounts } = trpc.accounts.list.useQuery(undefined, {
+    staleTime: 3 * 60 * 1000
+  });
+
+  // Get account IDs in rep's territory
+  const territoryAccountIds = useMemo(() => {
+    if (!accounts || !isRepMode) return null;
+    return new Set(
+      accounts
+        .filter((acc: any) => matchesTerritory(acc.region || '', acc.employeeCount || 0))
+        .map((acc: any) => acc.name?.toLowerCase())
+    );
+  }, [accounts, isRepMode, matchesTerritory]);
 
   const { data: prioritizedContacts, isLoading: isPrioritizing } = trpc.people.prioritize.useQuery(
     {},
@@ -65,6 +86,10 @@ export default function ContactsEnhanced() {
     if (!sourceContacts) return [];
 
     let filtered = sourceContacts.filter(contact => {
+      // Territory filter - only show contacts from accounts in rep's territory
+      const matchesTerritory = !territoryAccountIds || 
+        territoryAccountIds.has(contact.company?.toLowerCase() || '');
+      
       const matchesSearch = !searchQuery || 
         (contact.name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
         (contact.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
@@ -75,7 +100,7 @@ export default function ContactsEnhanced() {
       const matchesTitle = titleFilter === "all" || 
         contact.title?.toLowerCase().includes(titleFilter.toLowerCase());
 
-      return matchesSearch && matchesCompany && matchesTitle;
+      return matchesTerritory && matchesSearch && matchesCompany && matchesTitle;
     });
 
     // Skip manual sorting if AI Priority is on (already sorted by priority)
@@ -107,7 +132,7 @@ export default function ContactsEnhanced() {
     }
 
     return filtered;
-  }, [contacts, prioritizedContacts, showAIPriority, searchQuery, companyFilter, titleFilter, sortField, sortOrder]);
+  }, [contacts, prioritizedContacts, showAIPriority, searchQuery, companyFilter, titleFilter, sortField, sortOrder, territoryAccountIds]);
 
   const handleToggleSort = useCallback((field: SortField) => {
     if (sortField === field) {
@@ -117,6 +142,19 @@ export default function ContactsEnhanced() {
       setSortOrder("asc");
     }
   }, [sortField]);
+
+  // Paginated contacts
+  const paginatedContacts = useMemo(() => {
+    const startIndex = (currentPage - 1) * CONTACTS_PER_PAGE;
+    return filteredContacts.slice(startIndex, startIndex + CONTACTS_PER_PAGE);
+  }, [filteredContacts, currentPage, CONTACTS_PER_PAGE]);
+
+  const totalPages = Math.ceil(filteredContacts.length / CONTACTS_PER_PAGE);
+
+  // Reset to page 1 when filters change
+  const handleFilterChange = useCallback(() => {
+    setCurrentPage(1);
+  }, []);
 
   // Loading state
   if (isLoading) {
@@ -155,11 +193,13 @@ export default function ContactsEnhanced() {
                 <h1 className="text-5xl font-bold tracking-tight">Contacts</h1>
                 <p className="text-muted-foreground text-lg mt-1">
                   {filteredContacts.length} of {contacts?.length || 0} contacts
+                  {repInfo && <span className="ml-2 text-sm">• {repInfo.label} territory</span>}
                 </p>
               </div>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
+            <RepSwitcher />
             <Button
               onClick={() => setShowAIPriority(!showAIPriority)}
               variant={showAIPriority ? "default" : "outline"}
@@ -318,7 +358,7 @@ export default function ContactsEnhanced() {
           </Card>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredContacts.map((contact) => (
+            {paginatedContacts.map((contact) => (
               <Link key={contact.id} href={`/contacts/${contact.id}`}>
                 <Card className="card-elevated hover:scale-[1.02] transition-all cursor-pointer group h-full">
                   <CardHeader>
@@ -422,6 +462,47 @@ export default function ContactsEnhanced() {
                 </Card>
               </Link>
             ))}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-8">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+            >
+              First
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <span className="px-4 py-2 text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages} ({filteredContacts.length} contacts)
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+            >
+              Last
+            </Button>
           </div>
         )}
       </div>

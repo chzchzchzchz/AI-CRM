@@ -1,93 +1,35 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { HelpCircle, X, Send, Loader2, Mail, MessageSquare, ChevronRight } from "lucide-react";
-import { toast } from "sonner";
+import { HelpCircle, X, Send, Loader2, ChevronRight, Sparkles } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
 }
 
-const SUPPORT_EMAIL = "ryan.chazi@company.com";
-
 const helpTopics = [
   {
     title: "Getting Started",
     description: "Learn how to use the dashboard",
-    content: `Welcome to the Target Account Dashboard! Here's how to get started:
-
-**1. Home Page** - Your daily command center showing priority actions, hot leads, and trending keywords.
-
-**2. Accounts** - Browse all target accounts, filter by intent score, industry, or region. Click any account for detailed intelligence.
-
-**3. Contacts** - View and search contacts across all accounts. Use AI prioritization to find the best people to reach out to.
-
-**4. Calls** - Review Gong call history and AI-generated summaries.
-
-**5. Insights** - Deep analytics on intent keywords, buying stages, and engagement metrics.
-
-**6. AI Assistant** - Ask questions anywhere! Use the purple AI bar at the top of each page or the chat bubble in the corner.`
-  },
-  {
-    title: "Using AI Features",
-    description: "Get the most out of AI assistance",
-    content: `The AI assistant can help you with:
-
-**Account Intelligence**
-- Generate executive briefings
-- Analyze tech stacks and security posture
-- Identify buying signals and intent
-
-**Outreach**
-- Generate personalized emails
-- Suggest talking points for calls
-- Prioritize contacts by engagement
-
-**Analytics**
-- Find high-intent accounts
-- Identify trends and patterns
-- Generate action plans
-
-**Tips:**
-- Be specific in your questions
-- Mention account or contact names for context
-- Use the suggested questions as starting points`
+    question: "How do I get started with this dashboard?"
   },
   {
     title: "Understanding Intent Scores",
     description: "What the numbers mean",
-    content: `Intent scores indicate how likely an account is to buy:
-
-**🔥 Hot (70+)** - High buying intent, prioritize immediate outreach
-**🌡️ Warm (40-69)** - Showing interest, nurture with relevant content
-**❄️ Cold (<40)** - Low intent, maintain awareness
-
-**Buying Stages:**
-- **Target** - Identified but no signals yet
-- **Awareness** - Researching the problem
-- **Consideration** - Evaluating solutions
-- **Decision** - Comparing vendors
-- **Purchase** - Ready to buy
-
-Intent scores are calculated from 6sense data including web visits, keyword searches, and engagement activities.`
+    question: "What do the intent scores mean and how should I use them?"
   },
   {
-    title: "Contact Support",
-    description: "Get help from a human",
-    content: `Need more help? Contact our team:
-
-**Email:** ${SUPPORT_EMAIL}
-
-We'll respond within 24 hours. Include:
-- Your question or issue
-- Screenshots if relevant
-- Account/contact names involved
-
-For urgent issues, mention "URGENT" in the subject line.`
+    title: "Using AI Features",
+    description: "Get the most out of AI assistance",
+    question: "What AI features are available and how do I use them?"
+  },
+  {
+    title: "Rep Territories",
+    description: "How account assignments work",
+    question: "How do rep territories and account assignments work?"
   }
 ];
 
@@ -96,78 +38,67 @@ export function SupportBot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "👋 Hi! I'm your support assistant. I can help you learn how to use this dashboard or connect you with our team. What would you like help with?"
+      content: "Hey! 👋 I'm here to help you get the most out of this dashboard. Ask me anything about accounts, intent scores, outreach, or how to use the features. If I can't help, just slack ryan!"
     }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showTopics, setShowTopics] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const supportMutation = trpc.system.notifyOwner.useMutation();
+  const chatMutation = trpc.ai.chat.useMutation();
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-    const userMessage = input.trim();
+  const handleSend = async (questionOverride?: string) => {
+    const userMessage = questionOverride || input.trim();
+    if (!userMessage || isLoading) return;
+
     setInput("");
     setMessages(prev => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
     setShowTopics(false);
 
-    // Check if user wants to contact support
-    const wantsSupport = userMessage.toLowerCase().includes("contact") || 
-                         userMessage.toLowerCase().includes("email") ||
-                         userMessage.toLowerCase().includes("human") ||
-                         userMessage.toLowerCase().includes("help");
+    try {
+      // Use the contextual AI endpoint for intelligent responses
+      const systemPrompt = `You are a helpful support assistant for the Target Account Dashboard. Be casual and friendly. 
+        
+Key features to know about:
+- Home page: Priority actions, hot leads, trending keywords, rep view switcher
+- Accounts page: Browse all target accounts, filter by intent/region/industry
+- Contacts page: View contacts, AI prioritization feature
+- Insights page: Analytics on keywords, buying stages, engagement
+- CSV Processor: Transform messy CSV files into proper SFDC/HubSpot format
+- Rep territories: Reps see only their assigned accounts based on region and company size
 
-    if (wantsSupport) {
-      // Send notification to support email
-      try {
-        await supportMutation.mutateAsync({
-          title: "Support Request from Dashboard",
-          content: `User message: ${userMessage}\n\nPlease respond to this user's inquiry.`
-        });
-        setMessages(prev => [...prev, {
-          role: "assistant",
-          content: `I've forwarded your message to our team at ${SUPPORT_EMAIL}. They'll get back to you within 24 hours!\n\nIn the meantime, is there anything else I can help you with?`
-        }]);
-        toast.success("Support request sent!");
-      } catch (error) {
-        setMessages(prev => [...prev, {
-          role: "assistant",
-          content: `I couldn't send the notification automatically, but you can email us directly at ${SUPPORT_EMAIL}. Is there anything else I can help with?`
-        }]);
-      }
-    } else {
-      // Provide helpful response based on keywords
-      let response = "I'm not sure about that. Would you like me to connect you with our support team?";
-      
-      const lowerMsg = userMessage.toLowerCase();
-      if (lowerMsg.includes("account") || lowerMsg.includes("company")) {
-        response = "For account-related questions, check out the Accounts page. Click any account to see detailed intelligence, contacts, and AI insights. You can also use the AI bar at the top to ask specific questions about any account.";
-      } else if (lowerMsg.includes("contact") || lowerMsg.includes("person")) {
-        response = "The Contacts page shows all people in your target accounts. Use filters to find specific roles or companies. Click any contact for their full profile and to generate personalized outreach.";
-      } else if (lowerMsg.includes("intent") || lowerMsg.includes("score")) {
-        response = "Intent scores (0-100) indicate buying likelihood. Hot leads (70+) should be prioritized. Scores come from 6sense data including web activity, keyword searches, and engagement.";
-      } else if (lowerMsg.includes("ai") || lowerMsg.includes("assistant")) {
-        response = "The AI assistant is available throughout the app! Use the purple bar at the top of each page for contextual help, or click the chat bubble in the corner for full conversations.";
-      } else if (lowerMsg.includes("email") || lowerMsg.includes("outreach")) {
-        response = "To generate outreach emails, go to any contact's detail page and click 'Generate Email'. The AI will create personalized content based on the contact's role, company, and engagement history.";
-      }
-      
-      setMessages(prev => [...prev, { role: "assistant", content: response }]);
+Intent scores: Hot (70+) = high buying intent, Warm (40-69) = showing interest, Cold (<40) = low intent
+
+If you can't answer something or the user needs human help, tell them to "slack ryan" - keep it casual!`;
+
+      const response = await chatMutation.mutateAsync({
+        query: `${systemPrompt}\n\nUser question: ${userMessage}`,
+        conversationHistory: messages.slice(1).map(m => ({ role: m.role, content: m.content }))
+      });
+
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: response.answer || "Hmm, I'm not sure about that. Slack ryan if you need more help!"
+      }]);
+    } catch (error) {
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: "Oops, something went wrong on my end. Try again or slack ryan if it keeps happening!"
+      }]);
     }
 
     setIsLoading(false);
   };
 
   const handleTopicClick = (topic: typeof helpTopics[0]) => {
-    setShowTopics(false);
-    setMessages(prev => [
-      ...prev,
-      { role: "user", content: topic.title },
-      { role: "assistant", content: topic.content }
-    ]);
+    handleSend(topic.question);
   };
 
   if (!isOpen) {
@@ -188,12 +119,15 @@ export function SupportBot() {
       <CardHeader className="flex-shrink-0 pb-2 border-b border-slate-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-800 rounded-lg">
-              <HelpCircle className="h-5 w-5 text-cyan-400" />
+            <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg">
+              <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
-              <CardTitle className="text-base">Help & Support</CardTitle>
-              <p className="text-xs text-slate-400">How can I help you?</p>
+              <CardTitle className="text-base flex items-center gap-2">
+                AI Help
+                <span className="text-xs font-normal text-slate-400">powered by AI</span>
+              </CardTitle>
+              <p className="text-xs text-slate-400">Ask me anything!</p>
             </div>
           </div>
           <Button variant="ghost" size="sm" onClick={() => setIsOpen(false)}>
@@ -202,10 +136,11 @@ export function SupportBot() {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Help Topics */}
+      <CardContent className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[200px]">
+        {/* Help Topics - Quick Start */}
         {showTopics && (
           <div className="space-y-2">
+            <p className="text-xs text-slate-500 mb-2">Quick questions:</p>
             {helpTopics.map((topic, i) => (
               <button
                 key={i}
@@ -217,7 +152,7 @@ export function SupportBot() {
                     <p className="font-medium text-sm text-white">{topic.title}</p>
                     <p className="text-xs text-slate-400">{topic.description}</p>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+                  <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-purple-400 transition-colors" />
                 </div>
               </button>
             ))}
@@ -225,11 +160,11 @@ export function SupportBot() {
         )}
 
         {/* Messages */}
-        {!showTopics && messages.map((msg, i) => (
+        {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[85%] rounded-lg p-3 text-sm ${
               msg.role === "user"
-                ? "bg-cyan-600 text-white"
+                ? "bg-purple-600 text-white"
                 : "bg-slate-800 text-slate-200"
             }`}>
               <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -240,10 +175,11 @@ export function SupportBot() {
         {isLoading && (
           <div className="flex justify-start">
             <div className="bg-slate-800 rounded-lg p-3">
-              <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+              <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </CardContent>
 
       {/* Input */}
@@ -253,17 +189,21 @@ export function SupportBot() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && handleSend()}
-            placeholder="Type your question..."
+            placeholder="Ask me anything..."
             className="bg-slate-800 border-slate-700"
           />
-          <Button onClick={handleSend} disabled={isLoading || !input.trim()} size="icon">
+          <Button 
+            onClick={() => handleSend()} 
+            disabled={isLoading || !input.trim()} 
+            size="icon"
+            className="bg-purple-600 hover:bg-purple-700"
+          >
             <Send className="h-4 w-4" />
           </Button>
         </div>
-        <div className="mt-2 flex items-center justify-center gap-2 text-xs text-slate-500">
-          <Mail className="h-3 w-3" />
-          <span>Or email {SUPPORT_EMAIL}</span>
-        </div>
+        <p className="mt-2 text-center text-xs text-slate-500">
+          Can't find what you need? Just slack ryan!
+        </p>
       </div>
     </Card>
   );

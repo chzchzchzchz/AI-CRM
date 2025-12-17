@@ -8,6 +8,8 @@ import { trpc } from "@/lib/trpc";
 import { BarChart3, PieChart, TrendingUp, Loader2, Building2, Users, MapPin, Flame, X, ExternalLink, Filter, RefreshCw, Search, Target, Activity, Zap, Hash, ArrowUpRight, ArrowDownRight, Minus, Eye, Phone, Mail } from "lucide-react";
 import { Link } from "wouter";
 import { ContextualAI } from "@/components/ContextualAI";
+import { useRep } from "@/contexts/RepContext";
+import { RepSwitcher } from "@/components/RepSwitcher";
 
 type FilterType = "intent" | "industry" | "region" | "buyingStage" | "keyword" | null;
 
@@ -19,7 +21,19 @@ interface ActiveFilter {
 }
 
 export default function Insights() {
-  const { data: accounts, isLoading } = trpc.accounts.list.useQuery();
+  const { data: allAccounts, isLoading } = trpc.accounts.list.useQuery();
+  
+  // Get rep context for territory filtering
+  const { matchesTerritory, repInfo, isRepMode } = useRep();
+  
+  // Filter accounts by rep territory
+  const accounts = useMemo(() => {
+    if (!allAccounts) return undefined;
+    return allAccounts.filter(account => {
+      const employeeCount = parseInt(String(account.employeeCount || '0').replace(/[^0-9]/g, '') || '0');
+      return matchesTerritory(account.region || '', employeeCount);
+    });
+  }, [allAccounts, matchesTerritory]);
   const { data: calls } = trpc.gong.list.useQuery();
   const { data: contacts } = trpc.people.list.useQuery();
   const { data: keywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 50 });
@@ -194,18 +208,23 @@ export default function Insights() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-4xl font-bold text-white mb-2">Data Analytics Studio</h1>
-            <p className="text-slate-400">Click any chart segment to filter and explore accounts</p>
+            <p className="text-slate-400">
+              {isRepMode ? `${repInfo?.region} territory • ` : ''}Click any chart segment to filter and explore accounts
+            </p>
           </div>
-          {activeFilter && (
-            <Button 
-              variant="outline" 
-              onClick={clearFilter}
-              className="gap-2 border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
-            >
-              <X className="h-4 w-4" />
-              Clear Filter
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            <RepSwitcher />
+            {activeFilter && (
+              <Button 
+                variant="outline" 
+                onClick={clearFilter}
+                className="gap-2 border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+              >
+                <X className="h-4 w-4" />
+                Clear Filter
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* AI Bar */}
