@@ -3,11 +3,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Linkedin, Phone, TrendingUp, Building2, Users, Flame, Zap, ArrowRight, Sparkles, Target, Calendar } from "lucide-react";
+import { Mail, Linkedin, Phone, TrendingUp, Building2, Users, Flame, Zap, ArrowRight, Sparkles, Target, Calendar, MapPin, UserCircle } from "lucide-react";
 import { ContextualAI } from "@/components/ContextualAI";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
+import { useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// Rep view options for testing
+const REP_OPTIONS = [
+  { value: "all", label: "All Accounts (Admin View)", email: "" },
+  // Under 2000 employees
+  { value: "zane", label: "Zane Torres (Central <2K)", email: "zane.torres@company.com" },
+  { value: "morgan", label: "Morgan Iler (West <2K)", email: "morgan.iler@company.com" },
+  { value: "miranda", label: "Miranda Thomas (East <2K)", email: "miranda.thomas@company.com" },
+  // Over 2000 employees
+  { value: "jeff", label: "Jeff Klein (Central 2K+)", email: "jeff.klein@company.com" },
+  { value: "dan", label: "Dan Hamilton (West 2K+)", email: "dan.hamilton@company.com" },
+  { value: "kevin", label: "Kevin Huelster (East 2K+)", email: "kevin.huelster@company.com" },
+];
 
 
 /**
@@ -15,9 +30,18 @@ import { Link } from "wouter";
  * Daily command center for sales reps with stunning visuals
  */
 export default function Home() {
-  // const { user, loading, isAuthenticated } = useAuth(); // Disabled - no auth required
+  const { user } = useAuth();
+  // Rep view switcher state - defaults to logged-in user or "all"
+  const [selectedRep, setSelectedRep] = useState<string>("all");
+  
+  // Get the effective email based on selection (override for testing)
+  const selectedRepOption = REP_OPTIONS.find(r => r.value === selectedRep);
+  const userEmail = selectedRepOption?.email || user?.email || '';
+  
+  // Get rep-specific stats and priority actions
+  const { data: repStats } = trpc.priorityActions.getRepStats.useQuery({ userEmail });
   const { data: accounts, isLoading: accountsLoading } = trpc.accounts.list.useQuery();
-  const { data: enrichedPriorityActions, isLoading: priorityLoading } = trpc.priorityActions.getEnriched.useQuery({ limit: 3 });
+  const { data: enrichedPriorityActions, isLoading: priorityLoading } = trpc.priorityActions.getEnriched.useQuery({ limit: 3, userEmail });
   const { data: sixsenseSummary } = trpc.sixsenseAnalytics.getSummary.useQuery();
   const { data: topKeywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 10 });
 
@@ -54,7 +78,20 @@ export default function Home() {
     );
   }
 
-  // Authentication disabled - direct access
+  // Check if user is a known rep with territory assignment
+  const repInfo: Record<string, { name: string; territory: string; size: string }> = {
+    'zane.torres@company.com': { name: 'Zane', territory: 'Central', size: '<2K employees' },
+    'morgan.iler@company.com': { name: 'Morgan', territory: 'West', size: '<2K employees' },
+    'miranda.thomas@company.com': { name: 'Miranda', territory: 'East', size: '<2K employees' },
+    'jeff.klein@company.com': { name: 'Jeff', territory: 'Central', size: '2K+ employees' },
+    'dan.hamilton@company.com': { name: 'Dan', territory: 'West', size: '2K+ employees' },
+    'kevin.huelster@company.com': { name: 'Kevin', territory: 'East', size: '2K+ employees' },
+  };
+  const currentRep = repInfo[userEmail];
+  const isKnownRep = !!currentRep;
+  const repName = currentRep?.name || '';
+  const repTerritory = currentRep?.territory || '';
+  const repSize = currentRep?.size || '';
 
   // Process accounts data
   const topAccounts = accounts
@@ -65,11 +102,14 @@ export default function Home() {
     .sort((a, b) => b.intentScoreNum - a.intentScoreNum)
     .slice(0, 15) || [];
 
-  const hotLeads = accounts?.filter(a => parseInt(String(a.intentScore || 0)) >= 70).length || 0;
-  const warmLeads = accounts?.filter(a => {
+  // Use rep-specific stats if available, otherwise fall back to all accounts
+  const hotLeads = repStats?.hotLeads ?? accounts?.filter(a => parseInt(String(a.intentScore || 0)) >= 70).length ?? 0;
+  const warmLeads = repStats?.warmLeads ?? accounts?.filter(a => {
     const score = parseInt(String(a.intentScore || 0));
     return score >= 40 && score < 70;
-  }).length || 0;
+  }).length ?? 0;
+  const totalAccounts = repStats?.totalAccounts ?? accounts?.length ?? 0;
+  const sixQAGap = repStats?.sixQAGap ?? Math.floor(totalAccounts * 0.8);
 
   // Use enriched priority actions with contact data
   const priorityActions = (enrichedPriorityActions || []).map((action, index) => ({
@@ -84,17 +124,42 @@ export default function Home() {
       <div className="container py-12 space-y-8 max-w-7xl">
         {/* Hero Section */}
         <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl shadow-lg">
-              <Target className="h-8 w-8 text-white" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl shadow-lg">
+                <Target className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-5xl font-bold tracking-tight">
+                  Good morning{repName ? `, ${repName}` : ''} 👋
+                </h1>
+                <p className="text-muted-foreground text-lg mt-1">
+                  {isKnownRep ? (
+                    <span className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      {repTerritory} Territory &bull; {repSize}
+                    </span>
+                  ) : (
+                    "Here's your sales intelligence for today"
+                  )}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-5xl font-bold tracking-tight">
-                Good morning 👋
-              </h1>
-              <p className="text-muted-foreground text-lg mt-1">
-                Here's your sales intelligence for today
-              </p>
+            {/* Rep View Switcher */}
+            <div className="flex items-center gap-2">
+              <UserCircle className="h-5 w-5 text-muted-foreground" />
+              <Select value={selectedRep} onValueChange={setSelectedRep}>
+                <SelectTrigger className="w-[220px] bg-card">
+                  <SelectValue placeholder="Select rep view" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REP_OPTIONS.map((rep) => (
+                    <SelectItem key={rep.value} value={rep.value}>
+                      {rep.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
@@ -111,8 +176,8 @@ export default function Home() {
                 <Building2 className="h-5 w-5 text-indigo-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{accounts?.length || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Across all territories</p>
+                <div className="text-3xl font-bold">{totalAccounts}</div>
+                <p className="text-xs text-muted-foreground mt-1">{isKnownRep ? `${repTerritory} territory` : 'Across all territories'}</p>
               </CardContent>
             </Card>
           </Link>
