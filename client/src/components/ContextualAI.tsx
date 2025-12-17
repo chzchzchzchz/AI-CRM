@@ -196,10 +196,7 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
                 {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
             </div>
-            {/* Deep-Think Badge */}
-            <div className="flex items-center gap-2 mt-1 ml-10">
-              <span className="text-[10px] text-purple-400/60">Powered by Deep-Think™ 2-layer reasoning</span>
-            </div>
+
             {/* Attached Files */}
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
@@ -281,7 +278,7 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
                 {showReasoning && (
                   <div className="mt-2 bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden">
                     <div className="px-2 py-1 bg-slate-800 text-[10px] text-slate-400 border-b border-slate-700">
-                      Layer 1: Deep-Think™ Reasoning
+                      AI Reasoning
                     </div>
                     <div className="p-2 text-[10px] text-slate-400 overflow-x-auto max-h-48 font-mono whitespace-pre-wrap break-all">
                       <code>{response.reasoning}</code>

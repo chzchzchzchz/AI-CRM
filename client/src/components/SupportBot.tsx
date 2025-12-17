@@ -117,11 +117,8 @@ export function SupportBot() {
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
-              <CardTitle className="text-base flex items-center gap-2">
-                AI Help
-                <span className="text-xs font-normal text-slate-400">Deep-Think™</span>
-              </CardTitle>
-              <p className="text-xs text-slate-400">Powered by 2-layer reasoning</p>
+              <CardTitle className="text-base">AI Help</CardTitle>
+              <p className="text-xs text-slate-400">Ask anything about the dashboard</p>
             </div>
           </div>
           <Button variant="ghost" size="sm" onClick={() => setIsOpen(false)}>
@@ -180,7 +177,7 @@ export function SupportBot() {
                 {expandedReasoning === i && (
                   <div className="mt-1 bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden">
                     <div className="px-2 py-1 bg-slate-800 text-[10px] text-slate-400 border-b border-slate-700">
-                      Layer 1: Deep-Think™ Reasoning
+                      AI Reasoning
                     </div>
                     <div className="p-2 text-[10px] text-slate-400 overflow-x-auto max-h-32 font-mono whitespace-pre-wrap break-all">
                       <code>{msg.reasoning}</code>
