@@ -1,4 +1,8 @@
 import { invokeLLM } from "./_core/llm";
+import { getDb } from "./db";
+import { aiResponseCache } from "../drizzle/schema";
+import { eq, and, gt } from "drizzle-orm";
+import crypto from "crypto";
 
 /**
  * DEEP-THINK ARCHITECTURE
@@ -6,7 +10,12 @@ import { invokeLLM } from "./_core/llm";
  * 
  * Layer 1: Recursive Reasoning Engine (hidden backend)
  * Layer 2: Synthesizer (user-facing frontend)
+ * 
+ * + Response Caching for identical queries
  */
+
+// Cache TTL in hours (default 24 hours)
+const CACHE_TTL_HOURS = 24;
 
 // Layer 1: Reasoning Engine System Prompt
 const LAYER_1_PROMPT = `# SYSTEM ROLE: RECURSIVE REASONING CORE (INTERNAL ONLY)
@@ -68,6 +77,100 @@ Your goal is to make the user feel like they are talking to the smartest, most a
 export interface DeepThinkResult {
   answer: string;
   reasoning?: string; // Only included in debug mode
+  cached?: boolean; // Indicates if response was from cache
+  cacheHitCount?: number; // How many times this response has been served
+}
+
+/**
+ * Generate a hash for cache lookup
+ */
+function generateCacheHash(query: string, context: string): string {
+  const combined = `${query.toLowerCase().trim()}|${context}`;
+  return crypto.createHash("sha256").update(combined).digest("hex");
+}
+
+/**
+ * Check cache for existing response
+ */
+async function checkCache(queryHash: string): Promise<DeepThinkResult | null> {
+  try {
+    const db = await getDb();
+    if (!db) return null;
+    
+    const now = new Date();
+    const cached = await db
+      .select()
+      .from(aiResponseCache)
+      .where(
+        and(
+          eq(aiResponseCache.queryHash, queryHash),
+          gt(aiResponseCache.expiresAt, now)
+        )
+      )
+      .limit(1);
+
+    if (cached.length > 0) {
+      const entry = cached[0];
+      
+      // Update hit count and last hit time
+      await db
+        .update(aiResponseCache)
+        .set({
+          hitCount: (entry.hitCount || 1) + 1,
+          lastHitAt: now
+        })
+        .where(eq(aiResponseCache.id, entry.id));
+
+      return {
+        answer: entry.answer,
+        reasoning: entry.reasoning || undefined,
+        cached: true,
+        cacheHitCount: (entry.hitCount || 1) + 1
+      };
+    }
+  } catch (error) {
+    console.error("[DeepThink] Cache lookup error:", error);
+  }
+  return null;
+}
+
+/**
+ * Store response in cache
+ */
+async function storeInCache(params: {
+  queryHash: string;
+  query: string;
+  contextHash: string;
+  answer: string;
+  reasoning?: string;
+}): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + CACHE_TTL_HOURS);
+
+    await db.insert(aiResponseCache).values({
+      queryHash: params.queryHash,
+      query: params.query,
+      contextHash: params.contextHash,
+      answer: params.answer,
+      reasoning: params.reasoning,
+      expiresAt,
+      hitCount: 1,
+      lastHitAt: new Date()
+    }).onDuplicateKeyUpdate({
+      set: {
+        answer: params.answer,
+        reasoning: params.reasoning,
+        expiresAt,
+        lastHitAt: new Date()
+      }
+    });
+  } catch (error) {
+    console.error("[DeepThink] Cache store error:", error);
+  }
 }
 
 /**
@@ -78,8 +181,26 @@ export async function deepThink(params: {
   query: string;
   context?: string;
   debugMode?: boolean;
+  skipCache?: boolean;
 }): Promise<DeepThinkResult> {
-  const { query, context = "", debugMode = false } = params;
+  const { query, context = "", debugMode = false, skipCache = false } = params;
+
+  // Generate cache hash
+  const queryHash = generateCacheHash(query, context);
+  const contextHash = crypto.createHash("sha256").update(context).digest("hex").substring(0, 32);
+
+  // Check cache first (unless skipCache is true)
+  if (!skipCache) {
+    const cachedResult = await checkCache(queryHash);
+    if (cachedResult) {
+      console.log(`[DeepThink] Cache HIT for query: "${query.substring(0, 50)}..."`);
+      return {
+        ...cachedResult,
+        reasoning: debugMode ? cachedResult.reasoning : undefined
+      };
+    }
+    console.log(`[DeepThink] Cache MISS for query: "${query.substring(0, 50)}..."`);
+  }
 
   // ============================================
   // LAYER 1: RECURSIVE REASONING ENGINE
@@ -119,9 +240,19 @@ Transform this into a polished, human response.`;
   const answer = layer2Response.choices[0]?.message?.content || "";
   const answerStr = typeof answer === 'string' ? answer : JSON.stringify(answer);
 
+  // Store in cache for future use
+  await storeInCache({
+    queryHash,
+    query,
+    contextHash,
+    answer: answerStr,
+    reasoning: reasoningStr
+  });
+
   return {
     answer: answerStr,
-    reasoning: debugMode ? reasoningStr : undefined
+    reasoning: debugMode ? reasoningStr : undefined,
+    cached: false
   };
 }
 
@@ -135,8 +266,9 @@ export async function deepThinkSales(params: {
   contactData?: any;
   additionalContext?: string;
   debugMode?: boolean;
+  skipCache?: boolean;
 }): Promise<DeepThinkResult> {
-  const { query, accountData, contactData, additionalContext, debugMode = false } = params;
+  const { query, accountData, contactData, additionalContext, debugMode = false, skipCache = false } = params;
 
   // Build rich context
   let context = `COMPANY: the company (passwordless MFA/SSO/Zero Trust security)
@@ -156,7 +288,7 @@ COMPETITORS: Okta, Ping Identity, Microsoft Azure AD, Duo`;
     context += `\n\nADDITIONAL CONTEXT:\n${additionalContext}`;
   }
 
-  return deepThink({ query, context, debugMode });
+  return deepThink({ query, context, debugMode, skipCache });
 }
 
 /**
@@ -166,8 +298,9 @@ COMPETITORS: Okta, Ping Identity, Microsoft Azure AD, Duo`;
 export async function deepThinkHelp(params: {
   query: string;
   debugMode?: boolean;
+  skipCache?: boolean;
 }): Promise<DeepThinkResult> {
-  const { query, debugMode = false } = params;
+  const { query, debugMode = false, skipCache = false } = params;
 
   const context = `DASHBOARD FEATURES:
 - Accounts: View and manage target accounts with 6sense intent data
@@ -188,5 +321,5 @@ REPS AND TERRITORIES:
 
 If you can't answer something, suggest the user "slack ryan" for help.`;
 
-  return deepThink({ query, context, debugMode });
+  return deepThink({ query, context, debugMode, skipCache });
 }

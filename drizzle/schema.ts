@@ -410,3 +410,22 @@ export const aiChatHistory = mysqlTable("aiChatHistory", {
 
 export type AIChatHistoryRecord = typeof aiChatHistory.$inferSelect;
 export type InsertAIChatHistory = typeof aiChatHistory.$inferInsert;
+
+
+// AI Response Cache - stores cached AI responses to avoid re-generating identical queries
+export const aiResponseCache = mysqlTable("aiResponseCache", {
+  id: int("id").autoincrement().primaryKey(),
+  queryHash: varchar("queryHash", { length: 64 }).notNull().unique(), // SHA-256 hash of query + context
+  query: text("query").notNull(),
+  contextHash: varchar("contextHash", { length: 64 }), // Hash of additional context (accountId, etc.)
+  answer: text("answer").notNull(),
+  reasoning: text("reasoning"), // Optional Deep-Think reasoning
+  model: varchar("model", { length: 50 }),
+  hitCount: int("hitCount").default(1), // Number of times this cache entry was used
+  lastHitAt: timestamp("lastHitAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(), // TTL for cache entry
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AIResponseCacheRecord = typeof aiResponseCache.$inferSelect;
+export type InsertAIResponseCache = typeof aiResponseCache.$inferInsert;
