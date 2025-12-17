@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TableSkeleton } from "@/components/LoadingSkeleton";
-import { Streamdown } from "streamdown";
+import { SafeStreamdown } from "@/components/SafeStreamdown";
 
 type SortField = "callDate" | "duration" | "company";
 type SortOrder = "asc" | "desc";
@@ -312,9 +312,9 @@ export default function CallsEnhanced() {
                             <Sparkles className="h-4 w-4 text-purple-400" />
                             <span className="text-sm font-semibold text-purple-400">AI Summary</span>
                           </div>
-                          <Streamdown className="text-slate-300 text-sm leading-relaxed">
+                          <SafeStreamdown className="text-slate-300 text-sm leading-relaxed">
                             {call.summary}
-                          </Streamdown>
+                          </SafeStreamdown>
                         </div>
                       )}
 
@@ -326,7 +326,7 @@ export default function CallsEnhanced() {
                             <span className="text-sm font-semibold text-cyan-400">Transcript</span>
                           </div>
                           <div className="text-sm text-slate-400 leading-relaxed max-h-96 overflow-y-auto">
-                            <Streamdown>{call.transcriptUrl}</Streamdown>
+                            <SafeStreamdown>{call.transcriptUrl}</SafeStreamdown>
                           </div>
                         </div>
                       )}

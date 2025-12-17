@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { Bot, Send, X, Minimize2, Maximize2, Loader2, Sparkles } from "lucide-react";
-import { Streamdown } from "streamdown";
+import { SafeStreamdown } from "@/components/SafeStreamdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -190,7 +190,7 @@ export function AIAssistant({ context }: AIAssistantProps) {
                         : "bg-slate-950 border border-slate-800 text-slate-300"
                     }`}>
                       {msg.role === "assistant" ? (
-                        <Streamdown className="text-sm">{msg.content}</Streamdown>
+                        <SafeStreamdown className="text-sm">{msg.content}</SafeStreamdown>
                       ) : (
                         <p className="text-sm">{msg.content}</p>
                       )}

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { Sparkles, FileText, RefreshCw, Clock } from "lucide-react";
-import { Streamdown } from "streamdown";
+import { SafeStreamdown } from "@/components/SafeStreamdown";
 import { TechStackDisplay } from "./TechStackDisplay";
 
 interface OverviewTabProps {
@@ -86,7 +86,7 @@ export function OverviewTab({ accountId, account }: OverviewTabProps) {
             </div>
           ) : data ? (
             <div className="prose prose-sm dark:prose-invert max-w-none">
-              <Streamdown>{data.summary}</Streamdown>
+              <SafeStreamdown>{data.summary}</SafeStreamdown>
             </div>
           ) : (
             <div className="p-4 rounded-lg bg-muted/50 text-center text-muted-foreground">
