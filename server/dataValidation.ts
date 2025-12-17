@@ -1,4 +1,5 @@
 import { invokeLLM } from "./_core/llm";
+import { withRCP } from "./ai-system-prompt";
 import { getAllAccounts, getAllPeople } from "./db";
 
 /**
@@ -121,7 +122,7 @@ Return JSON:
   try {
     const response = await invokeLLM({
       messages: [
-        { role: "system", content: "You are a data verification expert. Return only valid JSON." },
+        { role: "system", content: withRCP("You are a data verification expert. Return only valid JSON.") },
         { role: "user", content: prompt }
       ],
       response_format: {
@@ -205,7 +206,7 @@ Return JSON:
   try {
     const response = await invokeLLM({
       messages: [
-        { role: "system", content: "You are a data verification expert. Return only valid JSON." },
+        { role: "system", content: withRCP("You are a data verification expert. Return only valid JSON.") },
         { role: "user", content: prompt }
       ],
       response_format: {
@@ -290,7 +291,7 @@ Return JSON:
   try {
     const response = await invokeLLM({
       messages: [
-        { role: "system", content: "You are a data verification expert. Return only valid JSON." },
+        { role: "system", content: withRCP("You are a data verification expert. Return only valid JSON.") },
         { role: "user", content: prompt }
       ],
       response_format: {

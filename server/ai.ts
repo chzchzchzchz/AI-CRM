@@ -1,5 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import { getAllAccounts, getAllPeople, getAllGongCalls } from "./db";
+import { withRCP } from "./ai-system-prompt";
 
 /**
  * AI Service Layer
@@ -74,7 +75,7 @@ Focus on:
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a sales intelligence AI for the company. Analyze accounts and provide actionable insights." },
+      { role: "system", content: withRCP("You are a sales intelligence AI for the company. Analyze accounts and provide actionable insights.") },
       { role: "user", content: prompt }
     ],
     response_format: {
@@ -126,7 +127,7 @@ Provide a JSON response with:
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a sales call analyzer for the company. Extract insights from call transcripts." },
+      { role: "system", content: withRCP("You are a sales call analyzer for the company. Extract insights from call transcripts.") },
       { role: "user", content: prompt }
     ],
     response_format: {
@@ -182,7 +183,7 @@ Return only the email body (no subject line).
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a sales email writer for the company. Write personalized, high-converting outreach emails." },
+      { role: "system", content: withRCP("You are a sales email writer for the company. Write personalized, high-converting outreach emails.") },
       { role: "user", content: prompt }
     ]
   });
@@ -223,7 +224,7 @@ Examples:
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a search query interpreter. Understand user intent and translate to database filters." },
+      { role: "system", content: withRCP("You are a search query interpreter. Understand user intent and translate to database filters.") },
       { role: "user", content: prompt }
     ],
     response_format: {
@@ -266,7 +267,7 @@ Return a JSON array of contact IDs sorted by priority (highest first), with reas
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a contact prioritization AI. Rank contacts by likelihood to engage and influence deals." },
+      { role: "system", content: withRCP("You are a contact prioritization AI. Rank contacts by likelihood to engage and influence deals.") },
       { role: "user", content: prompt }
     ],
     response_format: {

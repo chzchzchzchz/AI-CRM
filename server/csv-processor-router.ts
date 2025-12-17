@@ -1,6 +1,7 @@
 import { router, publicProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
+import { withRCP } from "./ai-system-prompt";
 
 // Target template fields for SFDC/HubSpot webinar import
 const TARGET_FIELDS = [
@@ -116,7 +117,7 @@ Return a JSON object with this structure:
       try {
         const response = await invokeLLM({
           messages: [
-            { role: "system", content: "You are a precise data mapping assistant. Return only valid JSON, no markdown." },
+            { role: "system", content: withRCP("You are a precise data mapping assistant. Return only valid JSON, no markdown.") },
             { role: "user", content: prompt }
           ],
           response_format: {

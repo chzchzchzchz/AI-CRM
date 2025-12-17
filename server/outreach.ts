@@ -1,6 +1,7 @@
 import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
+import { withRCP } from "./ai-system-prompt";
 import { eq, inArray } from "drizzle-orm";
 import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -139,7 +140,7 @@ Keep it brief and tactical. These are YOUR notes, not for the prospect.`;
 
       const strategyResponse = await invokeLLM({
         messages: [
-          { role: "system", content: "You are a tactical sales strategist. Be brief and specific." },
+          { role: "system", content: withRCP("You are a tactical sales strategist. Be brief and specific.") },
           { role: "user", content: strategyPrompt },
         ],
       });
@@ -175,7 +176,7 @@ Example tone (but use their real data):
 
       const emailResponse = await invokeLLM({
         messages: [
-          { role: "system", content: "You write short, specific, human cold emails. No fluff. No corporate speak. Just direct, relevant outreach." },
+          { role: "system", content: withRCP("You write short, specific, human cold emails. No fluff. No corporate speak. Just direct, relevant outreach.") },
           { role: "user", content: emailPrompt },
         ],
       });
