@@ -21,9 +21,11 @@ import { sixsenseRouter } from "./sixsense-router";
 import { sixsenseAnalyticsRouter } from "./sixsense-analytics";
 import { csvProcessorRouter } from "./csv-processor-router";
 import { deepThink, deepThinkSales, deepThinkHelp } from "./deep-think";
+import { toolsRouter } from "./tools-router";
 
 
 export const appRouter = router({
+  tools: toolsRouter,
   clay: clayRouter,
   gemini: geminiRouter,
   validation: validationRouter,
