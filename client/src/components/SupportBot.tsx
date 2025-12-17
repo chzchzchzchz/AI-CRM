@@ -182,9 +182,9 @@ export function SupportBot() {
                     <div className="px-2 py-1 bg-slate-800 text-[10px] text-slate-400 border-b border-slate-700">
                       Layer 1: Deep-Think™ Reasoning
                     </div>
-                    <pre className="p-2 text-[10px] text-slate-400 overflow-x-auto max-h-32">
-                      {msg.reasoning}
-                    </pre>
+                    <div className="p-2 text-[10px] text-slate-400 overflow-x-auto max-h-32 font-mono whitespace-pre-wrap break-all">
+                      <code>{msg.reasoning}</code>
+                    </div>
                   </div>
                 )}
               </div>
