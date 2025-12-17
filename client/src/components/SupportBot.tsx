@@ -3,12 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
-import { HelpCircle, X, Send, Loader2, ChevronRight, Sparkles, Bug, ChevronDown, ChevronUp } from "lucide-react";
+import { HelpCircle, X, Send, Loader2, ChevronRight, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
-  reasoning?: string; // Raw XML reasoning from Layer 1 (debug mode only)
+  reasoning?: string; // Raw XML reasoning from Layer 1 (always captured, optionally shown)
 }
 
 const helpTopics = [
@@ -45,7 +45,6 @@ export function SupportBot() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showTopics, setShowTopics] = useState(true);
-  const [debugMode, setDebugMode] = useState(false);
   const [expandedReasoning, setExpandedReasoning] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -67,16 +66,16 @@ export function SupportBot() {
     setShowTopics(false);
 
     try {
-      // Use Deep-Think 2-layer architecture
+      // Use Deep-Think 2-layer architecture - always capture reasoning
       const response = await deepThinkMutation.mutateAsync({
         query: userMessage,
-        debugMode: debugMode
+        debugMode: true // Always capture reasoning, but we'll hide it by default
       });
 
       setMessages(prev => [...prev, {
         role: "assistant",
         content: response.answer || "Hmm, I'm not sure about that. Slack ryan if you need more help!",
-        reasoning: response.reasoning // Only present if debugMode is true
+        reasoning: response.reasoning // Always store reasoning for optional viewing
       }]);
     } catch (error) {
       setMessages(prev => [...prev, {
@@ -122,30 +121,13 @@ export function SupportBot() {
                 AI Help
                 <span className="text-xs font-normal text-slate-400">Deep-Think™</span>
               </CardTitle>
-              <p className="text-xs text-slate-400">2-layer reasoning engine</p>
+              <p className="text-xs text-slate-400">Powered by 2-layer reasoning</p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
-            {/* Debug Mode Toggle */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setDebugMode(!debugMode)}
-              className={`${debugMode ? 'text-yellow-400 bg-yellow-400/10' : 'text-slate-500'}`}
-              title={debugMode ? "Debug Mode ON - showing raw reasoning" : "Debug Mode OFF"}
-            >
-              <Bug className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setIsOpen(false)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button variant="ghost" size="sm" onClick={() => setIsOpen(false)}>
+            <X className="h-4 w-4" />
+          </Button>
         </div>
-        {debugMode && (
-          <div className="mt-2 p-2 bg-yellow-400/10 border border-yellow-400/30 rounded text-xs text-yellow-400">
-            🐛 Debug Mode: Showing Layer 1 reasoning XML
-          </div>
-        )}
       </CardHeader>
 
       <CardContent className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[200px]">
@@ -173,41 +155,40 @@ export function SupportBot() {
 
         {/* Messages */}
         {messages.map((msg, i) => (
-          <div key={i} className="space-y-2">
-            {/* Debug: Show Layer 1 Reasoning (collapsible) */}
-            {debugMode && msg.reasoning && msg.role === "assistant" && (
-              <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => toggleReasoning(i)}
-                  className="w-full flex items-center justify-between p-2 text-xs text-yellow-400 hover:bg-yellow-900/30"
-                >
-                  <span className="flex items-center gap-1">
-                    <Bug className="h-3 w-3" />
-                    Layer 1: Raw Reasoning XML
-                  </span>
-                  {expandedReasoning === i ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                </button>
-                {expandedReasoning === i && (
-                  <pre className="p-3 text-[10px] text-yellow-300/80 overflow-x-auto max-h-48 bg-black/30">
-                    {msg.reasoning}
-                  </pre>
-                )}
-              </div>
-            )}
-            
-            {/* Layer 2: Final Response */}
+          <div key={i} className="space-y-1">
+            {/* Main Message (Layer 2 Response) */}
             <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[85%] rounded-lg p-3 text-sm ${
                 msg.role === "user"
                   ? "bg-purple-600 text-white"
                   : "bg-slate-800 text-slate-200"
               }`}>
-                {msg.role === "assistant" && debugMode && msg.reasoning && (
-                  <div className="text-[10px] text-green-400 mb-1 font-mono">Layer 2: Synthesized Response</div>
-                )}
                 <p className="whitespace-pre-wrap">{msg.content}</p>
               </div>
             </div>
+            
+            {/* Optional Reasoning Dropdown (collapsed by default) */}
+            {msg.reasoning && msg.role === "assistant" && (
+              <div className="ml-0">
+                <button
+                  onClick={() => toggleReasoning(i)}
+                  className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-400 transition-colors py-1"
+                >
+                  {expandedReasoning === i ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  <span>{expandedReasoning === i ? "Hide" : "View"} reasoning</span>
+                </button>
+                {expandedReasoning === i && (
+                  <div className="mt-1 bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden">
+                    <div className="px-2 py-1 bg-slate-800 text-[10px] text-slate-400 border-b border-slate-700">
+                      Layer 1: Deep-Think™ Reasoning
+                    </div>
+                    <pre className="p-2 text-[10px] text-slate-400 overflow-x-auto max-h-32">
+                      {msg.reasoning}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
 
@@ -216,9 +197,7 @@ export function SupportBot() {
             <div className="bg-slate-800 rounded-lg p-3">
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
-                <span className="text-xs text-slate-400">
-                  {debugMode ? "Layer 1: Reasoning... → Layer 2: Synthesizing..." : "Thinking..."}
-                </span>
+                <span className="text-xs text-slate-400">Thinking...</span>
               </div>
             </div>
           </div>
