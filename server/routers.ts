@@ -20,6 +20,7 @@ import { bulkInsightsRouter } from "./bulk-insights-router";
 import { sixsenseRouter } from "./sixsense-router";
 import { sixsenseAnalyticsRouter } from "./sixsense-analytics";
 import { csvProcessorRouter } from "./csv-processor-router";
+import { deepThink, deepThinkSales, deepThinkHelp } from "./deep-think";
 
 
 export const appRouter = router({
@@ -30,6 +31,36 @@ export const appRouter = router({
   bulkInsights: bulkInsightsRouter,
   sixsense: sixsenseRouter,
   csvProcessor: csvProcessorRouter,
+  deepThink: router({
+    chat: publicProcedure
+      .input(z.object({
+        query: z.string(),
+        context: z.string().optional(),
+        debugMode: z.boolean().optional()
+      }))
+      .mutation(async ({ input }) => {
+        return await deepThink(input);
+      }),
+    sales: publicProcedure
+      .input(z.object({
+        query: z.string(),
+        accountData: z.any().optional(),
+        contactData: z.any().optional(),
+        additionalContext: z.string().optional(),
+        debugMode: z.boolean().optional()
+      }))
+      .mutation(async ({ input }) => {
+        return await deepThinkSales(input);
+      }),
+    help: publicProcedure
+      .input(z.object({
+        query: z.string(),
+        debugMode: z.boolean().optional()
+      }))
+      .mutation(async ({ input }) => {
+        return await deepThinkHelp(input);
+      }),
+  }),
   sixsenseAnalytics: sixsenseAnalyticsRouter,
   analytics: router({
     overview: publicProcedure.query(async () => {
