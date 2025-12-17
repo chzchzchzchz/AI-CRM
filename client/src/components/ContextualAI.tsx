@@ -15,6 +15,11 @@ interface ContextualAIProps {
   placeholder?: string;
 }
 
+interface AIResponse {
+  answer: string;
+  reasoning?: string;
+}
+
 const contextSuggestions: Record<string, string[]> = {
   accounts: [
     "Which accounts have the highest intent this week?",
@@ -56,12 +61,14 @@ const contextSuggestions: Record<string, string[]> = {
 export function ContextualAI({ context, accountId, contactId, placeholder }: ContextualAIProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [query, setQuery] = useState("");
-  const [response, setResponse] = useState<string | null>(null);
+  const [response, setResponse] = useState<AIResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [showReasoning, setShowReasoning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const chatMutation = trpc.ai.chat.useMutation();
+  // Use Deep-Think endpoint for 2-layer AI architecture
+  const deepThinkMutation = trpc.deepThink.sales.useMutation();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -92,6 +99,7 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
 
     setIsLoading(true);
     setResponse(null);
+    setShowReasoning(false);
 
     try {
       // Read file contents if attached
@@ -103,14 +111,29 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
         }
       }
 
-      const result = await chatMutation.mutateAsync({
-        query: fileContext ? `${q}\n\nAttached files context:${fileContext}` : q,
-        accountId,
-        contactId,
+      // Build additional context based on page context
+      let additionalContext = `Page context: ${context}`;
+      if (fileContext) {
+        additionalContext += `\n\nAttached files:${fileContext}`;
+      }
+
+      // Use Deep-Think 2-layer architecture
+      const result = await deepThinkMutation.mutateAsync({
+        query: q,
+        accountData: accountId ? { id: accountId } : undefined,
+        contactData: contactId ? { id: contactId } : undefined,
+        additionalContext,
+        debugMode: true // Always capture reasoning for optional viewing
       });
-      setResponse(result.answer || "I couldn't find relevant information.");
+
+      setResponse({
+        answer: result.answer || "I couldn't find relevant information.",
+        reasoning: result.reasoning
+      });
     } catch (error) {
-      setResponse("Sorry, I encountered an error. Please try again.");
+      setResponse({
+        answer: "Sorry, I encountered an error. Please try again."
+      });
     } finally {
       setIsLoading(false);
       setQuery("");
@@ -169,6 +192,10 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
                 {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
             </div>
+            {/* Deep-Think Badge */}
+            <div className="flex items-center gap-2 mt-1 ml-10">
+              <span className="text-[10px] text-purple-400/60">Powered by Deep-Think™ 2-layer reasoning</span>
+            </div>
             {/* Attached Files */}
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
@@ -211,7 +238,7 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
           <div className="mt-4 p-4 bg-slate-900/50 rounded-lg border border-purple-500/20">
             <div className="flex items-start justify-between gap-2">
               <div className="prose prose-sm dark:prose-invert max-w-none flex-1">
-                <SafeStreamdown>{response}</SafeStreamdown>
+                <SafeStreamdown>{response.answer}</SafeStreamdown>
               </div>
               <Button
                 variant="ghost"
@@ -222,6 +249,29 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
                 <X className="h-4 w-4" />
               </Button>
             </div>
+            
+            {/* Optional Reasoning Dropdown */}
+            {response.reasoning && (
+              <div className="mt-3 pt-3 border-t border-purple-500/10">
+                <button
+                  onClick={() => setShowReasoning(!showReasoning)}
+                  className="flex items-center gap-1 text-[10px] text-purple-400/60 hover:text-purple-400 transition-colors"
+                >
+                  {showReasoning ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  <span>{showReasoning ? "Hide" : "View"} reasoning</span>
+                </button>
+                {showReasoning && (
+                  <div className="mt-2 bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden">
+                    <div className="px-2 py-1 bg-slate-800 text-[10px] text-slate-400 border-b border-slate-700">
+                      Layer 1: Deep-Think™ Reasoning
+                    </div>
+                    <div className="p-2 text-[10px] text-slate-400 overflow-x-auto max-h-48 font-mono whitespace-pre-wrap break-all">
+                      <code>{response.reasoning}</code>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </CardContent>
