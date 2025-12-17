@@ -116,9 +116,18 @@ export const priorityActionsRouter = router({
           
           const vectorScores = calculateVectorScores(accountData);
 
+          // Check for Lost Opp status
+          const isLostOpp = account.relationship?.toLowerCase().includes('lost') || 
+                           (account.rawData as any)?.relationship?.toLowerCase().includes('lost');
+          const lostOppContext = isLostOpp 
+            ? '⚠️ LOST OPP - Check Salesforce for deal history before re-engaging' 
+            : null;
+
           // Generate "Why Now" reasoning with VECTOR context
           let whyNow: string;
-          if (calls.length === 0) {
+          if (isLostOpp) {
+            whyNow = `VECTOR ${vectorScores.composite}/100 • ⚠️ LOST OPP - Check SFDC for history, loss reasons, and previous contacts`;
+          } else if (calls.length === 0) {
             whyNow = `VECTOR ${vectorScores.composite}/100 (Tier ${vectorScores.tier}) • Intent ${account.intentScore} + Zero engagement = Act today`;
           } else if (daysSinceLastCall !== null && daysSinceLastCall <= 7) {
             whyNow = `VECTOR ${vectorScores.composite}/100 • Hot momentum - last call ${daysSinceLastCall} days ago`;
@@ -182,6 +191,9 @@ export const priorityActionsRouter = router({
             // Actions
             whyNow,
             nextBestAction,
+            // Lost Opp context
+            isLostOpp,
+            lostOppContext,
           };
         })
       );

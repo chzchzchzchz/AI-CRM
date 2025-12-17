@@ -264,6 +264,8 @@ export default function Home() {
                   const engagementMetrics = (action as any).engagementMetrics;
                   const primaryContact = (action as any).primaryContact;
                   const keyContactsCount = (action as any).keyContactsCount || 0;
+                  const isLostOpp = (action as any).isLostOpp;
+                  const lostOppContext = (action as any).lostOppContext;
                   
                   // Determine VECTOR tier color
                   const tierColor = vectorScores?.tier === 1 ? 'text-green-500' : 
@@ -282,11 +284,16 @@ export default function Home() {
                             {/* Account Header with VECTOR Score */}
                             <div className="flex items-start justify-between">
                               <div>
-                                <div className="flex items-center gap-2 mb-1">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
                                   <h3 className="font-semibold text-lg">ENGAGE {action.name}</h3>
                                   {vectorScores && (
                                     <Badge variant="outline" className={`${tierColor} border-current font-bold`}>
                                       VECTOR {vectorScores.composite}/100
+                                    </Badge>
+                                  )}
+                                  {isLostOpp && (
+                                    <Badge variant="destructive" className="bg-orange-600 hover:bg-orange-700">
+                                      ⚠️ LOST OPP
                                     </Badge>
                                   )}
                                 </div>

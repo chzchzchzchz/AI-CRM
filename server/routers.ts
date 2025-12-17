@@ -386,9 +386,38 @@ export const appRouter = router({
           };
         }
 
+        // If forceRefresh, clear the cache first
+        if (input.forceRefresh) {
+          console.log(`[AI Overview] Force refresh requested for account ${input.accountId}, clearing cache...`);
+          await updateAccount(input.accountId, {
+            aiOverviewCache: null,
+            aiCacheUpdatedAt: null
+          } as any);
+        }
+
         // Generate new summary
         const people = await getContactsByAccountId(input.accountId);
         const calls = await getGongCallsByAccountId(input.accountId);
+
+        // Limit contacts to top 10 prioritized by management level and engagement
+        const prioritizedContacts = people
+          .sort((a: any, b: any) => {
+            // Prioritize by management level (C-Suite > VP > Director > Manager > Individual)
+            const levelOrder: Record<string, number> = { 'C-Suite': 1, 'VP': 2, 'Director': 3, 'Manager': 4, 'Individual': 5 };
+            const aLevel = levelOrder[a.managementLevel] || 6;
+            const bLevel = levelOrder[b.managementLevel] || 6;
+            if (aLevel !== bLevel) return aLevel - bLevel;
+            // Then by engagement activities
+            return (b.engagementActivities || 0) - (a.engagementActivities || 0);
+          })
+          .slice(0, 10)
+          .map((p: any) => ({
+            name: p.name,
+            title: p.title,
+            department: p.department,
+            managementLevel: p.managementLevel,
+            email: p.email
+          }));
 
         const dataContext = {
           company: {
@@ -401,7 +430,8 @@ export const appRouter = router({
             buyingStage: (account as any).buyingStage || 'Unknown',
             relationship: account.relationship
           },
-          contacts: people.length,
+          keyContacts: prioritizedContacts,
+          totalContacts: people.length,
           recentCalls: calls.length,
           techStack: account.techStack ? 'Available' : 'Not available',
           triggers: account.triggerEvents ? 'Available' : 'None',
@@ -503,6 +533,15 @@ export const appRouter = router({
           return { ...cachedData, cached: true, cacheAge: Math.floor(cacheAge / (60 * 1000)) };
         }
 
+        // If forceRefresh, clear the cache first
+        if (input.forceRefresh) {
+          console.log(`[AI Research] Force refresh requested for account ${input.accountId}, clearing cache...`);
+          await updateAccount(input.accountId, {
+            aiResearchCache: null,
+            aiCacheUpdatedAt: null
+          } as any);
+        }
+
         // Parse triggers and news from rawData
         let triggers: any = {};
         let newsData: any = {};
@@ -578,6 +617,15 @@ export const appRouter = router({
             cached: true,
             cacheAge: Math.floor(cacheAge / (60 * 1000))
           };
+        }
+
+        // If forceRefresh, clear the cache first to ensure fresh generation
+        if (input.forceRefresh) {
+          console.log(`[AI Insights] Force refresh requested for account ${input.accountId}, clearing cache...`);
+          await updateAccount(input.accountId, {
+            aiInsightsCache: null,
+            aiCacheUpdatedAt: null
+          } as any);
         }
 
         const people = await getContactsByAccountId(input.accountId);
