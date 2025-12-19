@@ -41,6 +41,8 @@ export const accounts = mysqlTable("accounts", {
   triggerEvents: text("triggerEvents"),
   rawData: json("rawData"),
   aiOverviewCache: text("aiOverviewCache"),
+  aiInsightsCache: text("aiInsightsCache"),
+  aiResearchCache: text("aiResearchCache"),
   aiCacheUpdatedAt: timestamp("aiCacheUpdatedAt"),
   // 6sense integration fields
   sixsenseId: varchar("sixsenseId", { length: 255 }),

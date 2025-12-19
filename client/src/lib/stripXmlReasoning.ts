@@ -69,6 +69,27 @@ export function stripXmlReasoning(content: string): string {
   // Remove XML tags with attributes
   result = result.replace(/<\/?[a-z_]+[0-9]*\s+[^>]*>/gi, '');
   
+  // Remove RCP stage headers and hypothesis patterns
+  result = result.replace(/^\s*STAGE \d+:[^\n]*\n/gim, '');
+  result = result.replace(/^\s*###\s*STAGE \d+:[^\n]*\n/gim, '');
+  result = result.replace(/^\s*\*\*STAGE \d+:[^\n]*\*\*\n/gim, '');
+  result = result.replace(/Hypothesis [A-Z]:\s*\*\*[^*]+\*\*/gi, '');
+  result = result.replace(/Hypothesis [A-Z]:[^\n]*\n/gi, '');
+  result = result.replace(/\*\*Hypothesis [A-Z]:[^\n]*\*\*/gi, '');
+  result = result.replace(/Path [A-Z]:[^\n]*\n/gi, '');
+  result = result.replace(/^\s*\d+\.\s*\*\*Define:\*\*[^\n]*\n/gim, '');
+  result = result.replace(/^\s*\d+\.\s*\*\*Constraints:\*\*[^\n]*\n/gim, '');
+  result = result.replace(/^\s*\d+\.\s*\*\*Query \d+[^\n]*\n/gim, '');
+  result = result.replace(/^\s*BEGIN PROCESSING NOW\.?\s*$/gim, '');
+  result = result.replace(/^\s*CONFIDENCE_SCORE:[^\n]*\n/gim, '');
+  
+  // Remove common AI boilerplate phrases
+  result = result.replace(/The analysis is complete and adheres to all constraints\.?/gi, '');
+  result = result.replace(/The analysis adheres to all constraints\.?/gi, '');
+  result = result.replace(/This analysis adheres to all constraints\.?/gi, '');
+  result = result.replace(/This analysis is complete\.?/gi, '');
+  result = result.replace(/I have completed the analysis\.?/gi, '');
+  
   // Clean up excessive whitespace
   result = result.replace(/\n{3,}/g, '\n\n').trim();
   

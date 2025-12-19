@@ -230,3 +230,27 @@
 2. Add manual call logging feature
 3. Fix Executive Summary loading timeout
 4. Add email/phone/LinkedIn to Contact Detail page
+
+
+---
+
+## AI OUTPUT INVESTIGATION - Dec 19, 2025
+
+### Northern Trust Account Analysis
+The Strategic Recommendations section is **rendering correctly** with:
+- Vector Score Breakdown table (Engagement, Conversion, Strategic Value, Timing)
+- Power Map with contacts and approach strategies
+- Buying Signals (numbered list)
+- Competitive Landscape analysis
+- Talk Tracks with exact opening lines
+- Risks & Objections table
+- Action Plan with priorities, owners, contacts, deadlines
+
+**No "The analysis is complete" raw output found on this account.**
+
+### Need to Investigate:
+1. User mentioned buggy show/hide UI - need to find specific component
+2. User mentioned "The analysis is complete and adheres to all constraints" appearing
+3. Check if this happens on specific accounts or intermittently
+4. Check SafeStreamdown component for XML stripping issues
+

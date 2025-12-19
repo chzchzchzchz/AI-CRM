@@ -857,12 +857,28 @@ export const appRouter = router({
         const analysisPrompt = generateDeepAnalysisPrompt(accountData, vectorScores);
 
         const { invokeLLM } = await import("./_core/llm");
-        const { withRCP } = await import("./ai-system-prompt");
+        const { REVENUE_ARCHITECT_PERSONA, STANDARDIZED_OUTPUT_STRUCTURE } = await import("./ai-system-prompt");
+        
+        // Use a simpler system prompt WITHOUT RCP to avoid verbose reasoning output
+        const simpleSystemPrompt = `${REVENUE_ARCHITECT_PERSONA}
+
+---
+
+IMPORTANT INSTRUCTIONS:
+- Output ONLY the final analysis in clean markdown format
+- Do NOT include any reasoning steps, stages, hypotheses, or internal thinking
+- Do NOT use XML tags like <COGNITION_START>, <PATH_A>, <BRANCHING>, etc.
+- Do NOT include phrases like "The analysis is complete" or "adheres to all constraints"
+- Do NOT include numbered stages like "STAGE 1:", "STAGE 2:", etc.
+- Start directly with the content, no preamble
+
+${STANDARDIZED_OUTPUT_STRUCTURE}`;
+        
         const response = await invokeLLM({
           messages: [
             {
               role: "system",
-              content: withRCP("You are a strategic sales intelligence analyst. Provide deep, actionable insights.")
+              content: simpleSystemPrompt
             },
             {
               role: "user",
@@ -872,7 +888,39 @@ export const appRouter = router({
         });
 
         const recommendations = response.choices[0]?.message?.content;
-        const recommendationsText = typeof recommendations === 'string' ? recommendations : 'Unable to generate insights';
+        let recommendationsText = typeof recommendations === 'string' ? recommendations : 'Unable to generate insights';
+        
+        // Strip any XML reasoning tags and RCP artifacts that shouldn't be shown to users
+        const reasoningPatterns = [
+          // XML-style reasoning blocks
+          /<COGNITION_START>[\s\S]*?<\/COGNITION_END>/gi,
+          /<COGNITION_START>[\s\S]*/gi,
+          /<REASONING_LOG>[\s\S]*?<\/REASONING_LOG>/gi,
+          /<FINAL_RESPONSE>/gi,
+          /<\/FINAL_RESPONSE>/gi,
+          /<RAW_ANSWER>[\s\S]*?<\/RAW_ANSWER>/gi,
+          /<[A-Z_]+>[\s\S]*?<\/[A-Z_]+>/gi,
+          // RCP stage headers and content
+          /^\s*STAGE \d+:[^\n]*\n/gim,
+          /^\s*###\s*STAGE \d+:[^\n]*\n/gim,
+          /^\s*\*\*STAGE \d+:[^\n]*\*\*\n/gim,
+          /Hypothesis [A-Z]:[^\n]*\n/gi,
+          /\*\*Hypothesis [A-Z]:[^\n]*\*\*/gi,
+          /Path [A-Z]:[^\n]*\n/gi,
+          // Common boilerplate phrases
+          /The analysis is complete and adheres to all constraints\.?/gi,
+          /The analysis adheres to all constraints\.?/gi,
+          /This analysis is complete\.?/gi,
+          /^\s*BEGIN PROCESSING NOW\.?\s*$/gim,
+          /^\s*CONFIDENCE_SCORE:[^\n]*\n/gim,
+        ];
+        
+        for (const pattern of reasoningPatterns) {
+          recommendationsText = recommendationsText.replace(pattern, '');
+        }
+        
+        // Clean up excessive whitespace
+        recommendationsText = recommendationsText.replace(/\n{3,}/g, '\n\n').trim();
 
         // Store in cache
         await updateAccount(input.accountId, {
