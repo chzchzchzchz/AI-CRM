@@ -508,7 +508,7 @@ Format your response as JSON with these keys:
     }),
 
   // Transcript Analysis endpoints
-  analyzeTranscript: protectedProcedure
+  analyzeTranscript: publicProcedure
     .input(z.object({
       transcript: z.string().min(100, 'Transcript must be at least 100 characters')
     }))

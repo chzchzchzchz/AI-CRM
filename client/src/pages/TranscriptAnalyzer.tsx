@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { 
   FileText, Sparkles, AlertTriangle, Shield, DollarSign, 
   Activity, MessageSquare, Star, Quote, Save, Copy, Check,
-  User, Loader2, Download, ChevronDown, ChevronUp
+  User, Loader2, Download, ChevronDown, ChevronUp, Upload
 } from 'lucide-react';
 
 interface AnalysisResult {
@@ -224,11 +224,60 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* File Upload Zone */}
+                  <div 
+                    className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-purple-500 transition-colors cursor-pointer"
+                    onClick={() => document.getElementById('transcript-file-input')?.click()}
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const file = e.dataTransfer.files[0];
+                      if (file && (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.vtt') || file.name.endsWith('.srt'))) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          setTranscript(event.target?.result as string || '');
+                          toast.success(`Loaded: ${file.name}`);
+                        };
+                        reader.readAsText(file);
+                      } else {
+                        toast.error('Please upload a .txt, .vtt, or .srt file');
+                      }
+                    }}
+                  >
+                    <input
+                      id="transcript-file-input"
+                      type="file"
+                      accept=".txt,.vtt,.srt"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            setTranscript(event.target?.result as string || '');
+                            toast.success(`Loaded: ${file.name}`);
+                          };
+                          reader.readAsText(file);
+                        }
+                      }}
+                    />
+                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Drop a transcript file here or click to upload</p>
+                    <p className="text-xs text-muted-foreground mt-1">Supports .txt, .vtt, .srt files</p>
+                  </div>
+                  
+                  <div className="relative">
+                    <div className="absolute inset-x-0 top-0 flex items-center justify-center">
+                      <span className="bg-background px-2 text-xs text-muted-foreground">or paste directly</span>
+                    </div>
+                  </div>
+                  
                   <Textarea
                     placeholder="Paste transcript here... (e.g., [Speaker 1]: Hello...)"
                     value={transcript}
                     onChange={(e) => setTranscript(e.target.value)}
-                    className="min-h-[400px] font-mono text-sm"
+                    className="min-h-[300px] font-mono text-sm"
                     disabled={analyzeMutation.isPending}
                   />
                   <div className="flex justify-end">
