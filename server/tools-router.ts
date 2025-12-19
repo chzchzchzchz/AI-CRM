@@ -208,7 +208,7 @@ export const toolsRouter = router({
     }),
 
   // Unified content generation with RAG
-  generateContent: protectedProcedure
+  generateContent: publicProcedure
     .input(z.object({
       contentType: z.enum(['email', 'webinar', 'battle_card', 'call_script', 'linkedin', 'webinar_promo', 'blog_post', 'ad_copy', 'campaign_brief', 'case_study_outline', 'event_followup']),
       context: z.string(),
@@ -221,10 +221,11 @@ export const toolsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const startTime = Date.now();
       
-      // Get RAG context from knowledge base
+      // Get RAG context from knowledge base (use undefined if not logged in)
+      const userId = ctx.user?.id;
       const ragContext = await getRAGContext(
         `${input.contentType} ${input.context} ${input.targetAccount || ''} ${input.targetContact || ''}`,
-        ctx.user.id,
+        userId,
         input.accountId,
         input.contactId
       );
@@ -310,26 +311,29 @@ Generate professional, actionable content.`;
         const content = response.choices[0].message.content || '';
         const durationMs = Date.now() - startTime;
         
-        // Save generated content
-        const contentId = await saveGeneratedContent(
-          ctx.user.id,
-          input.contentType,
-          typeof content === 'string' ? content : JSON.stringify(content),
-          {
-            title: `${input.contentType} for ${input.targetAccount || 'Unknown'}`,
+        // Save generated content (only if logged in)
+        let contentId: number | null = null;
+        if (ctx.user) {
+          contentId = await saveGeneratedContent(
+            ctx.user.id,
+            input.contentType,
+            typeof content === 'string' ? content : JSON.stringify(content),
+            {
+              title: `${input.contentType} for ${input.targetAccount || 'Unknown'}`,
+              accountId: input.accountId,
+              contactId: input.contactId,
+              promptUsed: userPrompt
+            }
+          );
+          
+          // Track interaction
+          await trackInteraction('content_generated', input, { contentId, content }, {
+            userId: ctx.user.id,
             accountId: input.accountId,
             contactId: input.contactId,
-            promptUsed: userPrompt
-          }
-        );
-        
-        // Track interaction
-        await trackInteraction('content_generated', input, { contentId, content }, {
-          userId: ctx.user.id,
-          accountId: input.accountId,
-          contactId: input.contactId,
-          durationMs
-        });
+            durationMs
+          });
+        }
         
         return {
           content: typeof content === 'string' ? content : JSON.stringify(content),

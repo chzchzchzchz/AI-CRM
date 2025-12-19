@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { TechStackAnalysis } from "@/components/TechStackAnalysis";
+import { ActivityTimeline, type Activity } from "@/components/ActivityTimeline";
 import { IntelligenceTab } from "@/components/IntelligenceTab";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,20 @@ export default function AccountDetailEnhanced() {
     { accountId },
     { enabled: accountId > 0 }
   );
+  
+  const { data: timelineData, isLoading: timelineLoading } = trpc.accounts.getTimeline.useQuery(
+    { accountId, limit: 50 },
+    { enabled: accountId > 0 }
+  );
+  
+  // Transform timeline data to Activity type
+  const activities: Activity[] = useMemo(() => {
+    if (!timelineData) return [];
+    return timelineData.map(item => ({
+      ...item,
+      date: new Date(item.date)
+    }));
+  }, [timelineData]);
 
   const generateSummaryMutation = trpc.ai.generateAccountSummary.useMutation();
   const geminiResearchMutation = trpc.gemini.researchAccount.useMutation();
@@ -432,6 +447,7 @@ export default function AccountDetailEnhanced() {
         <Tabs defaultValue="intelligence" className="space-y-6">
           <TabsList className="bg-card border">
             <TabsTrigger value="intelligence">Intelligence</TabsTrigger>
+            <TabsTrigger value="timeline">Timeline ({activities.length})</TabsTrigger>
             <TabsTrigger value="contacts">Contacts ({people?.length || 0})</TabsTrigger>
             <TabsTrigger value="calls">Calls ({gongCalls?.length || 0})</TabsTrigger>
           </TabsList>
@@ -439,6 +455,15 @@ export default function AccountDetailEnhanced() {
           {/* Intelligence Tab */}
           <TabsContent value="intelligence" className="space-y-6">
             <IntelligenceTab accountId={accountId} account={account} />
+          </TabsContent>
+
+          {/* Timeline Tab */}
+          <TabsContent value="timeline" className="space-y-6">
+            <ActivityTimeline 
+              activities={activities} 
+              isLoading={timelineLoading}
+              maxItems={50}
+            />
           </TabsContent>
 
           {/* Contacts Tab */}
