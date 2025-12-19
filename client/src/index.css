@@ -141,24 +141,12 @@
 }
 
 @layer components {
-  /**
-   * Custom container utility that centers content and adds responsive padding.
-   *
-   * This overrides Tailwind's default container behavior to:
-   * - Auto-center content (mx-auto)
-   * - Add responsive horizontal padding
-   * - Set max-width for large screens
-   *
-   * Usage: <div className="container">...</div>
-   *
-   * For custom widths, use max-w-* utilities directly:
-   * <div className="max-w-6xl mx-auto px-4">...</div>
-   */
+  /* Container */
   .container {
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1rem; /* 16px - mobile padding */
+    padding-left: 1rem;
     padding-right: 1rem;
   }
 
@@ -169,16 +157,74 @@
 
   @media (min-width: 640px) {
     .container {
-      padding-left: 1.5rem; /* 24px - tablet padding */
+      padding-left: 1.5rem;
       padding-right: 1.5rem;
     }
   }
 
   @media (min-width: 1024px) {
     .container {
-      padding-left: 2rem; /* 32px - desktop padding */
+      padding-left: 2rem;
       padding-right: 2rem;
-      max-width: 1280px; /* Standard content width */
+      max-width: 1400px;
     }
+  }
+
+  /* Unified card styles */
+  .card-elevated {
+    @apply bg-card border border-border/50 rounded-xl shadow-lg;
+  }
+
+  .card-hover {
+    @apply transition-all duration-200 hover:border-border hover:shadow-xl hover:scale-[1.01];
+  }
+
+  /* Gradient backgrounds */
+  .gradient-primary {
+    @apply bg-gradient-to-r from-purple-600 to-cyan-500;
+  }
+
+  .gradient-hot {
+    @apply bg-gradient-to-r from-red-600 to-orange-500;
+  }
+
+  .gradient-warm {
+    @apply bg-gradient-to-r from-amber-500 to-yellow-400;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply bg-muted animate-pulse rounded;
+  }
+
+  /* Intent score colors */
+  .intent-hot {
+    @apply text-red-400;
+  }
+
+  .intent-warm {
+    @apply text-amber-400;
+  }
+
+  .intent-cold {
+    @apply text-blue-400;
+  }
+
+  /* Stat card */
+  .stat-card {
+    @apply bg-card/50 border border-border/30 rounded-lg p-4;
+  }
+
+  /* Badge variants */
+  .badge-hot {
+    @apply bg-red-500/20 text-red-400 border-red-500/30;
+  }
+
+  .badge-warm {
+    @apply bg-amber-500/20 text-amber-400 border-amber-500/30;
+  }
+
+  .badge-cold {
+    @apply bg-blue-500/20 text-blue-400 border-blue-500/30;
   }
 }
