@@ -210,7 +210,7 @@ export const toolsRouter = router({
   // Unified content generation with RAG
   generateContent: protectedProcedure
     .input(z.object({
-      contentType: z.enum(['email', 'webinar', 'battle_card', 'call_script', 'linkedin']),
+      contentType: z.enum(['email', 'webinar', 'battle_card', 'call_script', 'linkedin', 'webinar_promo', 'blog_post', 'ad_copy', 'campaign_brief', 'case_study_outline', 'event_followup']),
       context: z.string(),
       targetAccount: z.string().optional(),
       targetContact: z.string().optional(),
@@ -234,7 +234,51 @@ export const toolsRouter = router({
         webinar: 'Generate webinar promotional content including headline, key bullets, and email copy.',
         battle_card: 'Generate a competitive battle card with key differentiators, objection handling, and win themes.',
         call_script: 'Generate a discovery/demo call script with opening, key questions, and next steps.',
-        linkedin: 'Generate a LinkedIn connection request or InMail message that is professional and personalized.'
+        linkedin: 'Generate a LinkedIn connection request or InMail message that is professional and personalized.',
+        webinar_promo: `Generate complete webinar promotional content including:
+1. **Landing Page Headline** - Compelling, benefit-driven headline
+2. **Subheadline** - Supporting value proposition
+3. **Email Invite** - Subject line and body for initial invitation
+4. **Reminder Email (24hr)** - Urgency-focused reminder
+5. **Reminder Email (1hr)** - Final reminder with join link placeholder
+
+Make it specific to the target audience and industry. Use concrete numbers and outcomes.`,
+        blog_post: `Generate an SEO-optimized blog post outline including:
+1. **Title** - Keyword-rich, compelling headline
+2. **Hook** (100 words) - Attention-grabbing opening with a stat or story
+3. **Section 1-3** - Key sections with bullet points for each
+4. **CTA** - Clear call to action
+
+Focus on providing actionable insights, not generic advice.`,
+        ad_copy: `Generate ad copy variants including:
+1. **LinkedIn Ad - Variant A (Pain Point)** - Headline, body, CTA
+2. **LinkedIn Ad - Variant B (Social Proof)** - Headline, body, CTA
+3. **Google Search Ad** - Headline 1, Headline 2, Description
+
+Keep copy concise and action-oriented. Use specific numbers when possible.`,
+        campaign_brief: `Generate a campaign brief including:
+1. **Campaign Name** - Descriptive title
+2. **Objective** - Specific, measurable goal
+3. **Target Accounts** - Profile of ideal accounts
+4. **Messaging Pillars** - 3 key messages
+5. **Channel Mix** - Recommended channels with budget allocation
+6. **Timeline** - Week-by-week execution plan
+
+Be specific about tactics and expected outcomes.`,
+        case_study_outline: `Generate a case study outline including:
+1. **Title** - Results-focused headline
+2. **The Challenge** - Specific pain points and context
+3. **The Solution** - Implementation approach and timeline
+4. **The Results** - Quantified outcomes (3-5 metrics)
+5. **Quote** - Placeholder for customer testimonial
+
+Focus on concrete, measurable results.`,
+        event_followup: `Generate a post-event nurture sequence including:
+1. **Day 1 Email (Personal)** - Thank you + specific reference to conversation
+2. **Day 3 Email (Value-add)** - Share relevant resource
+3. **Day 7 Email (Soft ask)** - Gentle meeting request
+
+Make each email feel personal, not templated. Reference specific pain points or interests.`
       };
       
       const systemPrompt = asRevenueArchitect(`You are a Revenue Architect creating ${input.contentType} content.
@@ -603,10 +647,57 @@ ${input.transcript}`;
         const messageContent = response.choices[0].message.content;
         const analysis = JSON.parse(typeof messageContent === 'string' ? messageContent : '{}');
         
-        const durationMs = Date.now() - startTime;
-        console.log(`[TranscriptAnalysis] Completed in ${durationMs}ms`);
+        // Auto-link to account by fuzzy matching company name
+        let linkedAccount = null;
+        if (analysis.aboutProspect?.companyName) {
+          const db = await getDb();
+          if (db) {
+            const { accounts } = await import('../drizzle/schema');
+            const { like, or } = await import('drizzle-orm');
+            const companyName = analysis.aboutProspect.companyName.toLowerCase();
+            
+            // Try exact match first
+            let matchedAccounts = await db.select().from(accounts)
+              .where(like(accounts.name, `%${companyName}%`))
+              .limit(5);
+            
+            // If no match, try partial matching
+            if (matchedAccounts.length === 0) {
+              const words = companyName.split(' ').filter((w: string) => w.length > 3);
+              if (words.length > 0) {
+                matchedAccounts = await db.select().from(accounts)
+                  .where(like(accounts.name, `%${words[0]}%`))
+                  .limit(5);
+              }
+            }
+            
+            if (matchedAccounts.length > 0) {
+              // Find best match by similarity
+              const bestMatch = matchedAccounts.reduce((best, acc) => {
+                const similarity = acc.name.toLowerCase().includes(companyName) ? 1 : 
+                  companyName.includes(acc.name.toLowerCase()) ? 0.8 : 0.5;
+                return similarity > (best.similarity || 0) ? { ...acc, similarity } : best;
+              }, { similarity: 0 } as any);
+              
+              if (bestMatch.id) {
+                linkedAccount = {
+                  id: bestMatch.id,
+                  name: bestMatch.name,
+                  industry: bestMatch.industry,
+                  intentScore: bestMatch.intentScore
+                };
+              }
+            }
+          }
+        }
         
-        return analysis;
+        const durationMs = Date.now() - startTime;
+        console.log(`[TranscriptAnalysis] Completed in ${durationMs}ms, linked to account: ${linkedAccount?.name || 'None'}`);
+        
+        return {
+          ...analysis,
+          linkedAccount
+        };
       } catch (error) {
         console.error('[TranscriptAnalysis] Error:', error);
         throw new Error('Failed to analyze transcript');
