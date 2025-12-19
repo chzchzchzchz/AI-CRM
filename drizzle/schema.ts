@@ -532,3 +532,19 @@ export const generatedContent = mysqlTable("generatedContent", {
 
 export type GeneratedContentRecord = typeof generatedContent.$inferSelect;
 export type InsertGeneratedContent = typeof generatedContent.$inferInsert;
+
+
+// Transcript Analysis Reports
+export const transcriptReports = mysqlTable("transcriptReports", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  transcript: text("transcript").notNull(),
+  analysis: json("analysis").notNull(), // Full analysis result JSON
+  accountId: int("accountId"), // Optional link to account
+  contactId: int("contactId"), // Optional link to contact
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TranscriptReport = typeof transcriptReports.$inferSelect;
+export type InsertTranscriptReport = typeof transcriptReports.$inferInsert;
