@@ -26,6 +26,7 @@ const CsvProcessor = lazyLoad(() => import("./pages/CsvProcessor"));
 const DataHub = lazyLoad(() => import("./pages/DataHub"));
 const ContentStudio = lazyLoad(() => import("./pages/ContentStudio"));
 const TranscriptAnalyzer = lazyLoad(() => import("./pages/TranscriptAnalyzer"));
+const AITools = lazyLoad(() => import("./pages/AITools"));
 import { GlobalSearch } from "./components/GlobalSearch";
 import { GlobalAIChat } from "./components/GlobalAIChat";
 import { SupportBot } from "./components/SupportBot";
@@ -54,6 +55,7 @@ function Router() {
       <Route path="/data-hub" component={DataHub} />
       <Route path="/content-studio" component={ContentStudio} />
       <Route path="/transcript-analyzer" component={TranscriptAnalyzer} />
+      <Route path="/tools" component={AITools} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

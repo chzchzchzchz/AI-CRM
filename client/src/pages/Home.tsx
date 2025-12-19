@@ -228,15 +228,15 @@ export default function Home() {
               </CardContent>
             </Card>
           </Link>
-          <Link href="/csv-processor">
-            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
+          <Link href="/tools">
+            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full border-purple-500/30">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-red-600 to-orange-600 rounded-lg">
-                  <FileSpreadsheet className="h-5 w-5 text-white" />
+                <div className="p-2 bg-gradient-to-br from-purple-600 to-cyan-600 rounded-lg">
+                  <Sparkles className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <div className="font-semibold text-sm">CSV Processor</div>
-                  <div className="text-xs text-muted-foreground">Transform data</div>
+                  <div className="font-semibold text-sm">AI Tools</div>
+                  <div className="text-xs text-muted-foreground">Transcripts, Data, Content</div>
                 </div>
               </CardContent>
             </Card>
