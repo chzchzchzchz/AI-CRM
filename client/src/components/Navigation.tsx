@@ -16,7 +16,7 @@ export function Navigation({ onSearchClick }: NavigationProps) {
     { path: "/", label: "Home", icon: Home },
     { path: "/accounts", label: "Accounts", icon: Users },
     { path: "/contacts", label: "Contacts", icon: Contact },
-    { path: "/calls", label: "Calls", icon: Phone },
+    // { path: "/calls", label: "Calls", icon: Phone }, // Hidden per user request
     { path: "/insights", label: "Insights", icon: BarChart3 },
     { path: "/outreach", label: "Outreach", icon: Send },
 

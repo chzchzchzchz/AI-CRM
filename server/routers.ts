@@ -194,6 +194,87 @@ export const appRouter = router({
         // AI-powered enrichment will be implemented
         return { message: 'AI enrichment coming soon', accountId: input.id };
       }),
+    getTimeline: publicProcedure
+      .input(z.object({ accountId: z.number(), limit: z.number().default(50) }))
+      .query(async ({ input }) => {
+        const [account, calls] = await Promise.all([
+          getAccountById(input.accountId),
+          getGongCallsByAccountId(input.accountId)
+        ]);
+        
+        if (!account) {
+          throw new Error('Account not found');
+        }
+        
+        // Build activities from calls
+        const activities: Array<{
+          id: string;
+          type: 'call' | 'email' | 'meeting' | 'note' | 'intent_spike' | 'engagement';
+          title: string;
+          description?: string;
+          date: Date;
+          metadata?: {
+            duration?: string;
+            sentiment?: 'positive' | 'neutral' | 'negative';
+            participants?: string[];
+            score?: number;
+          };
+        }> = [];
+        
+        // Add calls to timeline
+        calls.forEach(call => {
+          activities.push({
+            id: `call-${call.id}`,
+            type: 'call',
+            title: call.title || 'Call',
+            description: (call as any).summary?.slice(0, 150) || undefined,
+            date: call.callDate ? new Date(call.callDate) : new Date(),
+            metadata: {
+              duration: call.duration ? `${Math.floor(call.duration / 60)}m` : undefined,
+              sentiment: call.sentiment as any || undefined
+            }
+          });
+        });
+        
+        // Parse rawData for additional activities (emails, meetings from SFDC)
+        if (account.rawData) {
+          try {
+            const raw = typeof account.rawData === 'string' ? JSON.parse(account.rawData) : account.rawData;
+            
+            // Add intent spike if there was a recent increase
+            if (raw.intentScoreChange && raw.intentScoreChange > 10) {
+              activities.push({
+                id: `intent-${account.id}`,
+                type: 'intent_spike',
+                title: 'Intent Score Increased',
+                description: `Intent score jumped by ${raw.intentScoreChange} points`,
+                date: new Date(),
+                metadata: {
+                  score: raw.intentScoreChange
+                }
+              });
+            }
+            
+            // Add last activity as engagement
+            if (raw.lastActivity && raw.lastActivityDate) {
+              activities.push({
+                id: `engagement-${account.id}`,
+                type: 'engagement',
+                title: raw.lastActivity,
+                description: `Last recorded activity for ${account.name}`,
+                date: new Date(raw.lastActivityDate),
+              });
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+        
+        // Sort by date descending and limit
+        return activities
+          .sort((a, b) => b.date.getTime() - a.date.getTime())
+          .slice(0, input.limit);
+      }),
   }),
 
   calls: router({
