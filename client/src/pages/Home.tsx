@@ -228,15 +228,15 @@ export default function Home() {
               </CardContent>
             </Card>
           </Link>
-          <Link href="/tools">
-            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full border-purple-500/30">
+          <Link href="/top-accounts">
+            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full border-indigo-500/30">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-purple-600 to-cyan-600 rounded-lg">
-                  <Sparkles className="h-5 w-5 text-white" />
+                <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg">
+                  <Target className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <div className="font-semibold text-sm">AI Tools</div>
-                  <div className="text-xs text-muted-foreground">Transcripts, Data, Content</div>
+                  <div className="font-semibold text-sm">Top 15 Accounts</div>
+                  <div className="text-xs text-muted-foreground">By Region & AE</div>
                 </div>
               </CardContent>
             </Card>
