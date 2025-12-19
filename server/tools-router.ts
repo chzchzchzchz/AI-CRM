@@ -708,7 +708,7 @@ ${input.transcript}`;
       }
     }),
 
-  saveTranscriptReport: protectedProcedure
+  saveTranscriptReport: publicProcedure
     .input(z.object({
       name: z.string(),
       transcript: z.string(),
@@ -717,36 +717,69 @@ ${input.transcript}`;
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error('Database not available');
+      // Generate a unique share ID for public access
+      const shareId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       const result = await db.insert(transcriptReports).values({
-        userId: ctx.user.id,
+        userId: ctx.user?.id || 0,
         name: input.name,
         transcript: input.transcript,
         analysis: input.analysis,
+        shareId,
         createdAt: new Date()
       });
-      return { id: Number((result as any)[0]?.insertId || 0) };
+      return { id: Number((result as any)[0]?.insertId || 0), shareId };
     }),
 
-  getSavedTranscriptReports: protectedProcedure
-    .query(async ({ ctx }) => {
+  getSavedTranscriptReports: publicProcedure
+    .query(async () => {
       const db = await getDb();
       if (!db) throw new Error('Database not available');
+      // Return all reports - no login required, anyone can see all saved reports
       const reports = await db.select().from(transcriptReports)
-        .where(eq(transcriptReports.userId, ctx.user.id))
-        .orderBy(desc(transcriptReports.createdAt));
+        .orderBy(desc(transcriptReports.createdAt))
+        .limit(100);
       return reports;
     }),
 
-  deleteTranscriptReport: protectedProcedure
+  getReportByShareId: publicProcedure
+    .input(z.object({ shareId: z.string() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database not available');
+      const [report] = await db.select().from(transcriptReports)
+        .where(eq(transcriptReports.shareId, input.shareId))
+        .limit(1);
+      return report || null;
+    }),
+
+  askTranscriptQuestion: publicProcedure
+    .input(z.object({
+      transcript: z.string(),
+      question: z.string()
+    }))
+    .mutation(async ({ input }) => {
+      const response = await invokeLLM({
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert at analyzing sales call transcripts. Answer the user's question based ONLY on the transcript provided. Be specific and cite relevant parts of the conversation. If the answer isn't in the transcript, say so.`
+          },
+          {
+            role: 'user',
+            content: `TRANSCRIPT:\n${input.transcript}\n\nQUESTION: ${input.question}`
+          }
+        ]
+      });
+      return { answer: response.choices[0]?.message?.content || 'Unable to answer' };
+    }),
+
+  deleteTranscriptReport: publicProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error('Database not available');
       await db.delete(transcriptReports)
-        .where(and(
-          eq(transcriptReports.id, input.id),
-          eq(transcriptReports.userId, ctx.user.id)
-        ));
+        .where(eq(transcriptReports.id, input.id));
       return { success: true };
     })
 });
