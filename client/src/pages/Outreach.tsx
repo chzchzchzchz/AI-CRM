@@ -57,58 +57,40 @@ export default function Outreach() {
 
   const generateMutation = trpc.outreach.generateEmail.useMutation({
     onSuccess: (data) => {
-      // Parse the two-pass response
+      // Get the clean email directly - no more strategy section
       const content = typeof data.content === 'string' ? data.content : '';
       
-      // Extract and store raw reasoning for optional viewing
-      const reasoning = extractReasoning(content);
-      if (reasoning) {
-        setRawReasoning(reasoning);
-      }
+      // Strip any XML reasoning tags (just in case)
+      const cleanEmail = stripXmlReasoning(content).trim();
       
-      // Strip XML reasoning tags to get clean email
-      const cleanContent = stripXmlReasoning(content);
-      
-      // Check if response has strategy section
-      if (cleanContent.includes('---EMAIL---')) {
-        const parts = cleanContent.split('---EMAIL---');
-        setStrategy(stripXmlReasoning(parts[0].replace('---STRATEGY---', '').trim()));
-        setGeneratedEmail(stripXmlReasoning(parts[1].trim()));
-      } else {
-        // Fallback - treat entire response as email
-        setGeneratedEmail(cleanContent);
-        setStrategy('');
-      }
+      // Set the email directly - no strategy parsing needed
+      setGeneratedEmail(cleanEmail);
+      setStrategy(''); // Clear any old strategy
+      setRawReasoning(''); // No reasoning to show
       
       // Add to conversation history
       setConversationHistory(prev => [
         ...prev,
-        { role: 'assistant', content: cleanContent }
+        { role: 'assistant', content: cleanEmail }
       ]);
       
-      toast.success("Email generated successfully!");
+      toast.success("Email generated!");
     },
     onError: (error) => {
       toast.error(`Failed to generate: ${error.message}`);
     },
   });
   
-  // Refinement mutation
-  const refineMutation = trpc.outreach.generateEmail.useMutation({
+  // Refinement mutation - uses dedicated refine endpoint
+  const refineMutation = trpc.outreach.refineEmail.useMutation({
     onSuccess: (data) => {
       const content = typeof data.content === 'string' ? data.content : '';
-      const cleanContent = stripXmlReasoning(content);
+      const cleanEmail = stripXmlReasoning(content).trim();
       
-      // Extract reasoning
-      const reasoning = extractReasoning(content);
-      if (reasoning) {
-        setRawReasoning(reasoning);
-      }
-      
-      setGeneratedEmail(cleanContent);
+      setGeneratedEmail(cleanEmail);
       setConversationHistory(prev => [
         ...prev,
-        { role: 'assistant', content: cleanContent }
+        { role: 'assistant', content: cleanEmail }
       ]);
       setRefinementInput('');
       toast.success("Email refined!");
@@ -164,13 +146,12 @@ export default function Outreach() {
       { role: 'user', content: refinementInput }
     ]);
     
-    // Build context with current email and refinement request
-    const refinementPrompt = `Current email:\n\n${generatedEmail}\n\n---\n\nUser's adjustment request: ${refinementInput}\n\nPlease revise the email based on this feedback. Output ONLY the revised email, no explanations.`;
-    
+    // Use the dedicated refine endpoint
     refineMutation.mutate({
-      accountIds: selectedAccountId ? [selectedAccountId] : [],
-      contactIds: selectedContactId ? [selectedContactId] : [],
-      prompt: refinementPrompt,
+      currentEmail: generatedEmail,
+      feedback: refinementInput,
+      accountName: selectedAccount?.name || undefined,
+      contactName: selectedContact?.name || undefined,
     });
   };
 
