@@ -2,6 +2,15 @@ import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { asRevenueArchitect } from "./ai-system-prompt";
+import { 
+  uploadDocument, 
+  searchKnowledgeBase, 
+  getRAGContext, 
+  trackInteraction, 
+  saveGeneratedContent,
+  getUserDocuments,
+  deleteDocument 
+} from "./rag-service";
 
 // Field name aliases for intelligent mapping
 const FIELD_ALIASES: Record<string, string[]> = {
@@ -150,6 +159,144 @@ function processLeadData(data: any[]): { cleaned: any[], removed: any[], issues:
 }
 
 export const toolsRouter = router({
+  // Knowledge Base endpoints
+  uploadDocument: protectedProcedure
+    .input(z.object({
+      fileName: z.string(),
+      content: z.string(),
+      mimeType: z.string().default('text/plain'),
+      category: z.enum(['battle_card', 'case_study', 'product_sheet', 'competitor_intel', 'playbook', 'general']).optional()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await uploadDocument(
+        ctx.user.id,
+        input.fileName,
+        input.content,
+        input.mimeType,
+        input.category
+      );
+      
+      await trackInteraction('document_upload', { fileName: input.fileName }, result, {
+        userId: ctx.user.id
+      });
+      
+      return result;
+    }),
+
+  getDocuments: protectedProcedure
+    .query(async ({ ctx }) => {
+      return getUserDocuments(ctx.user.id);
+    }),
+
+  deleteDocument: protectedProcedure
+    .input(z.object({ documentId: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteDocument(input.documentId);
+      return { success: true };
+    }),
+
+  searchKnowledge: protectedProcedure
+    .input(z.object({
+      query: z.string(),
+      topK: z.number().default(5)
+    }))
+    .query(async ({ ctx, input }) => {
+      return searchKnowledgeBase(input.query, ctx.user.id, input.topK);
+    }),
+
+  // Unified content generation with RAG
+  generateContent: protectedProcedure
+    .input(z.object({
+      contentType: z.enum(['email', 'webinar', 'battle_card', 'call_script', 'linkedin']),
+      context: z.string(),
+      targetAccount: z.string().optional(),
+      targetContact: z.string().optional(),
+      additionalNotes: z.string().optional(),
+      accountId: z.number().optional(),
+      contactId: z.number().optional()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const startTime = Date.now();
+      
+      // Get RAG context from knowledge base
+      const ragContext = await getRAGContext(
+        `${input.contentType} ${input.context} ${input.targetAccount || ''} ${input.targetContact || ''}`,
+        ctx.user.id,
+        input.accountId,
+        input.contactId
+      );
+      
+      const contentTypePrompts: Record<string, string> = {
+        email: 'Generate a personalized sales email that is concise, value-focused, and has a clear call to action.',
+        webinar: 'Generate webinar promotional content including headline, key bullets, and email copy.',
+        battle_card: 'Generate a competitive battle card with key differentiators, objection handling, and win themes.',
+        call_script: 'Generate a discovery/demo call script with opening, key questions, and next steps.',
+        linkedin: 'Generate a LinkedIn connection request or InMail message that is professional and personalized.'
+      };
+      
+      const systemPrompt = asRevenueArchitect(`You are a Revenue Architect creating ${input.contentType} content.
+
+${contentTypePrompts[input.contentType]}
+
+Use any relevant context from the knowledge base to make the content more specific and valuable.
+${ragContext}`);
+      
+      const userPrompt = `Create ${input.contentType} content for:
+
+CONTEXT:
+${input.context}
+
+${input.targetAccount ? `TARGET ACCOUNT: ${input.targetAccount}` : ''}
+${input.targetContact ? `TARGET CONTACT: ${input.targetContact}` : ''}
+${input.additionalNotes ? `ADDITIONAL NOTES: ${input.additionalNotes}` : ''}
+
+Generate professional, actionable content.`;
+      
+      try {
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ]
+        });
+        
+        const content = response.choices[0].message.content || '';
+        const durationMs = Date.now() - startTime;
+        
+        // Save generated content
+        const contentId = await saveGeneratedContent(
+          ctx.user.id,
+          input.contentType,
+          typeof content === 'string' ? content : JSON.stringify(content),
+          {
+            title: `${input.contentType} for ${input.targetAccount || 'Unknown'}`,
+            accountId: input.accountId,
+            contactId: input.contactId,
+            promptUsed: userPrompt
+          }
+        );
+        
+        // Track interaction
+        await trackInteraction('content_generated', input, { contentId, content }, {
+          userId: ctx.user.id,
+          accountId: input.accountId,
+          contactId: input.contactId,
+          durationMs
+        });
+        
+        return {
+          content: typeof content === 'string' ? content : JSON.stringify(content),
+          contentId,
+          ragSourcesUsed: ragContext ? true : false,
+          durationMs
+        };
+      } catch (error) {
+        console.error('[GenerateContent] Error:', error);
+        throw new Error('Failed to generate content');
+      }
+    }),
+
+  // Data processing with learning
   processLeads: publicProcedure
     .input(z.object({
       fileContents: z.array(z.string()),
@@ -181,6 +328,54 @@ export const toolsRouter = router({
         issues,
         cleanedData: cleaned
       };
+    }),
+
+  // Feedback endpoint for learning
+  submitFeedback: protectedProcedure
+    .input(z.object({
+      interactionId: z.number().optional(),
+      contentId: z.number().optional(),
+      feedback: z.enum(['positive', 'negative', 'edited']),
+      details: z.string().optional(),
+      editedContent: z.string().optional()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { interactionId, contentId, feedback, details, editedContent } = input;
+      
+      // Record feedback on interaction
+      if (interactionId) {
+        const { recordFeedback } = await import('./rag-service');
+        await recordFeedback(interactionId, feedback, details);
+      }
+      
+      // Update generated content with user edits
+      if (contentId && editedContent) {
+        const db = await (await import('./db')).getDb();
+        if (db) {
+          const { generatedContent } = await import('../drizzle/schema');
+          const { eq } = await import('drizzle-orm');
+          await db.update(generatedContent)
+            .set({ userEdits: editedContent, feedback })
+            .where(eq(generatedContent.id, contentId));
+        }
+      }
+      
+      // Track the feedback interaction itself
+      await trackInteraction('feedback_submitted', input, { recorded: true }, {
+        userId: ctx.user.id
+      });
+      
+      return { success: true };
+    }),
+
+  // Get learning insights for a content type
+  getLearningInsights: protectedProcedure
+    .input(z.object({
+      contentType: z.string()
+    }))
+    .query(async ({ input }) => {
+      const { getLearningInsights } = await import('./rag-service');
+      return getLearningInsights(input.contentType);
     }),
 
   generateWebinarContent: publicProcedure

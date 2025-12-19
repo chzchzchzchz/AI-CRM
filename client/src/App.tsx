@@ -23,8 +23,8 @@ const BulkInsights = lazyLoad(() => import("./pages/BulkInsights"));
 const SixsenseSync = lazyLoad(() => import("./pages/SixsenseSync"));
 const SixsenseAnalytics = lazyLoad(() => import("./pages/SixsenseAnalytics"));
 const CsvProcessor = lazyLoad(() => import("./pages/CsvProcessor"));
-const LeadProcessor = lazyLoad(() => import("./pages/LeadProcessor"));
-const WebinarGenerator = lazyLoad(() => import("./pages/WebinarGenerator"));
+const DataHub = lazyLoad(() => import("./pages/DataHub"));
+const ContentStudio = lazyLoad(() => import("./pages/ContentStudio"));
 import { GlobalSearch } from "./components/GlobalSearch";
 import { GlobalAIChat } from "./components/GlobalAIChat";
 import { SupportBot } from "./components/SupportBot";
@@ -50,8 +50,8 @@ function Router() {
       <Route path="/sixsense-sync" component={SixsenseSync} />
       <Route path="/sixsense-analytics" component={SixsenseAnalytics} />
       <Route path="/csv-processor" component={CsvProcessor} />
-      <Route path="/lead-processor" component={LeadProcessor} />
-      <Route path="/webinar-generator" component={WebinarGenerator} />
+      <Route path="/data-hub" component={DataHub} />
+      <Route path="/content-studio" component={ContentStudio} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

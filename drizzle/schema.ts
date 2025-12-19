@@ -429,3 +429,106 @@ export const aiResponseCache = mysqlTable("aiResponseCache", {
 
 export type AIResponseCacheRecord = typeof aiResponseCache.$inferSelect;
 export type InsertAIResponseCache = typeof aiResponseCache.$inferInsert;
+
+
+// Knowledge Base - uploaded documents for RAG
+export const knowledgeBase = mysqlTable("knowledgeBase", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  fileName: varchar("fileName", { length: 500 }).notNull(),
+  fileKey: varchar("fileKey", { length: 500 }).notNull(), // S3 key
+  fileUrl: varchar("fileUrl", { length: 1000 }).notNull(),
+  mimeType: varchar("mimeType", { length: 100 }),
+  fileSize: int("fileSize"), // bytes
+  category: varchar("category", { length: 100 }), // 'battle_card', 'case_study', 'product_sheet', 'competitor_intel', 'playbook'
+  status: varchar("status", { length: 50 }).default("processing"), // 'processing', 'ready', 'error'
+  chunkCount: int("chunkCount").default(0),
+  metadata: json("metadata"), // Additional metadata (tags, description, etc.)
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type KnowledgeBaseDoc = typeof knowledgeBase.$inferSelect;
+export type InsertKnowledgeBaseDoc = typeof knowledgeBase.$inferInsert;
+
+// Document Chunks - semantic chunks for RAG retrieval
+export const documentChunks = mysqlTable("documentChunks", {
+  id: int("id").autoincrement().primaryKey(),
+  documentId: int("documentId").notNull(),
+  chunkIndex: int("chunkIndex").notNull(), // Order within document
+  content: text("content").notNull(),
+  embedding: json("embedding"), // Vector embedding (array of floats)
+  metadata: json("metadata"), // Section title, page number, etc.
+  tokenCount: int("tokenCount"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DocumentChunk = typeof documentChunks.$inferSelect;
+export type InsertDocumentChunk = typeof documentChunks.$inferInsert;
+
+// User Interactions - track all AI interactions for learning
+export const userInteractions = mysqlTable("userInteractions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  sessionId: varchar("sessionId", { length: 64 }),
+  actionType: varchar("actionType", { length: 100 }).notNull(), // 'ai_chat', 'email_generated', 'data_processed', 'content_created'
+  inputData: json("inputData"), // What the user provided
+  outputData: json("outputData"), // What the AI generated
+  feedback: varchar("feedback", { length: 50 }), // 'positive', 'negative', 'edited', null
+  feedbackDetails: text("feedbackDetails"), // User's edits or comments
+  contextUsed: json("contextUsed"), // Which RAG chunks were used
+  accountId: int("accountId"), // Related account if applicable
+  contactId: int("contactId"), // Related contact if applicable
+  durationMs: int("durationMs"), // How long the operation took
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type UserInteraction = typeof userInteractions.$inferSelect;
+export type InsertUserInteraction = typeof userInteractions.$inferInsert;
+
+// Data Processing Jobs - track data imports and transformations
+export const dataProcessingJobs = mysqlTable("dataProcessingJobs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  jobType: varchar("jobType", { length: 100 }).notNull(), // 'lead_import', 'account_enrichment', 'contact_merge', 'csv_transform'
+  status: varchar("status", { length: 50 }).default("pending"), // 'pending', 'processing', 'completed', 'failed'
+  inputFileKey: varchar("inputFileKey", { length: 500 }),
+  inputFileUrl: varchar("inputFileUrl", { length: 1000 }),
+  outputFileKey: varchar("outputFileKey", { length: 500 }),
+  outputFileUrl: varchar("outputFileUrl", { length: 1000 }),
+  recordsTotal: int("recordsTotal").default(0),
+  recordsProcessed: int("recordsProcessed").default(0),
+  recordsSuccess: int("recordsSuccess").default(0),
+  recordsFailed: int("recordsFailed").default(0),
+  errorLog: json("errorLog"), // Array of errors
+  fieldMappings: json("fieldMappings"), // How fields were mapped
+  transformRules: json("transformRules"), // What rules were applied
+  learnings: json("learnings"), // What the system learned from user corrections
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DataProcessingJob = typeof dataProcessingJobs.$inferSelect;
+export type InsertDataProcessingJob = typeof dataProcessingJobs.$inferInsert;
+
+// Generated Content - all AI-generated content with feedback
+export const generatedContent = mysqlTable("generatedContent", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  contentType: varchar("contentType", { length: 100 }).notNull(), // 'email', 'webinar_promo', 'battle_card', 'call_script', 'linkedin_message'
+  title: varchar("title", { length: 500 }),
+  content: text("content").notNull(),
+  ragSourceIds: json("ragSourceIds"), // Which knowledge base docs were used
+  accountId: int("accountId"),
+  contactId: int("contactId"),
+  promptUsed: text("promptUsed"),
+  userEdits: text("userEdits"), // What the user changed
+  feedback: varchar("feedback", { length: 50 }), // 'used', 'edited', 'discarded'
+  outcome: varchar("outcome", { length: 100 }), // 'sent', 'opened', 'replied', 'converted'
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type GeneratedContentRecord = typeof generatedContent.$inferSelect;
+export type InsertGeneratedContent = typeof generatedContent.$inferInsert;
