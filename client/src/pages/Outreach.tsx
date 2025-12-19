@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Sparkles, Building2, Loader2, Copy, Check, Search, Users, Mail, ExternalLink, ChevronDown, ChevronUp, FileText, Paperclip, X, File } from "lucide-react";
+import { Sparkles, Building2, Loader2, Copy, Check, Search, Users, Mail, ExternalLink, ChevronDown, ChevronUp, FileText, Paperclip, X, File, RefreshCw, Send } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { stripXmlReasoning, extractReasoning } from "@/lib/stripXmlReasoning";
 
 export default function Outreach() {
   const { data: accounts, isLoading } = trpc.accounts.list.useQuery();
@@ -24,8 +25,14 @@ export default function Outreach() {
   // Two-pass output
   const [strategy, setStrategy] = useState("");
   const [generatedEmail, setGeneratedEmail] = useState("");
+  const [rawReasoning, setRawReasoning] = useState("");
+  const [isReasoningOpen, setIsReasoningOpen] = useState(false);
   const [isStrategyOpen, setIsStrategyOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  
+  // Refinement input
+  const [refinementInput, setRefinementInput] = useState("");
+  const [conversationHistory, setConversationHistory] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
   
   // File attachments
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
@@ -53,20 +60,61 @@ export default function Outreach() {
       // Parse the two-pass response
       const content = typeof data.content === 'string' ? data.content : '';
       
+      // Extract and store raw reasoning for optional viewing
+      const reasoning = extractReasoning(content);
+      if (reasoning) {
+        setRawReasoning(reasoning);
+      }
+      
+      // Strip XML reasoning tags to get clean email
+      const cleanContent = stripXmlReasoning(content);
+      
       // Check if response has strategy section
-      if (content.includes('---EMAIL---')) {
-        const parts = content.split('---EMAIL---');
-        setStrategy(parts[0].replace('---STRATEGY---', '').trim());
-        setGeneratedEmail(parts[1].trim());
+      if (cleanContent.includes('---EMAIL---')) {
+        const parts = cleanContent.split('---EMAIL---');
+        setStrategy(stripXmlReasoning(parts[0].replace('---STRATEGY---', '').trim()));
+        setGeneratedEmail(stripXmlReasoning(parts[1].trim()));
       } else {
         // Fallback - treat entire response as email
-        setGeneratedEmail(content);
+        setGeneratedEmail(cleanContent);
         setStrategy('');
       }
+      
+      // Add to conversation history
+      setConversationHistory(prev => [
+        ...prev,
+        { role: 'assistant', content: cleanContent }
+      ]);
+      
       toast.success("Email generated successfully!");
     },
     onError: (error) => {
       toast.error(`Failed to generate: ${error.message}`);
+    },
+  });
+  
+  // Refinement mutation
+  const refineMutation = trpc.outreach.generateEmail.useMutation({
+    onSuccess: (data) => {
+      const content = typeof data.content === 'string' ? data.content : '';
+      const cleanContent = stripXmlReasoning(content);
+      
+      // Extract reasoning
+      const reasoning = extractReasoning(content);
+      if (reasoning) {
+        setRawReasoning(reasoning);
+      }
+      
+      setGeneratedEmail(cleanContent);
+      setConversationHistory(prev => [
+        ...prev,
+        { role: 'assistant', content: cleanContent }
+      ]);
+      setRefinementInput('');
+      toast.success("Email refined!");
+    },
+    onError: (error) => {
+      toast.error(`Failed to refine: ${error.message}`);
     },
   });
 
@@ -75,6 +123,10 @@ export default function Outreach() {
       toast.error("Please select an account first");
       return;
     }
+
+    // Clear previous state
+    setConversationHistory([]);
+    setRawReasoning('');
 
     // Read file contents if attached
     let fileContext = "";
@@ -97,6 +149,28 @@ export default function Outreach() {
       accountIds: [selectedAccountId],
       contactIds: selectedContactId ? [selectedContactId] : [],
       prompt: fullContext,
+    });
+  };
+  
+  const handleRefine = () => {
+    if (!refinementInput.trim()) {
+      toast.error("Please enter your feedback or adjustment request");
+      return;
+    }
+    
+    // Add user message to history
+    setConversationHistory(prev => [
+      ...prev,
+      { role: 'user', content: refinementInput }
+    ]);
+    
+    // Build context with current email and refinement request
+    const refinementPrompt = `Current email:\n\n${generatedEmail}\n\n---\n\nUser's adjustment request: ${refinementInput}\n\nPlease revise the email based on this feedback. Output ONLY the revised email, no explanations.`;
+    
+    refineMutation.mutate({
+      accountIds: selectedAccountId ? [selectedAccountId] : [],
+      contactIds: selectedContactId ? [selectedContactId] : [],
+      prompt: refinementPrompt,
     });
   };
 
@@ -486,6 +560,51 @@ export default function Outreach() {
                     <div className="whitespace-pre-wrap text-slate-300 bg-slate-800/50 p-4 rounded-lg border border-slate-700">
                       {generatedEmail}
                     </div>
+                    
+                    {/* Refinement Input */}
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Make it shorter, add urgency, change tone..."
+                          value={refinementInput}
+                          onChange={(e) => setRefinementInput(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleRefine()}
+                          className="flex-1 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                        />
+                        <Button
+                          onClick={handleRefine}
+                          disabled={refineMutation.isPending || !refinementInput.trim()}
+                          className="bg-purple-600 hover:bg-purple-700"
+                        >
+                          {refineMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                              Refine
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-slate-500">Press Enter or click Refine to adjust the email</p>
+                    </div>
+                    
+                    {/* View Reasoning (Optional) */}
+                    {rawReasoning && (
+                      <Collapsible open={isReasoningOpen} onOpenChange={setIsReasoningOpen}>
+                        <CollapsibleTrigger className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-400">
+                          {isReasoningOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          {isReasoningOpen ? 'Hide' : 'View'} AI reasoning
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="mt-2 p-3 bg-slate-900 rounded border border-slate-800 max-h-[200px] overflow-y-auto">
+                            <code className="text-xs text-slate-500 whitespace-pre-wrap break-all">
+                              {rawReasoning}
+                            </code>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
                     
                     {/* Send Buttons */}
                     <div className="flex gap-3">
