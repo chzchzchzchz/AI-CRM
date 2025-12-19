@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, accounts, InsertAccount, contacts, /* people, InsertPerson, clayRequests, InsertClayRequest, gongCalls, InsertGongCall */ calls } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -208,6 +208,42 @@ export async function getAllPeople() {
   return results;
 }
 
+// Paginated version for performance
+export async function getPeoplePaginated(limit: number = 100, offset: number = 0) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get people: database not available");
+    return { people: [], total: 0 };
+  }
+
+  const [peopleResult, countResult] = await Promise.all([
+    db
+      .select({
+        id: contacts.id,
+        accountId: contacts.accountId,
+        name: contacts.name,
+        title: contacts.title,
+        email: contacts.email,
+        phone: contacts.phone,
+        linkedinUrl: contacts.linkedinUrl,
+        location: contacts.location,
+        company: accounts.name,
+        accountIntentScore: accounts.intentScore,
+      })
+      .from(contacts)
+      .leftJoin(accounts, eq(contacts.accountId, accounts.id))
+      .orderBy(desc(contacts.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(contacts)
+  ]);
+
+  return { 
+    people: peopleResult, 
+    total: countResult[0]?.count || 0 
+  };
+}
+
 export async function getPeopleByCompany(companyName: string) {
   const db = await getDb();
   if (!db) {
@@ -316,6 +352,25 @@ export async function getAllGongCalls() {
   }
 
   return await db.select().from(calls).orderBy(desc(calls.callDate));
+}
+
+// Paginated version for performance
+export async function getGongCallsPaginated(limit: number = 50, offset: number = 0) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get calls: database not available");
+    return { calls: [], total: 0 };
+  }
+
+  const [callsResult, countResult] = await Promise.all([
+    db.select().from(calls).orderBy(desc(calls.callDate)).limit(limit).offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(calls)
+  ]);
+
+  return { 
+    calls: callsResult, 
+    total: countResult[0]?.count || 0 
+  };
 }
 
 export async function getGongCallsByCompany(companyName: string) {

@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { router, publicProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { getAllAccounts, getAccountById, updateAccount, getAllPeople, getPeopleByCompany, getContactsByAccountId, /* createClayRequest, updateClayRequest, getAllClayRequests, getClayRequest, */ upsertAccount, upsertPerson, getAllGongCalls, getGongCallsByCompany, getGongCallsByAccountId } from "./db";
+import { getAllAccounts, getAccountById, updateAccount, getAllPeople, getPeoplePaginated, getPeopleByCompany, getContactsByAccountId, /* createClayRequest, updateClayRequest, getAllClayRequests, getClayRequest, */ upsertAccount, upsertPerson, getAllGongCalls, getGongCallsPaginated, getGongCallsByCompany, getGongCallsByAccountId } from "./db";
 import { enrichAccountWithAI, analyzeGongCall, generateOutreachEmail, intelligentSearch, prioritizeContacts } from "./ai";
 import { enrichAccount } from "./sixsense";
 import { conversationWithMemory, generateAccountSummary, generateContactSummary } from "./aiContext";
@@ -211,6 +211,11 @@ export const appRouter = router({
     list: publicProcedure.query(async () => {
       return await getAllPeople();
     }),
+    listPaginated: publicProcedure
+      .input(z.object({ limit: z.number().default(100), offset: z.number().default(0) }))
+      .query(async ({ input }) => {
+        return await getPeoplePaginated(input.limit, input.offset);
+      }),
     getByCompany: publicProcedure
       .input(z.object({ company: z.string() }))
       .query(async ({ input }) => {
@@ -279,6 +284,11 @@ export const appRouter = router({
     list: publicProcedure.query(async () => {
       return await getAllGongCalls();
     }),
+    listPaginated: publicProcedure
+      .input(z.object({ limit: z.number().default(50), offset: z.number().default(0) }))
+      .query(async ({ input }) => {
+        return await getGongCallsPaginated(input.limit, input.offset);
+      }),
     getByCompany: publicProcedure
       .input(z.object({ company: z.string() }))
       .query(async ({ input }) => {
