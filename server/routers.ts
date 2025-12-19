@@ -464,8 +464,13 @@ export const appRouter = router({
     compileOverview: publicProcedure
       .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
       .query(async ({ input }) => {
+        console.log(`[compileOverview] Starting for account ${input.accountId}`);
         const account = await getAccountById(input.accountId);
-        if (!account) throw new Error('Account not found');
+        if (!account) {
+          console.log(`[compileOverview] Account ${input.accountId} not found`);
+          throw new Error('Account not found');
+        }
+        console.log(`[compileOverview] Found account: ${account.name}`);
 
         // Check cache first (valid for 24 hours)
         const cacheAge = (account as any).aiCacheUpdatedAt ? Date.now() - new Date((account as any).aiCacheUpdatedAt).getTime() : Infinity;
@@ -489,8 +494,11 @@ export const appRouter = router({
         }
 
         // Generate new summary
+        console.log(`[compileOverview] Cache miss or force refresh, generating new summary...`);
         const people = await getContactsByAccountId(input.accountId);
+        console.log(`[compileOverview] Found ${people.length} contacts`);
         const calls = await getGongCallsByAccountId(input.accountId);
+        console.log(`[compileOverview] Found ${calls.length} calls`);
 
         // Limit contacts to top 10 prioritized by management level and engagement
         const prioritizedContacts = people
@@ -532,26 +540,55 @@ export const appRouter = router({
         };
 
         try {
+          console.log(`[compileOverview] Starting LLM call for ${account.name}`);
           const { invokeLLM } = await import("./_core/llm");
           const { withRCP } = await import("./ai-system-prompt");
           // const { searchTool, executeToolCall } = await import("./_core/webSearch");
           
           // First call without tool support (webSearch module not available)
+          console.log(`[compileOverview] Calling invokeLLM...`);
           let response = await invokeLLM({
             messages: [
               {
                 role: "system",
-                content: withRCP(`You are an expert sales intelligence analyst. Analyze this account and provide actionable insights for the sales team.`)
+                content: `You are a sales intelligence analyst. Provide BRIEF, actionable insights. Keep your response under 800 words. Use markdown formatting with headers and bullet points. Do NOT include any XML tags, reasoning steps, or internal thinking - only the final analysis.`
               },
               {
                 role: "user",
-                content: `Analyze this account and provide insights:\n\n${JSON.stringify(dataContext, null, 2)}`
+                content: `Provide a brief sales analysis for ${dataContext.company.name}:\n\n**Company:** ${dataContext.company.name} (${dataContext.company.industry})\n**Intent Score:** ${dataContext.company.intentScore}\n**Buying Stage:** ${dataContext.company.buyingStage}\n**Employees:** ${dataContext.company.employees}\n**Key Contacts:** ${dataContext.keyContacts.map((c: any) => c.name + ' - ' + c.title).join(', ')}\n**Total Contacts:** ${dataContext.totalContacts}\n**Recent Calls:** ${dataContext.recentCalls}\n\nProvide:\n1. **Key Opportunity** (2-3 sentences)\n2. **Recommended Actions** (3-4 bullet points)\n3. **Risk Factors** (2-3 bullet points)\n4. **Best Contact Strategy** (who to reach, how)`
               }
             ]
           });
 
+          console.log(`[compileOverview] LLM response received`);
           const summary = response.choices[0]?.message?.content;
           let summaryText = typeof summary === 'string' ? summary : 'Unable to generate summary';
+          console.log(`[compileOverview] Summary length: ${summaryText.length}`);
+          
+          // CRITICAL: Strip any raw reasoning/XML tags that shouldn't be shown to users
+          // Sometimes the LLM includes its internal reasoning process
+          const reasoningPatterns = [
+            /<COGNITION_START>[\s\S]*?<\/COGNITION_END>/gi,
+            /<COGNITION_START>[\s\S]*/gi, // unclosed tag
+            /<DECONSTRUCTION>[\s\S]*?<\/DECONSTRUCTION>/gi,
+            /<BRANCHING>[\s\S]*?<\/BRANCHING>/gi,
+            /<CRITIQUE>[\s\S]*?<\/CRITIQUE>/gi,
+            /<SYNTHESIS>[\s\S]*?<\/SYNTHESIS>/gi,
+            /<FINAL_RESPONSE>/gi,
+            /<\/FINAL_RESPONSE>/gi,
+            /<[A-Z_]+>[\s\S]*?<\/[A-Z_]+>/gi, // any uppercase XML tags
+            /;\s*;/g, // double semicolons from bad formatting
+          ];
+          
+          for (const pattern of reasoningPatterns) {
+            summaryText = summaryText.replace(pattern, '');
+          }
+          
+          // If the summary is still too long or looks like raw reasoning, generate a simpler one
+          if (summaryText.length > 5000 || summaryText.includes('<STEP_')) {
+            console.log(`[compileOverview] Summary looks like raw reasoning, regenerating...`);
+            summaryText = 'Summary generation in progress. Please refresh in a moment.';  
+          }
           
           // POST-PROCESS: Remove hallucinated content that doesn't exist in our data
           // The LLM keeps making up email/activity data we don't track
