@@ -266,6 +266,13 @@ export default function Home() {
                   const keyContactsCount = (action as any).keyContactsCount || 0;
                   const isLostOpp = (action as any).isLostOpp;
                   const lostOppContext = (action as any).lostOppContext;
+                  // NEW: Surfaced rawData fields
+                  const temperature = (action as any).temperature;
+                  const daysSinceLastEngagement = (action as any).daysSinceLastEngagement;
+                  const accountOwner = (action as any).accountOwner;
+                  const opportunityStatus = (action as any).opportunityStatus;
+                  const salesActivities = (action as any).salesActivities;
+                  const triggerEvents = (action as any).triggerEvents;
                   
                   // Determine VECTOR tier color
                   const tierColor = vectorScores?.tier === 1 ? 'text-green-500' : 
@@ -299,7 +306,39 @@ export default function Home() {
                                 </div>
                                 <p className="text-sm text-muted-foreground">
                                   Intent: {action.intentScore} | {action.industry} | {action.employeeCount?.toLocaleString() || ''} employees | {action.region}
+                                  {accountOwner && <span> | Owner: {accountOwner}</span>}
                                 </p>
+                                {/* Temperature & Activity Badges */}
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                  {temperature && (
+                                    <Badge className={`text-xs ${
+                                      temperature === 'Hot' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                                      temperature === 'Warm' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                                      'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                    }`}>
+                                      {temperature === 'Hot' ? '🔥' : temperature === 'Warm' ? '🌡️' : '❄️'} {temperature}
+                                    </Badge>
+                                  )}
+                                  {daysSinceLastEngagement !== null && daysSinceLastEngagement !== undefined && (
+                                    <Badge variant="outline" className={`text-xs ${
+                                      daysSinceLastEngagement <= 7 ? 'border-green-500 text-green-400' :
+                                      daysSinceLastEngagement <= 30 ? 'border-yellow-500 text-yellow-400' :
+                                      'border-red-500 text-red-400'
+                                    }`}>
+                                      {daysSinceLastEngagement}d since activity
+                                    </Badge>
+                                  )}
+                                  {salesActivities > 0 && (
+                                    <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
+                                      {salesActivities} activities
+                                    </Badge>
+                                  )}
+                                  {opportunityStatus && (
+                                    <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-400">
+                                      Opp: {opportunityStatus}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                               {vectorScores && (
                                 <div className="text-right text-xs text-muted-foreground">

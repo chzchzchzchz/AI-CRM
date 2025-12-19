@@ -97,6 +97,17 @@ export const priorityActionsRouter = router({
             : null;
 
           // Calculate VECTOR scores
+          // Extract rawData fields
+          const rawData = account.rawData as Record<string, any> || {};
+          const temperature = rawData.temperature || ((account.intentScore || 0) >= 70 ? 'Hot' : (account.intentScore || 0) >= 40 ? 'Warm' : 'Cold');
+          const daysSinceLastEngagement = rawData.daysSinceLastEngagement || rawData.lastSalesActivityDays || null;
+          const accountOwner = rawData.accountOwner || rawData.owner || null;
+          const opportunityStatus = rawData.opportunityStatus || null;
+          const salesActivities = rawData.salesActivities || rawData.engagementActivities || 0;
+          const lastSalesActivity = rawData.lastSalesActivity || rawData.latestEngagementActivity || null;
+          const recentSecurityIncidents = rawData['Recent Security Incidents'] || null;
+          const ssoProvider = rawData['SSO Provider'] || null;
+
           const accountData: AccountData = {
             name: account.name,
             domain: account.domain || undefined,
@@ -105,8 +116,8 @@ export const priorityActionsRouter = router({
             region: account.region || undefined,
             relationship: account.relationship || undefined,
             intentScore: account.intentScore || undefined,
-            buyingStage: (account.rawData as any)?.buyingStage || undefined,
-            temperature: (account.intentScore || 0) >= 70 ? 'Hot' : (account.intentScore || 0) >= 40 ? 'Warm' : 'Cold',
+            buyingStage: rawData.buyingStage || undefined,
+            temperature,
             totalContacts: contacts.length,
             totalCalls: calls.length,
             lastCallDate: lastCallDate || undefined,
@@ -194,6 +205,17 @@ export const priorityActionsRouter = router({
             // Lost Opp context
             isLostOpp,
             lostOppContext,
+            // NEW: Surfaced rawData fields
+            temperature,
+            daysSinceLastEngagement,
+            accountOwner,
+            opportunityStatus,
+            salesActivities,
+            lastSalesActivity,
+            recentSecurityIncidents,
+            ssoProvider,
+            // Trigger events from main schema
+            triggerEvents: account.triggerEvents || null,
           };
         })
       );

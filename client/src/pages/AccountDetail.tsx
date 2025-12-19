@@ -106,7 +106,17 @@ export default function AccountDetailEnhanced() {
   const stackData = parseJSON(account?.techStack);
   const researchData = null; // No research field in schema
   const triggerData = parseJSON(account?.triggerEvents);
-  const rawData = {};
+  
+  // Extract rawData fields
+  const rawData = (account?.rawData as Record<string, any>) || {};
+  const temperature = rawData.temperature;
+  const daysSinceLastEngagement = rawData.daysSinceLastEngagement || rawData.lastSalesActivityDays;
+  const accountOwner = rawData.accountOwner || rawData.owner;
+  const opportunityStatus = rawData.opportunityStatus;
+  const salesActivities = rawData.salesActivities || rawData.engagementActivities || 0;
+  const lastSalesActivity = rawData.lastSalesActivity || rawData.latestEngagementActivity;
+  const recentSecurityIncidents = rawData['Recent Security Incidents'];
+  const ssoProvider = rawData['SSO Provider'];
 
   const formatFieldName = (key: string): string => {
     return key
@@ -260,6 +270,54 @@ export default function AccountDetailEnhanced() {
                       <MapPin className="h-4 w-4" />
                       <span>{account.region}</span>
                     </div>
+                  )}
+                  {accountOwner && (
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      <span>Owner: {accountOwner}</span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Temperature & Activity Badges */}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {temperature && (
+                    <Badge className={`text-xs ${
+                      temperature === 'Hot' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                      temperature === 'Warm' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                      'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                    }`}>
+                      {temperature === 'Hot' ? '🔥' : temperature === 'Warm' ? '🌡️' : '❄️'} {temperature}
+                    </Badge>
+                  )}
+                  {daysSinceLastEngagement !== null && daysSinceLastEngagement !== undefined && (
+                    <Badge variant="outline" className={`text-xs ${
+                      daysSinceLastEngagement <= 7 ? 'border-green-500 text-green-400' :
+                      daysSinceLastEngagement <= 30 ? 'border-yellow-500 text-yellow-400' :
+                      'border-red-500 text-red-400'
+                    }`}>
+                      {daysSinceLastEngagement}d since activity
+                    </Badge>
+                  )}
+                  {salesActivities > 0 && (
+                    <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
+                      {salesActivities} activities
+                    </Badge>
+                  )}
+                  {opportunityStatus && (
+                    <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-400">
+                      Opp: {opportunityStatus}
+                    </Badge>
+                  )}
+                  {lastSalesActivity && (
+                    <Badge variant="outline" className="text-xs border-gray-500/50 text-gray-400">
+                      Last: {lastSalesActivity}
+                    </Badge>
+                  )}
+                  {ssoProvider && (
+                    <Badge variant="outline" className="text-xs border-indigo-500/50 text-indigo-400">
+                      SSO: {ssoProvider}
+                    </Badge>
                   )}
                 </div>
               </div>
