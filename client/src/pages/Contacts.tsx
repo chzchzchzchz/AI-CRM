@@ -31,6 +31,7 @@ export default function ContactsEnhanced() {
   const [searchQuery, setSearchQuery] = useState("");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [titleFilter, setTitleFilter] = useState<string>("all");
+  const [techFilter, setTechFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [showAIPriority, setShowAIPriority] = useState(false);
@@ -79,6 +80,58 @@ export default function ContactsEnhanced() {
     return Array.from(keywords).sort();
   }, [contacts]);
 
+  // MFA/Identity Provider options - hardcoded list of identity/auth vendors
+  const MFA_PROVIDERS = [
+    "Ping Identity",
+    "Okta",
+    "Duo Security",
+    "Azure AD",
+    "OneLogin",
+    "ForgeRock",
+    "Auth0",
+    "CyberArk",
+    "RSA SecurID",
+    "SailPoint",
+    "Saviynt",
+    "IBM Security Verify",
+    "Oracle Identity",
+    "SecureAuth",
+    "Thales SafeNet"
+  ];
+
+  // Extract MFA/Identity providers found in accounts' techStack
+  const mfaProviders = useMemo(() => {
+    if (!accounts) return [];
+    const foundProviders = new Set<string>();
+    
+    accounts.forEach((account: any) => {
+      if (account.techStack) {
+        const techLower = String(account.techStack).toLowerCase();
+        MFA_PROVIDERS.forEach(provider => {
+          const providerLower = provider.toLowerCase();
+          const shortName = providerLower.split(' ')[0];
+          if (techLower.includes(providerLower) || techLower.includes(shortName)) {
+            foundProviders.add(provider);
+          }
+        });
+      }
+    });
+    
+    return Array.from(foundProviders).sort((a, b) => a.localeCompare(b));
+  }, [accounts]);
+
+  // Create account name to tech stack mapping
+  const accountTechMap = useMemo(() => {
+    if (!accounts) return new Map<string, string>();
+    const map = new Map<string, string>();
+    accounts.forEach((account: any) => {
+      if (account.name && account.techStack) {
+        map.set(account.name.toLowerCase(), String(account.techStack).toLowerCase());
+      }
+    });
+    return map;
+  }, [accounts]);
+
   // Filter and sort contacts
   const filteredContacts = useMemo(() => {
     // Use prioritized contacts when AI Priority is on
@@ -100,7 +153,16 @@ export default function ContactsEnhanced() {
       const matchesTitle = titleFilter === "all" || 
         contact.title?.toLowerCase().includes(titleFilter.toLowerCase());
 
-      return matchesTerritory && matchesSearch && matchesCompany && matchesTitle;
+      // MFA Provider filter - check if contact's company uses the selected MFA provider
+      let matchesTech = true;
+      if (techFilter !== "all" && contact.company) {
+        const companyTech = accountTechMap.get(contact.company.toLowerCase()) || '';
+        const filterLower = techFilter.toLowerCase();
+        const shortName = filterLower.split(' ')[0];
+        matchesTech = companyTech.includes(filterLower) || companyTech.includes(shortName);
+      }
+
+      return matchesTerritory && matchesSearch && matchesCompany && matchesTitle && matchesTech;
     });
 
     // Skip manual sorting if AI Priority is on (already sorted by priority)
@@ -132,7 +194,7 @@ export default function ContactsEnhanced() {
     }
 
     return filtered;
-  }, [contacts, prioritizedContacts, showAIPriority, searchQuery, companyFilter, titleFilter, sortField, sortOrder, territoryAccountIds]);
+  }, [contacts, prioritizedContacts, showAIPriority, searchQuery, companyFilter, titleFilter, techFilter, sortField, sortOrder, territoryAccountIds, accountTechMap]);
 
   const handleToggleSort = useCallback((field: SortField) => {
     if (sortField === field) {
@@ -269,7 +331,7 @@ export default function ContactsEnhanced() {
         {/* Filters */}
         <Card className="card-elevated">
           <CardContent className="p-6">
-            <div className="grid md:grid-cols-4 gap-4">
+            <div className="grid md:grid-cols-5 gap-4">
               {/* Search */}
               <div className="md:col-span-2">
                 <div className="relative">
@@ -305,6 +367,18 @@ export default function ContactsEnhanced() {
                     <SelectItem key={keyword} value={keyword}>
                       {keyword.toUpperCase()}
                     </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={techFilter} onValueChange={setTechFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="MFA Provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All MFA</SelectItem>
+                  {mfaProviders.map((provider: string) => (
+                    <SelectItem key={provider} value={provider}>{provider}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

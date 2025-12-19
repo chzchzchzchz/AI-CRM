@@ -30,6 +30,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   const [industryFilter, setIndustryFilter] = useState<string>("all");
   const [relationshipFilter, setRelationshipFilter] = useState<string>("all");
   const [intentFilter, setIntentFilter] = useState<string>("all");
+  const [techFilter, setTechFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("intentScore");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   
@@ -44,6 +45,48 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   const regions = useMemo(() => {
     if (!accounts) return [];
     return Array.from(new Set(accounts.map(a => a.region).filter(Boolean)));
+  }, [accounts]);
+
+  // MFA/Identity Provider options - hardcoded list of identity/auth vendors
+  const MFA_PROVIDERS = [
+    "Ping Identity",
+    "Okta",
+    "Duo Security",
+    "Azure AD",
+    "OneLogin",
+    "ForgeRock",
+    "Auth0",
+    "CyberArk",
+    "RSA SecurID",
+    "SailPoint",
+    "Saviynt",
+    "IBM Security Verify",
+    "Oracle Identity",
+    "SecureAuth",
+    "Thales SafeNet"
+  ];
+
+  // Extract MFA/Identity providers found in accounts' techStack
+  const mfaProviders = useMemo(() => {
+    if (!accounts) return [];
+    const foundProviders = new Set<string>();
+    
+    accounts.forEach(account => {
+      if (account.techStack) {
+        const techLower = String(account.techStack).toLowerCase();
+        MFA_PROVIDERS.forEach(provider => {
+          // Check for provider name in tech stack (case insensitive)
+          const providerLower = provider.toLowerCase();
+          const shortName = providerLower.split(' ')[0]; // e.g., "ping" from "Ping Identity"
+          if (techLower.includes(providerLower) || techLower.includes(shortName)) {
+            foundProviders.add(provider);
+          }
+        });
+      }
+    });
+    
+    // Return sorted list of found providers
+    return Array.from(foundProviders).sort((a, b) => a.localeCompare(b));
   }, [accounts]);
 
   const industries = ["AI", "Software", "Finance", "Manufacturing", "Other"];
@@ -99,7 +142,16 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
         else if (intentFilter === "cold") matchesIntent = score < 40;
       }
 
-      return matchesSearch && matchesRegion && matchesIndustry && matchesRelationship && matchesIntent;
+      // MFA Provider filter - match by provider name or short name
+      let matchesTech = true;
+      if (techFilter !== "all") {
+        const accountTech = String(account.techStack || '').toLowerCase();
+        const filterLower = techFilter.toLowerCase();
+        const shortName = filterLower.split(' ')[0]; // e.g., "ping" from "Ping Identity"
+        matchesTech = accountTech.includes(filterLower) || accountTech.includes(shortName);
+      }
+
+      return matchesSearch && matchesRegion && matchesIndustry && matchesRelationship && matchesIntent && matchesTech;
     });
 
     // Sort
@@ -133,7 +185,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     });
 
     return filtered;
-  }, [accounts, searchQuery, regionFilter, industryFilter, relationshipFilter, intentFilter, sortField, sortOrder]);
+  }, [accounts, searchQuery, regionFilter, industryFilter, relationshipFilter, intentFilter, techFilter, sortField, sortOrder]);
 
   const getIntentBadge = (score: string) => {
     const numScore = parseInt(score);
@@ -281,7 +333,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
         {/* Filters */}
         <Card className="card-elevated">
           <CardContent className="p-6">
-            <div className="grid md:grid-cols-6 gap-4">
+            <div className="grid md:grid-cols-7 gap-4">
               {/* Search */}
               <div className="md:col-span-2">
                 <div className="relative">
@@ -341,6 +393,18 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                   <SelectItem value="hot">Hot (70+)</SelectItem>
                   <SelectItem value="warm">Warm (40-69)</SelectItem>
                   <SelectItem value="cold">Cold (&lt;40)</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={techFilter} onValueChange={setTechFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="MFA Provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All MFA</SelectItem>
+                  {mfaProviders.map((provider: string) => (
+                    <SelectItem key={provider} value={provider}>{provider}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
