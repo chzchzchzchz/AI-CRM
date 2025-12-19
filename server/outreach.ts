@@ -1,10 +1,28 @@
 import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
-import { withRCP } from "./ai-system-prompt";
 import { eq, inArray } from "drizzle-orm";
 import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
+
+// Clean email generation prompt - NO tracking, NO scoring, NO internal data mentions
+const CLEAN_EMAIL_SYSTEM_PROMPT = `You are an elite Enterprise Account Executive for the company, a passwordless MFA/Zero Trust security company.
+
+CRITICAL RULES FOR EMAILS:
+1. NEVER mention "intent score", "6sense", "tracking", "we noticed you're researching", or any data that reveals surveillance
+2. NEVER mention internal scoring, buying stages, or analytics
+3. NEVER say things like "your 97 intent score" or "based on our data"
+4. DO reference their tech stack, company size, industry - things that are publicly known
+5. DO reference their likely pain points based on their tech stack (Okta/Duo = phishing risk, etc.)
+6. BE HUMAN - write like a real person, not a marketing robot
+7. BE SHORT - 3-5 sentences max
+8. ONE CLEAR ASK at the end
+
+GOOD: "Given your Okta deployment, you've likely seen the rise in MFA bypass attacks..."
+BAD: "Your 97 intent score suggests you're actively evaluating identity solutions..."
+
+GOOD: "Companies with your security stack often struggle with..."
+BAD: "Based on our 6sense data, we can see you're in the purchase stage..."`;
 
 export const outreachRouter = router({
   generateEmail: publicProcedure
@@ -30,7 +48,7 @@ export const outreachRouter = router({
         throw new Error("No accounts found");
       }
 
-      const account = accountData[0]; // Single account
+      const account = accountData[0];
 
       // Fetch contact data if provided
       let contactData: any[] = [];
@@ -41,22 +59,15 @@ export const outreachRouter = router({
           .where(inArray(contacts.id, input.contactIds));
       }
 
-      const contact = contactData[0]; // Single contact (if any)
+      const contact = contactData[0];
 
-      // Build rich context from account data
+      // Build CLEAN context - only publicly known info
       let accountContext = `Company: ${account.name}`;
       if (account.industry) accountContext += `\nIndustry: ${account.industry}`;
       if (account.employeeCount) accountContext += `\nSize: ${account.employeeCount} employees`;
       if (account.region) accountContext += `\nRegion: ${account.region}`;
-      if (account.intentScore) {
-        const score = typeof account.intentScore === 'string' ? parseInt(account.intentScore) : account.intentScore;
-        accountContext += `\nIntent Score: ${score}/100`;
-      }
-      if (account.sixsenseBuyingStage) {
-        accountContext += `\nBuying Stage: ${account.sixsenseBuyingStage}`;
-      }
       
-      // Parse tech stack
+      // Parse tech stack - this is public info
       if (account.techStack) {
         try {
           const stack = typeof account.techStack === 'string' ? JSON.parse(account.techStack) : account.techStack;
@@ -69,7 +80,7 @@ export const outreachRouter = router({
         } catch (e) {}
       }
 
-      // Parse security stack
+      // Parse security stack - this is public info
       if (account.securityStack) {
         try {
           const stack = typeof account.securityStack === 'string' ? JSON.parse(account.securityStack) : account.securityStack;
@@ -82,7 +93,7 @@ export const outreachRouter = router({
         } catch (e) {}
       }
 
-      // Parse rawData for additional intelligence
+      // Parse rawData for SSO/MFA info (public)
       let rawData: Record<string, any> = {};
       try {
         if (account.rawData) {
@@ -90,24 +101,16 @@ export const outreachRouter = router({
         }
       } catch (e) {}
 
-      // Add 6sense intelligence to context
+      // Add ONLY publicly known info
       if (rawData['SSO Provider']) {
         accountContext += `\nCurrent SSO: ${rawData['SSO Provider']}`;
       }
       if (rawData['MFA Solution']) {
         accountContext += `\nCurrent MFA: ${rawData['MFA Solution']}`;
       }
-      if (rawData['Security Incidents & Breaches']) {
-        accountContext += `\nRecent Security Issues: ${rawData['Security Incidents & Breaches']}`;
-      }
-      if (rawData['Company Cybersecurity Insights']) {
-        accountContext += `\nCybersecurity Context: ${rawData['Company Cybersecurity Insights'].slice(0, 500)}`;
-      }
-      if (rawData['ABM Intelligence Brief']) {
-        accountContext += `\nABM Brief: ${rawData['ABM Intelligence Brief'].slice(0, 500)}`;
-      }
-      if (rawData['Zero Trust']) {
-        accountContext += `\nZero Trust Status: ${rawData['Zero Trust']}`;
+      // Company description is public
+      if (rawData['Company Description']) {
+        accountContext += `\nAbout: ${rawData['Company Description'].slice(0, 300)}`;
       }
 
       // Contact context
@@ -119,79 +122,81 @@ Title: ${contact.title || "Unknown"}
 Email: ${contact.email || "Unknown"}`;
       }
 
-      // ============================================
-      // PASS 1: Generate Strategy & Notes (Internal)
-      // ============================================
-      const strategyPrompt = `You are an elite Enterprise Account Executive for the company (passwordless MFA/SSO/Zero Trust security).
-
-Analyze this account and generate INTERNAL STRATEGY NOTES (not for sending to prospect):
-
-${accountContext}${contactContext}
-
-Additional context: ${input.prompt || "Focus on passwordless MFA and Zero Trust security."}
-
-Generate brief internal notes covering:
-1. WHY NOW - What signal/trigger makes this account timely?
-2. HYPOTHESIS - What problem are they likely trying to solve based on their tech stack?
-3. ANGLE - Should we lead with "rip & replace" (displacing Okta/Duo) or "innovation" (securing growth)?
-4. OBJECTION PREP - What pushback might we get?
-
-Keep it brief and tactical. These are YOUR notes, not for the prospect.`;
-
-      const strategyResponse = await invokeLLM({
-        messages: [
-          { role: "system", content: withRCP("You are a tactical sales strategist. Be brief and specific.") },
-          { role: "user", content: strategyPrompt },
-        ],
-      });
-
-      const strategy = strategyResponse.choices[0]?.message?.content || "";
-
-      // ============================================
-      // PASS 2: Generate Actual Sendable Email
-      // ============================================
       const firstName = contact?.name?.split(' ')[0] || "there";
-      const companyName = account.name;
 
-      const emailPrompt = `You are writing a REAL cold email that will be sent to a prospect. 
+      // ============================================
+      // SINGLE PASS: Generate Clean, Professional Email
+      // ============================================
+      const emailPrompt = `Write a cold email for this prospect.
 
-ACCOUNT CONTEXT:
 ${accountContext}${contactContext}
 
-INTERNAL STRATEGY (use this to inform your email, but don't include it):
-${strategy}
+Additional context from rep: ${input.prompt || "Focus on passwordless MFA and Zero Trust security."}
 
-RULES FOR THE EMAIL:
-1. SHORT - 3-5 sentences max. No one reads long cold emails.
-2. SPECIFIC - Reference their actual company name, tech stack, or situation
-3. ONE ASK - End with a single clear question or request
-4. NO FLUFF - No "I hope this finds you well" or "I wanted to reach out"
-5. HUMAN - Write like a real person, not a marketing robot
+REQUIREMENTS:
+- Start with "${firstName},"
+- 3-5 sentences MAXIMUM
+- Reference their tech stack or industry situation naturally
+- End with ONE clear ask (15-minute call)
+- NO subject line, NO signature
+- Sound like a human, not a marketing bot
 
-Write ONLY the email body. No subject line, no signature, no "Best regards".
-Start directly with the opening line addressing ${firstName}.
-
-Example tone (but use their real data):
-"${firstName}, noticed ${companyName} is using Okta for SSO. We've helped similar ${account.industry || 'companies'} eliminate password-related breaches entirely with phishing-resistant MFA. Worth a 15-min call to see if it fits?"`;
+OUTPUT ONLY THE EMAIL BODY. Nothing else.`;
 
       const emailResponse = await invokeLLM({
         messages: [
-          { role: "system", content: withRCP("You write short, specific, human cold emails. No fluff. No corporate speak. Just direct, relevant outreach.") },
+          { role: "system", content: CLEAN_EMAIL_SYSTEM_PROMPT },
           { role: "user", content: emailPrompt },
         ],
       });
 
-      const email = emailResponse.choices[0]?.message?.content || "";
+      const emailContent = emailResponse.choices[0]?.message?.content || "";
+      const email = typeof emailContent === 'string' ? emailContent : JSON.stringify(emailContent);
 
-      // Return both strategy and email with separator
-      const combinedOutput = `---STRATEGY---
-${strategy}
----EMAIL---
-${email}`;
-
+      // Return ONLY the email - no strategy, no reasoning
       return {
-        content: combinedOutput,
+        content: email.trim(),
         accountCount: accountData.length,
+      };
+    }),
+
+  // Refine an existing email based on feedback
+  refineEmail: publicProcedure
+    .input(
+      z.object({
+        currentEmail: z.string(),
+        feedback: z.string(),
+        accountName: z.string().optional(),
+        contactName: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const refinePrompt = `Here is a cold email that needs refinement:
+
+---
+${input.currentEmail}
+---
+
+User feedback: "${input.feedback}"
+
+Rewrite the email incorporating this feedback. Keep it:
+- 3-5 sentences max
+- Human and direct
+- One clear ask at the end
+
+OUTPUT ONLY THE REVISED EMAIL. Nothing else.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: CLEAN_EMAIL_SYSTEM_PROMPT },
+          { role: "user", content: refinePrompt },
+        ],
+      });
+
+      const content = response.choices[0]?.message?.content;
+      const cleanContent = typeof content === 'string' ? content.trim() : (content ? JSON.stringify(content) : input.currentEmail);
+      return {
+        content: cleanContent,
       };
     }),
 });
