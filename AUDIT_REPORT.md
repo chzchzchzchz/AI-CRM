@@ -293,3 +293,221 @@ Contact: [redacted] [redacted] (VP CSO) | Last: Dec 10, 2025
 
 **Audit Completed By:** Lead Systems Auditor
 **Next Review Date:** January 17, 2026
+
+
+---
+
+# UPDATED AUDIT - December 19, 2025
+
+## New Database Findings
+
+### Table Row Counts (Updated)
+| Table | Previous | Current | Change |
+|-------|----------|---------|--------|
+| accounts | 711 | 722 | +11 |
+| contacts | 4,000 | 14,425 | +10,425 ✅ |
+| calls | 549 | 33,225 | +32,676 ✅ |
+| sixsenseKeywords | 50 | 50 | Same |
+
+### Critical Data Issues
+
+#### 1. CALLS NOT LINKED TO ACCOUNTS (33,225 calls)
+**Status: CRITICAL - 100% of calls have no accountId**
+
+All 33,225 calls are sitting unlinked. This is massive sales intelligence going unused.
+
+**Fix Strategy:**
+- Match call titles to account names (fuzzy matching)
+- Match participant emails to account domains
+- Match participant names to contacts
+
+#### 2. CALLS MISSING TRANSCRIPTS (33,225 calls)
+**Status: CRITICAL - 100% of calls have no transcript**
+
+Without transcripts, we can't:
+- Analyze call content
+- Extract key topics
+- Generate AI summaries
+- Search call content
+
+**Fix Strategy:**
+- If Gong URLs exist, fetch transcripts via API
+- If no URLs, mark as "transcript unavailable"
+
+#### 3. CONTACTS MISSING LINKEDIN (10,108 contacts - 70%)
+**Status: HIGH - Limits social selling**
+
+**Fix Strategy:**
+- Bulk enrich via Clay/Apollo
+- Add LinkedIn lookup to contact detail page
+- Prioritize enrichment for high-intent accounts
+
+#### 4. CONTACTS MISSING EMAIL (1,972 contacts - 14%)
+**Status: HIGH - Can't reach these contacts**
+
+**Fix Strategy:**
+- Bulk email finder via Clay/Hunter
+- Flag contacts as "needs email" in UI
+- Prioritize for high-value accounts
+
+### Empty Tables That Need Activation
+
+| Table | Purpose | How to Activate |
+|-------|---------|-----------------|
+| rfps | Government opportunities | Enable SAM.gov scraper |
+| sixsense6QA | Qualified accounts | Import from 6sense CSV |
+| emailHistory | Track sent emails | Save on email generation |
+| aiChatHistory | Chat continuity | Save chat messages |
+| knowledgeBase | RAG documents | Upload sales collateral |
+| generatedContent | Track AI output | Save all generations |
+| transcriptReports | Call analyses | Save transcript analyses |
+
+---
+
+## Action Items Added to Plan
+
+### Phase 1: Link Calls to Accounts
+- [ ] Create call-to-account matching script
+- [ ] Match by company name in title
+- [ ] Match by participant email domain
+- [ ] Update 33,225 calls with accountId
+
+### Phase 2: Enrich Missing Contact Data
+- [ ] Identify 1,972 contacts missing email
+- [ ] Identify 10,108 contacts missing LinkedIn
+- [ ] Create bulk enrichment endpoint
+- [ ] Add "needs enrichment" flag to UI
+
+### Phase 3: Activate Empty Tables
+- [ ] Start saving emailHistory on generation
+- [ ] Start saving aiChatHistory on chat
+- [ ] Start saving generatedContent on AI output
+- [ ] Start saving transcriptReports on analysis
+- [ ] Add knowledge base upload UI
+
+### Phase 4: Surface Unused Data
+- [ ] Show accounts.triggerEvents on account page
+- [ ] Show accounts.securityStack in tech analysis
+- [ ] Use accounts.rawData for additional insights
+- [ ] Use contacts.department for persona targeting
+
+
+---
+
+## Frontend Component Audit
+
+### Duplicate Components Found (23 total)
+Components that exist in multiple locations:
+- `GlobalAIChat.tsx` - components/ AND components/ui/
+- `AIChatBox.tsx` - components/ AND components/ui/
+- `AIAssistant.tsx` - components/ AND components/ui/
+- `Calls.tsx` - pages/ AND components/ui/
+- `Contacts.tsx` - pages/ AND components/ui/
+- `Insights.tsx` - pages/ AND components/ui/
+
+### Potentially Unused Components (3,866 lines)
+| Component | Lines | Status |
+|-----------|-------|--------|
+| ComponentShowcase.tsx | 1,437 | Dev tool - keep for reference |
+| Insights.tsx (ui/) | 451 | Duplicate of pages/Insights |
+| SequenceBuilder.tsx | 414 | Built but not wired up |
+| Contacts.tsx (ui/) | 392 | Duplicate of pages/Contacts |
+| Calls.tsx (ui/) | 377 | Duplicate of pages/Calls |
+| CallsEnhanced.tsx | 370 | Enhanced version not used |
+| ContactsEnhanced.tsx | 314 | Enhanced version not used |
+| SmartSearch.tsx (ui/) | 111 | Duplicate exists |
+
+### Largest Files (Potential Bloat)
+| File | Lines | Notes |
+|------|-------|-------|
+| ComponentShowcase.tsx | 1,437 | Dev showcase - useful for reference |
+| Insights.tsx | 1,000 | Analytics dashboard - justified |
+| AITools.tsx | 883 | AI tools hub - justified |
+| sidebar.tsx | 734 | shadcn component - keep |
+| Outreach.tsx | 637 | Email generation - justified |
+| CsvProcessor.tsx | 619 | Data import - justified |
+
+### Recommendations
+
+#### 1. Consolidate Duplicates
+- Keep `components/GlobalAIChat.tsx`, remove `components/ui/GlobalAIChat.tsx`
+- Keep `components/AIChatBox.tsx`, remove `components/ui/AIChatBox.tsx`
+- Keep `pages/Calls.tsx`, consider merging enhancements from `ui/Calls.tsx`
+- Keep `pages/Contacts.tsx`, consider merging enhancements from `ui/Contacts.tsx`
+
+#### 2. Wire Up Unused Features
+- `SequenceBuilder.tsx` - Add to UI for email sequences
+- `CallsEnhanced.tsx` - Has better features, merge into main Calls page
+- `ContactsEnhanced.tsx` - Has better features, merge into main Contacts page
+
+#### 3. Keep for Reference
+- `ComponentShowcase.tsx` - Useful for seeing all available components
+
+
+---
+
+## Data Flow Analysis
+
+### Hidden Data in rawData (Not Surfaced in UI)
+These valuable fields exist in the rawData JSON but aren't displayed anywhere:
+
+| Field | Value | Where to Show |
+|-------|-------|---------------|
+| `accountOwner` | Rep assignment | Account header, filters |
+| `accountReach` | Reach score | Account card |
+| `daysSinceLastEngagement` | Days since activity | Priority Actions |
+| `engagementActivities` | Activity count | Account detail |
+| `lastSalesActivity` | Last activity date | Account card, Priority |
+| `lastSalesActivityDays` | Days since activity | Priority Actions |
+| `latestEngagementActivity` | Recent activity type | Account timeline |
+| `opportunityStatus` | Opp stage | Account header |
+| `salesActivities` | Activity count | Account metrics |
+| `temperature` | Hot/Warm/Cold | Account card badge |
+| `Recent Security Incidents` | Security events | Account intel |
+| `SSO Provider` | Identity provider | Tech stack |
+
+### Account Fields Not Displayed
+| Field | In Schema | In UI | Action |
+|-------|-----------|-------|--------|
+| triggerEvents | ✅ | ❌ | Add to account intel |
+| sixsenseSegments | ✅ | ❌ | Add to 6sense section |
+| securityStack | ✅ | Partial | Expand in tech analysis |
+| domainVariations | ✅ | ❌ | Use for domain matching |
+
+### Contact Fields Not Displayed
+| Field | In Schema | In UI | Action |
+|-------|-----------|-------|--------|
+| department | ✅ | ❌ | Add to contact card |
+| mobilePhone | ✅ | ❌ | Add to contact detail |
+| directPhone | ✅ | ❌ | Add to contact detail |
+
+### Call Fields Not Used
+| Field | In Schema | In UI | Action |
+|-------|-----------|-------|--------|
+| sentiment | ✅ | ❌ | Add sentiment badge |
+| keyTopics | ✅ | ❌ | Show as tags |
+| actionItems | ✅ | ❌ | Show in call detail |
+
+---
+
+## Priority Fix List
+
+### CRITICAL (Do First)
+1. **Link 33,225 calls to accounts** - Match by company name/domain
+2. **Surface rawData fields** - Show temperature, lastActivity, accountOwner
+3. **Display triggerEvents** - Show on account intelligence tab
+
+### HIGH (This Week)
+4. **Add contact department** - Better persona targeting
+5. **Show call sentiment/topics** - Quick call insights
+6. **Display 6sense segments** - Better targeting
+7. **Merge enhanced components** - CallsEnhanced, ContactsEnhanced
+
+### MEDIUM (Next Sprint)
+8. **Wire up SequenceBuilder** - Email sequences feature
+9. **Activate empty tables** - Start saving emailHistory, generatedContent
+10. **Enrich missing contact data** - Emails, LinkedIn
+
+### LOW (Backlog)
+11. **Clean up duplicate components** - Consolidate ui/ duplicates
+12. **Remove ComponentShowcase from prod** - Dev tool only

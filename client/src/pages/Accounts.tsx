@@ -446,12 +446,47 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                         )}
                       </div>
 
-                      {/* Relationship Badge */}
-                      {account.relationship && (
-                        <Badge variant="outline" className="w-fit">
-                          {account.relationship}
-                        </Badge>
-                      )}
+                      {/* Temperature & Activity from rawData */}
+                      {(() => {
+                        const rawData = (account.rawData as Record<string, any>) || {};
+                        const temperature = rawData.temperature;
+                        const daysSinceActivity = rawData.daysSinceLastEngagement || rawData.lastSalesActivityDays;
+                        const salesActivities = rawData.salesActivities || 0;
+                        const accountOwner = rawData.accountOwner || rawData.owner;
+                        
+                        return (
+                          <div className="flex flex-wrap gap-1.5">
+                            {temperature && (
+                              <Badge className={`text-xs ${
+                                temperature === 'Hot' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                                temperature === 'Warm' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                                'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                              }`}>
+                                {temperature === 'Hot' ? '🔥' : temperature === 'Warm' ? '🌡️' : '❄️'} {temperature}
+                              </Badge>
+                            )}
+                            {daysSinceActivity !== null && daysSinceActivity !== undefined && (
+                              <Badge variant="outline" className={`text-xs ${
+                                daysSinceActivity <= 7 ? 'border-green-500/50 text-green-400' :
+                                daysSinceActivity <= 30 ? 'border-yellow-500/50 text-yellow-400' :
+                                'border-red-500/50 text-red-400'
+                              }`}>
+                                {daysSinceActivity}d ago
+                              </Badge>
+                            )}
+                            {salesActivities > 0 && (
+                              <Badge variant="outline" className="text-xs border-purple-500/30 text-purple-400">
+                                {salesActivities} activities
+                              </Badge>
+                            )}
+                            {account.relationship && (
+                              <Badge variant="outline" className="text-xs">
+                                {account.relationship}
+                              </Badge>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {/* Action Button */}
                       <Button 
