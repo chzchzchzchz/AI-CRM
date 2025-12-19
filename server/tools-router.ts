@@ -11,6 +11,9 @@ import {
   getUserDocuments,
   deleteDocument 
 } from "./rag-service";
+import { getDb } from "./db";
+import { transcriptReports } from "../drizzle/schema";
+import { eq, desc, and } from "drizzle-orm";
 
 // Field name aliases for intelligent mapping
 const FIELD_ALIASES: Record<string, string[]> = {
@@ -502,5 +505,153 @@ Format your response as JSON with these keys:
         console.error('[WebinarContent] Error:', error);
         throw new Error('Failed to generate webinar content');
       }
+    }),
+
+  // Transcript Analysis endpoints
+  analyzeTranscript: protectedProcedure
+    .input(z.object({
+      transcript: z.string().min(100, 'Transcript must be at least 100 characters')
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const startTime = Date.now();
+      
+      const systemPrompt = `You are an expert analyzer of sales call transcripts. Extract specific insights from meeting transcripts.
+
+Rules for extraction:
+1. Strict Factuality: Only pull from the transcript. Do not make assumptions.
+2. Conciseness: Keep bullet points under 250 characters (except quotes and insights).
+3. If information is missing, state "Not mentioned in transcript" or provide empty arrays.
+4. Focus on the prospect's perspective.
+5. For Security Stack, distinguish between tools they use vs tools they considered.
+6. For AI Tools, distinguish enterprise accounts vs individual/free usage.
+7. Be specific in risks/challenges - include context and examples from the call.
+8. Capture valuable drill-down details in additionalInsights.`;
+
+      const userPrompt = `Analyze this meeting transcript and extract insights:
+
+${input.transcript}`;
+
+      try {
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "transcript_analysis",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  aboutProspect: {
+                    type: "object",
+                    properties: {
+                      jobTitle: { type: "string" },
+                      industry: { type: "string" },
+                      companyName: { type: "string" },
+                      aiToolsUsed: {
+                        type: "object",
+                        properties: {
+                          enterprise: { type: "array", items: { type: "string" } },
+                          other: { type: "array", items: { type: "string" } }
+                        },
+                        required: ["enterprise", "other"],
+                        additionalProperties: false
+                      },
+                      aiUsageContext: { type: "string" }
+                    },
+                    required: ["jobTitle", "industry", "companyName", "aiToolsUsed", "aiUsageContext"],
+                    additionalProperties: false
+                  },
+                  topRisks: { type: "array", items: { type: "string" } },
+                  topChallenges: { type: "array", items: { type: "string" } },
+                  currentSecurityStack: {
+                    type: "object",
+                    properties: {
+                      toolsUsed: { type: "array", items: { type: "string" } },
+                      toolsConsidered: { type: "array", items: { type: "string" } }
+                    },
+                    required: ["toolsUsed", "toolsConsidered"],
+                    additionalProperties: false
+                  },
+                  budgetTimelinePriority: { type: "string" },
+                  urgencyDrivers: { type: "string" },
+                  feedbackPoints: { type: "array", items: { type: "string" } },
+                  betaInterest: {
+                    type: "object",
+                    properties: {
+                      interestLevel: { type: "string" },
+                      apprehensions: { type: "string" },
+                      interestQuote: { type: "string" }
+                    },
+                    required: ["interestLevel", "apprehensions", "interestQuote"],
+                    additionalProperties: false
+                  },
+                  topQuotes: { type: "array", items: { type: "string" } },
+                  additionalInsights: { type: "array", items: { type: "string" } },
+                  nextSteps: { type: "array", items: { type: "string" } }
+                },
+                required: ["aboutProspect", "topRisks", "topChallenges", "currentSecurityStack", "budgetTimelinePriority", "urgencyDrivers", "feedbackPoints", "betaInterest", "topQuotes", "additionalInsights", "nextSteps"],
+                additionalProperties: false
+              }
+            }
+          }
+        });
+
+        const messageContent = response.choices[0].message.content;
+        const analysis = JSON.parse(typeof messageContent === 'string' ? messageContent : '{}');
+        
+        const durationMs = Date.now() - startTime;
+        console.log(`[TranscriptAnalysis] Completed in ${durationMs}ms`);
+        
+        return analysis;
+      } catch (error) {
+        console.error('[TranscriptAnalysis] Error:', error);
+        throw new Error('Failed to analyze transcript');
+      }
+    }),
+
+  saveTranscriptReport: protectedProcedure
+    .input(z.object({
+      name: z.string(),
+      transcript: z.string(),
+      analysis: z.any()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database not available');
+      const result = await db.insert(transcriptReports).values({
+        userId: ctx.user.id,
+        name: input.name,
+        transcript: input.transcript,
+        analysis: input.analysis,
+        createdAt: new Date()
+      });
+      return { id: Number((result as any)[0]?.insertId || 0) };
+    }),
+
+  getSavedTranscriptReports: protectedProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database not available');
+      const reports = await db.select().from(transcriptReports)
+        .where(eq(transcriptReports.userId, ctx.user.id))
+        .orderBy(desc(transcriptReports.createdAt));
+      return reports;
+    }),
+
+  deleteTranscriptReport: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database not available');
+      await db.delete(transcriptReports)
+        .where(and(
+          eq(transcriptReports.id, input.id),
+          eq(transcriptReports.userId, ctx.user.id)
+        ));
+      return { success: true };
     })
 });
