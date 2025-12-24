@@ -8,12 +8,30 @@ export const users = mysqlTable("users", {
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
+  passwordHash: varchar("passwordHash", { length: 255 }), // For email/password auth
+  loginMethod: varchar("loginMethod", { length: 64 }), // 'oauth', 'email', 'demo'
+  isApproved: boolean("isApproved").default(false), // For demo access approval
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
+
+// Access requests table for demo/conference access
+export const accessRequests = mysqlTable("access_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  company: varchar("company", { length: 255 }),
+  reason: text("reason"), // Why they want access
+  status: mysqlEnum("status", ["pending", "approved", "denied"]).default("pending").notNull(),
+  reviewedBy: int("reviewedBy"), // Admin who reviewed
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AccessRequest = typeof accessRequests.$inferSelect;
+export type InsertAccessRequest = typeof accessRequests.$inferInsert;
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
