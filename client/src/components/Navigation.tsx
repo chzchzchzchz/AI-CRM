@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { APP_LOGO } from "@/const";
 import { Users, Phone, Search, BarChart3, Settings, Send, FileText, Home, UserCircle, Contact, LogOut } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -86,6 +87,11 @@ export function Navigation({ onSearchClick }: NavigationProps) {
           
           {user && (
             <div className="flex items-center gap-2 pl-3 border-l border-slate-700">
+              {user.email?.includes('demo') && (
+                <Badge variant="secondary" className="bg-purple-600/20 text-purple-300 border-purple-600/30">
+                  🎭 Demo Mode
+                </Badge>
+              )}
               <span className="text-sm text-slate-400">{user.email}</span>
               <Button
                 variant="ghost"

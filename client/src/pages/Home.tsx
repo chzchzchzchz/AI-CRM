@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Linkedin, Phone, TrendingUp, Building2, Users, Flame, Zap, ArrowRight, Sparkles, Target, Calendar, MapPin, UserCircle, FileSpreadsheet } from "lucide-react";
 import { ContextualAI } from "@/components/ContextualAI";
+import { DemoTour } from "@/components/DemoTour";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
@@ -143,6 +144,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <DemoTour />
       <div className="container py-12 space-y-8 max-w-7xl">
         {/* Hero Section */}
         <div className="space-y-3">
