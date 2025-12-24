@@ -50,9 +50,25 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <Button asChild size="lg" className="w-full">
-            <a href={getLoginUrl()}>Sign in to continue</a>
-          </Button>
+          <div className="w-full space-y-3">
+            <Button asChild size="lg" className="w-full">
+              <Link href="/login">Sign In</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="w-full">
+              <Link href="/signup">Create Account</Link>
+            </Button>
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">or</span>
+              </div>
+            </div>
+            <Button asChild size="lg" variant="ghost" className="w-full text-muted-foreground">
+              <Link href="/request-access">Request Demo Access</Link>
+            </Button>
+          </div>
         </div>
       </div>
     );

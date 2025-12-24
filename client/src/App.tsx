@@ -28,6 +28,9 @@ const ContentStudio = lazyLoad(() => import("./pages/ContentStudio"));
 const TranscriptAnalyzer = lazyLoad(() => import("./pages/TranscriptAnalyzer"));
 const AITools = lazyLoad(() => import("./pages/AITools"));
 const TopAccounts = lazyLoad(() => import("./pages/TopAccounts"));
+const Login = lazyLoad(() => import("./pages/Login"));
+const SignUp = lazyLoad(() => import("./pages/SignUp"));
+const RequestAccess = lazyLoad(() => import("./pages/RequestAccess"));
 import { GlobalSearch } from "./components/GlobalSearch";
 import { GlobalAIChat } from "./components/GlobalAIChat";
 import { SupportBot } from "./components/SupportBot";
@@ -37,6 +40,9 @@ import { useState, useEffect } from "react";
 function Router() {
   return (
     <Switch>
+      <Route path="/login" component={Login} />
+      <Route path="/signup" component={SignUp} />
+      <Route path="/request-access" component={RequestAccess} />
       <Route path={"/"} component={Home} />
       <Route path="/accounts" component={Accounts} />
       <Route path="/accounts/:id" component={AccountDetail} />
