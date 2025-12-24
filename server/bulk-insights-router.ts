@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, router } from "./_core/trpc";
 import { getAccountById, getContactsByAccountId, getGongCallsByAccountId } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
 
 export const bulkInsightsRouter = router({
-  generateForTopLeads: publicProcedure
+  generateForTopLeads: protectedProcedure
     .input(z.object({ limit: z.number().default(50) }))
     .mutation(async ({ input }) => {
       const { getDb } = await import("./db");
@@ -146,7 +146,7 @@ CRITICAL RULES:
       };
     }),
 
-  getProgress: publicProcedure
+  getProgress: protectedProcedure
     .query(async () => {
       // This would track progress in a real implementation
       // For now, just return a placeholder

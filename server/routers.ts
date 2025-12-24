@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { router, publicProcedure } from "./_core/trpc";
+import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getAllAccounts, getAccountById, updateAccount, getAllPeople, getPeoplePaginated, getPeopleByCompany, getContactsByAccountId, /* createClayRequest, updateClayRequest, getAllClayRequests, getClayRequest, */ upsertAccount, upsertPerson, getAllGongCalls, getGongCallsPaginated, getGongCallsByCompany, getGongCallsByAccountId } from "./db";
 import { enrichAccountWithAI, analyzeGongCall, generateOutreachEmail, intelligentSearch, prioritizeContacts } from "./ai";
@@ -34,7 +34,7 @@ export const appRouter = router({
   sixsense: sixsenseRouter,
   csvProcessor: csvProcessorRouter,
   deepThink: router({
-    chat: publicProcedure
+    chat: protectedProcedure
       .input(z.object({
         query: z.string(),
         context: z.string().optional(),
@@ -43,7 +43,7 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         return await deepThink(input);
       }),
-    sales: publicProcedure
+    sales: protectedProcedure
       .input(z.object({
         query: z.string(),
         accountData: z.any().optional(),
@@ -54,7 +54,7 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         return await deepThinkSales(input);
       }),
-    help: publicProcedure
+    help: protectedProcedure
       .input(z.object({
         query: z.string(),
         debugMode: z.boolean().optional()
@@ -65,7 +65,7 @@ export const appRouter = router({
   }),
   sixsenseAnalytics: sixsenseAnalyticsRouter,
   analytics: router({
-    overview: publicProcedure.query(async () => {
+    overview: protectedProcedure.query(async () => {
       const accounts = await getAllAccounts();
       const people = await getAllPeople();
       const calls = await getAllGongCalls();
@@ -150,15 +150,15 @@ export const appRouter = router({
   }),
 
   accounts: router({
-    list: publicProcedure.query(async () => {
+    list: protectedProcedure.query(async () => {
       return await getAllAccounts();
     }),
-    getById: publicProcedure
+    getById: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         return await getAccountById(input.id);
       }),
-    getStats: publicProcedure.query(async () => {
+    getStats: protectedProcedure.query(async () => {
       const accounts = await getAllAccounts();
       const people = await getAllPeople();
       const calls = await getAllGongCalls();
@@ -183,7 +183,7 @@ export const appRouter = router({
         totalCalls: calls.length,
       };
     }),
-    enrichWith6sense: publicProcedure
+    enrichWith6sense: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         const account = await getAccountById(input.id);
@@ -194,7 +194,7 @@ export const appRouter = router({
         // AI-powered enrichment will be implemented
         return { message: 'AI enrichment coming soon', accountId: input.id };
       }),
-    getTimeline: publicProcedure
+    getTimeline: protectedProcedure
       .input(z.object({ accountId: z.number(), limit: z.number().default(50) }))
       .query(async ({ input }) => {
         const [account, calls] = await Promise.all([
@@ -278,10 +278,10 @@ export const appRouter = router({
   }),
 
   calls: router({
-    list: publicProcedure.query(async () => {
+    list: protectedProcedure.query(async () => {
       return await getAllGongCalls();
     }),
-    getByAccountId: publicProcedure
+    getByAccountId: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .query(async ({ input }) => {
         return await getGongCallsByAccountId(input.accountId);
@@ -289,25 +289,25 @@ export const appRouter = router({
   }),
 
   people: router({
-    list: publicProcedure.query(async () => {
+    list: protectedProcedure.query(async () => {
       return await getAllPeople();
     }),
-    listPaginated: publicProcedure
+    listPaginated: protectedProcedure
       .input(z.object({ limit: z.number().default(100), offset: z.number().default(0) }))
       .query(async ({ input }) => {
         return await getPeoplePaginated(input.limit, input.offset);
       }),
-    getByCompany: publicProcedure
+    getByCompany: protectedProcedure
       .input(z.object({ company: z.string() }))
       .query(async ({ input }) => {
         return await getPeopleByCompany(input.company);
       }),
-    getByAccountId: publicProcedure
+    getByAccountId: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .query(async ({ input }) => {
         return await getContactsByAccountId(input.accountId);
       }),
-    prioritize: publicProcedure
+    prioritize: protectedProcedure
       .input(z.object({ accountId: z.number().optional() }))
       .query(async ({ input }) => {
         const contacts = input.accountId
@@ -362,20 +362,20 @@ export const appRouter = router({
   // }),
 
   gong: router({
-    list: publicProcedure.query(async () => {
+    list: protectedProcedure.query(async () => {
       return await getAllGongCalls();
     }),
-    listPaginated: publicProcedure
+    listPaginated: protectedProcedure
       .input(z.object({ limit: z.number().default(50), offset: z.number().default(0) }))
       .query(async ({ input }) => {
         return await getGongCallsPaginated(input.limit, input.offset);
       }),
-    getByCompany: publicProcedure
+    getByCompany: protectedProcedure
       .input(z.object({ company: z.string() }))
       .query(async ({ input }) => {
         return await getGongCallsByCompany(input.company);
       }),
-    getByAccountId: publicProcedure
+    getByAccountId: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .query(async ({ input }) => {
         return await getGongCallsByAccountId(input.accountId);
@@ -384,7 +384,7 @@ export const appRouter = router({
 
   // AI-powered features
   ai: router({
-    enrichAccount: publicProcedure
+    enrichAccount: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .mutation(async ({ input }) => {
         const account = await getAccountById(input.accountId);
@@ -392,7 +392,7 @@ export const appRouter = router({
         return await enrichAccountWithAI(account);
       }),
 
-    analyzeCall: publicProcedure
+    analyzeCall: protectedProcedure
       .input(z.object({ callId: z.number() }))
       .mutation(async ({ input }) => {
         const calls = await getAllGongCalls();
@@ -401,7 +401,7 @@ export const appRouter = router({
         return await analyzeGongCall(call);
       }),
 
-    generateEmail: publicProcedure
+    generateEmail: protectedProcedure
       .input(z.object({ 
         accountId: z.number(), 
         contactId: z.number(),
@@ -415,13 +415,13 @@ export const appRouter = router({
         return await generateOutreachEmail(account, contact, input.context);
       }),
 
-    search: publicProcedure
+    search: protectedProcedure
       .input(z.object({ query: z.string() }))
       .mutation(async ({ input }) => {
         return await intelligentSearch(input.query);
       }),
 
-    prioritizeContacts: publicProcedure
+    prioritizeContacts: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .mutation(async ({ input }) => {
         const account = await getAccountById(input.accountId);
@@ -429,7 +429,7 @@ export const appRouter = router({
         return await prioritizeContacts(contacts, account);
       }),
 
-    chat: publicProcedure
+    chat: protectedProcedure
       .input(z.object({ 
         query: z.string(),
         accountId: z.number().optional(),
@@ -449,19 +449,19 @@ export const appRouter = router({
         });
       }),
 
-    generateAccountSummary: publicProcedure
+    generateAccountSummary: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .mutation(async ({ input }) => {
         return await generateAccountSummary(input.accountId);
       }),
 
-    generateContactSummary: publicProcedure
+    generateContactSummary: protectedProcedure
       .input(z.object({ contactId: z.number() }))
       .mutation(async ({ input }) => {
         return await generateContactSummary(input.contactId);
       }),
 
-    compileOverview: publicProcedure
+    compileOverview: protectedProcedure
       .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
       .query(async ({ input }) => {
         console.log(`[compileOverview] Starting for account ${input.accountId}`);
@@ -643,7 +643,7 @@ export const appRouter = router({
         }
       }),
 
-    compileResearch: publicProcedure
+    compileResearch: protectedProcedure
       .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
       .query(async ({ input }) => {
         const account = await getAccountById(input.accountId);
@@ -731,7 +731,7 @@ export const appRouter = router({
         return { ...result, cached: false, cacheAge: 0 };
       }),
 
-    generateStrategicInsights: publicProcedure
+    generateStrategicInsights: protectedProcedure
       .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
       .query(async ({ input }) => {
         const account = await getAccountById(input.accountId);
@@ -931,7 +931,7 @@ ${STANDARDIZED_OUTPUT_STRUCTURE}`;
         return { recommendations: recommendationsText, cached: false, cacheAge: 0 };
       }),
 
-    analyzeTechStack: publicProcedure
+    analyzeTechStack: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .mutation(async ({ input }) => {
         const account = await getAccountById(input.accountId);

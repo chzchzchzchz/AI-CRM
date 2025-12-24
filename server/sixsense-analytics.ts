@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, publicProcedure } from "./_core/trpc";
+import { router, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
 import {
   sixsenseBuyingStageMetrics,
@@ -15,7 +15,7 @@ import { desc } from "drizzle-orm";
 
 export const sixsenseAnalyticsRouter = router({
   // Get buying stage funnel data
-  getBuyingStages: publicProcedure.query(async () => {
+  getBuyingStages: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
@@ -50,7 +50,7 @@ export const sixsenseAnalyticsRouter = router({
   }),
 
   // Get engagement metrics
-  getEngagement: publicProcedure.query(async () => {
+  getEngagement: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
@@ -76,7 +76,7 @@ export const sixsenseAnalyticsRouter = router({
   }),
 
   // Get top keywords by category
-  getKeywords: publicProcedure
+  getKeywords: protectedProcedure
     .input(
       z.object({
         category: z.string().optional(),
@@ -117,7 +117,7 @@ export const sixsenseAnalyticsRouter = router({
     }),
 
   // Get 6QA performance over time
-  get6QAPerformance: publicProcedure.query(async () => {
+  get6QAPerformance: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
@@ -158,7 +158,7 @@ export const sixsenseAnalyticsRouter = router({
   }),
 
   // Get summary stats for dashboard
-  getSummary: publicProcedure.query(async () => {
+  getSummary: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 

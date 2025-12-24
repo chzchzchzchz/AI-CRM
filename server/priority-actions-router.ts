@@ -1,4 +1,4 @@
-import { router, publicProcedure } from "./_core/trpc";
+import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getAllAccounts, getContactsByAccountId, getGongCallsByAccountId } from "./db";
 import { calculateVectorScores, type AccountData } from "./vectorScoring";
@@ -36,7 +36,7 @@ function formatKeyContact(contact: { name: string | null; title: string | null }
 }
 
 export const priorityActionsRouter = router({
-  getEnriched: publicProcedure
+  getEnriched: protectedProcedure
     .input(z.object({ 
       limit: z.number().default(3),
       userEmail: z.string().optional() // Pass logged-in user's email for filtering
@@ -224,7 +224,7 @@ export const priorityActionsRouter = router({
     }),
 
   // Get rep territory info
-  getRepTerritory: publicProcedure
+  getRepTerritory: protectedProcedure
     .input(z.object({ userEmail: z.string() }))
     .query(async ({ input }) => {
       const territory = REP_TERRITORIES[input.userEmail];
@@ -256,7 +256,7 @@ export const priorityActionsRouter = router({
     }),
 
   // Get dashboard stats filtered by rep
-  getRepStats: publicProcedure
+  getRepStats: protectedProcedure
     .input(z.object({ userEmail: z.string().optional() }))
     .query(async ({ input }) => {
       let accounts = await getAllAccounts();

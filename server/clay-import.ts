@@ -1,4 +1,4 @@
-import { router, publicProcedure } from "./_core/trpc";
+import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb } from "./db";
 import { accounts } from "../drizzle/schema";
@@ -15,7 +15,7 @@ export const clayImportRouter = router({
   /**
    * Import raw pasted data (CSV, TSV, JSON, Excel paste)
    */
-  importRawData: publicProcedure
+  importRawData: protectedProcedure
     .input(z.object({
       rawData: z.string()
     }))
@@ -84,7 +84,7 @@ export const clayImportRouter = router({
   /**
    * Import accounts from Clay with full enrichment data (JSON format)
    */
-  importAccounts: publicProcedure
+  importAccounts: protectedProcedure
     .input(z.object({
       accounts: z.array(z.object({
         name: z.string(),
@@ -151,7 +151,7 @@ export const clayImportRouter = router({
   /**
    * Get import status and statistics
    */
-  getImportStats: publicProcedure.query(async () => {
+  getImportStats: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
