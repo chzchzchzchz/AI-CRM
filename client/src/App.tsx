@@ -38,7 +38,6 @@ import { GlobalAIChat } from "./components/GlobalAIChat";
 import { SupportBot } from "./components/SupportBot";
 import { RepProvider } from "./contexts/RepContext";
 import { useState, useEffect } from "react";
-import { useAuth } from "./_core/hooks/useAuth";
 
 function Router() {
   return (
@@ -80,9 +79,8 @@ function Router() {
 //   to keep consistent foreground/background color across components
 // - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
 
-function AppContent() {
+function App() {
   const [searchOpen, setSearchOpen] = useState(false);
-  const { user } = useAuth();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -97,22 +95,6 @@ function AppContent() {
   }, []);
 
   return (
-    <>
-      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
-      <Router />
-      {/* Only show AI chat and support for authenticated users */}
-      {user && (
-        <>
-          <GlobalAIChat />
-          <SupportBot />
-        </>
-      )}
-    </>
-  );
-}
-
-function App() {
-  return (
     <ErrorBoundary>
       <ThemeProvider
         defaultTheme="dark"
@@ -120,7 +102,10 @@ function App() {
         <RepProvider>
           <TooltipProvider>
             <Toaster />
-            <AppContent />
+            <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+            <Router />
+            <GlobalAIChat />
+            <SupportBot />
           </TooltipProvider>
         </RepProvider>
       </ThemeProvider>
