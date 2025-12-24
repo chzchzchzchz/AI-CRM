@@ -135,14 +135,22 @@ export async function upsertAccount(account: InsertAccount) {
   }
 }
 
-export async function getAllAccounts() {
+export async function getAllAccounts(isDemoUser: boolean = false) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get accounts: database not available");
     return [];
   }
 
-  return await db.select().from(accounts).orderBy(desc(accounts.createdAt));
+  const allAccounts = await db.select().from(accounts).orderBy(desc(accounts.createdAt));
+  
+  // If demo user, only show demo accounts (those with name starting with "Demo_")
+  if (isDemoUser) {
+    return allAccounts.filter(a => a.name?.startsWith('Demo_'));
+  }
+  
+  // For regular users, exclude demo accounts
+  return allAccounts.filter(a => !a.name?.startsWith('Demo_'));
 }
 
 export async function getAccountById(id: number) {

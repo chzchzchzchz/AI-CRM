@@ -130,7 +130,8 @@ export default function Home() {
     return score >= 40 && score < 70;
   }).length ?? 0;
   const totalAccounts = repStats?.totalAccounts ?? accounts?.length ?? 0;
-  const sixQAGap = repStats?.sixQAGap ?? Math.floor(totalAccounts * 0.8);
+  // For demo users, use a proportion of their accounts; otherwise use repStats
+  const sixQAGap = repStats?.sixQAGap !== undefined ? repStats.sixQAGap : Math.floor(totalAccounts * 0.8);
 
   // Use enriched priority actions with contact data
   const priorityActions = (enrichedPriorityActions || []).map((action, index) => ({
