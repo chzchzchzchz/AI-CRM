@@ -1,4 +1,4 @@
-import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
+import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { eq, inArray } from "drizzle-orm";
@@ -25,7 +25,7 @@ GOOD: "Companies with your security stack often struggle with..."
 BAD: "Based on our 6sense data, we can see you're in the purchase stage..."`;
 
 export const outreachRouter = router({
-  generateEmail: publicProcedure
+  generateEmail: protectedProcedure
     .input(
       z.object({
         accountIds: z.array(z.number()),
@@ -161,7 +161,7 @@ OUTPUT ONLY THE EMAIL BODY. Nothing else.`;
     }),
 
   // Refine an existing email based on feedback
-  refineEmail: publicProcedure
+  refineEmail: protectedProcedure
     .input(
       z.object({
         currentEmail: z.string(),

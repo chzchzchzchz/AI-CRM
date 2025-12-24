@@ -208,7 +208,7 @@ export const toolsRouter = router({
     }),
 
   // Unified content generation with RAG
-  generateContent: publicProcedure
+  generateContent: protectedProcedure
     .input(z.object({
       contentType: z.enum(['email', 'webinar', 'battle_card', 'call_script', 'linkedin', 'webinar_promo', 'blog_post', 'ad_copy', 'campaign_brief', 'case_study_outline', 'event_followup']),
       context: z.string(),
@@ -348,7 +348,7 @@ Generate professional, actionable content.`;
     }),
 
   // Data processing with learning
-  processLeads: publicProcedure
+  processLeads: protectedProcedure
     .input(z.object({
       fileContents: z.array(z.string()),
       fileNames: z.array(z.string())
@@ -429,7 +429,7 @@ Generate professional, actionable content.`;
       return getLearningInsights(input.contentType);
     }),
 
-  generateWebinarContent: publicProcedure
+  generateWebinarContent: protectedProcedure
     .input(z.object({
       contentAssets: z.string(),
       speaker1: z.string().optional(),
@@ -556,7 +556,7 @@ Format your response as JSON with these keys:
     }),
 
   // Transcript Analysis endpoints
-  analyzeTranscript: publicProcedure
+  analyzeTranscript: protectedProcedure
     .input(z.object({
       transcript: z.string().min(100, 'Transcript must be at least 100 characters')
     }))
@@ -708,7 +708,7 @@ ${input.transcript}`;
       }
     }),
 
-  saveTranscriptReport: publicProcedure
+  saveTranscriptReport: protectedProcedure
     .input(z.object({
       name: z.string(),
       transcript: z.string(),
@@ -730,12 +730,13 @@ ${input.transcript}`;
       return { id: Number((result as any)[0]?.insertId || 0), shareId };
     }),
 
-  getSavedTranscriptReports: publicProcedure
-    .query(async () => {
+  getSavedTranscriptReports: protectedProcedure
+    .query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new Error('Database not available');
-      // Return all reports - no login required, anyone can see all saved reports
+      // Return only reports owned by the current user
       const reports = await db.select().from(transcriptReports)
+        .where(eq(transcriptReports.userId, ctx.user.id))
         .orderBy(desc(transcriptReports.createdAt))
         .limit(100);
       return reports;
@@ -752,7 +753,7 @@ ${input.transcript}`;
       return report || null;
     }),
 
-  askTranscriptQuestion: publicProcedure
+  askTranscriptQuestion: protectedProcedure
     .input(z.object({
       transcript: z.string(),
       question: z.string()
@@ -773,13 +774,20 @@ ${input.transcript}`;
       return { answer: response.choices[0]?.message?.content || 'Unable to answer' };
     }),
 
-  deleteTranscriptReport: publicProcedure
+  deleteTranscriptReport: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error('Database not available');
+      // Only allow deletion of reports owned by the current user
+      const [report] = await db.select().from(transcriptReports)
+        .where(and(eq(transcriptReports.id, input.id), eq(transcriptReports.userId, ctx.user.id)))
+        .limit(1);
+      if (!report) {
+        throw new Error('Report not found or you do not have permission to delete it');
+      }
       await db.delete(transcriptReports)
-        .where(eq(transcriptReports.id, input.id));
+        .where(and(eq(transcriptReports.id, input.id), eq(transcriptReports.userId, ctx.user.id)));
       return { success: true };
     })
 });

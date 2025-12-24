@@ -1,4 +1,4 @@
-import { router, publicProcedure } from "./_core/trpc";
+import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb } from "./db";
 import { emailSequences as sequences } from "../drizzle/schema";
@@ -14,7 +14,7 @@ const SequenceStepSchema = z.object({
 });
 
 export const sequencesRouter = router({
-  list: publicProcedure.query(async () => {
+  list: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];
     
@@ -26,7 +26,7 @@ export const sequencesRouter = router({
     }));
   }),
 
-  save: publicProcedure
+  save: protectedProcedure
     .input(z.object({
       name: z.string(),
       steps: z.array(SequenceStepSchema),
@@ -60,7 +60,7 @@ export const sequencesRouter = router({
       }
     }),
 
-  delete: publicProcedure
+  delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();

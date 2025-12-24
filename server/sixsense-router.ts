@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, router } from "./_core/trpc";
 import { getCompanyByDomain, getCompanyByIP, enrichAccount } from "./sixsense";
 // Intent spike tracking functions (stubbed)
 async function detectAndNotifyIntentSpikes() { return []; }
@@ -12,7 +12,7 @@ export const sixsenseRouter = router({
   /**
    * Sync a single account with 6sense data by domain
    */
-  syncAccountByDomain: publicProcedure
+  syncAccountByDomain: protectedProcedure
     .input(
       z.object({
         accountId: z.number(),
@@ -81,7 +81,7 @@ export const sixsenseRouter = router({
   /**
    * Sync all accounts with 6sense data
    */
-  syncAllAccounts: publicProcedure
+  syncAllAccounts: protectedProcedure
     .input(
       z.object({
         limit: z.number().optional().default(50),
@@ -176,7 +176,7 @@ export const sixsenseRouter = router({
   /**
    * Identify company by IP address
    */
-  identifyByIP: publicProcedure
+  identifyByIP: protectedProcedure
     .input(
       z.object({
         ipAddress: z.string(),
@@ -209,7 +209,7 @@ export const sixsenseRouter = router({
   /**
    * Get 6sense sync status for all accounts
    */
-  getSyncStatus: publicProcedure.query(async () => {
+  getSyncStatus: protectedProcedure.query(async () => {
     try {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -241,7 +241,7 @@ export const sixsenseRouter = router({
   /**
    * Detect and notify about intent spikes (20+ point increases)
    */
-  detectIntentSpikes: publicProcedure
+  detectIntentSpikes: protectedProcedure
     .mutation(async () => {
       const spikes = await detectAndNotifyIntentSpikes();
       return {
@@ -254,7 +254,7 @@ export const sixsenseRouter = router({
   /**
    * Get recent intent spikes for AI assistant queries
    */
-  getRecentSpikes: publicProcedure
+  getRecentSpikes: protectedProcedure
     .input(z.object({ limit: z.number().optional().default(10) }))
     .query(async ({ input }) => {
       return await getRecentIntentSpikes(input.limit);

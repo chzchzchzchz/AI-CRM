@@ -1,4 +1,4 @@
-import { router, publicProcedure } from "./_core/trpc";
+import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import {
   validateAccount,
@@ -17,14 +17,14 @@ export const validationRouter = router({
   /**
    * Get validation summary (quick stats, no web searches)
    */
-  getSummary: publicProcedure.query(async () => {
+  getSummary: protectedProcedure.query(async () => {
     return await getValidationSummary();
   }),
 
   /**
    * Validate a single account with web search verification
    */
-  validateAccount: publicProcedure
+  validateAccount: protectedProcedure
     .input(z.object({
       accountId: z.number()
     }))
@@ -46,7 +46,7 @@ export const validationRouter = router({
   /**
    * Validate a single contact with web search verification
    */
-  validateContact: publicProcedure
+  validateContact: protectedProcedure
     .input(z.object({
       contactId: z.number()
     }))
@@ -73,7 +73,7 @@ export const validationRouter = router({
   /**
    * Run validation on multiple accounts (batch)
    */
-  validateAccounts: publicProcedure
+  validateAccounts: protectedProcedure
     .input(z.object({
       limit: z.number().default(20).optional()
     }))
@@ -100,7 +100,7 @@ export const validationRouter = router({
   /**
    * Run validation on multiple contacts (batch)
    */
-  validateContacts: publicProcedure
+  validateContacts: protectedProcedure
     .input(z.object({
       limit: z.number().default(30).optional()
     }))
@@ -127,7 +127,7 @@ export const validationRouter = router({
   /**
    * Validate ALL accounts (bulk operation with progress tracking)
    */
-  validateAllAccountsBulk: publicProcedure
+  validateAllAccountsBulk: protectedProcedure
     .mutation(async () => {
       const accounts = await getAllAccounts();
       const totalAccounts = accounts.length;
@@ -156,7 +156,7 @@ export const validationRouter = router({
   /**
    * Get all validation issues (from memory, not cached yet)
    */
-  getAllIssues: publicProcedure.query(async () => {
+  getAllIssues: protectedProcedure.query(async () => {
     // For now, return empty array since we don't have cache table yet
     // This will be populated after running validation
     return {
@@ -171,7 +171,7 @@ export const validationRouter = router({
   /**
    * Fix a validation issue (manual correction)
    */
-  fixIssue: publicProcedure
+  fixIssue: protectedProcedure
     .input(z.object({
       issueId: z.string(),
       entityType: z.enum(['account', 'contact']),

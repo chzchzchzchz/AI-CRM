@@ -17,18 +17,46 @@ import { useRep, REP_TERRITORIES } from "@/contexts/RepContext";
  * Daily command center for sales reps with stunning visuals
  */
 export default function Home() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { selectedRep, repInfo: globalRepInfo, matchesTerritory } = useRep();
   
   // Get the effective email based on selection
   const userEmail = selectedRep || user?.email || '';
   
-  // Get rep-specific stats and priority actions
-  const { data: repStats } = trpc.priorityActions.getRepStats.useQuery({ userEmail });
-  const { data: accounts, isLoading: accountsLoading } = trpc.accounts.list.useQuery();
-  const { data: enrichedPriorityActions, isLoading: priorityLoading } = trpc.priorityActions.getEnriched.useQuery({ limit: 3, userEmail });
-  const { data: sixsenseSummary } = trpc.sixsenseAnalytics.getSummary.useQuery();
-  const { data: topKeywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 10 });
+  // All hooks must be called before any early returns (React rules of hooks)
+  const { data: repStats } = trpc.priorityActions.getRepStats.useQuery({ userEmail }, { enabled: !!user });
+  const { data: accounts, isLoading: accountsLoading } = trpc.accounts.list.useQuery(undefined, { enabled: !!user });
+  const { data: enrichedPriorityActions, isLoading: priorityLoading } = trpc.priorityActions.getEnriched.useQuery({ limit: 3, userEmail }, { enabled: !!user });
+  const { data: sixsenseSummary } = trpc.sixsenseAnalytics.getSummary.useQuery(undefined, { enabled: !!user });
+  const { data: topKeywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 10 }, { enabled: !!user });
+  
+  // Show login screen if not authenticated (after all hooks)
+  if (!authLoading && !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
+          <div className="flex flex-col items-center gap-6">
+            <div className="relative">
+              <img
+                src={APP_LOGO}
+                alt={APP_TITLE}
+                className="h-20 w-20 rounded-xl object-cover shadow"
+              />
+            </div>
+            <div className="text-center space-y-2">
+              <h1 className="text-2xl font-bold tracking-tight">{APP_TITLE}</h1>
+              <p className="text-sm text-muted-foreground">
+                Your AI-powered sales intelligence command center
+              </p>
+            </div>
+          </div>
+          <Button asChild size="lg" className="w-full">
+            <a href={getLoginUrl()}>Sign in to continue</a>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // Beautiful loading state
   if (accountsLoading) {
