@@ -70,7 +70,7 @@ export const emailVerificationRouter = router({
         throw new Error("Verification code expired");
       }
 
-      if (verCode.attempts >= 3) {
+      if ((verCode.attempts || 0) >= 3) {
         throw new Error("Too many attempts. Please request a new code.");
       }
 

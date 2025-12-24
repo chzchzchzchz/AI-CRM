@@ -12,6 +12,8 @@ export const users = mysqlTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }), // 'oauth', 'email', 'demo'
   isApproved: boolean("isApproved").default(false), // For demo access approval
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  twoFactorEnabled: boolean("twoFactorEnabled").default(false), // 2FA status
+  twoFactorSecret: varchar("twoFactorSecret", { length: 255 }), // TOTP secret
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -598,3 +600,19 @@ export const passwordResetCodes = mysqlTable("password_reset_codes", {
 
 export type PasswordResetCode = typeof passwordResetCodes.$inferSelect;
 export type InsertPasswordResetCode = typeof passwordResetCodes.$inferInsert;
+
+
+// Audit Logs - tracks all authentication and admin events
+export const auditLogs = mysqlTable("auditLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  eventType: varchar("eventType", { length: 100 }).notNull(),
+  description: text("description").notNull(),
+  ipAddress: varchar("ipAddress", { length: 45 }), // IPv4 or IPv6
+  userAgent: text("userAgent"),
+  metadata: json("metadata"), // Additional context as JSON
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;
