@@ -27,6 +27,8 @@ import { sixsenseAnalyticsRouter } from "./sixsense-analytics";
 import { csvProcessorRouter } from "./csv-processor-router";
 import { deepThink, deepThinkSales, deepThinkHelp } from "./deep-think";
 import { toolsRouter } from "./tools-router";
+import { adminRouter } from "./admin-router";
+import { emailVerificationRouter } from "./email-verification-router";
 
 
 export const appRouter = router({
@@ -1178,6 +1180,8 @@ ${STANDARDIZED_OUTPUT_STRUCTURE}`;
   rfps: rfpRouter,
   clayWebhook: clayWebhookRouter,
   outreach: outreachRouter,
+  admin: adminRouter,
+  emailVerification: emailVerificationRouter,
 
 });
 
