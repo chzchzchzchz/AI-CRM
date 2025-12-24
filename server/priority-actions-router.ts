@@ -47,8 +47,8 @@ export const priorityActionsRouter = router({
       const isDemoUser = ctx.user?.email?.includes('demo') || false;
       let accounts = await getAllAccounts(isDemoUser);
       
-      // Apply rep-specific filtering if user email is provided
-      if (userEmail && REP_TERRITORIES[userEmail]) {
+      // Apply rep-specific filtering only for non-demo users
+      if (!isDemoUser && userEmail && REP_TERRITORIES[userEmail]) {
         const territory = REP_TERRITORIES[userEmail];
         accounts = accounts.filter(a => {
           const empCount = a.employeeCount || 0;
