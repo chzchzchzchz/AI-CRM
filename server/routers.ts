@@ -72,8 +72,9 @@ export const appRouter = router({
   }),
   sixsenseAnalytics: sixsenseAnalyticsRouter,
   analytics: router({
-    overview: protectedProcedure.query(async () => {
-      const accounts = await getAllAccounts();
+    overview: protectedProcedure.query(async ({ ctx }) => {
+      const isDemoUser = ctx.user?.email?.includes('demo') || false;
+      const accounts = await getAllAccounts(isDemoUser);
       const people = await getAllPeople();
       const calls = await getAllGongCalls();
 
@@ -325,16 +326,18 @@ export const appRouter = router({
   }),
 
   accounts: router({
-    list: protectedProcedure.query(async () => {
-      return await getAllAccounts();
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const isDemoUser = ctx.user?.email?.includes('demo') || false;
+      return await getAllAccounts(isDemoUser);
     }),
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         return await getAccountById(input.id);
       }),
-    getStats: protectedProcedure.query(async () => {
-      const accounts = await getAllAccounts();
+    getStats: protectedProcedure.query(async ({ ctx }) => {
+      const isDemoUser = ctx.user?.email?.includes('demo') || false;
+      const accounts = await getAllAccounts(isDemoUser);
       const people = await getAllPeople();
       const calls = await getAllGongCalls();
       

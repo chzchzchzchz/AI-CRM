@@ -41,10 +41,11 @@ export const priorityActionsRouter = router({
       limit: z.number().default(3),
       userEmail: z.string().optional() // Pass logged-in user's email for filtering
     }).optional())
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const limit = input?.limit || 3;
       const userEmail = input?.userEmail;
-      let accounts = await getAllAccounts();
+      const isDemoUser = ctx.user?.email?.includes('demo') || false;
+      let accounts = await getAllAccounts(isDemoUser);
       
       // Apply rep-specific filtering if user email is provided
       if (userEmail && REP_TERRITORIES[userEmail]) {
@@ -226,13 +227,14 @@ export const priorityActionsRouter = router({
   // Get rep territory info
   getRepTerritory: protectedProcedure
     .input(z.object({ userEmail: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const territory = REP_TERRITORIES[input.userEmail];
       if (!territory) {
         return null;
       }
       
-      const accounts = await getAllAccounts();
+      const isDemoUser = ctx.user?.email?.includes('demo') || false;
+      const accounts = await getAllAccounts(isDemoUser);
       const repAccounts = accounts.filter(a => {
         const empCount = a.employeeCount || 0;
         return a.region === territory.region && 
@@ -258,8 +260,9 @@ export const priorityActionsRouter = router({
   // Get dashboard stats filtered by rep
   getRepStats: protectedProcedure
     .input(z.object({ userEmail: z.string().optional() }))
-    .query(async ({ input }) => {
-      let accounts = await getAllAccounts();
+    .query(async ({ ctx, input }) => {
+      const isDemoUser = ctx.user?.email?.includes('demo') || false;
+      let accounts = await getAllAccounts(isDemoUser);
       
       // Apply rep-specific filtering if user email matches a known rep
       if (input?.userEmail && REP_TERRITORIES[input.userEmail]) {
