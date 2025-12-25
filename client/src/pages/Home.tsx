@@ -19,6 +19,7 @@ import { useRep, REP_TERRITORIES } from "@/contexts/RepContext";
  */
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
+  const isDemoUser = user?.email?.includes('demo') || false;
   const { selectedRep, repInfo: globalRepInfo, matchesTerritory } = useRep();
   
   // Get the effective email based on selection
@@ -249,32 +250,21 @@ export default function Home() {
               </CardContent>
             </Card>
           </Link>
-          <Link href="/calls">
-            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg">
-                  <Phone className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <div className="font-semibold text-sm">Review Gong Calls</div>
-                  <div className="text-xs text-muted-foreground">Latest conversations</div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/insights">
-            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <div className="font-semibold text-sm">View Analytics</div>
-                  <div className="text-xs text-muted-foreground">Pipeline insights</div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+          {!isDemoUser && (
+            <Link href="/calls">
+              <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg">
+                    <Phone className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">Review Gong Calls</div>
+                    <div className="text-xs text-muted-foreground">Latest conversations</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          )}
           <Link href="/top-accounts">
             <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full border-indigo-500/30">
               <CardContent className="p-4 flex items-center gap-3">
