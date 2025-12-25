@@ -467,13 +467,15 @@ export const appRouter = router({
   }),
 
   people: router({
-    list: protectedProcedure.query(async () => {
-      return await getAllPeople();
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const isDemoUser = ctx.user?.email?.includes('demo') || false;
+      return await getAllPeople(isDemoUser);
     }),
     listPaginated: protectedProcedure
       .input(z.object({ limit: z.number().default(100), offset: z.number().default(0) }))
-      .query(async ({ input }) => {
-        return await getPeoplePaginated(input.limit, input.offset);
+      .query(async ({ input, ctx }) => {
+        const isDemoUser = ctx.user?.email?.includes('demo') || false;
+        return await getPeoplePaginated(input.limit, input.offset, isDemoUser);
       }),
     getByCompany: protectedProcedure
       .input(z.object({ company: z.string() }))
@@ -487,10 +489,11 @@ export const appRouter = router({
       }),
     prioritize: protectedProcedure
       .input(z.object({ accountId: z.number().optional() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        const isDemoUser = ctx.user?.email?.includes('demo') || false;
         const contacts = input.accountId
           ? await getPeopleByCompany(String(input.accountId))
-          : await getAllPeople();
+          : await getAllPeople(isDemoUser);
         const account = input.accountId ? await getAccountById(input.accountId) : null;
         return await prioritizeContacts(contacts, account || {});
       }),
