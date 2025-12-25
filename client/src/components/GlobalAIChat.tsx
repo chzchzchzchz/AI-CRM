@@ -22,16 +22,24 @@ interface Message {
  */
 export function GlobalAIChat() {
   const [location] = useLocation();
-  
-  // Hide on pages that have contextual AI bar
-  const pagesWithContextualAI = ['/', '/accounts', '/contacts'];
-  const shouldHide = pagesWithContextualAI.some(p => location === p);
-  
   const [isOpen, setIsOpen] = useState(false);
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isWarRoomMode, setIsWarRoomMode] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const chatMutation = trpc.ai.chat.useMutation();
+  
+  // Hide on pages that have contextual AI bar or auth pages
+  const pagesWithContextualAI = ['/', '/accounts', '/contacts'];
+  const authPages = ['/login', '/signup', '/request-access', '/forgot-password'];
+  const isAuthPage = authPages.some(p => location === p || location.startsWith(p));
+  const shouldHide = pagesWithContextualAI.some(p => location === p);
 
   // Auto-popup on first visit
   useEffect(() => {
+    if (isAuthPage) return; // Don't auto-popup on auth pages
     const hasSeenAI = localStorage.getItem('hasSeenAIAssistant');
     if (!hasSeenAI) {
       // Wait 2 seconds after page load to show welcome
@@ -47,14 +55,10 @@ export function GlobalAIChat() {
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, []);
-  const [isFullScreen, setIsFullScreen] = useState(false);
-  const [isWarRoomMode, setIsWarRoomMode] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const chatMutation = trpc.ai.chat.useMutation();
+  }, [isAuthPage]);
+  
+  // Don't render anything on auth pages
+  if (isAuthPage) return null;
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;

@@ -1,4 +1,5 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import { RepSwitcher } from "@/components/RepSwitcher";
 import { useRep, REP_TERRITORIES } from "@/contexts/RepContext";
-
+import { useAuth } from "@/_core/hooks/useAuth";
 
 /**
  * War Room Dashboard - Beautiful modern redesign
