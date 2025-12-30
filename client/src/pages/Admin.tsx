@@ -11,10 +11,6 @@ import { Navigation } from "@/components/Navigation";
 export default function Admin() {
   const { user, loading } = useAuth();
   const [enriching, setEnriching] = useState(false);
-  
-  // Check if demo user
-  const isDemoUser = user?.email?.includes('demo') || false;
-  const accountCount = isDemoUser ? 20 : 777;
   const [queueing, setQueueing] = useState(false);
   const [processing, setProcessing] = useState(false);
 
@@ -150,7 +146,7 @@ export default function Admin() {
                 <div className="text-left">
                   <div className="font-semibold">Enrich All Accounts</div>
                   <div className="text-xs text-muted-foreground font-normal">
-                    All {accountCount} accounts (slower, ~6-7 minutes)
+                    All 777 accounts (slower, ~6-7 minutes)
                   </div>
                 </div>
               </Button>

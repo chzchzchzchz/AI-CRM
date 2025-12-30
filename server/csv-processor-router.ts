@@ -1,4 +1,4 @@
-import { router, protectedProcedure } from "./_core/trpc";
+import { router, publicProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
@@ -60,7 +60,7 @@ const CONTACT_OWNERS = [
 
 export const csvProcessorRouter = router({
   // Get target template info
-  getTemplateInfo: protectedProcedure.query(() => {
+  getTemplateInfo: publicProcedure.query(() => {
     return {
       fields: TARGET_FIELDS,
       statusOptions: STATUS_OPTIONS,
@@ -69,7 +69,7 @@ export const csvProcessorRouter = router({
   }),
 
   // AI-powered field mapping
-  analyzeAndMap: protectedProcedure
+  analyzeAndMap: publicProcedure
     .input(z.object({
       sourceHeaders: z.array(z.string()),
       sampleRows: z.array(z.record(z.string(), z.string())),
@@ -185,7 +185,7 @@ Return a JSON object with this structure:
     }),
 
   // Process and transform CSV data
-  processData: protectedProcedure
+  processData: publicProcedure
     .input(z.object({
       rows: z.array(z.record(z.string(), z.string())),
       mappings: z.record(z.string(), z.string().nullable()),

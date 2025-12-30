@@ -1,12 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
-import bcrypt from "bcryptjs";
-import { users, accessRequests } from "../drizzle/schema";
-import { getDb } from "./db";
-import { eq } from "drizzle-orm";
-import { sdk } from "./_core/sdk";
+import { router, publicProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getAllAccounts, getAccountById, updateAccount, getAllPeople, getPeoplePaginated, getPeopleByCompany, getContactsByAccountId, /* createClayRequest, updateClayRequest, getAllClayRequests, getClayRequest, */ upsertAccount, upsertPerson, getAllGongCalls, getGongCallsPaginated, getGongCallsByCompany, getGongCallsByAccountId } from "./db";
 import { enrichAccountWithAI, analyzeGongCall, generateOutreachEmail, intelligentSearch, prioritizeContacts } from "./ai";
@@ -27,8 +22,6 @@ import { sixsenseAnalyticsRouter } from "./sixsense-analytics";
 import { csvProcessorRouter } from "./csv-processor-router";
 import { deepThink, deepThinkSales, deepThinkHelp } from "./deep-think";
 import { toolsRouter } from "./tools-router";
-import { adminRouter } from "./admin-router";
-import { emailVerificationRouter } from "./email-verification-router";
 
 
 export const appRouter = router({
@@ -41,7 +34,7 @@ export const appRouter = router({
   sixsense: sixsenseRouter,
   csvProcessor: csvProcessorRouter,
   deepThink: router({
-    chat: protectedProcedure
+    chat: publicProcedure
       .input(z.object({
         query: z.string(),
         context: z.string().optional(),
@@ -50,7 +43,7 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         return await deepThink(input);
       }),
-    sales: protectedProcedure
+    sales: publicProcedure
       .input(z.object({
         query: z.string(),
         accountData: z.any().optional(),
@@ -61,7 +54,7 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         return await deepThinkSales(input);
       }),
-    help: protectedProcedure
+    help: publicProcedure
       .input(z.object({
         query: z.string(),
         debugMode: z.boolean().optional()
@@ -72,9 +65,8 @@ export const appRouter = router({
   }),
   sixsenseAnalytics: sixsenseAnalyticsRouter,
   analytics: router({
-    overview: protectedProcedure.query(async ({ ctx }) => {
-      const isDemoUser = ctx.user?.email?.includes('demo') || false;
-      const accounts = await getAllAccounts(isDemoUser);
+    overview: publicProcedure.query(async () => {
+      const accounts = await getAllAccounts();
       const people = await getAllPeople();
       const calls = await getAllGongCalls();
 
@@ -155,189 +147,19 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
-    
-    // Email/Password Sign Up
-    signUp: publicProcedure
-      .input(z.object({
-        email: z.string().email(),
-        password: z.string().min(8),
-        name: z.string().min(1),
-      }))
-      .mutation(async ({ input }) => {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-        // Check if email already exists
-        const existing = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
-        if (existing.length > 0) {
-          throw new Error("An account with this email already exists");
-        }
-        
-        // Hash password
-        const passwordHash = await bcrypt.hash(input.password, 10);
-        
-        // Create user with unique openId
-        const openId = `email_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-        
-        await db.insert(users).values({
-          openId,
-          email: input.email,
-          name: input.name,
-          passwordHash,
-          loginMethod: "email",
-          isApproved: true, // Auto-approve for now
-          role: "user",
-        });
-        
-        return { success: true };
-      }),
-    
-    // Email/Password Login
-    login: publicProcedure
-      .input(z.object({
-        email: z.string().email(),
-        password: z.string(),
-      }))
-      .mutation(async ({ input, ctx }) => {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-        // Find user by email
-        const userResults = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
-        const user = userResults[0];
-        
-        if (!user || !user.passwordHash) {
-          throw new Error("Invalid email or password");
-        }
-        
-        // Verify password
-        const isValid = await bcrypt.compare(input.password, user.passwordHash);
-        if (!isValid) {
-          throw new Error("Invalid email or password");
-        }
-        
-        // Check if approved
-        if (!user.isApproved) {
-          throw new Error("Your account is pending approval");
-        }
-        
-        // Update last signed in
-        await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
-        
-        // Create session token using SDK (compatible with auth system)
-        const token = await sdk.createSessionToken(user.openId, {
-          expiresInMs: 7 * 24 * 60 * 60 * 1000, // 7 days
-          name: user.name || user.email || "",
-        });
-        
-        const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, token, {
-          ...cookieOptions,
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
-        
-        return { success: true, user: { id: user.id, email: user.email, name: user.name, role: user.role } };
-      }),
-    
-    // Request Access (for demo)
-    requestAccess: publicProcedure
-      .input(z.object({
-        email: z.string().email(),
-        name: z.string().min(1),
-        company: z.string().optional(),
-        reason: z.string().optional(),
-      }))
-      .mutation(async ({ input }) => {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-        // Check if request already exists
-        const existing = await db.select().from(accessRequests).where(eq(accessRequests.email, input.email)).limit(1);
-        if (existing.length > 0) {
-          throw new Error("You have already submitted an access request");
-        }
-        
-        await db.insert(accessRequests).values({
-          email: input.email,
-          name: input.name,
-          company: input.company || null,
-          reason: input.reason || null,
-          status: "pending",
-        });
-        
-        return { success: true };
-      }),
-    
-    // Admin: List access requests
-    listAccessRequests: protectedProcedure.query(async ({ ctx }) => {
-      if (ctx.user?.role !== "admin") {
-        throw new Error("Admin access required");
-      }
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      return await db.select().from(accessRequests).orderBy(accessRequests.createdAt);
-    }),
-    
-    // Admin: Approve/Deny access request
-    reviewAccessRequest: protectedProcedure
-      .input(z.object({
-        requestId: z.number(),
-        status: z.enum(["approved", "denied"]),
-      }))
-      .mutation(async ({ input, ctx }) => {
-        if (ctx.user?.role !== "admin") {
-          throw new Error("Admin access required");
-        }
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-        
-        const request = await db.select().from(accessRequests).where(eq(accessRequests.id, input.requestId)).limit(1);
-        if (request.length === 0) {
-          throw new Error("Request not found");
-        }
-        
-        // Update request status
-        await db.update(accessRequests).set({
-          status: input.status,
-          reviewedBy: ctx.user.id,
-          reviewedAt: new Date(),
-        }).where(eq(accessRequests.id, input.requestId));
-        
-        // If approved, create user account with temporary password
-        if (input.status === "approved") {
-          const req = request[0];
-          const tempPassword = Math.random().toString(36).substring(2, 10);
-          const passwordHash = await bcrypt.hash(tempPassword, 10);
-          const openId = `demo_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-          
-          await db.insert(users).values({
-            openId,
-            email: req.email,
-            name: req.name,
-            passwordHash,
-            loginMethod: "demo",
-            isApproved: true,
-            role: "user",
-          });
-          
-          // TODO: Send email with temporary password
-          return { success: true, tempPassword };
-        }
-        
-        return { success: true };
-      }),
   }),
 
   accounts: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      const isDemoUser = ctx.user?.email?.includes('demo') || false;
-      return await getAllAccounts(isDemoUser);
+    list: publicProcedure.query(async () => {
+      return await getAllAccounts();
     }),
-    getById: protectedProcedure
+    getById: publicProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         return await getAccountById(input.id);
       }),
-    getStats: protectedProcedure.query(async ({ ctx }) => {
-      const isDemoUser = ctx.user?.email?.includes('demo') || false;
-      const accounts = await getAllAccounts(isDemoUser);
+    getStats: publicProcedure.query(async () => {
+      const accounts = await getAllAccounts();
       const people = await getAllPeople();
       const calls = await getAllGongCalls();
       
@@ -361,7 +183,7 @@ export const appRouter = router({
         totalCalls: calls.length,
       };
     }),
-    enrichWith6sense: protectedProcedure
+    enrichWith6sense: publicProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         const account = await getAccountById(input.id);
@@ -372,7 +194,7 @@ export const appRouter = router({
         // AI-powered enrichment will be implemented
         return { message: 'AI enrichment coming soon', accountId: input.id };
       }),
-    getTimeline: protectedProcedure
+    getTimeline: publicProcedure
       .input(z.object({ accountId: z.number(), limit: z.number().default(50) }))
       .query(async ({ input }) => {
         const [account, calls] = await Promise.all([
@@ -456,10 +278,10 @@ export const appRouter = router({
   }),
 
   calls: router({
-    list: protectedProcedure.query(async () => {
+    list: publicProcedure.query(async () => {
       return await getAllGongCalls();
     }),
-    getByAccountId: protectedProcedure
+    getByAccountId: publicProcedure
       .input(z.object({ accountId: z.number() }))
       .query(async ({ input }) => {
         return await getGongCallsByAccountId(input.accountId);
@@ -467,33 +289,30 @@ export const appRouter = router({
   }),
 
   people: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      const isDemoUser = ctx.user?.email?.includes('demo') || false;
-      return await getAllPeople(isDemoUser);
+    list: publicProcedure.query(async () => {
+      return await getAllPeople();
     }),
-    listPaginated: protectedProcedure
+    listPaginated: publicProcedure
       .input(z.object({ limit: z.number().default(100), offset: z.number().default(0) }))
-      .query(async ({ input, ctx }) => {
-        const isDemoUser = ctx.user?.email?.includes('demo') || false;
-        return await getPeoplePaginated(input.limit, input.offset, isDemoUser);
+      .query(async ({ input }) => {
+        return await getPeoplePaginated(input.limit, input.offset);
       }),
-    getByCompany: protectedProcedure
+    getByCompany: publicProcedure
       .input(z.object({ company: z.string() }))
       .query(async ({ input }) => {
         return await getPeopleByCompany(input.company);
       }),
-    getByAccountId: protectedProcedure
+    getByAccountId: publicProcedure
       .input(z.object({ accountId: z.number() }))
       .query(async ({ input }) => {
         return await getContactsByAccountId(input.accountId);
       }),
-    prioritize: protectedProcedure
+    prioritize: publicProcedure
       .input(z.object({ accountId: z.number().optional() }))
-      .query(async ({ input, ctx }) => {
-        const isDemoUser = ctx.user?.email?.includes('demo') || false;
+      .query(async ({ input }) => {
         const contacts = input.accountId
           ? await getPeopleByCompany(String(input.accountId))
-          : await getAllPeople(isDemoUser);
+          : await getAllPeople();
         const account = input.accountId ? await getAccountById(input.accountId) : null;
         return await prioritizeContacts(contacts, account || {});
       }),
@@ -543,20 +362,20 @@ export const appRouter = router({
   // }),
 
   gong: router({
-    list: protectedProcedure.query(async () => {
+    list: publicProcedure.query(async () => {
       return await getAllGongCalls();
     }),
-    listPaginated: protectedProcedure
+    listPaginated: publicProcedure
       .input(z.object({ limit: z.number().default(50), offset: z.number().default(0) }))
       .query(async ({ input }) => {
         return await getGongCallsPaginated(input.limit, input.offset);
       }),
-    getByCompany: protectedProcedure
+    getByCompany: publicProcedure
       .input(z.object({ company: z.string() }))
       .query(async ({ input }) => {
         return await getGongCallsByCompany(input.company);
       }),
-    getByAccountId: protectedProcedure
+    getByAccountId: publicProcedure
       .input(z.object({ accountId: z.number() }))
       .query(async ({ input }) => {
         return await getGongCallsByAccountId(input.accountId);
@@ -565,7 +384,7 @@ export const appRouter = router({
 
   // AI-powered features
   ai: router({
-    enrichAccount: protectedProcedure
+    enrichAccount: publicProcedure
       .input(z.object({ accountId: z.number() }))
       .mutation(async ({ input }) => {
         const account = await getAccountById(input.accountId);
@@ -573,7 +392,7 @@ export const appRouter = router({
         return await enrichAccountWithAI(account);
       }),
 
-    analyzeCall: protectedProcedure
+    analyzeCall: publicProcedure
       .input(z.object({ callId: z.number() }))
       .mutation(async ({ input }) => {
         const calls = await getAllGongCalls();
@@ -582,7 +401,7 @@ export const appRouter = router({
         return await analyzeGongCall(call);
       }),
 
-    generateEmail: protectedProcedure
+    generateEmail: publicProcedure
       .input(z.object({ 
         accountId: z.number(), 
         contactId: z.number(),
@@ -596,13 +415,13 @@ export const appRouter = router({
         return await generateOutreachEmail(account, contact, input.context);
       }),
 
-    search: protectedProcedure
+    search: publicProcedure
       .input(z.object({ query: z.string() }))
       .mutation(async ({ input }) => {
         return await intelligentSearch(input.query);
       }),
 
-    prioritizeContacts: protectedProcedure
+    prioritizeContacts: publicProcedure
       .input(z.object({ accountId: z.number() }))
       .mutation(async ({ input }) => {
         const account = await getAccountById(input.accountId);
@@ -610,7 +429,7 @@ export const appRouter = router({
         return await prioritizeContacts(contacts, account);
       }),
 
-    chat: protectedProcedure
+    chat: publicProcedure
       .input(z.object({ 
         query: z.string(),
         accountId: z.number().optional(),
@@ -630,19 +449,19 @@ export const appRouter = router({
         });
       }),
 
-    generateAccountSummary: protectedProcedure
+    generateAccountSummary: publicProcedure
       .input(z.object({ accountId: z.number() }))
       .mutation(async ({ input }) => {
         return await generateAccountSummary(input.accountId);
       }),
 
-    generateContactSummary: protectedProcedure
+    generateContactSummary: publicProcedure
       .input(z.object({ contactId: z.number() }))
       .mutation(async ({ input }) => {
         return await generateContactSummary(input.contactId);
       }),
 
-    compileOverview: protectedProcedure
+    compileOverview: publicProcedure
       .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
       .query(async ({ input }) => {
         console.log(`[compileOverview] Starting for account ${input.accountId}`);
@@ -824,7 +643,7 @@ export const appRouter = router({
         }
       }),
 
-    compileResearch: protectedProcedure
+    compileResearch: publicProcedure
       .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
       .query(async ({ input }) => {
         const account = await getAccountById(input.accountId);
@@ -912,7 +731,7 @@ export const appRouter = router({
         return { ...result, cached: false, cacheAge: 0 };
       }),
 
-    generateStrategicInsights: protectedProcedure
+    generateStrategicInsights: publicProcedure
       .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
       .query(async ({ input }) => {
         const account = await getAccountById(input.accountId);
@@ -1112,7 +931,7 @@ ${STANDARDIZED_OUTPUT_STRUCTURE}`;
         return { recommendations: recommendationsText, cached: false, cacheAge: 0 };
       }),
 
-    analyzeTechStack: protectedProcedure
+    analyzeTechStack: publicProcedure
       .input(z.object({ accountId: z.number() }))
       .mutation(async ({ input }) => {
         const account = await getAccountById(input.accountId);
@@ -1186,8 +1005,6 @@ ${STANDARDIZED_OUTPUT_STRUCTURE}`;
   rfps: rfpRouter,
   clayWebhook: clayWebhookRouter,
   outreach: outreachRouter,
-  admin: adminRouter,
-  emailVerification: emailVerificationRouter,
 
 });
 

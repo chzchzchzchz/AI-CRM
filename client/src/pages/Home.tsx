@@ -1,81 +1,34 @@
-
-import { useState, useEffect } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Linkedin, Phone, TrendingUp, Building2, Users, Flame, Zap, ArrowRight, Sparkles, Target, Calendar, MapPin, UserCircle, FileSpreadsheet } from "lucide-react";
 import { ContextualAI } from "@/components/ContextualAI";
-import { DemoTour } from "@/components/DemoTour";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import { RepSwitcher } from "@/components/RepSwitcher";
 import { useRep, REP_TERRITORIES } from "@/contexts/RepContext";
-import { useAuth } from "@/_core/hooks/useAuth";
+
 
 /**
  * War Room Dashboard - Beautiful modern redesign
  * Daily command center for sales reps with stunning visuals
  */
 export default function Home() {
-  const { user, loading: authLoading } = useAuth();
-  const isDemoUser = user?.email?.includes('demo') || false;
+  const { user } = useAuth();
   const { selectedRep, repInfo: globalRepInfo, matchesTerritory } = useRep();
   
   // Get the effective email based on selection
   const userEmail = selectedRep || user?.email || '';
   
-  // All hooks must be called before any early returns (React rules of hooks)
-  const { data: repStats } = trpc.priorityActions.getRepStats.useQuery({ userEmail }, { enabled: !!user });
-  const { data: accounts, isLoading: accountsLoading } = trpc.accounts.list.useQuery(undefined, { enabled: !!user });
-  const { data: enrichedPriorityActions, isLoading: priorityLoading } = trpc.priorityActions.getEnriched.useQuery({ limit: 3, userEmail }, { enabled: !!user });
-  const { data: sixsenseSummary } = trpc.sixsenseAnalytics.getSummary.useQuery(undefined, { enabled: !!user });
-  const { data: topKeywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 10 }, { enabled: !!user });
-  
-  // Show login screen if not authenticated (after all hooks)
-  if (!authLoading && !user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center gap-6">
-            <div className="relative">
-              <img
-                src={APP_LOGO}
-                alt={APP_TITLE}
-                className="h-20 w-20 rounded-xl object-cover shadow"
-              />
-            </div>
-            <div className="text-center space-y-2">
-              <h1 className="text-2xl font-bold tracking-tight">{APP_TITLE}</h1>
-              <p className="text-sm text-muted-foreground">
-                Your AI-powered sales intelligence command center
-              </p>
-            </div>
-          </div>
-          <div className="w-full space-y-3">
-            <Button asChild size="lg" className="w-full">
-              <Link href="/login">Sign In</Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="w-full">
-              <Link href="/signup">Create Account</Link>
-            </Button>
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">or</span>
-              </div>
-            </div>
-            <Button asChild size="lg" variant="ghost" className="w-full text-muted-foreground">
-              <Link href="/request-access">Request Demo Access</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Get rep-specific stats and priority actions
+  const { data: repStats } = trpc.priorityActions.getRepStats.useQuery({ userEmail });
+  const { data: accounts, isLoading: accountsLoading } = trpc.accounts.list.useQuery();
+  const { data: enrichedPriorityActions, isLoading: priorityLoading } = trpc.priorityActions.getEnriched.useQuery({ limit: 3, userEmail });
+  const { data: sixsenseSummary } = trpc.sixsenseAnalytics.getSummary.useQuery();
+  const { data: topKeywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 10 });
 
   // Beautiful loading state
   if (accountsLoading) {
@@ -133,8 +86,7 @@ export default function Home() {
     return score >= 40 && score < 70;
   }).length ?? 0;
   const totalAccounts = repStats?.totalAccounts ?? accounts?.length ?? 0;
-  // For demo users, use a proportion of their accounts; otherwise use repStats
-  const sixQAGap = repStats?.sixQAGap !== undefined ? repStats.sixQAGap : Math.floor(totalAccounts * 0.8);
+  const sixQAGap = repStats?.sixQAGap ?? Math.floor(totalAccounts * 0.8);
 
   // Use enriched priority actions with contact data
   const priorityActions = (enrichedPriorityActions || []).map((action, index) => ({
@@ -146,7 +98,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <DemoTour />
       <div className="container py-12 space-y-8 max-w-7xl">
         {/* Hero Section */}
         <div className="space-y-3">
@@ -251,21 +202,32 @@ export default function Home() {
               </CardContent>
             </Card>
           </Link>
-          {!isDemoUser && (
-            <Link href="/calls">
-              <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg">
-                    <Phone className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm">Review Gong Calls</div>
-                    <div className="text-xs text-muted-foreground">Latest conversations</div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          )}
+          <Link href="/calls">
+            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg">
+                  <Phone className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm">Review Gong Calls</div>
+                  <div className="text-xs text-muted-foreground">Latest conversations</div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/insights">
+            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-lg">
+                  <TrendingUp className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm">View Analytics</div>
+                  <div className="text-xs text-muted-foreground">Pipeline insights</div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
           <Link href="/top-accounts">
             <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full border-indigo-500/30">
               <CardContent className="p-4 flex items-center gap-3">

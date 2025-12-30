@@ -1,22 +1,16 @@
 import { z } from "zod";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { publicProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { contacts, accounts } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
-import { TRPCError } from "@trpc/server";
 
 /**
  * Clay webhook router
  * Receives data from Clay tables via Zapier webhooks
- * SECURITY: Webhook endpoints now require a secret token for verification
  */
-
-// Webhook secret for Clay - should be set in environment variables
-const CLAY_WEBHOOK_SECRET = process.env.CLAY_WEBHOOK_SECRET || '';
 
 // Schema for account webhook data from Clay
 const clayAccountSchema = z.object({
-  webhook_secret: z.string().optional(),
   clayId: z.string().optional(),
   name: z.string(),
   domain: z.string().optional(),
@@ -38,7 +32,6 @@ const clayAccountSchema = z.object({
 
 // Schema for contact webhook data from Clay
 const clayContactSchema = z.object({
-  webhook_secret: z.string().optional(),
   clayId: z.string().optional(),
   name: z.string(),
   title: z.string().optional(),
@@ -49,29 +42,14 @@ const clayContactSchema = z.object({
   rawData: z.any().optional(), // Store full Clay payload
 });
 
-// Helper function to verify webhook secret
-function verifyWebhookSecret(providedSecret: string | undefined): void {
-  if (CLAY_WEBHOOK_SECRET && providedSecret !== CLAY_WEBHOOK_SECRET) {
-    console.error('[Clay Webhook] Invalid or missing webhook secret');
-    throw new TRPCError({
-      code: 'UNAUTHORIZED',
-      message: 'Invalid webhook secret'
-    });
-  }
-}
-
 export const clayRouter = router({
   /**
    * Webhook endpoint for Clay accounts table
    * POST /api/trpc/clay.receiveAccount
-   * SECURITY: Requires webhook_secret in payload
    */
   receiveAccount: publicProcedure
     .input(clayAccountSchema)
     .mutation(async ({ input }) => {
-      // SECURITY: Verify webhook secret
-      verifyWebhookSecret(input.webhook_secret);
-      
       const db = await getDb();
       if (!db) {
         throw new Error("Database not available");
@@ -155,14 +133,10 @@ export const clayRouter = router({
   /**
    * Webhook endpoint for Clay contacts table
    * POST /api/trpc/clay.receiveContact
-   * SECURITY: Requires webhook_secret in payload
    */
   receiveContact: publicProcedure
     .input(clayContactSchema)
     .mutation(async ({ input }) => {
-      // SECURITY: Verify webhook secret
-      verifyWebhookSecret(input.webhook_secret);
-      
       const db = await getDb();
       if (!db) {
         throw new Error("Database not available");
@@ -234,14 +208,12 @@ export const clayRouter = router({
 
   /**
    * Test endpoint to verify webhook connectivity
-   * SECURITY: Now requires authentication
    */
-  ping: protectedProcedure.query(() => {
+  ping: publicProcedure.query(() => {
     return {
       success: true,
       message: "Clay webhook endpoint is active",
       timestamp: new Date().toISOString(),
-      webhookSecretConfigured: !!CLAY_WEBHOOK_SECRET,
     };
   }),
 });

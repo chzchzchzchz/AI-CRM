@@ -1,4 +1,4 @@
-import { router, protectedProcedure } from "./_core/trpc";
+import { router, publicProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb } from "./db";
 import { rfps } from "../drizzle/schema";
@@ -211,7 +211,7 @@ export const rfpRouter = router({
   /**
    * Get all RFPs from database
    */
-  list: protectedProcedure
+  list: publicProcedure
     .input(z.object({
       status: z.enum(["open", "closed", "awarded"]).optional(),
       type: z.enum(["government", "private"]).optional(),
@@ -235,7 +235,7 @@ export const rfpRouter = router({
   /**
    * Manually trigger RFP scraping (requires SAM.gov API key)
    */
-  scrape: protectedProcedure
+  scrape: publicProcedure
     .input(z.object({
       apiKey: z.string(),
     }))
@@ -261,7 +261,7 @@ export const rfpRouter = router({
   /**
    * Get RFP statistics
    */
-  stats: protectedProcedure.query(async () => {
+  stats: publicProcedure.query(async () => {
     const db = await getDb();
     if (!db) return { total: 0, open: 0, closed: 0, awarded: 0 };
 

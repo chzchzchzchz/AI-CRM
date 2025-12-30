@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,7 +35,6 @@ const helpTopics = [
 ];
 
 export function SupportBot() {
-  const [location] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -52,18 +50,11 @@ export function SupportBot() {
 
   // Use Deep-Think endpoint for 2-layer AI
   const deepThinkMutation = trpc.deepThink.help.useMutation();
-  
-  // Hide on auth pages
-  const authPages = ['/login', '/signup', '/request-access', '/forgot-password'];
-  const isAuthPage = authPages.some(p => location === p || location.startsWith(p));
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-  
-  // Don't render on auth pages - must be after all hooks
-  if (isAuthPage) return null;
 
   const handleSend = async (questionOverride?: string) => {
     const userMessage = questionOverride || input.trim();

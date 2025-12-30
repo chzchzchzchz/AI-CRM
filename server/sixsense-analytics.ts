@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "./_core/trpc";
+import { router, publicProcedure } from "./_core/trpc";
 import { getDb } from "./db";
 import {
   sixsenseBuyingStageMetrics,
@@ -15,7 +15,7 @@ import { desc } from "drizzle-orm";
 
 export const sixsenseAnalyticsRouter = router({
   // Get buying stage funnel data
-  getBuyingStages: protectedProcedure.query(async () => {
+  getBuyingStages: publicProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
@@ -50,7 +50,7 @@ export const sixsenseAnalyticsRouter = router({
   }),
 
   // Get engagement metrics
-  getEngagement: protectedProcedure.query(async () => {
+  getEngagement: publicProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
@@ -76,7 +76,7 @@ export const sixsenseAnalyticsRouter = router({
   }),
 
   // Get top keywords by category
-  getKeywords: protectedProcedure
+  getKeywords: publicProcedure
     .input(
       z.object({
         category: z.string().optional(),
@@ -117,7 +117,7 @@ export const sixsenseAnalyticsRouter = router({
     }),
 
   // Get 6QA performance over time
-  get6QAPerformance: protectedProcedure.query(async () => {
+  get6QAPerformance: publicProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
@@ -158,43 +158,9 @@ export const sixsenseAnalyticsRouter = router({
   }),
 
   // Get summary stats for dashboard
-  getSummary: protectedProcedure.query(async ({ ctx }) => {
+  getSummary: publicProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
-    
-    // Check if demo user - return demo-specific data
-    const isDemoUser = ctx.user?.email?.includes('demo') || false;
-    if (isDemoUser) {
-      return {
-        dataAsOf: new Date().toISOString(),
-        sixQA: {
-          total: 20,
-          worked: 12,
-          unworked: 8,
-          workedPercent: 60,
-        },
-        buyingStages: {
-          decision: 5,
-          purchase: 3,
-          total: 20,
-        },
-        engagement: {
-          intent: 10,
-          knownEngagement: 6,
-          noEngagement: 4,
-        },
-        keywords: {
-          total: 8,
-          topByAccounts: [
-            { keyword: "Identity Security", accounts: 15, category: "Security" },
-            { keyword: "Zero Trust", accounts: 12, category: "Security" },
-            { keyword: "MFA", accounts: 10, category: "Authentication" },
-            { keyword: "Passwordless", accounts: 8, category: "Authentication" },
-            { keyword: "IAM", accounts: 6, category: "Security" },
-          ],
-        },
-      };
-    }
 
     // Get latest 6QA performance
     const performanceData: Sixsense6QAPerformance[] = await db

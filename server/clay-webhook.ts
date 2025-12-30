@@ -1,18 +1,13 @@
-import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
+import { router, publicProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb } from "./db";
 import { accounts } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
-import { TRPCError } from "@trpc/server";
-
-// Webhook secret for Clay - should be set in environment variables
-const CLAY_WEBHOOK_SECRET = process.env.CLAY_WEBHOOK_SECRET || '';
 
 /**
  * Clay Webhook Router
  * 
  * Receives enriched data pushed from Clay via HTTP API integration
- * SECURITY: Webhook endpoints now require a secret token for verification
  */
 
 export const clayWebhookRouter = router({
@@ -20,27 +15,11 @@ export const clayWebhookRouter = router({
    * Webhook endpoint to receive enriched account data from Clay
    * 
    * Clay will POST to this endpoint with enriched data
-   * SECURITY: Requires webhook_secret in payload for verification
    */
   receive: publicProcedure
-    .input(z.object({
-      webhook_secret: z.string().optional(),
-      // Accept any additional payload structure from Clay
-    }).passthrough())
+    .input(z.any()) // Accept any payload structure from Clay
     .mutation(async ({ input }) => {
-      // SECURITY: Verify webhook secret if configured
-      if (CLAY_WEBHOOK_SECRET && input.webhook_secret !== CLAY_WEBHOOK_SECRET) {
-        console.error('[Clay Webhook] Invalid or missing webhook secret');
-        throw new TRPCError({
-          code: 'UNAUTHORIZED',
-          message: 'Invalid webhook secret'
-        });
-      }
-
-      // Remove webhook_secret from payload before processing
-      const { webhook_secret, ...payload } = input;
-      
-      console.log('[Clay Webhook] Received authenticated payload:', JSON.stringify(payload, null, 2));
+      console.log('[Clay Webhook] Received payload:', JSON.stringify(input, null, 2));
       
       const db = await getDb();
       if (!db) {
@@ -50,25 +29,25 @@ export const clayWebhookRouter = router({
       try {
         // Extract account data from Clay payload
         // Clay sends data in various formats, so we need to be flexible
-        const data = payload as Record<string, any>;
+        const payload = input as Record<string, any>;
         
         // Try to find domain/company identifiers
         const domain = 
-          data.domain || 
-          data.website || 
-          data.company_domain ||
-          data.Domain ||
-          data.Website ||
-          data['Company Domain'] ||
+          payload.domain || 
+          payload.website || 
+          payload.company_domain ||
+          payload.Domain ||
+          payload.Website ||
+          payload['Company Domain'] ||
           null;
         
         const name = 
-          data.name || 
-          data.company ||
-          data.company_name ||
-          data.Name ||
-          data.Company ||
-          data['Company Name'] ||
+          payload.name || 
+          payload.company ||
+          payload.company_name ||
+          payload.Name ||
+          payload.Company ||
+          payload['Company Name'] ||
           domain;
 
         if (!domain && !name) {
@@ -86,7 +65,7 @@ export const clayWebhookRouter = router({
         const rawData: Record<string, any> = {};
 
         // Categorize fields based on keywords
-        for (const [key, value] of Object.entries(data)) {
+        for (const [key, value] of Object.entries(payload)) {
           const keyLower = key.toLowerCase();
           
           // Skip system fields
@@ -174,15 +153,13 @@ export const clayWebhookRouter = router({
 
   /**
    * Test endpoint to verify webhook is working
-   * SECURITY: Now requires authentication
    */
-  test: protectedProcedure
+  test: publicProcedure
     .query(() => {
       return {
         status: 'ok',
         message: 'Clay webhook endpoint is ready to receive data',
-        timestamp: new Date().toISOString(),
-        webhookSecretConfigured: !!CLAY_WEBHOOK_SECRET
+        timestamp: new Date().toISOString()
       };
     }),
 });

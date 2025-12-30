@@ -1,43 +1,15 @@
-import { eq, desc, sql, like } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import mysql from "mysql2/promise";
 import { InsertUser, users, accounts, InsertAccount, contacts, /* people, InsertPerson, clayRequests, InsertClayRequest, gongCalls, InsertGongCall */ calls } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
-let _pool: mysql.Pool | null = null;
-
-// Get raw mysql2 pool for direct queries
-export async function getPool(): Promise<mysql.Pool | null> {
-  if (!_pool && process.env.DATABASE_URL) {
-    try {
-      const url = new URL(process.env.DATABASE_URL);
-      _pool = mysql.createPool({
-        host: url.hostname,
-        port: parseInt(url.port || '3306'),
-        user: url.username,
-        password: url.password,
-        database: url.pathname.slice(1),
-        ssl: { rejectUnauthorized: false },
-        waitForConnections: true,
-        connectionLimit: 10,
-      });
-    } catch (error) {
-      console.warn("[Database] Failed to create pool:", error);
-      _pool = null;
-    }
-  }
-  return _pool;
-}
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      const pool = await getPool();
-      if (pool) {
-        _db = drizzle(pool);
-      }
+      _db = drizzle(process.env.DATABASE_URL);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -135,22 +107,14 @@ export async function upsertAccount(account: InsertAccount) {
   }
 }
 
-export async function getAllAccounts(isDemoUser: boolean = false) {
+export async function getAllAccounts() {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get accounts: database not available");
     return [];
   }
 
-  const allAccounts = await db.select().from(accounts).orderBy(desc(accounts.createdAt));
-  
-  // If demo user, only show demo accounts (those with name starting with "Demo_")
-  if (isDemoUser) {
-    return allAccounts.filter(a => a.name?.startsWith('Demo_'));
-  }
-  
-  // For regular users, exclude demo accounts
-  return allAccounts.filter(a => !a.name?.startsWith('Demo_'));
+  return await db.select().from(accounts).orderBy(desc(accounts.createdAt));
 }
 
 export async function getAccountById(id: number) {
@@ -199,57 +163,44 @@ export async function upsertPerson(person: any) {
   }
 }
 
-export async function getAllPeople(isDemoUser: boolean = false) {
+export async function getAllPeople() {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get people: database not available");
     return [];
   }
 
-  const selectFields = {
-    id: contacts.id,
-    accountId: contacts.accountId,
-    clayRecordId: contacts.clayRecordId,
-    firstName: contacts.firstName,
-    lastName: contacts.lastName,
-    name: contacts.name,
-    title: contacts.title,
-    email: contacts.email,
-    phone: contacts.phone,
-    linkedinUrl: contacts.linkedinUrl,
-    location: contacts.location,
-    department: contacts.department,
-    sfdcContactId: contacts.sfdcContactId,
-    mobilePhone: contacts.mobilePhone,
-    directPhone: contacts.directPhone,
-    createdAt: contacts.createdAt,
-    updatedAt: contacts.updatedAt,
-    // Account data
-    company: accounts.name,
-    companyDomain: accounts.domain,
-    accountIntentScore: accounts.intentScore,
-    accountIndustry: accounts.industry,
-    accountRegion: accounts.region,
-    accountEmployeeCount: accounts.employeeCount,
-    accountTechStack: accounts.techStack,
-    accountSecurityStack: accounts.securityStack,
-    accountSfdcAccountId: accounts.sfdcAccountId,
-  };
-
-  // Filter for demo users - only show contacts from demo accounts
-  if (isDemoUser) {
-    const results = await db
-      .select(selectFields)
-      .from(contacts)
-      .leftJoin(accounts, eq(contacts.accountId, accounts.id))
-      .where(like(accounts.name, 'Demo_%'))
-      .orderBy(desc(contacts.createdAt));
-    return results;
-  }
-  
-  // Regular users see all contacts
+  // Join with accounts to get company information AND account-level engagement data
   const results = await db
-    .select(selectFields)
+    .select({
+      id: contacts.id,
+      accountId: contacts.accountId,
+      clayRecordId: contacts.clayRecordId,
+      firstName: contacts.firstName,
+      lastName: contacts.lastName,
+      name: contacts.name,
+      title: contacts.title,
+      email: contacts.email,
+      phone: contacts.phone,
+      linkedinUrl: contacts.linkedinUrl,
+      location: contacts.location,
+      department: contacts.department,
+      sfdcContactId: contacts.sfdcContactId,
+      mobilePhone: contacts.mobilePhone,
+      directPhone: contacts.directPhone,
+      createdAt: contacts.createdAt,
+      updatedAt: contacts.updatedAt,
+      // Account data
+      company: accounts.name,
+      companyDomain: accounts.domain,
+      accountIntentScore: accounts.intentScore,
+      accountIndustry: accounts.industry,
+      accountRegion: accounts.region,
+      accountEmployeeCount: accounts.employeeCount,
+      accountTechStack: accounts.techStack,
+      accountSecurityStack: accounts.securityStack,
+      accountSfdcAccountId: accounts.sfdcAccountId,
+    })
     .from(contacts)
     .leftJoin(accounts, eq(contacts.accountId, accounts.id))
     .orderBy(desc(contacts.createdAt));
@@ -258,50 +209,27 @@ export async function getAllPeople(isDemoUser: boolean = false) {
 }
 
 // Paginated version for performance
-export async function getPeoplePaginated(limit: number = 100, offset: number = 0, isDemoUser: boolean = false) {
+export async function getPeoplePaginated(limit: number = 100, offset: number = 0) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get people: database not available");
     return { people: [], total: 0 };
   }
 
-  const selectFields = {
-    id: contacts.id,
-    accountId: contacts.accountId,
-    name: contacts.name,
-    title: contacts.title,
-    email: contacts.email,
-    phone: contacts.phone,
-    linkedinUrl: contacts.linkedinUrl,
-    location: contacts.location,
-    company: accounts.name,
-    accountIntentScore: accounts.intentScore,
-    accountIndustry: accounts.industry,
-  };
-
-  // Demo users only see contacts from demo accounts
-  if (isDemoUser) {
-    const [peopleResult, countResult] = await Promise.all([
-      db
-        .select(selectFields)
-        .from(contacts)
-        .leftJoin(accounts, eq(contacts.accountId, accounts.id))
-        .where(like(accounts.name, 'Demo_%'))
-        .orderBy(desc(contacts.createdAt))
-        .limit(limit)
-        .offset(offset),
-      db.select({ count: sql<number>`count(*)` })
-        .from(contacts)
-        .leftJoin(accounts, eq(contacts.accountId, accounts.id))
-        .where(like(accounts.name, 'Demo_%'))
-    ]);
-    return { people: peopleResult, total: countResult[0]?.count || 0 };
-  }
-
-  // Regular users see all contacts
   const [peopleResult, countResult] = await Promise.all([
     db
-      .select(selectFields)
+      .select({
+        id: contacts.id,
+        accountId: contacts.accountId,
+        name: contacts.name,
+        title: contacts.title,
+        email: contacts.email,
+        phone: contacts.phone,
+        linkedinUrl: contacts.linkedinUrl,
+        location: contacts.location,
+        company: accounts.name,
+        accountIntentScore: accounts.intentScore,
+      })
       .from(contacts)
       .leftJoin(accounts, eq(contacts.accountId, accounts.id))
       .orderBy(desc(contacts.createdAt))
