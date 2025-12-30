@@ -8,32 +8,12 @@ export const users = mysqlTable("users", {
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
-  passwordHash: varchar("passwordHash", { length: 255 }), // For email/password auth
-  loginMethod: varchar("loginMethod", { length: 64 }), // 'oauth', 'email', 'demo'
-  isApproved: boolean("isApproved").default(false), // For demo access approval
+  loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  twoFactorEnabled: boolean("twoFactorEnabled").default(false), // 2FA status
-  twoFactorSecret: varchar("twoFactorSecret", { length: 255 }), // TOTP secret
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
-
-// Access requests table for demo/conference access
-export const accessRequests = mysqlTable("access_requests", {
-  id: int("id").autoincrement().primaryKey(),
-  email: varchar("email", { length: 320 }).notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  company: varchar("company", { length: 255 }),
-  reason: text("reason"), // Why they want access
-  status: mysqlEnum("status", ["pending", "approved", "denied"]).default("pending").notNull(),
-  reviewedBy: int("reviewedBy"), // Admin who reviewed
-  reviewedAt: timestamp("reviewedAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type AccessRequest = typeof accessRequests.$inferSelect;
-export type InsertAccessRequest = typeof accessRequests.$inferInsert;
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -571,48 +551,3 @@ export const transcriptReports = mysqlTable("transcriptReports", {
 
 export type TranscriptReport = typeof transcriptReports.$inferSelect;
 export type InsertTranscriptReport = typeof transcriptReports.$inferInsert;
-
-// Email verification codes table
-export const emailVerificationCodes = mysqlTable("email_verification_codes", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  code: varchar("code", { length: 6 }).notNull(), // 6-digit code
-  email: varchar("email", { length: 320 }).notNull(),
-  expiresAt: timestamp("expiresAt").notNull(),
-  attempts: int("attempts").default(0),
-  verified: boolean("verified").default(false),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type EmailVerificationCode = typeof emailVerificationCodes.$inferSelect;
-export type InsertEmailVerificationCode = typeof emailVerificationCodes.$inferInsert;
-
-// Password reset codes table
-export const passwordResetCodes = mysqlTable("password_reset_codes", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  code: varchar("code", { length: 32 }).notNull(), // 32-char code
-  email: varchar("email", { length: 320 }).notNull(),
-  expiresAt: timestamp("expiresAt").notNull(),
-  used: boolean("used").default(false),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type PasswordResetCode = typeof passwordResetCodes.$inferSelect;
-export type InsertPasswordResetCode = typeof passwordResetCodes.$inferInsert;
-
-
-// Audit Logs - tracks all authentication and admin events
-export const auditLogs = mysqlTable("auditLogs", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  eventType: varchar("eventType", { length: 100 }).notNull(),
-  description: text("description").notNull(),
-  ipAddress: varchar("ipAddress", { length: 45 }), // IPv4 or IPv6
-  userAgent: text("userAgent"),
-  metadata: json("metadata"), // Additional context as JSON
-  timestamp: timestamp("timestamp").defaultNow().notNull(),
-});
-
-export type AuditLog = typeof auditLogs.$inferSelect;
-export type InsertAuditLog = typeof auditLogs.$inferInsert;
