@@ -1,36 +1,26 @@
 /**
  * 6sense API Integration - LIVE
- * Company Identification API v3
- * Documentation: https://api.6sense.com/docs/#company-identification-api
+ * Company Firmographics API v3
  */
 
 const SIXSENSE_API_KEY = process.env.SIXSENSE_API_KEY;
-const SIXSENSE_API_URL = "https://epsilon.6sense.com/v3/company/details";
+const SIXSENSE_API_URL = "https://api.6sense.com/v1/enrichment/company";
 
 interface SixsenseCompanyData {
-  company_match: string;
-  company?: {
-    companyId?: string;
-    name?: string;
-    domain?: string;
-    industry?: string;
-    employee_range?: string;
-    employee_count?: number;
-    revenue_range?: string;
-    annual_revenue?: number;
-    country?: string;
-    state?: string;
-    city?: string;
-    region?: string;
-  };
-  buying_stage?: string;
-  profile_fit?: string;
-  intent_score?: number;
+  company_name?: string;
+  domain?: string;
+  industry?: string;
+  employee_range?: string;
+  revenue_range?: string;
+  country?: string;
+  state?: string;
+  city?: string;
   segments?: string[];
+  // Note: Intent scores may not be in API response - they come from platform exports
 }
 
 /**
- * Fetch company identification data from 6sense by domain
+ * Fetch company firmographics from 6sense by domain
  */
 export async function getCompanyByDomain(domain: string): Promise<SixsenseCompanyData | null> {
   if (!SIXSENSE_API_KEY) {
@@ -44,19 +34,18 @@ export async function getCompanyByDomain(domain: string): Promise<SixsenseCompan
   }
 
   try {
-    const response = await fetch(
-      `${SIXSENSE_API_URL}?domain=${encodeURIComponent(domain)}`,
-      {
-        headers: {
-          Authorization: `Token ${SIXSENSE_API_KEY}`,
-        },
-      }
-    );
+    // 6sense API uses form-urlencoded
+    const formData = new URLSearchParams();
+    formData.append('domain', domain);
 
-    if (response.status === 404) {
-      console.log(`[6sense] No match found for domain ${domain}`);
-      return null;
-    }
+    const response = await fetch(SIXSENSE_API_URL, {
+      method: 'POST',
+      headers: {
+        "Authorization": `Token ${SIXSENSE_API_KEY}`,
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: formData.toString()
+    });
 
     if (!response.ok) {
       console.error(`[6sense] API error for domain ${domain}: ${response.status} ${response.statusText}`);
@@ -72,78 +61,65 @@ export async function getCompanyByDomain(domain: string): Promise<SixsenseCompan
 }
 
 /**
- * Fetch company identification data by IP address
+ * Fetch company firmographics by email
  */
-export async function getCompanyByIP(ipAddress: string): Promise<SixsenseCompanyData | null> {
+export async function getCompanyByEmail(email: string): Promise<SixsenseCompanyData | null> {
   if (!SIXSENSE_API_KEY) {
     console.warn("[6sense] API key not configured");
     return null;
   }
 
-  if (!ipAddress) {
-    console.warn("[6sense] IP address is required");
+  if (!email) {
+    console.warn("[6sense] Email is required");
     return null;
   }
 
   try {
-    const response = await fetch(
-      `${SIXSENSE_API_URL}?ip=${encodeURIComponent(ipAddress)}`,
-      {
-        headers: {
-          Authorization: `Token ${SIXSENSE_API_KEY}`,
-        },
-      }
-    );
+    const formData = new URLSearchParams();
+    formData.append('email', email);
 
-    if (response.status === 404) {
-      console.log(`[6sense] No match found for IP ${ipAddress}`);
-      return null;
-    }
+    const response = await fetch(SIXSENSE_API_URL, {
+      method: 'POST',
+      headers: {
+        "Authorization": `Token ${SIXSENSE_API_KEY}`,
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: formData.toString()
+    });
 
     if (!response.ok) {
-      console.error(`[6sense] API error for IP ${ipAddress}: ${response.status} ${response.statusText}`);
+      console.error(`[6sense] API error for email ${email}: ${response.status} ${response.statusText}`);
       return null;
     }
 
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error(`[6sense] Failed to fetch company data for ${ipAddress}:`, error);
+    console.error(`[6sense] Failed to fetch company data for ${email}:`, error);
     return null;
   }
 }
 
 /**
- * Get enriched company data for an account with intent scores
+ * Get enriched company data for an account
+ * Note: Intent scores are not in the API - they come from our database or platform exports
  */
 export async function enrichAccount(domain: string) {
   const companyData = await getCompanyByDomain(domain);
   
-  if (!companyData || !companyData.company) {
+  if (!companyData) {
     return null;
   }
 
-  const company = companyData.company;
-
   return {
-    companyName: company.name,
-    domain: company.domain,
-    industry: company.industry,
-    employeeCount: company.employee_count,
-    employeeRange: company.employee_range,
-    annualRevenue: company.annual_revenue,
-    revenueRange: company.revenue_range,
-    country: company.country,
-    state: company.state,
-    city: company.city,
-    region: company.region,
-    // Intent and scoring data
-    intentScore: companyData.intent_score,
-    buyingStage: companyData.buying_stage,
-    profileFit: companyData.profile_fit,
-    segments: companyData.segments || [],
-    // Metadata
-    sixsenseId: company.companyId,
-    companyMatch: companyData.company_match,
+    companyName: companyData.company_name,
+    domain: companyData.domain,
+    industry: companyData.industry,
+    employeeRange: companyData.employee_range,
+    revenueRange: companyData.revenue_range,
+    country: companyData.country,
+    state: companyData.state,
+    city: companyData.city,
+    segments: companyData.segments || []
   };
 }

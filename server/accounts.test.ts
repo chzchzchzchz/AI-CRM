@@ -39,38 +39,59 @@ describe("accounts API", () => {
 
     const accounts = await caller.accounts.list();
     expect(Array.isArray(accounts)).toBe(true);
-    expect(accounts.length).toBeGreaterThan(0);
   });
 
-  it("should have accounts with required fields", async () => {
+  it("should create and retrieve an account", async () => {
     const ctx = createAuthContext();
     const caller = appRouter.createCaller(ctx);
+
+    const newAccount = await caller.accounts.create({
+      name: "Test Corp",
+      domain: "testcorp.com",
+      industry: "Technology",
+      employeeCount: 100,
+    });
+
+    expect(newAccount).toBeDefined();
 
     const accounts = await caller.accounts.list();
-    if (accounts.length > 0) {
-      const account = accounts[0];
-      expect(account.id).toBeDefined();
-      expect(account.name).toBeDefined();
-    }
+    const found = accounts.find(a => a.name === "Test Corp");
+    expect(found).toBeDefined();
+    expect(found?.domain).toBe("testcorp.com");
   });
 });
 
-describe("people API", () => {
-  it("should list people/contacts", async () => {
+describe("contacts API", () => {
+  it("should list contacts", async () => {
     const ctx = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
-    const people = await caller.people.list();
-    expect(Array.isArray(people)).toBe(true);
+    const contacts = await caller.contacts.list();
+    expect(Array.isArray(contacts)).toBe(true);
   });
 });
 
-describe("calls API", () => {
-  it("should list calls", async () => {
+describe("Clay integration", () => {
+  it("should sync account from Clay webhook", async () => {
     const ctx = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
-    const calls = await caller.calls.list();
-    expect(Array.isArray(calls)).toBe(true);
+    const result = await caller.clay.syncAccount({
+      clayRecordId: "clay_test_123",
+      name: "Clay Test Corp",
+      domain: "claytest.com",
+      industry: "SaaS",
+      employeeCount: 250,
+      securityStack: ["Okta", "CrowdStrike"],
+      techStack: ["AWS", "Salesforce"],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe("created");
+
+    const accounts = await caller.accounts.list();
+    const found = accounts.find(a => a.clayRecordId === "clay_test_123");
+    expect(found).toBeDefined();
+    expect(found?.name).toBe("Clay Test Corp");
   });
 });

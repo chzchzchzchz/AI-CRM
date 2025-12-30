@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { APP_LOGO } from "@/const";
-import { Users, Phone, Search, BarChart3, Settings, Send, FileText, Home, UserCircle, Contact } from "lucide-react";
+import { Users, Phone, Search, BarChart3, Settings, Send, FileText, Home, UserCircle } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 interface NavigationProps {
@@ -15,11 +15,9 @@ export function Navigation({ onSearchClick }: NavigationProps) {
   const navItems = [
     { path: "/", label: "Home", icon: Home },
     { path: "/accounts", label: "Accounts", icon: Users },
-    { path: "/contacts", label: "Contacts", icon: Contact },
-    // { path: "/calls", label: "Calls", icon: Phone }, // Hidden per user request
+    { path: "/calls", label: "Calls", icon: Phone },
     { path: "/insights", label: "Insights", icon: BarChart3 },
     { path: "/outreach", label: "Outreach", icon: Send },
-
     // Admin-only pages
     { path: "/rfps", label: "RFPs", icon: FileText, adminOnly: true },
     { path: "/admin", label: "Admin", icon: Settings, adminOnly: true },

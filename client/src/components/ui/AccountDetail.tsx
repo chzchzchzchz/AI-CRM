@@ -28,9 +28,9 @@ export default function AccountDetailEnhanced() {
   const [showFullTranscript, setShowFullTranscript] = useState<Record<number, boolean>>({});
 
   const { data: account, isLoading } = trpc.accounts.getById.useQuery({ id: accountId });
-  const { data: people } = trpc.people.getByAccountId.useQuery(
-    { accountId },
-    { enabled: accountId > 0 }
+  const { data: people } = trpc.people.getByCompany.useQuery(
+    { company: account?.name || "" },
+    { enabled: !!account?.name }
   );
   
   const { data: gongCalls } = trpc.gong.getByAccountId.useQuery(
@@ -82,7 +82,7 @@ export default function AccountDetailEnhanced() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const parseJSON = (data: string | null | undefined): Record<string, any> => {
+  const parseJSON = (data: unknown): Record<string, any> => {
     if (!data) return {};
     try {
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
@@ -108,7 +108,7 @@ export default function AccountDetailEnhanced() {
   const stackData = parseJSON(account?.techStack);
   const researchData = null; // No research field in schema
   const triggerData = parseJSON(account?.triggerEvents);
-  const rawData = {};
+  const rawData = {}; // rawData field removed from schema
 
   const formatFieldName = (key: string): string => {
     return key
@@ -349,7 +349,7 @@ export default function AccountDetailEnhanced() {
               </Card>
             ) : (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {people.map((person) => (
+                {people?.map((person) => (
                   <Link key={person.id} href={`/contacts/${person.id}`}>
                     <Card className="card-elevated hover:scale-[1.02] transition-all cursor-pointer group h-full">
                       <CardHeader>
