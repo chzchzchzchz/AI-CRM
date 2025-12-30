@@ -25,7 +25,8 @@ export default function ContactDetail() {
 
   const { data: gongCalls } = trpc.gong.list.useQuery();
   const contactCalls = gongCalls?.filter(call => 
-    call.contactId === personId
+    call.personId === personId || 
+    (call.participants && contact?.name && call.participants.includes(contact.name))
   );
 
   const { data: accounts } = trpc.accounts.list.useQuery();
@@ -56,8 +57,11 @@ export default function ContactDetail() {
   };
 
   let rawDataParsed: any = null;
-  // rawData field removed from schema
-  rawDataParsed = {};
+  if (null) {
+    try {
+      rawDataParsed = JSON.parse(null);
+    } catch {}
+  }
 
   // Loading state
   if (isLoading) {

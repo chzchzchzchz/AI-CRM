@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SafeStreamdown } from "@/components/SafeStreamdown";
+import { Streamdown } from "streamdown";
 
 type SortField = "callDate" | "duration" | "company";
 type SortOrder = "asc" | "desc";
@@ -333,7 +333,7 @@ export default function CallsEnhanced() {
                             <span className="text-sm font-medium">Summary</span>
                           </div>
                           <div className="prose prose-sm max-w-none dark:prose-invert">
-                            <SafeStreamdown>{call.summary}</SafeStreamdown>
+                            <Streamdown>{call.summary}</Streamdown>
                           </div>
                         </div>
                       )}

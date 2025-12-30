@@ -210,12 +210,9 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
           </Button>
         </div>
 
-        {/* Quick Stats - All Clickable */}
+        {/* Quick Stats */}
         <div className="grid gap-6 md:grid-cols-3">
-          <Card 
-            className="card-elevated border-l-4 border-l-red-500 cursor-pointer hover:scale-[1.02] transition-transform"
-            onClick={() => setIntentFilter("hot")}
-          >
+          <Card className="card-elevated border-l-4 border-l-red-500">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Flame className="h-4 w-4 text-red-500" />
@@ -224,14 +221,11 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-red-600 dark:text-red-400">{hotCount}</div>
-              <p className="text-xs text-muted-foreground mt-1">Intent score 70+ • Click to filter</p>
+              <p className="text-xs text-muted-foreground mt-1">Intent score 70+</p>
             </CardContent>
           </Card>
 
-          <Card 
-            className="card-elevated border-l-4 border-l-orange-500 cursor-pointer hover:scale-[1.02] transition-transform"
-            onClick={() => setIntentFilter("warm")}
-          >
+          <Card className="card-elevated border-l-4 border-l-orange-500">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-orange-500" />
@@ -240,14 +234,11 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{warmCount}</div>
-              <p className="text-xs text-muted-foreground mt-1">Intent score 40-69 • Click to filter</p>
+              <p className="text-xs text-muted-foreground mt-1">Intent score 40-69</p>
             </CardContent>
           </Card>
 
-          <Card 
-            className="card-elevated border-l-4 border-l-indigo-500 cursor-pointer hover:scale-[1.02] transition-transform"
-            onClick={() => setIntentFilter("all")}
-          >
+          <Card className="card-elevated border-l-4 border-l-indigo-500">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Target className="h-4 w-4 text-indigo-500" />
@@ -256,7 +247,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{filteredAccounts.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">Active accounts • Click to reset filters</p>
+              <p className="text-xs text-muted-foreground mt-1">Active accounts</p>
             </CardContent>
           </Card>
         </div>

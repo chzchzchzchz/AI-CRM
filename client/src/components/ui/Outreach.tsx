@@ -79,9 +79,16 @@ export default function Outreach() {
     
     // Filter by selected accounts first
     let filtered = contacts;
-    if (selectedAccounts.length > 0) {
+    if (selectedAccounts.length > 0 && accounts) {
+      const selectedAccountNames = accounts
+        .filter(acc => selectedAccounts.includes(acc.id))
+        .map(acc => acc.name.toLowerCase());
+      
       filtered = contacts.filter(contact => 
-        contact.accountId && selectedAccounts.includes(contact.accountId)
+        selectedAccountNames.some(name => 
+          contact.company.toLowerCase().includes(name) || 
+          name.includes(contact.company.toLowerCase())
+        )
       );
     }
     
@@ -89,7 +96,7 @@ export default function Outreach() {
     if (!contactSearchQuery.trim()) return filtered;
     const query = contactSearchQuery.toLowerCase();
     return filtered.filter(contact =>
-      (contact.name && contact.name.toLowerCase().includes(query)) ||
+      contact.name.toLowerCase().includes(query) ||
       (contact.title && contact.title.toLowerCase().includes(query))
     );
   }, [contacts, contactSearchQuery, selectedAccounts, accounts]);
@@ -142,12 +149,12 @@ export default function Outreach() {
                   {filteredAccounts.map((account) => (
                     <div
                       key={account.id}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer"
+                      onClick={() => toggleAccount(account.id)}
                     >
                       <Checkbox
                         checked={selectedAccounts.includes(account.id)}
                         onCheckedChange={() => toggleAccount(account.id)}
-                        className="cursor-pointer"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-white truncate">{account.name}</div>
@@ -192,12 +199,12 @@ export default function Outreach() {
                   {filteredContacts.slice(0, 50).map((contact) => (
                     <div
                       key={contact.id}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer"
+                      onClick={() => toggleContact(contact.id)}
                     >
                       <Checkbox
                         checked={selectedContacts.includes(contact.id)}
                         onCheckedChange={() => toggleContact(contact.id)}
-                        className="cursor-pointer"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-white truncate">{contact.name}</div>

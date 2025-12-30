@@ -13,7 +13,7 @@ export const systemRouter = router({
       ok: true,
     })),
 
-  notifyOwner: publicProcedure
+  notifyOwner: adminProcedure
     .input(
       z.object({
         title: z.string().min(1, "title is required"),
