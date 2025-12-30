@@ -1,8 +1,11 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { APP_LOGO } from "@/const";
-import { Users, Phone, Search, BarChart3, Settings, Send, FileText, Home, UserCircle } from "lucide-react";
+import { Users, Phone, Search, BarChart3, Settings, Send, FileText, Home, UserCircle, Contact, LogOut } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface NavigationProps {
   onSearchClick?: () => void;
@@ -11,15 +14,25 @@ interface NavigationProps {
 export function Navigation({ onSearchClick }: NavigationProps) {
   const [location] = useLocation();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const logoutMutation = trpc.auth.logout.useMutation({
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+      window.location.href = "/";
+    },
+  });
 
   const navItems = [
     { path: "/", label: "Home", icon: Home },
     { path: "/accounts", label: "Accounts", icon: Users },
-    { path: "/calls", label: "Calls", icon: Phone },
+    { path: "/contacts", label: "Contacts", icon: Contact },
+    // { path: "/calls", label: "Calls", icon: Phone }, // Hidden per user request
     { path: "/insights", label: "Insights", icon: BarChart3 },
     { path: "/outreach", label: "Outreach", icon: Send },
+
     // Admin-only pages
     { path: "/rfps", label: "RFPs", icon: FileText, adminOnly: true },
+    { path: "/admin/approval", label: "Approvals", icon: Settings, adminOnly: true },
     { path: "/admin", label: "Admin", icon: Settings, adminOnly: true },
   ];
 
@@ -71,6 +84,27 @@ export function Navigation({ onSearchClick }: NavigationProps) {
             <span className="hidden sm:inline">Search</span>
             <span className="hidden sm:inline text-xs text-slate-500 ml-1">⌘K</span>
           </Button>
+          
+          {user && (
+            <div className="flex items-center gap-2 pl-3 border-l border-slate-700">
+              {user.email?.includes('demo') && (
+                <Badge variant="secondary" className="bg-purple-600/20 text-purple-300 border-purple-600/30">
+                  🎭 Demo Mode
+                </Badge>
+              )}
+              <span className="text-sm text-slate-400">{user.email}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 text-slate-400 hover:text-white hover:bg-slate-800"
+                onClick={() => logoutMutation.mutate()}
+                disabled={logoutMutation.isPending}
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Sign Out</span>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </nav>

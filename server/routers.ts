@@ -1,9 +1,14 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { router, publicProcedure } from "./_core/trpc";
+import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
+import bcrypt from "bcryptjs";
+import { users, accessRequests } from "../drizzle/schema";
+import { getDb } from "./db";
+import { eq } from "drizzle-orm";
+import { sdk } from "./_core/sdk";
 import { z } from "zod";
-import { getAllAccounts, getAccountById, updateAccount, getAllPeople, getPeopleByCompany, getContactsByAccountId, /* createClayRequest, updateClayRequest, getAllClayRequests, getClayRequest, */ upsertAccount, upsertPerson, getAllGongCalls, getGongCallsByCompany, getGongCallsByAccountId } from "./db";
+import { getAllAccounts, getAccountById, updateAccount, getAllPeople, getPeoplePaginated, getPeopleByCompany, getContactsByAccountId, /* createClayRequest, updateClayRequest, getAllClayRequests, getClayRequest, */ upsertAccount, upsertPerson, getAllGongCalls, getGongCallsPaginated, getGongCallsByCompany, getGongCallsByAccountId } from "./db";
 import { enrichAccountWithAI, analyzeGongCall, generateOutreachEmail, intelligentSearch, prioritizeContacts } from "./ai";
 import { enrichAccount } from "./sixsense";
 import { conversationWithMemory, generateAccountSummary, generateContactSummary } from "./aiContext";
@@ -14,14 +19,62 @@ import { rfpRouter } from "./rfp-scraper";
 import { outreachRouter } from "./outreach";
 import { geminiRouter } from "./gemini";
 import { clayRouter } from "./clay";
+import { validationRouter } from "./validation-router";
+import { priorityActionsRouter } from "./priority-actions-router";
+import { bulkInsightsRouter } from "./bulk-insights-router";
+import { sixsenseRouter } from "./sixsense-router";
+import { sixsenseAnalyticsRouter } from "./sixsense-analytics";
+import { csvProcessorRouter } from "./csv-processor-router";
+import { deepThink, deepThinkSales, deepThinkHelp } from "./deep-think";
+import { toolsRouter } from "./tools-router";
+import { adminRouter } from "./admin-router";
+import { emailVerificationRouter } from "./email-verification-router";
 
 
 export const appRouter = router({
+  tools: toolsRouter,
   clay: clayRouter,
   gemini: geminiRouter,
+  validation: validationRouter,
+  priorityActions: priorityActionsRouter,
+  bulkInsights: bulkInsightsRouter,
+  sixsense: sixsenseRouter,
+  csvProcessor: csvProcessorRouter,
+  deepThink: router({
+    chat: protectedProcedure
+      .input(z.object({
+        query: z.string(),
+        context: z.string().optional(),
+        debugMode: z.boolean().optional()
+      }))
+      .mutation(async ({ input }) => {
+        return await deepThink(input);
+      }),
+    sales: protectedProcedure
+      .input(z.object({
+        query: z.string(),
+        accountData: z.any().optional(),
+        contactData: z.any().optional(),
+        additionalContext: z.string().optional(),
+        debugMode: z.boolean().optional()
+      }))
+      .mutation(async ({ input }) => {
+        return await deepThinkSales(input);
+      }),
+    help: protectedProcedure
+      .input(z.object({
+        query: z.string(),
+        debugMode: z.boolean().optional()
+      }))
+      .mutation(async ({ input }) => {
+        return await deepThinkHelp(input);
+      }),
+  }),
+  sixsenseAnalytics: sixsenseAnalyticsRouter,
   analytics: router({
-    overview: publicProcedure.query(async () => {
-      const accounts = await getAllAccounts();
+    overview: protectedProcedure.query(async ({ ctx }) => {
+      const isDemoUser = ctx.user?.email?.includes('demo') || false;
+      const accounts = await getAllAccounts(isDemoUser);
       const people = await getAllPeople();
       const calls = await getAllGongCalls();
 
@@ -102,19 +155,189 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+    
+    // Email/Password Sign Up
+    signUp: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string().min(8),
+        name: z.string().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        // Check if email already exists
+        const existing = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
+        if (existing.length > 0) {
+          throw new Error("An account with this email already exists");
+        }
+        
+        // Hash password
+        const passwordHash = await bcrypt.hash(input.password, 10);
+        
+        // Create user with unique openId
+        const openId = `email_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        
+        await db.insert(users).values({
+          openId,
+          email: input.email,
+          name: input.name,
+          passwordHash,
+          loginMethod: "email",
+          isApproved: true, // Auto-approve for now
+          role: "user",
+        });
+        
+        return { success: true };
+      }),
+    
+    // Email/Password Login
+    login: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        // Find user by email
+        const userResults = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
+        const user = userResults[0];
+        
+        if (!user || !user.passwordHash) {
+          throw new Error("Invalid email or password");
+        }
+        
+        // Verify password
+        const isValid = await bcrypt.compare(input.password, user.passwordHash);
+        if (!isValid) {
+          throw new Error("Invalid email or password");
+        }
+        
+        // Check if approved
+        if (!user.isApproved) {
+          throw new Error("Your account is pending approval");
+        }
+        
+        // Update last signed in
+        await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
+        
+        // Create session token using SDK (compatible with auth system)
+        const token = await sdk.createSessionToken(user.openId, {
+          expiresInMs: 7 * 24 * 60 * 60 * 1000, // 7 days
+          name: user.name || user.email || "",
+        });
+        
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, token, {
+          ...cookieOptions,
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+        
+        return { success: true, user: { id: user.id, email: user.email, name: user.name, role: user.role } };
+      }),
+    
+    // Request Access (for demo)
+    requestAccess: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        name: z.string().min(1),
+        company: z.string().optional(),
+        reason: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        // Check if request already exists
+        const existing = await db.select().from(accessRequests).where(eq(accessRequests.email, input.email)).limit(1);
+        if (existing.length > 0) {
+          throw new Error("You have already submitted an access request");
+        }
+        
+        await db.insert(accessRequests).values({
+          email: input.email,
+          name: input.name,
+          company: input.company || null,
+          reason: input.reason || null,
+          status: "pending",
+        });
+        
+        return { success: true };
+      }),
+    
+    // Admin: List access requests
+    listAccessRequests: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user?.role !== "admin") {
+        throw new Error("Admin access required");
+      }
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      return await db.select().from(accessRequests).orderBy(accessRequests.createdAt);
+    }),
+    
+    // Admin: Approve/Deny access request
+    reviewAccessRequest: protectedProcedure
+      .input(z.object({
+        requestId: z.number(),
+        status: z.enum(["approved", "denied"]),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") {
+          throw new Error("Admin access required");
+        }
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        
+        const request = await db.select().from(accessRequests).where(eq(accessRequests.id, input.requestId)).limit(1);
+        if (request.length === 0) {
+          throw new Error("Request not found");
+        }
+        
+        // Update request status
+        await db.update(accessRequests).set({
+          status: input.status,
+          reviewedBy: ctx.user.id,
+          reviewedAt: new Date(),
+        }).where(eq(accessRequests.id, input.requestId));
+        
+        // If approved, create user account with temporary password
+        if (input.status === "approved") {
+          const req = request[0];
+          const tempPassword = Math.random().toString(36).substring(2, 10);
+          const passwordHash = await bcrypt.hash(tempPassword, 10);
+          const openId = `demo_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+          
+          await db.insert(users).values({
+            openId,
+            email: req.email,
+            name: req.name,
+            passwordHash,
+            loginMethod: "demo",
+            isApproved: true,
+            role: "user",
+          });
+          
+          // TODO: Send email with temporary password
+          return { success: true, tempPassword };
+        }
+        
+        return { success: true };
+      }),
   }),
 
   accounts: router({
-    list: publicProcedure.query(async () => {
-      return await getAllAccounts();
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const isDemoUser = ctx.user?.email?.includes('demo') || false;
+      return await getAllAccounts(isDemoUser);
     }),
-    getById: publicProcedure
+    getById: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         return await getAccountById(input.id);
       }),
-    getStats: publicProcedure.query(async () => {
-      const accounts = await getAllAccounts();
+    getStats: protectedProcedure.query(async ({ ctx }) => {
+      const isDemoUser = ctx.user?.email?.includes('demo') || false;
+      const accounts = await getAllAccounts(isDemoUser);
       const people = await getAllPeople();
       const calls = await getAllGongCalls();
       
@@ -138,7 +361,7 @@ export const appRouter = router({
         totalCalls: calls.length,
       };
     }),
-    enrichWith6sense: publicProcedure
+    enrichWith6sense: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         const account = await getAccountById(input.id);
@@ -149,13 +372,94 @@ export const appRouter = router({
         // AI-powered enrichment will be implemented
         return { message: 'AI enrichment coming soon', accountId: input.id };
       }),
+    getTimeline: protectedProcedure
+      .input(z.object({ accountId: z.number(), limit: z.number().default(50) }))
+      .query(async ({ input }) => {
+        const [account, calls] = await Promise.all([
+          getAccountById(input.accountId),
+          getGongCallsByAccountId(input.accountId)
+        ]);
+        
+        if (!account) {
+          throw new Error('Account not found');
+        }
+        
+        // Build activities from calls
+        const activities: Array<{
+          id: string;
+          type: 'call' | 'email' | 'meeting' | 'note' | 'intent_spike' | 'engagement';
+          title: string;
+          description?: string;
+          date: Date;
+          metadata?: {
+            duration?: string;
+            sentiment?: 'positive' | 'neutral' | 'negative';
+            participants?: string[];
+            score?: number;
+          };
+        }> = [];
+        
+        // Add calls to timeline
+        calls.forEach(call => {
+          activities.push({
+            id: `call-${call.id}`,
+            type: 'call',
+            title: call.title || 'Call',
+            description: (call as any).summary?.slice(0, 150) || undefined,
+            date: call.callDate ? new Date(call.callDate) : new Date(),
+            metadata: {
+              duration: call.duration ? `${Math.floor(call.duration / 60)}m` : undefined,
+              sentiment: call.sentiment as any || undefined
+            }
+          });
+        });
+        
+        // Parse rawData for additional activities (emails, meetings from SFDC)
+        if (account.rawData) {
+          try {
+            const raw = typeof account.rawData === 'string' ? JSON.parse(account.rawData) : account.rawData;
+            
+            // Add intent spike if there was a recent increase
+            if (raw.intentScoreChange && raw.intentScoreChange > 10) {
+              activities.push({
+                id: `intent-${account.id}`,
+                type: 'intent_spike',
+                title: 'Intent Score Increased',
+                description: `Intent score jumped by ${raw.intentScoreChange} points`,
+                date: new Date(),
+                metadata: {
+                  score: raw.intentScoreChange
+                }
+              });
+            }
+            
+            // Add last activity as engagement
+            if (raw.lastActivity && raw.lastActivityDate) {
+              activities.push({
+                id: `engagement-${account.id}`,
+                type: 'engagement',
+                title: raw.lastActivity,
+                description: `Last recorded activity for ${account.name}`,
+                date: new Date(raw.lastActivityDate),
+              });
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+        
+        // Sort by date descending and limit
+        return activities
+          .sort((a, b) => b.date.getTime() - a.date.getTime())
+          .slice(0, input.limit);
+      }),
   }),
 
   calls: router({
-    list: publicProcedure.query(async () => {
+    list: protectedProcedure.query(async () => {
       return await getAllGongCalls();
     }),
-    getByAccountId: publicProcedure
+    getByAccountId: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .query(async ({ input }) => {
         return await getGongCallsByAccountId(input.accountId);
@@ -163,20 +467,25 @@ export const appRouter = router({
   }),
 
   people: router({
-    list: publicProcedure.query(async () => {
+    list: protectedProcedure.query(async () => {
       return await getAllPeople();
     }),
-    getByCompany: publicProcedure
+    listPaginated: protectedProcedure
+      .input(z.object({ limit: z.number().default(100), offset: z.number().default(0) }))
+      .query(async ({ input }) => {
+        return await getPeoplePaginated(input.limit, input.offset);
+      }),
+    getByCompany: protectedProcedure
       .input(z.object({ company: z.string() }))
       .query(async ({ input }) => {
         return await getPeopleByCompany(input.company);
       }),
-    getByAccountId: publicProcedure
+    getByAccountId: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .query(async ({ input }) => {
         return await getContactsByAccountId(input.accountId);
       }),
-    prioritize: publicProcedure
+    prioritize: protectedProcedure
       .input(z.object({ accountId: z.number().optional() }))
       .query(async ({ input }) => {
         const contacts = input.accountId
@@ -231,15 +540,20 @@ export const appRouter = router({
   // }),
 
   gong: router({
-    list: publicProcedure.query(async () => {
+    list: protectedProcedure.query(async () => {
       return await getAllGongCalls();
     }),
-    getByCompany: publicProcedure
+    listPaginated: protectedProcedure
+      .input(z.object({ limit: z.number().default(50), offset: z.number().default(0) }))
+      .query(async ({ input }) => {
+        return await getGongCallsPaginated(input.limit, input.offset);
+      }),
+    getByCompany: protectedProcedure
       .input(z.object({ company: z.string() }))
       .query(async ({ input }) => {
         return await getGongCallsByCompany(input.company);
       }),
-    getByAccountId: publicProcedure
+    getByAccountId: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .query(async ({ input }) => {
         return await getGongCallsByAccountId(input.accountId);
@@ -248,7 +562,7 @@ export const appRouter = router({
 
   // AI-powered features
   ai: router({
-    enrichAccount: publicProcedure
+    enrichAccount: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .mutation(async ({ input }) => {
         const account = await getAccountById(input.accountId);
@@ -256,7 +570,7 @@ export const appRouter = router({
         return await enrichAccountWithAI(account);
       }),
 
-    analyzeCall: publicProcedure
+    analyzeCall: protectedProcedure
       .input(z.object({ callId: z.number() }))
       .mutation(async ({ input }) => {
         const calls = await getAllGongCalls();
@@ -265,7 +579,7 @@ export const appRouter = router({
         return await analyzeGongCall(call);
       }),
 
-    generateEmail: publicProcedure
+    generateEmail: protectedProcedure
       .input(z.object({ 
         accountId: z.number(), 
         contactId: z.number(),
@@ -279,13 +593,13 @@ export const appRouter = router({
         return await generateOutreachEmail(account, contact, input.context);
       }),
 
-    search: publicProcedure
+    search: protectedProcedure
       .input(z.object({ query: z.string() }))
       .mutation(async ({ input }) => {
         return await intelligentSearch(input.query);
       }),
 
-    prioritizeContacts: publicProcedure
+    prioritizeContacts: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .mutation(async ({ input }) => {
         const account = await getAccountById(input.accountId);
@@ -293,7 +607,7 @@ export const appRouter = router({
         return await prioritizeContacts(contacts, account);
       }),
 
-    chat: publicProcedure
+    chat: protectedProcedure
       .input(z.object({ 
         query: z.string(),
         accountId: z.number().optional(),
@@ -313,23 +627,28 @@ export const appRouter = router({
         });
       }),
 
-    generateAccountSummary: publicProcedure
+    generateAccountSummary: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .mutation(async ({ input }) => {
         return await generateAccountSummary(input.accountId);
       }),
 
-    generateContactSummary: publicProcedure
+    generateContactSummary: protectedProcedure
       .input(z.object({ contactId: z.number() }))
       .mutation(async ({ input }) => {
         return await generateContactSummary(input.contactId);
       }),
 
-    compileOverview: publicProcedure
+    compileOverview: protectedProcedure
       .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
       .query(async ({ input }) => {
+        console.log(`[compileOverview] Starting for account ${input.accountId}`);
         const account = await getAccountById(input.accountId);
-        if (!account) throw new Error('Account not found');
+        if (!account) {
+          console.log(`[compileOverview] Account ${input.accountId} not found`);
+          throw new Error('Account not found');
+        }
+        console.log(`[compileOverview] Found account: ${account.name}`);
 
         // Check cache first (valid for 24 hours)
         const cacheAge = (account as any).aiCacheUpdatedAt ? Date.now() - new Date((account as any).aiCacheUpdatedAt).getTime() : Infinity;
@@ -343,9 +662,41 @@ export const appRouter = router({
           };
         }
 
+        // If forceRefresh, clear the cache first
+        if (input.forceRefresh) {
+          console.log(`[AI Overview] Force refresh requested for account ${input.accountId}, clearing cache...`);
+          await updateAccount(input.accountId, {
+            aiOverviewCache: null,
+            aiCacheUpdatedAt: null
+          } as any);
+        }
+
         // Generate new summary
-        const people = await getPeopleByCompany(account.name);
+        console.log(`[compileOverview] Cache miss or force refresh, generating new summary...`);
+        const people = await getContactsByAccountId(input.accountId);
+        console.log(`[compileOverview] Found ${people.length} contacts`);
         const calls = await getGongCallsByAccountId(input.accountId);
+        console.log(`[compileOverview] Found ${calls.length} calls`);
+
+        // Limit contacts to top 10 prioritized by management level and engagement
+        const prioritizedContacts = people
+          .sort((a: any, b: any) => {
+            // Prioritize by management level (C-Suite > VP > Director > Manager > Individual)
+            const levelOrder: Record<string, number> = { 'C-Suite': 1, 'VP': 2, 'Director': 3, 'Manager': 4, 'Individual': 5 };
+            const aLevel = levelOrder[a.managementLevel] || 6;
+            const bLevel = levelOrder[b.managementLevel] || 6;
+            if (aLevel !== bLevel) return aLevel - bLevel;
+            // Then by engagement activities
+            return (b.engagementActivities || 0) - (a.engagementActivities || 0);
+          })
+          .slice(0, 10)
+          .map((p: any) => ({
+            name: p.name,
+            title: p.title,
+            department: p.department,
+            managementLevel: p.managementLevel,
+            email: p.email
+          }));
 
         const dataContext = {
           company: {
@@ -358,7 +709,8 @@ export const appRouter = router({
             buyingStage: (account as any).buyingStage || 'Unknown',
             relationship: account.relationship
           },
-          contacts: people.length,
+          keyContacts: prioritizedContacts,
+          totalContacts: people.length,
           recentCalls: calls.length,
           techStack: account.techStack ? 'Available' : 'Not available',
           triggers: account.triggerEvents ? 'Available' : 'None',
@@ -366,25 +718,94 @@ export const appRouter = router({
         };
 
         try {
+          console.log(`[compileOverview] Starting LLM call for ${account.name}`);
           const { invokeLLM } = await import("./_core/llm");
+          const { withRCP } = await import("./ai-system-prompt");
           // const { searchTool, executeToolCall } = await import("./_core/webSearch");
           
           // First call without tool support (webSearch module not available)
+          console.log(`[compileOverview] Calling invokeLLM...`);
           let response = await invokeLLM({
             messages: [
               {
                 role: "system",
-                content: `You are an expert sales intelligence analyst. Analyze this account and provide actionable insights for the sales team.`
+                content: `You are a sales intelligence analyst. Provide BRIEF, actionable insights. Keep your response under 800 words. Use markdown formatting with headers and bullet points. Do NOT include any XML tags, reasoning steps, or internal thinking - only the final analysis.`
               },
               {
                 role: "user",
-                content: `Analyze this account and provide insights:\n\n${JSON.stringify(dataContext, null, 2)}`
+                content: `Provide a brief sales analysis for ${dataContext.company.name}:\n\n**Company:** ${dataContext.company.name} (${dataContext.company.industry})\n**Intent Score:** ${dataContext.company.intentScore}\n**Buying Stage:** ${dataContext.company.buyingStage}\n**Employees:** ${dataContext.company.employees}\n**Key Contacts:** ${dataContext.keyContacts.map((c: any) => c.name + ' - ' + c.title).join(', ')}\n**Total Contacts:** ${dataContext.totalContacts}\n**Recent Calls:** ${dataContext.recentCalls}\n\nProvide:\n1. **Key Opportunity** (2-3 sentences)\n2. **Recommended Actions** (3-4 bullet points)\n3. **Risk Factors** (2-3 bullet points)\n4. **Best Contact Strategy** (who to reach, how)`
               }
             ]
           });
 
+          console.log(`[compileOverview] LLM response received`);
           const summary = response.choices[0]?.message?.content;
-          const summaryText = typeof summary === 'string' ? summary : 'Unable to generate summary';
+          let summaryText = typeof summary === 'string' ? summary : 'Unable to generate summary';
+          console.log(`[compileOverview] Summary length: ${summaryText.length}`);
+          
+          // CRITICAL: Strip any raw reasoning/XML tags that shouldn't be shown to users
+          // Sometimes the LLM includes its internal reasoning process
+          const reasoningPatterns = [
+            /<COGNITION_START>[\s\S]*?<\/COGNITION_END>/gi,
+            /<COGNITION_START>[\s\S]*/gi, // unclosed tag
+            /<DECONSTRUCTION>[\s\S]*?<\/DECONSTRUCTION>/gi,
+            /<BRANCHING>[\s\S]*?<\/BRANCHING>/gi,
+            /<CRITIQUE>[\s\S]*?<\/CRITIQUE>/gi,
+            /<SYNTHESIS>[\s\S]*?<\/SYNTHESIS>/gi,
+            /<FINAL_RESPONSE>/gi,
+            /<\/FINAL_RESPONSE>/gi,
+            /<[A-Z_]+>[\s\S]*?<\/[A-Z_]+>/gi, // any uppercase XML tags
+            /;\s*;/g, // double semicolons from bad formatting
+          ];
+          
+          for (const pattern of reasoningPatterns) {
+            summaryText = summaryText.replace(pattern, '');
+          }
+          
+          // If the summary is still too long or looks like raw reasoning, generate a simpler one
+          if (summaryText.length > 5000 || summaryText.includes('<STEP_')) {
+            console.log(`[compileOverview] Summary looks like raw reasoning, regenerating...`);
+            summaryText = 'Summary generation in progress. Please refresh in a moment.';  
+          }
+          
+          // POST-PROCESS: Remove hallucinated content that doesn't exist in our data
+          // The LLM keeps making up email/activity data we don't track
+          const hallucinations = [
+            // Activity counts
+            /Engagement Activities:\s*\d+/gi,
+            /\d+\s*Activities/gi,
+            /\d+\s*QA/gi,
+            /\d+\s*Qualified Activities/gi,
+            /\d+\s*total engagement/gi,
+            /\d+\s*engagement activities/gi,
+            /\d+\s*sales activities/gi,
+            /\d+\s*recorded activities/gi,
+            // Email mentions
+            /Email Send\s*\([^)]*\)/gi,
+            /Email Send\s*\d+\s*days ago/gi,
+            /Email Open\s*\([^)]*\)/gi,
+            /Last Sales Activity:\s*Email[^.]*\./gi,
+            /Recent Activity:.*?Email[^.]*\./gi,
+            /last activity was only \d+ days ago/gi,
+            // Bombora mentions
+            /Latest Engagement:\s*Bombora[^.]*\./gi,
+            /Bombora\s*\([^)]*\)/gi,
+            /Bombora data[^.]*\./gi,
+            /Bombora\/6sense data[^.]*\./gi,
+            // Generic activity claims
+            /recent engagement activity[^.]*\./gi,
+            /recent sales activity[^.]*\./gi,
+            /significant historical engagement[^.]*\./gi,
+          ];
+          
+          for (const pattern of hallucinations) {
+            summaryText = summaryText.replace(pattern, '[DATA NOT AVAILABLE]');
+          }
+          
+          // Replace entire rows in tables that mention hallucinated data
+          summaryText = summaryText.replace(/\|[^|]*Engagement Activities[^|]*\|[^|]*\d+[^|]*\|[^|]*\|/gi, '| Engagement Activities | [DATA NOT TRACKED] | [NO ENGAGEMENT DATA AVAILABLE] |');
+          summaryText = summaryText.replace(/\|[^|]*Sales Activity[^|]*\|[^|]*\d+[^|]*\|[^|]*\|/gi, '| Sales Activity | [DATA NOT TRACKED] | [NO SALES ACTIVITY DATA AVAILABLE] |');
+          summaryText = summaryText.replace(/\|[^|]*Last Activity[^|]*\|[^|]*Bombora[^|]*\|[^|]*\|/gi, '| Last Activity | [DATA NOT TRACKED] | [NO ACTIVITY TRACKING AVAILABLE] |');
 
           // Store in cache
           await updateAccount(input.accountId, {
@@ -400,7 +821,7 @@ export const appRouter = router({
         }
       }),
 
-    compileResearch: publicProcedure
+    compileResearch: protectedProcedure
       .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
       .query(async ({ input }) => {
         const account = await getAccountById(input.accountId);
@@ -418,6 +839,15 @@ export const appRouter = router({
             cachedData = { insights: (account as any).aiResearchCache };
           }
           return { ...cachedData, cached: true, cacheAge: Math.floor(cacheAge / (60 * 1000)) };
+        }
+
+        // If forceRefresh, clear the cache first
+        if (input.forceRefresh) {
+          console.log(`[AI Research] Force refresh requested for account ${input.accountId}, clearing cache...`);
+          await updateAccount(input.accountId, {
+            aiResearchCache: null,
+            aiCacheUpdatedAt: null
+          } as any);
         }
 
         // Parse triggers and news from rawData
@@ -447,11 +877,12 @@ export const appRouter = router({
         };
 
         const { invokeLLM } = await import("./_core/llm");
+        const { withRCP } = await import("./ai-system-prompt");
         const response = await invokeLLM({
           messages: [
             {
               role: "system",
-              content: "You are a competitive intelligence analyst. Synthesize the research data into a clear narrative covering: 1) Recent trigger events and what they mean, 2) Funding/growth signals and implications, 3) Market position and competitive landscape, 4) Strategic opportunities for engagement. Be concise and actionable."
+              content: withRCP("You are a competitive intelligence analyst. Synthesize the research data into a clear narrative covering: 1) Recent trigger events and what they mean, 2) Funding/growth signals and implications, 3) Market position and competitive landscape, 4) Strategic opportunities for engagement. Be concise and actionable.")
             },
             {
               role: "user",
@@ -478,7 +909,7 @@ export const appRouter = router({
         return { ...result, cached: false, cacheAge: 0 };
       }),
 
-    generateStrategicInsights: publicProcedure
+    generateStrategicInsights: protectedProcedure
       .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
       .query(async ({ input }) => {
         const account = await getAccountById(input.accountId);
@@ -496,40 +927,178 @@ export const appRouter = router({
           };
         }
 
-        const people = await getPeopleByCompany(account.name);
+        // If forceRefresh, clear the cache first to ensure fresh generation
+        if (input.forceRefresh) {
+          console.log(`[AI Insights] Force refresh requested for account ${input.accountId}, clearing cache...`);
+          await updateAccount(input.accountId, {
+            aiInsightsCache: null,
+            aiCacheUpdatedAt: null
+          } as any);
+        }
+
+        const people = await getContactsByAccountId(input.accountId);
         const calls = await getGongCallsByAccountId(input.accountId);
 
-        const strategicContext = {
-          account: {
-            name: account.name,
-            intentScore: account.intentScore,
-            buyingStage: (account as any).buyingStage || 'Unknown',
-            relationship: account.relationship,
-            industry: account.industry
-          },
-          engagement: {
-            contacts: people.length,
-            recentCalls: calls.length,
-            lastActivity: calls[0]?.callDate || 'No recent activity'
+        // AGGREGATE ENGAGEMENT DATA FROM CONTACTS (this is where the real data lives!)
+        const engagementData = people.reduce((acc: any, p: any) => {
+          acc.totalEngagementActivities += (p.engagementActivities || 0);
+          acc.totalSalesActivities += (p.salesActivities || 0);
+          if (p.daysSinceLastEngagement !== null && p.daysSinceLastEngagement !== undefined) {
+            if (acc.mostRecentEngagementDays === null || p.daysSinceLastEngagement < acc.mostRecentEngagementDays) {
+              acc.mostRecentEngagementDays = p.daysSinceLastEngagement;
+            }
           }
+          if (p.daysSinceLastSalesActivity !== null && p.daysSinceLastSalesActivity !== undefined) {
+            if (acc.mostRecentSalesActivityDays === null || p.daysSinceLastSalesActivity < acc.mostRecentSalesActivityDays) {
+              acc.mostRecentSalesActivityDays = p.daysSinceLastSalesActivity;
+              acc.lastSalesActivity = p.lastSalesActivity;
+            }
+          }
+          if (p.lastEngagementActivity) {
+            acc.lastEngagementActivity = p.lastEngagementActivity;
+          }
+          return acc;
+        }, {
+          totalEngagementActivities: 0,
+          totalSalesActivities: 0,
+          mostRecentEngagementDays: null as number | null,
+          mostRecentSalesActivityDays: null as number | null,
+          lastSalesActivity: null as string | null,
+          lastEngagementActivity: null as string | null
+        });
+
+        // Prepare contact list with real names and titles (TOP 10 ONLY)
+        const contactList = people.slice(0, 10).map((p: any) => ({
+          name: p.name,
+          title: p.title,
+          email: p.email,
+          department: p.department,
+          managementLevel: p.managementLevel,
+          engagementActivities: p.engagementActivities,
+          salesActivities: p.salesActivities,
+          daysSinceLastEngagement: p.daysSinceLastEngagement,
+          lastSalesActivity: p.lastSalesActivity
+        }));
+
+        // Parse tech stack data
+        let techStackData = null;
+        let securityStackData = null;
+        try {
+          if (account.techStack) {
+            techStackData = typeof account.techStack === 'string' ? JSON.parse(account.techStack) : account.techStack;
+          }
+          if ((account as any).securityStack) {
+            securityStackData = typeof (account as any).securityStack === 'string' ? JSON.parse((account as any).securityStack) : (account as any).securityStack;
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+
+        // Import VECTOR scoring
+        const { calculateVectorScores, generateDeepAnalysisPrompt } = await import('./vectorScoring');
+        
+        // Prepare account data for VECTOR scoring
+        const accountData = {
+          name: account.name,
+          domain: account.domain || undefined,
+          industry: account.industry || undefined,
+          employeeCount: account.employeeCount || undefined,
+          region: (account as any).region || undefined,
+          relationship: account.relationship || undefined,
+          intentScore: account.intentScore || undefined,
+          buyingStage: (account as any).buyingStage || undefined,
+          temperature: (account as any).temperature || undefined,
+          totalContacts: people.length,
+          totalCalls: calls.length,
+          lastCallDate: calls[0]?.callDate || undefined,
+          // REAL ENGAGEMENT DATA FROM CONTACTS TABLE
+          engagementActivities: engagementData.totalEngagementActivities,
+          salesActivities: engagementData.totalSalesActivities,
+          mostRecentEngagementDays: engagementData.mostRecentEngagementDays,
+          mostRecentSalesActivityDays: engagementData.mostRecentSalesActivityDays,
+          lastSalesActivity: engagementData.lastSalesActivity,
+          lastEngagementActivity: engagementData.lastEngagementActivity,
+          techStack: techStackData,
+          securityStack: securityStackData,
+          contacts: contactList,
+          calls: calls.slice(0, 5).map((c: any) => ({
+            date: c.callDate,
+            duration: c.duration,
+            summary: c.summary
+          }))
         };
+        
+        // Calculate VECTOR scores
+        const vectorScores = calculateVectorScores(accountData);
+        
+        // Generate deep analysis prompt
+        const analysisPrompt = generateDeepAnalysisPrompt(accountData, vectorScores);
 
         const { invokeLLM } = await import("./_core/llm");
+        const { REVENUE_ARCHITECT_PERSONA, STANDARDIZED_OUTPUT_STRUCTURE } = await import("./ai-system-prompt");
+        
+        // Use a simpler system prompt WITHOUT RCP to avoid verbose reasoning output
+        const simpleSystemPrompt = `${REVENUE_ARCHITECT_PERSONA}
+
+---
+
+IMPORTANT INSTRUCTIONS:
+- Output ONLY the final analysis in clean markdown format
+- Do NOT include any reasoning steps, stages, hypotheses, or internal thinking
+- Do NOT use XML tags like <COGNITION_START>, <PATH_A>, <BRANCHING>, etc.
+- Do NOT include phrases like "The analysis is complete" or "adheres to all constraints"
+- Do NOT include numbered stages like "STAGE 1:", "STAGE 2:", etc.
+- Start directly with the content, no preamble
+
+${STANDARDIZED_OUTPUT_STRUCTURE}`;
+        
         const response = await invokeLLM({
           messages: [
             {
               role: "system",
-              content: "You are a sales strategist. Provide actionable recommendations including: 1) Buying signal strength and timing, 2) Recommended outreach approach and messaging, 3) Key stakeholders to engage, 4) Potential objections and how to address them, 5) Next best actions with priority. Be specific and tactical."
+              content: simpleSystemPrompt
             },
             {
               role: "user",
-              content: `Generate strategic insights for this account:\n\n${JSON.stringify(strategicContext, null, 2)}`
+              content: analysisPrompt
             }
           ]
         });
 
         const recommendations = response.choices[0]?.message?.content;
-        const recommendationsText = typeof recommendations === 'string' ? recommendations : 'Unable to generate insights';
+        let recommendationsText = typeof recommendations === 'string' ? recommendations : 'Unable to generate insights';
+        
+        // Strip any XML reasoning tags and RCP artifacts that shouldn't be shown to users
+        const reasoningPatterns = [
+          // XML-style reasoning blocks
+          /<COGNITION_START>[\s\S]*?<\/COGNITION_END>/gi,
+          /<COGNITION_START>[\s\S]*/gi,
+          /<REASONING_LOG>[\s\S]*?<\/REASONING_LOG>/gi,
+          /<FINAL_RESPONSE>/gi,
+          /<\/FINAL_RESPONSE>/gi,
+          /<RAW_ANSWER>[\s\S]*?<\/RAW_ANSWER>/gi,
+          /<[A-Z_]+>[\s\S]*?<\/[A-Z_]+>/gi,
+          // RCP stage headers and content
+          /^\s*STAGE \d+:[^\n]*\n/gim,
+          /^\s*###\s*STAGE \d+:[^\n]*\n/gim,
+          /^\s*\*\*STAGE \d+:[^\n]*\*\*\n/gim,
+          /Hypothesis [A-Z]:[^\n]*\n/gi,
+          /\*\*Hypothesis [A-Z]:[^\n]*\*\*/gi,
+          /Path [A-Z]:[^\n]*\n/gi,
+          // Common boilerplate phrases
+          /The analysis is complete and adheres to all constraints\.?/gi,
+          /The analysis adheres to all constraints\.?/gi,
+          /This analysis is complete\.?/gi,
+          /^\s*BEGIN PROCESSING NOW\.?\s*$/gim,
+          /^\s*CONFIDENCE_SCORE:[^\n]*\n/gim,
+        ];
+        
+        for (const pattern of reasoningPatterns) {
+          recommendationsText = recommendationsText.replace(pattern, '');
+        }
+        
+        // Clean up excessive whitespace
+        recommendationsText = recommendationsText.replace(/\n{3,}/g, '\n\n').trim();
 
         // Store in cache
         await updateAccount(input.accountId, {
@@ -540,7 +1109,7 @@ export const appRouter = router({
         return { recommendations: recommendationsText, cached: false, cacheAge: 0 };
       }),
 
-    analyzeTechStack: publicProcedure
+    analyzeTechStack: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .mutation(async ({ input }) => {
         const account = await getAccountById(input.accountId);
@@ -561,11 +1130,12 @@ export const appRouter = router({
 
         // Use AI to categorize and filter the tech stack
         const { invokeLLM } = await import("./_core/llm");
+        const { withRCP } = await import("./ai-system-prompt");
         const response = await invokeLLM({
           messages: [
             {
               role: "system",
-              content: "You are a technology stack analyst. Analyze the provided technology stack data and categorize it into clear, useful categories. Always include these categories even if empty: MFA Providers, SSO Providers, EDR/Security, CRM, Communication Tools, Development Tools, Cloud Infrastructure. For each category, list the relevant technologies found. If a category has no technologies, explicitly state 'None'. Be concise and filter out noise."
+              content: withRCP("You are a technology stack analyst. Analyze the provided technology stack data and categorize it into clear, useful categories. Always include these categories even if empty: MFA Providers, SSO Providers, EDR/Security, CRM, Communication Tools, Development Tools, Cloud Infrastructure. For each category, list the relevant technologies found. If a category has no technologies, explicitly state 'None'. Be concise and filter out noise.")
             },
             {
               role: "user",
@@ -607,54 +1177,14 @@ export const appRouter = router({
       }),
   }),
 
-  sixsense: router({
-    // Enrich single account with live 6sense data
-    enrichAccount: publicProcedure
-      .input(z.object({ accountId: z.number() }))
-      .mutation(async ({ input }) => {
-        // const { enrichAccountWith6sense } = await import("./intelligence/sixsenseSync");
-        // const result = await enrichAccountWith6sense(input.accountId);
-        return { success: false, message: "6sense enrichment module not available" };
-      }),
-    
-    // Enrich all high-priority accounts
-    // enrichAllAccounts: publicProcedure
-    //   .input(z.object({ highPriorityOnly: z.boolean().optional() }))
-    //   .mutation(async ({ input }) => {
-    //     const { enrichAllAccountsWith6sense } = await import("./intelligence/sixsenseSync");
-    //     await enrichAllAccountsWith6sense(input.highPriorityOnly || false);
-    //     return { success: true, message: "Enrichment started" };
-    //   }),
-    
-    // // Queue enrichment jobs for all accounts
-    // queueEnrichmentJobs: publicProcedure
-    //   .mutation(async () => {
-    //     const { queue6senseEnrichmentJobs } = await import("./intelligence/sixsenseSync");
-    //     await queue6senseEnrichmentJobs();
-    //     return { success: true, message: "Jobs queued" };
-    //   }),
-    
-    // // Process enrichment queue
-    // processQueue: publicProcedure
-    //   .input(z.object({ limit: z.number().optional() }))
-    //   .mutation(async ({ input }) => {
-    //     const { processEnrichmentQueue } = await import("./intelligence/sixsenseSync");
-    //     await processEnrichmentQueue(input.limit || 10);
-    //     return { success: true, message: "Queue processed" };
-    //   }),
-   enrich: publicProcedure
-      .input(z.object({ domain: z.string() }))
-      .query(async ({ input }) => {
-        return await enrichAccount(input.domain);
-      }),
-  }),
-
   // Clay data import
   clayImport: clayImportRouter,
   sequences: sequencesRouter,
   rfps: rfpRouter,
   clayWebhook: clayWebhookRouter,
   outreach: outreachRouter,
+  admin: adminRouter,
+  emailVerification: emailVerificationRouter,
 
 });
 

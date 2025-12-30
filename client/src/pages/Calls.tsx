@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,9 @@ import { Navigation } from "@/components/Navigation";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import {
-  Phone, Calendar, Clock, Building2, User, Search,
+  Phone, Calendar, Clock, Building2, Search,
   ArrowUpDown, ExternalLink, PlayCircle,
-  ChevronDown, ChevronUp, Users, MessageSquare
+  ChevronDown, ChevronUp, MessageSquare, ChevronLeft, ChevronRight
 } from "lucide-react";
 import {
   Select,
@@ -18,76 +18,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Streamdown } from "streamdown";
 
-type SortField = "callDate" | "duration" | "company";
-type SortOrder = "asc" | "desc";
 
-export default function CallsEnhanced() {
+const CALLS_PER_PAGE = 50;
+
+export default function Calls() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [companyFilter, setCompanyFilter] = useState<string>("all");
-  const [sortField, setSortField] = useState<SortField>("callDate");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [currentPage, setCurrentPage] = useState(1);
   const [expandedCalls, setExpandedCalls] = useState<Set<number>>(new Set());
 
-  const { data: calls, isLoading } = trpc.gong.list.useQuery(undefined, { staleTime: 3 * 60 * 1000 });
+  // Use paginated query for performance
+  const { data, isLoading } = trpc.gong.listPaginated.useQuery(
+    { limit: CALLS_PER_PAGE, offset: (currentPage - 1) * CALLS_PER_PAGE },
+    { staleTime: 3 * 60 * 1000 }
+  );
 
-  const companies = useMemo(() => {
-    if (!calls) return [];
-    return Array.from(new Set(calls.map((c: any) => c.company).filter(Boolean))).sort();
-  }, [calls]);
+  const calls = data?.calls || [];
+  const totalCalls = data?.total || 0;
+  const totalPages = Math.ceil(totalCalls / CALLS_PER_PAGE);
 
+  // Client-side search filter (on current page only)
   const filteredCalls = useMemo(() => {
-    if (!calls) return [];
-
-    let filtered = calls.filter((call: any) => {
-      const matchesSearch = !searchQuery || 
-        call.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        call.accountId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        call.summary?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        call.transcriptUrl?.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchesCompany = companyFilter === "all" || call.accountId === companyFilter;
-
-      return matchesSearch && matchesCompany;
+    if (!searchQuery) return calls;
+    return calls.filter((call: any) => {
+      return call.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        call.summary?.toLowerCase().includes(searchQuery.toLowerCase());
     });
-
-    filtered.sort((a: any, b: any) => {
-      let aVal: any, bVal: any;
-
-      switch (sortField) {
-        case "callDate":
-          aVal = a.callDate ? new Date(a.callDate).getTime() : 0;
-          bVal = b.callDate ? new Date(b.callDate).getTime() : 0;
-          break;
-        case "duration":
-          aVal = typeof a.duration === 'number' ? a.duration : parseInt(String(a.duration || '0').replace(/[^0-9]/g, "") || "0");
-          bVal = typeof b.duration === 'number' ? b.duration : parseInt(String(b.duration || '0').replace(/[^0-9]/g, "") || "0");
-          break;
-        case "company":
-          aVal = a.company?.toLowerCase() || "";
-          bVal = b.company?.toLowerCase() || "";
-          break;
-        default:
-          return 0;
-      }
-
-      if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
-      if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
-      return 0;
-    });
-
-    return filtered;
-  }, [calls, searchQuery, companyFilter, sortField, sortOrder]);
-
-  const handleToggleSort = useCallback((field: SortField) => {
-    if (sortField === field) {
-      setSortOrder(order => order === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortOrder("desc");
-    }
-  }, [sortField]);
+  }, [calls, searchQuery]);
 
   const toggleExpanded = (callId: number) => {
     setExpandedCalls(prev => {
@@ -102,270 +59,239 @@ export default function CallsEnhanced() {
   };
 
   // Loading state
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="min-h-screen bg-background">
         <Navigation />
-        <div className="container py-12 space-y-8 max-w-7xl">
-          <div className="space-y-4">
-            <div className="h-12 w-96 skeleton" />
-            <div className="h-6 w-64 skeleton" />
+        <div className="container py-8 space-y-6 max-w-6xl">
+          <div className="h-10 w-48 skeleton rounded" />
+          <div className="grid gap-4 md:grid-cols-3">
+            {[1, 2, 3].map(i => <div key={i} className="h-24 skeleton rounded-lg" />)}
           </div>
-          <div className="h-32 skeleton rounded-xl" />
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-48 skeleton rounded-xl" />
-            ))}
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-32 skeleton rounded-lg" />)}
           </div>
         </div>
       </div>
     );
   }
 
-  const totalDuration = filteredCalls.reduce((acc, call: any) => {
-    const mins = typeof call.duration === 'number' ? Math.floor(call.duration / 60) : parseInt(String(call.duration || '0').replace(/[^0-9]/g, "") || "0");
-    return acc + mins;
-  }, 0);
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+    <div className="min-h-screen bg-background">
       <Navigation />
 
-      <div className="container py-12 space-y-8 max-w-7xl">
+      <div className="container py-8 space-y-6 max-w-6xl">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-2xl shadow-lg">
-                <Phone className="h-8 w-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-5xl font-bold tracking-tight">Gong Calls</h1>
-                <p className="text-muted-foreground text-lg mt-1">
-                  {filteredCalls.length} of {calls?.length || 0} calls
-                </p>
-              </div>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold">Gong Calls</h1>
+            <p className="text-muted-foreground">
+              {totalCalls.toLocaleString()} total calls
+            </p>
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card className="card-elevated border-l-4 border-l-cyan-500">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Phone className="h-4 w-4 text-cyan-500" />
-                Total Calls
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{filteredCalls.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">Recorded conversations</p>
+        {/* Stats */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <Phone className="h-8 w-8 text-cyan-500" />
+                <div>
+                  <p className="text-2xl font-bold">{totalCalls.toLocaleString()}</p>
+                  <p className="text-sm text-muted-foreground">Total Calls</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
-
-          <Card className="card-elevated border-l-4 border-l-indigo-500">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Clock className="h-4 w-4 text-indigo-500" />
-                Total Duration
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{Math.round(totalDuration / 60)}h</div>
-              <p className="text-xs text-muted-foreground mt-1">{totalDuration} minutes</p>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <Calendar className="h-8 w-8 text-indigo-500" />
+                <div>
+                  <p className="text-2xl font-bold">Page {currentPage}</p>
+                  <p className="text-sm text-muted-foreground">of {totalPages} pages</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
-
-          <Card className="card-elevated border-l-4 border-l-purple-500">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-purple-500" />
-                Companies
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{companies.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">Unique accounts</p>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <Clock className="h-8 w-8 text-purple-500" />
+                <div>
+                  <p className="text-2xl font-bold">{CALLS_PER_PAGE}</p>
+                  <p className="text-sm text-muted-foreground">Per page</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Filters */}
-        <Card className="card-elevated">
-          <CardContent className="p-6">
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="md:col-span-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search calls..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
+        {/* Search */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search this page..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
 
-              <Select value={companyFilter} onValueChange={setCompanyFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Companies" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Companies</SelectItem>
-                  {companies.map(company => (
-                    <SelectItem key={company} value={company!}>{company}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border/50">
-              <span className="text-sm text-muted-foreground">Sort by:</span>
-              <Button
-                variant={sortField === "callDate" ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleToggleSort("callDate")}
-              >
-                Date
-                {sortField === "callDate" && (
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                )}
-              </Button>
-              <Button
-                variant={sortField === "duration" ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleToggleSort("duration")}
-              >
-                Duration
-                {sortField === "duration" && (
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                )}
-              </Button>
-              <Button
-                variant={sortField === "company" ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleToggleSort("company")}
-              >
-                Company
-                {sortField === "company" && (
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Pagination Controls */}
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {((currentPage - 1) * CALLS_PER_PAGE) + 1} - {Math.min(currentPage * CALLS_PER_PAGE, totalCalls)} of {totalCalls.toLocaleString()}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <span className="text-sm px-3">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
 
         {/* Calls List */}
         {filteredCalls.length === 0 ? (
-          <Card className="card-elevated">
-            <CardContent className="py-16 text-center">
-              <Phone className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No calls found</h3>
-              <p className="text-muted-foreground">Try adjusting your filters</p>
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Phone className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+              <h3 className="text-lg font-semibold">No calls found</h3>
+              <p className="text-muted-foreground text-sm">Try a different search</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {filteredCalls.map((call: any) => {
               const isExpanded = expandedCalls.has(call.id);
               
               return (
-                <Card key={call.id} className="card-elevated">
-                  <CardHeader>
+                <Card key={call.id} className="hover:bg-muted/30 transition-colors">
+                  <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-4 flex-1 min-w-0">
-                        <div className="p-3 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-xl shadow-lg flex-shrink-0">
-                          <Phone className="h-5 w-5 text-white" />
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg">
+                          <Phone className="h-4 w-4 text-cyan-500" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <CardTitle className="text-xl line-clamp-1">
+                          <h3 className="font-medium line-clamp-1">
                             {call.title || "Untitled Call"}
-                          </CardTitle>
-                          <CardDescription className="flex flex-wrap items-center gap-4 mt-2">
+                          </h3>
+                          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
                             {call.callDate && (
                               <span className="flex items-center gap-1">
-                                <Calendar className="h-4 w-4" />
+                                <Calendar className="h-3 w-3" />
                                 {new Date(call.callDate).toLocaleDateString()}
                               </span>
                             )}
                             {call.duration && (
                               <span className="flex items-center gap-1">
-                                <Clock className="h-4 w-4" />
+                                <Clock className="h-3 w-3" />
                                 {call.duration}
                               </span>
                             )}
                             {call.accountId && (
-                              <span className="flex items-center gap-1">
-                                <Building2 className="h-4 w-4" />
-                                {call.accountId}
-                              </span>
+                              <Link href={`/accounts/${call.accountId}`} className="flex items-center gap-1 hover:text-foreground">
+                                <Building2 className="h-3 w-3" />
+                                Account #{call.accountId}
+                              </Link>
                             )}
-                            {/* participants field removed */}
-                          </CardDescription>
+                          </div>
                         </div>
                       </div>
                       <div className="flex gap-2 flex-shrink-0">
                         {call.recordingUrl && (
                           <Button variant="outline" size="sm" asChild>
                             <a href={call.recordingUrl} target="_blank" rel="noopener noreferrer">
-                              <PlayCircle className="mr-2 h-4 w-4" />
-                              View in Gong
-                              <ExternalLink className="ml-2 h-3 w-3" />
+                              <PlayCircle className="mr-1 h-3 w-3" />
+                              Gong
                             </a>
                           </Button>
                         )}
                       </div>
                     </div>
-                  </CardHeader>
 
-                  {(call.summary || call.transcriptUrl) && (
-                    <CardContent className="space-y-4">
-                      {call.summary && (
-                        <div className="p-4 rounded-lg bg-muted/50">
-                          <div className="flex items-center gap-2 mb-2">
-                            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">Summary</span>
-                          </div>
-                          <div className="prose prose-sm max-w-none dark:prose-invert">
-                            <Streamdown>{call.summary}</Streamdown>
-                          </div>
-                        </div>
-                      )}
+                    {call.summary && (
+                      <div className="mt-3 p-3 rounded bg-muted/50 text-sm">
+                        {call.summary.slice(0, 200)}{call.summary.length > 200 ? '...' : ''}
+                      </div>
+                    )}
 
-                      {call.transcriptUrl && (
-                        <div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleExpanded(call.id)}
-                            className="w-full justify-between"
-                          >
-                            <span className="flex items-center gap-2">
-                              <MessageSquare className="h-4 w-4" />
-                              Transcript
-                            </span>
-                            {isExpanded ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </Button>
-                          
-                          {isExpanded && (
-                            <div className="mt-2 p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground whitespace-pre-wrap">
-                              {call.transcriptUrl}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </CardContent>
-                  )}
+                    {call.transcriptUrl && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleExpanded(call.id)}
+                        className="mt-2 w-full justify-between text-xs"
+                      >
+                        <span>View Transcript</span>
+                        {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      </Button>
+                    )}
+                    
+                    {isExpanded && call.transcriptUrl && (
+                      <div className="mt-2 p-3 rounded bg-muted/50 text-xs text-muted-foreground whitespace-pre-wrap max-h-64 overflow-y-auto">
+                        {call.transcriptUrl}
+                      </div>
+                    )}
+                  </CardContent>
                 </Card>
               );
             })}
           </div>
         )}
+
+        {/* Bottom Pagination */}
+        <div className="flex items-center justify-center gap-2 pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          {[...Array(Math.min(5, totalPages))].map((_, i) => {
+            const pageNum = currentPage <= 3 ? i + 1 : currentPage - 2 + i;
+            if (pageNum > totalPages || pageNum < 1) return null;
+            return (
+              <Button
+                key={pageNum}
+                variant={pageNum === currentPage ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCurrentPage(pageNum)}
+              >
+                {pageNum}
+              </Button>
+            );
+          })}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage >= totalPages}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );

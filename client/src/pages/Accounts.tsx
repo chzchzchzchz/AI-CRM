@@ -10,6 +10,7 @@ import {
   Building2, Users, MapPin, TrendingUp, ExternalLink, Search,
   Filter, ArrowUpDown, Target, Zap, Eye, Flame, Mail, Sparkles
 } from "lucide-react";
+import { ContextualAI } from "@/components/ContextualAI";
 import {
   Select,
   SelectContent,
@@ -17,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useRep } from "@/contexts/RepContext";
+import { RepSwitcher } from "@/components/RepSwitcher";
 
 type SortField = "name" | "intentScore" | "employees" | "industry";
 type SortOrder = "asc" | "desc";
@@ -27,8 +30,12 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   const [industryFilter, setIndustryFilter] = useState<string>("all");
   const [relationshipFilter, setRelationshipFilter] = useState<string>("all");
   const [intentFilter, setIntentFilter] = useState<string>("all");
+  const [techFilter, setTechFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("intentScore");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  
+  // Get rep context for territory filtering
+  const { matchesTerritory, repInfo, isRepMode } = useRep();
 
   const { data: accounts, isLoading } = trpc.accounts.list.useQuery(undefined, {
     staleTime: 3 * 60 * 1000
@@ -38,6 +45,48 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   const regions = useMemo(() => {
     if (!accounts) return [];
     return Array.from(new Set(accounts.map(a => a.region).filter(Boolean)));
+  }, [accounts]);
+
+  // MFA/Identity Provider options - hardcoded list of identity/auth vendors
+  const MFA_PROVIDERS = [
+    "Ping Identity",
+    "Okta",
+    "Duo Security",
+    "Azure AD",
+    "OneLogin",
+    "ForgeRock",
+    "Auth0",
+    "CyberArk",
+    "RSA SecurID",
+    "SailPoint",
+    "Saviynt",
+    "IBM Security Verify",
+    "Oracle Identity",
+    "SecureAuth",
+    "Thales SafeNet"
+  ];
+
+  // Extract MFA/Identity providers found in accounts' techStack
+  const mfaProviders = useMemo(() => {
+    if (!accounts) return [];
+    const foundProviders = new Set<string>();
+    
+    accounts.forEach(account => {
+      if (account.techStack) {
+        const techLower = String(account.techStack).toLowerCase();
+        MFA_PROVIDERS.forEach(provider => {
+          // Check for provider name in tech stack (case insensitive)
+          const providerLower = provider.toLowerCase();
+          const shortName = providerLower.split(' ')[0]; // e.g., "ping" from "Ping Identity"
+          if (techLower.includes(providerLower) || techLower.includes(shortName)) {
+            foundProviders.add(provider);
+          }
+        });
+      }
+    });
+    
+    // Return sorted list of found providers
+    return Array.from(foundProviders).sort((a, b) => a.localeCompare(b));
   }, [accounts]);
 
   const industries = ["AI", "Software", "Finance", "Manufacturing", "Other"];
@@ -69,6 +118,11 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     if (!accounts) return [];
 
     let filtered = accounts.filter(account => {
+      // Rep territory filter (if in rep mode)
+      const employeeCount = parseInt(String(account.employeeCount || '0').replace(/[^0-9]/g, '') || '0');
+      const matchesRepTerritory = matchesTerritory(account.region || '', employeeCount);
+      if (!matchesRepTerritory) return false;
+      
       const matchesSearch = !searchQuery || 
         account.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         account.domain?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -82,13 +136,22 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
 
       let matchesIntent = true;
       if (intentFilter !== "all" && account.intentScore) {
-        const score = parseInt(account.intentScore);
+        const score = parseInt(String(account.intentScore));
         if (intentFilter === "hot") matchesIntent = score >= 70;
         else if (intentFilter === "warm") matchesIntent = score >= 40 && score < 70;
         else if (intentFilter === "cold") matchesIntent = score < 40;
       }
 
-      return matchesSearch && matchesRegion && matchesIndustry && matchesRelationship && matchesIntent;
+      // MFA Provider filter - match by provider name or short name
+      let matchesTech = true;
+      if (techFilter !== "all") {
+        const accountTech = String(account.techStack || '').toLowerCase();
+        const filterLower = techFilter.toLowerCase();
+        const shortName = filterLower.split(' ')[0]; // e.g., "ping" from "Ping Identity"
+        matchesTech = accountTech.includes(filterLower) || accountTech.includes(shortName);
+      }
+
+      return matchesSearch && matchesRegion && matchesIndustry && matchesRelationship && matchesIntent && matchesTech;
     });
 
     // Sort
@@ -101,12 +164,12 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
           bVal = b.name.toLowerCase();
           break;
         case "intentScore":
-          aVal = parseInt(a.intentScore || "0");
-          bVal = parseInt(b.intentScore || "0");
+          aVal = parseInt(String(a.intentScore || "0"));
+          bVal = parseInt(String(b.intentScore || "0"));
           break;
         case "employees":
-          aVal = parseInt(a.employeeCount?.replace(/[^0-9]/g, "") || "0");
-          bVal = parseInt(b.employeeCount?.replace(/[^0-9]/g, "") || "0");
+          aVal = parseInt(String(a.employeeCount || "0").replace(/[^0-9]/g, "") || "0");
+          bVal = parseInt(String(b.employeeCount || "0").replace(/[^0-9]/g, "") || "0");
           break;
         case "industry":
           aVal = a.industry || "";
@@ -122,7 +185,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     });
 
     return filtered;
-  }, [accounts, searchQuery, regionFilter, industryFilter, relationshipFilter, intentFilter, sortField, sortOrder]);
+  }, [accounts, searchQuery, regionFilter, industryFilter, relationshipFilter, intentFilter, techFilter, sortField, sortOrder]);
 
   const getIntentBadge = (score: string) => {
     const numScore = parseInt(score);
@@ -176,9 +239,9 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     );
   }
 
-  const hotCount = filteredAccounts.filter(a => parseInt(a.intentScore || "0") >= 70).length;
+  const hotCount = filteredAccounts.filter(a => parseInt(String(a.intentScore || "0")) >= 70).length;
   const warmCount = filteredAccounts.filter(a => {
-    const score = parseInt(a.intentScore || "0");
+    const score = parseInt(String(a.intentScore || "0"));
     return score >= 40 && score < 70;
   }).length;
 
@@ -197,18 +260,24 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
               <div>
                 <h1 className="text-5xl font-bold tracking-tight">Target Accounts</h1>
                 <p className="text-muted-foreground text-lg mt-1">
-                  {filteredAccounts.length} of {accounts?.length || 0} accounts
+                  {filteredAccounts.length} accounts{isRepMode && ` • ${repInfo?.region} territory`}
                 </p>
               </div>
             </div>
           </div>
-          <Button asChild className="gradient-primary text-white shadow-lg hover:shadow-xl">
-            <Link href="/outreach">
-              <Mail className="mr-2 h-5 w-5" />
-              Generate Outreach
-            </Link>
-          </Button>
+          <div className="flex items-center gap-4">
+            <RepSwitcher />
+            <Button asChild className="gradient-primary text-white shadow-lg hover:shadow-xl">
+              <Link href="/outreach">
+                <Mail className="mr-2 h-5 w-5" />
+                Generate Outreach
+              </Link>
+            </Button>
+          </div>
         </div>
+
+        {/* AI Assistant Bar */}
+        <ContextualAI context="accounts" placeholder="Ask AI: Which accounts have the highest intent?" />
 
         {/* Quick Stats - All Clickable */}
         <div className="grid gap-6 md:grid-cols-3">
@@ -264,7 +333,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
         {/* Filters */}
         <Card className="card-elevated">
           <CardContent className="p-6">
-            <div className="grid md:grid-cols-6 gap-4">
+            <div className="grid md:grid-cols-7 gap-4">
               {/* Search */}
               <div className="md:col-span-2">
                 <div className="relative">
@@ -326,6 +395,18 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                   <SelectItem value="cold">Cold (&lt;40)</SelectItem>
                 </SelectContent>
               </Select>
+
+              <Select value={techFilter} onValueChange={setTechFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="MFA Provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All MFA</SelectItem>
+                  {mfaProviders.map((provider: string) => (
+                    <SelectItem key={provider} value={provider}>{provider}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Sort Controls */}
@@ -377,7 +458,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredAccounts.map((account) => {
-              const intentBadge = getIntentBadge(account.intentScore || "0");
+              const intentBadge = getIntentBadge(String(account.intentScore || "0"));
               const IntentIcon = intentBadge.icon;
 
               return (
@@ -429,12 +510,47 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                         )}
                       </div>
 
-                      {/* Relationship Badge */}
-                      {account.relationship && (
-                        <Badge variant="outline" className="w-fit">
-                          {account.relationship}
-                        </Badge>
-                      )}
+                      {/* Temperature & Activity from rawData */}
+                      {(() => {
+                        const rawData = (account.rawData as Record<string, any>) || {};
+                        const temperature = rawData.temperature;
+                        const daysSinceActivity = rawData.daysSinceLastEngagement || rawData.lastSalesActivityDays;
+                        const salesActivities = rawData.salesActivities || 0;
+                        const accountOwner = rawData.accountOwner || rawData.owner;
+                        
+                        return (
+                          <div className="flex flex-wrap gap-1.5">
+                            {temperature && (
+                              <Badge className={`text-xs ${
+                                temperature === 'Hot' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                                temperature === 'Warm' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                                'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                              }`}>
+                                {temperature === 'Hot' ? '🔥' : temperature === 'Warm' ? '🌡️' : '❄️'} {temperature}
+                              </Badge>
+                            )}
+                            {daysSinceActivity !== null && daysSinceActivity !== undefined && (
+                              <Badge variant="outline" className={`text-xs ${
+                                daysSinceActivity <= 7 ? 'border-green-500/50 text-green-400' :
+                                daysSinceActivity <= 30 ? 'border-yellow-500/50 text-yellow-400' :
+                                'border-red-500/50 text-red-400'
+                              }`}>
+                                {daysSinceActivity}d ago
+                              </Badge>
+                            )}
+                            {salesActivities > 0 && (
+                              <Badge variant="outline" className="text-xs border-purple-500/30 text-purple-400">
+                                {salesActivities} activities
+                              </Badge>
+                            )}
+                            {account.relationship && (
+                              <Badge variant="outline" className="text-xs">
+                                {account.relationship}
+                              </Badge>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {/* Action Button */}
                       <Button 

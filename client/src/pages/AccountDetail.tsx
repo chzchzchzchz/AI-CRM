@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { TechStackAnalysis } from "@/components/TechStackAnalysis";
-import { OverviewTab } from "@/components/OverviewTab";
-import { ResearchTab } from "@/components/ResearchTab";
-import { AIInsightsTab } from "@/components/AIInsightsTab";
+import { IntelligenceTab } from "@/components/IntelligenceTab";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +35,7 @@ export default function AccountDetailEnhanced() {
     { accountId },
     { enabled: accountId > 0 }
   );
+  
 
   const generateSummaryMutation = trpc.ai.generateAccountSummary.useMutation();
   const geminiResearchMutation = trpc.gemini.researchAccount.useMutation();
@@ -108,7 +107,17 @@ export default function AccountDetailEnhanced() {
   const stackData = parseJSON(account?.techStack);
   const researchData = null; // No research field in schema
   const triggerData = parseJSON(account?.triggerEvents);
-  const rawData = {};
+  
+  // Extract rawData fields
+  const rawData = (account?.rawData as Record<string, any>) || {};
+  const temperature = rawData.temperature;
+  const daysSinceLastEngagement = rawData.daysSinceLastEngagement || rawData.lastSalesActivityDays;
+  const accountOwner = rawData.accountOwner || rawData.owner;
+  const opportunityStatus = rawData.opportunityStatus;
+  const salesActivities = rawData.salesActivities || rawData.engagementActivities || 0;
+  const lastSalesActivity = rawData.lastSalesActivity || rawData.latestEngagementActivity;
+  const recentSecurityIncidents = rawData['Recent Security Incidents'];
+  const ssoProvider = rawData['SSO Provider'];
 
   const formatFieldName = (key: string): string => {
     return key
@@ -219,6 +228,17 @@ export default function AccountDetailEnhanced() {
                   <Badge className={intentBadge.color}>
                     {account.intentScore} {intentBadge.label}
                   </Badge>
+                  {(account as any).buyingStage && (
+                    <Badge variant="outline" className={`
+                      ${(account as any).buyingStage === 'Purchase' ? 'border-green-500 text-green-500' : ''}
+                      ${(account as any).buyingStage === 'Decision' ? 'border-cyan-500 text-cyan-500' : ''}
+                      ${(account as any).buyingStage === 'Consideration' ? 'border-yellow-500 text-yellow-500' : ''}
+                      ${(account as any).buyingStage === 'Awareness' ? 'border-orange-500 text-orange-500' : ''}
+                      ${(account as any).buyingStage === 'Target' ? 'border-gray-500 text-gray-500' : ''}
+                    `}>
+                      {(account as any).buyingStage} Stage
+                    </Badge>
+                  )}
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
@@ -252,18 +272,82 @@ export default function AccountDetailEnhanced() {
                       <span>{account.region}</span>
                     </div>
                   )}
+                  {accountOwner && (
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      <span>Owner: {accountOwner}</span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Temperature & Activity Badges */}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {temperature && (
+                    <Badge className={`text-xs ${
+                      temperature === 'Hot' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                      temperature === 'Warm' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                      'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                    }`}>
+                      {temperature === 'Hot' ? '🔥' : temperature === 'Warm' ? '🌡️' : '❄️'} {temperature}
+                    </Badge>
+                  )}
+                  {daysSinceLastEngagement !== null && daysSinceLastEngagement !== undefined && (
+                    <Badge variant="outline" className={`text-xs ${
+                      daysSinceLastEngagement <= 7 ? 'border-green-500 text-green-400' :
+                      daysSinceLastEngagement <= 30 ? 'border-yellow-500 text-yellow-400' :
+                      'border-red-500 text-red-400'
+                    }`}>
+                      {daysSinceLastEngagement}d since activity
+                    </Badge>
+                  )}
+                  {salesActivities > 0 && (
+                    <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
+                      {salesActivities} activities
+                    </Badge>
+                  )}
+                  {opportunityStatus && (
+                    <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-400">
+                      Opp: {opportunityStatus}
+                    </Badge>
+                  )}
+                  {lastSalesActivity && (
+                    <Badge variant="outline" className="text-xs border-gray-500/50 text-gray-400">
+                      Last: {lastSalesActivity}
+                    </Badge>
+                  )}
+                  {ssoProvider && (
+                    <Badge variant="outline" className="text-xs border-indigo-500/50 text-indigo-400">
+                      SSO: {ssoProvider}
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 flex-shrink-0 flex-wrap">
             <Button className="gradient-primary text-white" asChild>
               <Link href="/outreach">
                 <Mail className="mr-2 h-4 w-4" />
                 Generate Outreach
               </Link>
             </Button>
+            {account.linkedinUrl && (
+              <Button variant="outline" asChild>
+                <a href={account.linkedinUrl} target="_blank" rel="noopener noreferrer">
+                  <Linkedin className="mr-2 h-4 w-4" />
+                  LinkedIn
+                </a>
+              </Button>
+            )}
+            {(account as any).sfdcAccountId && (
+              <Button variant="outline" className="border-blue-500 text-blue-600 hover:bg-blue-50" asChild>
+                <a href={`https://company.lightning.force.com/lightning/r/Account/${(account as any).sfdcAccountId}/view`} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Salesforce
+                </a>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -311,30 +395,51 @@ export default function AccountDetailEnhanced() {
           <Card className="card-elevated border-l-4 border-l-emerald-500">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-emerald-500" />
-                Relationship
+                <Target className="h-4 w-4 text-emerald-500" />
+                Buying Stage
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{account.relationship || "Prospect"}</div>
-              <p className="text-xs text-muted-foreground mt-1">Current status</p>
+              {(() => {
+                // Infer buying stage from intent score if not set
+                const intentNum = parseInt(String(account.intentScore || 0));
+                const stage = (account as any).buyingStage || (
+                  intentNum >= 86 ? 'Purchase' :
+                  intentNum >= 70 ? 'Decision' :
+                  intentNum >= 50 ? 'Consideration' :
+                  intentNum >= 20 ? 'Awareness' :
+                  'Target'
+                );
+                const stageColor = 
+                  stage === 'Purchase' ? 'text-green-500' :
+                  stage === 'Decision' ? 'text-cyan-500' :
+                  stage === 'Consideration' ? 'text-yellow-500' :
+                  stage === 'Awareness' ? 'text-orange-500' :
+                  'text-gray-500';
+                return (
+                  <>
+                    <div className={`text-2xl font-bold ${stageColor}`}>{stage}</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {(account as any).buyingStage ? '6sense' : 'Inferred from intent'}
+                    </p>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs defaultValue="intelligence" className="space-y-6">
           <TabsList className="bg-card border">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="intelligence">Intelligence</TabsTrigger>
             <TabsTrigger value="contacts">Contacts ({people?.length || 0})</TabsTrigger>
             <TabsTrigger value="calls">Calls ({gongCalls?.length || 0})</TabsTrigger>
-            <TabsTrigger value="research">Research</TabsTrigger>
-            <TabsTrigger value="ai">AI Insights</TabsTrigger>
           </TabsList>
 
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            <OverviewTab accountId={accountId} account={account} />
+          {/* Intelligence Tab */}
+          <TabsContent value="intelligence" className="space-y-6">
+            <IntelligenceTab accountId={accountId} account={account} />
           </TabsContent>
 
           {/* Contacts Tab */}
@@ -477,15 +582,7 @@ export default function AccountDetailEnhanced() {
             )}
           </TabsContent>
 
-          {/* Research Tab */}
-          <TabsContent value="research" className="space-y-6">
-            <ResearchTab accountId={accountId} />
-          </TabsContent>
 
-          {/* AI Insights Tab */}
-          <TabsContent value="ai" className="space-y-6">
-            <AIInsightsTab accountId={accountId} />
-          </TabsContent>
         </Tabs>
       </div>
     </div>

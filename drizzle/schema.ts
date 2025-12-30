@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, tinyint, decimal } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -8,12 +8,32 @@ export const users = mysqlTable("users", {
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
+  passwordHash: varchar("passwordHash", { length: 255 }), // For email/password auth
+  loginMethod: varchar("loginMethod", { length: 64 }), // 'oauth', 'email', 'demo'
+  isApproved: boolean("isApproved").default(false), // For demo access approval
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  twoFactorEnabled: boolean("twoFactorEnabled").default(false), // 2FA status
+  twoFactorSecret: varchar("twoFactorSecret", { length: 255 }), // TOTP secret
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
+
+// Access requests table for demo/conference access
+export const accessRequests = mysqlTable("access_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  company: varchar("company", { length: 255 }),
+  reason: text("reason"), // Why they want access
+  status: mysqlEnum("status", ["pending", "approved", "denied"]).default("pending").notNull(),
+  reviewedBy: int("reviewedBy"), // Admin who reviewed
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AccessRequest = typeof accessRequests.$inferSelect;
+export type InsertAccessRequest = typeof accessRequests.$inferInsert;
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -41,7 +61,17 @@ export const accounts = mysqlTable("accounts", {
   triggerEvents: text("triggerEvents"),
   rawData: json("rawData"),
   aiOverviewCache: text("aiOverviewCache"),
+  aiInsightsCache: text("aiInsightsCache"),
+  aiResearchCache: text("aiResearchCache"),
   aiCacheUpdatedAt: timestamp("aiCacheUpdatedAt"),
+  // 6sense integration fields
+  sixsenseId: varchar("sixsenseId", { length: 255 }),
+  sixsenseBuyingStage: varchar("sixsenseBuyingStage", { length: 100 }),
+  sixsenseProfileFit: varchar("sixsenseProfileFit", { length: 100 }),
+  sixsenseSegments: text("sixsenseSegments"), // JSON array of segments
+  lastSixsenseSync: timestamp("lastSixsenseSync"),
+  // Salesforce integration fields
+  sfdcAccountId: varchar("sfdcAccountId", { length: 18 }), // Salesforce 18-char ID
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -63,6 +93,10 @@ export const contacts = mysqlTable("contacts", {
   linkedinUrl: varchar("linkedinUrl", { length: 500 }),
   location: varchar("location", { length: 255 }),
   department: varchar("department", { length: 100 }),
+  // Salesforce integration fields
+  sfdcContactId: varchar("sfdcContactId", { length: 18 }), // Salesforce 18-char ID
+  mobilePhone: varchar("mobilePhone", { length: 50 }),
+  directPhone: varchar("directPhone", { length: 50 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -176,6 +210,25 @@ export const enrichmentLogs = mysqlTable("enrichmentLogs", {
 export type EnrichmentLog = typeof enrichmentLogs.$inferSelect;
 export type InsertEnrichmentLog = typeof enrichmentLogs.$inferInsert;
 
+// Validation Cache table - stores web search validation results
+export const validationCache = mysqlTable("validationCache", {
+  id: int("id").autoincrement().primaryKey(),
+  entityType: varchar("entityType", { length: 50 }).notNull(), // 'account', 'contact'
+  entityId: int("entityId").notNull(),
+  field: varchar("field", { length: 100 }).notNull(), // 'domain', 'employeeCount', 'email', etc.
+  isValid: boolean("isValid").notNull(), // true = valid, false = invalid
+  severity: varchar("severity", { length: 20 }), // 'critical', 'warning', 'info'
+  issue: text("issue"), // Description of the problem
+  suggestion: text("suggestion"), // How to fix it
+  evidence: text("evidence"), // Search results or API response
+  confidence: decimal("confidence", { precision: 3, scale: 2 }), // 0.00-1.00
+  checkedAt: timestamp("checkedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ValidationCache = typeof validationCache.$inferSelect;
+export type InsertValidationCache = typeof validationCache.$inferInsert;
+
 // Context Store for AI learning
 export const contextStore = mysqlTable("contextStore", {
   id: int("id").autoincrement().primaryKey(),
@@ -258,3 +311,308 @@ export const newsItems = mysqlTable("newsItems", {
 
 export type NewsItem = typeof newsItems.$inferSelect;
 export type InsertNewsItem = typeof newsItems.$inferInsert;
+
+
+// 6sense 6QA (Qualified Accounts) tracking
+export const sixsense6QA = mysqlTable("sixsense6QA", {
+  id: int("id").autoincrement().primaryKey(),
+  accountName: varchar("accountName", { length: 255 }).notNull(),
+  sixsenseId: varchar("sixsenseId", { length: 64 }),
+  crmAccountId: varchar("crmAccountId", { length: 64 }),
+  dateCreated: timestamp("dateCreated"),
+  responseTimeDays: int("responseTimeDays").default(0),
+  lastActiveDaysAgo: int("lastActiveDaysAgo").default(0),
+  salesActivities: int("salesActivities").default(0),
+  reachedContacts: int("reachedContacts").default(0),
+  owner: varchar("owner", { length: 255 }),
+  domain: varchar("domain", { length: 255 }),
+  country: varchar("country", { length: 100 }),
+  isWorked: boolean("isWorked").default(false),
+  dataAsOf: timestamp("dataAsOf").notNull(), // When this data was exported from 6sense
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Sixsense6QA = typeof sixsense6QA.$inferSelect;
+export type InsertSixsense6QA = typeof sixsense6QA.$inferInsert;
+
+// 6sense Keyword Performance
+export const sixsenseKeywords = mysqlTable("sixsenseKeywords", {
+  id: int("id").autoincrement().primaryKey(),
+  keyword: varchar("keyword", { length: 255 }).notNull(),
+  totalAccounts: int("totalAccounts").default(0),
+  accountsWithWebVisits: int("accountsWithWebVisits").default(0),
+  accountsWith6QA: int("accountsWith6QA").default(0),
+  accountsWithOpportunities: int("accountsWithOpportunities").default(0),
+  accountsWithRelevantOpportunities: int("accountsWithRelevantOpportunities").default(0),
+  category: varchar("category", { length: 100 }), // 'competitor', 'product', 'pain_point', 'compliance', etc.
+  dataAsOf: timestamp("dataAsOf").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SixsenseKeyword = typeof sixsenseKeywords.$inferSelect;
+export type InsertSixsenseKeyword = typeof sixsenseKeywords.$inferInsert;
+
+// 6sense Buying Stage Metrics (time series)
+export const sixsenseBuyingStageMetrics = mysqlTable("sixsenseBuyingStageMetrics", {
+  id: int("id").autoincrement().primaryKey(),
+  timeframe: varchar("timeframe", { length: 100 }).notNull(), // "Nov 30 - Dec 6, 2025"
+  buyingStage: varchar("buyingStage", { length: 50 }).notNull(), // Target, Awareness, Consideration, Decision, Purchase
+  numberOfAccounts: int("numberOfAccounts").default(0),
+  newPipelineUSD: decimal("newPipelineUSD", { precision: 15, scale: 2 }),
+  totalWonUSD: decimal("totalWonUSD", { precision: 15, scale: 2 }),
+  dataAsOf: timestamp("dataAsOf").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SixsenseBuyingStageMetric = typeof sixsenseBuyingStageMetrics.$inferSelect;
+export type InsertSixsenseBuyingStageMetric = typeof sixsenseBuyingStageMetrics.$inferInsert;
+
+// 6sense Engagement Metrics (time series)
+export const sixsenseEngagementMetrics = mysqlTable("sixsenseEngagementMetrics", {
+  id: int("id").autoincrement().primaryKey(),
+  timeWindow: varchar("timeWindow", { length: 100 }).notNull(),
+  engagementState: varchar("engagementState", { length: 100 }).notNull(), // No Engagement, Intent, Anonymous Website Visit, Known Engagement, Opps Created, Opps Won
+  accounts: int("accounts").default(0),
+  amountUSD: decimal("amountUSD", { precision: 15, scale: 2 }),
+  dataAsOf: timestamp("dataAsOf").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SixsenseEngagementMetric = typeof sixsenseEngagementMetrics.$inferSelect;
+export type InsertSixsenseEngagementMetric = typeof sixsenseEngagementMetrics.$inferInsert;
+
+// 6sense 6QA Performance (daily metrics)
+export const sixsense6QAPerformance = mysqlTable("sixsense6QAPerformance", {
+  id: int("id").autoincrement().primaryKey(),
+  day: timestamp("day").notNull(),
+  total6QAs: int("total6QAs").default(0),
+  new6QAs: int("new6QAs").default(0),
+  worked: int("worked").default(0),
+  unworked: int("unworked").default(0),
+  avgSalesActivities: decimal("avgSalesActivities", { precision: 5, scale: 1 }),
+  avgContactsReached: decimal("avgContactsReached", { precision: 5, scale: 1 }),
+  avgDaysToFirstActivity: decimal("avgDaysToFirstActivity", { precision: 5, scale: 1 }),
+  avgDaysSinceLastActivity: decimal("avgDaysSinceLastActivity", { precision: 5, scale: 1 }),
+  dataAsOf: timestamp("dataAsOf").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Sixsense6QAPerformance = typeof sixsense6QAPerformance.$inferSelect;
+export type InsertSixsense6QAPerformance = typeof sixsense6QAPerformance.$inferInsert;
+
+// Email History (generated outreach emails)
+export const emailHistory = mysqlTable("emailHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  accountId: int("accountId"),
+  contactId: int("contactId"),
+  recipientEmail: varchar("recipientEmail", { length: 320 }),
+  subject: varchar("subject", { length: 500 }),
+  body: text("body"),
+  attachments: json("attachments"), // Array of attachment URLs
+  status: varchar("status", { length: 50 }).default("generated"), // generated, sent, opened, replied
+  sentAt: timestamp("sentAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EmailHistoryRecord = typeof emailHistory.$inferSelect;
+export type InsertEmailHistory = typeof emailHistory.$inferInsert;
+
+// AI Chat History
+export const aiChatHistory = mysqlTable("aiChatHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  sessionId: varchar("sessionId", { length: 64 }).notNull(),
+  role: varchar("role", { length: 20 }).notNull(), // 'user' or 'assistant'
+  content: text("content").notNull(),
+  metadata: json("metadata"), // Additional context like account/contact references
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AIChatHistoryRecord = typeof aiChatHistory.$inferSelect;
+export type InsertAIChatHistory = typeof aiChatHistory.$inferInsert;
+
+
+// AI Response Cache - stores cached AI responses to avoid re-generating identical queries
+export const aiResponseCache = mysqlTable("aiResponseCache", {
+  id: int("id").autoincrement().primaryKey(),
+  queryHash: varchar("queryHash", { length: 64 }).notNull().unique(), // SHA-256 hash of query + context
+  query: text("query").notNull(),
+  contextHash: varchar("contextHash", { length: 64 }), // Hash of additional context (accountId, etc.)
+  answer: text("answer").notNull(),
+  reasoning: text("reasoning"), // Optional Deep-Think reasoning
+  model: varchar("model", { length: 50 }),
+  hitCount: int("hitCount").default(1), // Number of times this cache entry was used
+  lastHitAt: timestamp("lastHitAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(), // TTL for cache entry
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AIResponseCacheRecord = typeof aiResponseCache.$inferSelect;
+export type InsertAIResponseCache = typeof aiResponseCache.$inferInsert;
+
+
+// Knowledge Base - uploaded documents for RAG
+export const knowledgeBase = mysqlTable("knowledgeBase", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  fileName: varchar("fileName", { length: 500 }).notNull(),
+  fileKey: varchar("fileKey", { length: 500 }).notNull(), // S3 key
+  fileUrl: varchar("fileUrl", { length: 1000 }).notNull(),
+  mimeType: varchar("mimeType", { length: 100 }),
+  fileSize: int("fileSize"), // bytes
+  category: varchar("category", { length: 100 }), // 'battle_card', 'case_study', 'product_sheet', 'competitor_intel', 'playbook'
+  status: varchar("status", { length: 50 }).default("processing"), // 'processing', 'ready', 'error'
+  chunkCount: int("chunkCount").default(0),
+  metadata: json("metadata"), // Additional metadata (tags, description, etc.)
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type KnowledgeBaseDoc = typeof knowledgeBase.$inferSelect;
+export type InsertKnowledgeBaseDoc = typeof knowledgeBase.$inferInsert;
+
+// Document Chunks - semantic chunks for RAG retrieval
+export const documentChunks = mysqlTable("documentChunks", {
+  id: int("id").autoincrement().primaryKey(),
+  documentId: int("documentId").notNull(),
+  chunkIndex: int("chunkIndex").notNull(), // Order within document
+  content: text("content").notNull(),
+  embedding: json("embedding"), // Vector embedding (array of floats)
+  metadata: json("metadata"), // Section title, page number, etc.
+  tokenCount: int("tokenCount"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DocumentChunk = typeof documentChunks.$inferSelect;
+export type InsertDocumentChunk = typeof documentChunks.$inferInsert;
+
+// User Interactions - track all AI interactions for learning
+export const userInteractions = mysqlTable("userInteractions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  sessionId: varchar("sessionId", { length: 64 }),
+  actionType: varchar("actionType", { length: 100 }).notNull(), // 'ai_chat', 'email_generated', 'data_processed', 'content_created'
+  inputData: json("inputData"), // What the user provided
+  outputData: json("outputData"), // What the AI generated
+  feedback: varchar("feedback", { length: 50 }), // 'positive', 'negative', 'edited', null
+  feedbackDetails: text("feedbackDetails"), // User's edits or comments
+  contextUsed: json("contextUsed"), // Which RAG chunks were used
+  accountId: int("accountId"), // Related account if applicable
+  contactId: int("contactId"), // Related contact if applicable
+  durationMs: int("durationMs"), // How long the operation took
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type UserInteraction = typeof userInteractions.$inferSelect;
+export type InsertUserInteraction = typeof userInteractions.$inferInsert;
+
+// Data Processing Jobs - track data imports and transformations
+export const dataProcessingJobs = mysqlTable("dataProcessingJobs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  jobType: varchar("jobType", { length: 100 }).notNull(), // 'lead_import', 'account_enrichment', 'contact_merge', 'csv_transform'
+  status: varchar("status", { length: 50 }).default("pending"), // 'pending', 'processing', 'completed', 'failed'
+  inputFileKey: varchar("inputFileKey", { length: 500 }),
+  inputFileUrl: varchar("inputFileUrl", { length: 1000 }),
+  outputFileKey: varchar("outputFileKey", { length: 500 }),
+  outputFileUrl: varchar("outputFileUrl", { length: 1000 }),
+  recordsTotal: int("recordsTotal").default(0),
+  recordsProcessed: int("recordsProcessed").default(0),
+  recordsSuccess: int("recordsSuccess").default(0),
+  recordsFailed: int("recordsFailed").default(0),
+  errorLog: json("errorLog"), // Array of errors
+  fieldMappings: json("fieldMappings"), // How fields were mapped
+  transformRules: json("transformRules"), // What rules were applied
+  learnings: json("learnings"), // What the system learned from user corrections
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DataProcessingJob = typeof dataProcessingJobs.$inferSelect;
+export type InsertDataProcessingJob = typeof dataProcessingJobs.$inferInsert;
+
+// Generated Content - all AI-generated content with feedback
+export const generatedContent = mysqlTable("generatedContent", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  contentType: varchar("contentType", { length: 100 }).notNull(), // 'email', 'webinar_promo', 'battle_card', 'call_script', 'linkedin_message'
+  title: varchar("title", { length: 500 }),
+  content: text("content").notNull(),
+  ragSourceIds: json("ragSourceIds"), // Which knowledge base docs were used
+  accountId: int("accountId"),
+  contactId: int("contactId"),
+  promptUsed: text("promptUsed"),
+  userEdits: text("userEdits"), // What the user changed
+  feedback: varchar("feedback", { length: 50 }), // 'used', 'edited', 'discarded'
+  outcome: varchar("outcome", { length: 100 }), // 'sent', 'opened', 'replied', 'converted'
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type GeneratedContentRecord = typeof generatedContent.$inferSelect;
+export type InsertGeneratedContent = typeof generatedContent.$inferInsert;
+
+
+// Transcript Analysis Reports
+export const transcriptReports = mysqlTable("transcriptReports", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").default(0).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  transcript: text("transcript").notNull(),
+  analysis: json("analysis").notNull(), // Full analysis result JSON
+  accountId: int("accountId"), // Optional link to account
+  contactId: int("contactId"), // Optional link to contact
+  shareId: varchar("shareId", { length: 64 }).notNull(), // Public share ID for anyone to view
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TranscriptReport = typeof transcriptReports.$inferSelect;
+export type InsertTranscriptReport = typeof transcriptReports.$inferInsert;
+
+// Email verification codes table
+export const emailVerificationCodes = mysqlTable("email_verification_codes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  code: varchar("code", { length: 6 }).notNull(), // 6-digit code
+  email: varchar("email", { length: 320 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  attempts: int("attempts").default(0),
+  verified: boolean("verified").default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EmailVerificationCode = typeof emailVerificationCodes.$inferSelect;
+export type InsertEmailVerificationCode = typeof emailVerificationCodes.$inferInsert;
+
+// Password reset codes table
+export const passwordResetCodes = mysqlTable("password_reset_codes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  code: varchar("code", { length: 32 }).notNull(), // 32-char code
+  email: varchar("email", { length: 320 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  used: boolean("used").default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PasswordResetCode = typeof passwordResetCodes.$inferSelect;
+export type InsertPasswordResetCode = typeof passwordResetCodes.$inferInsert;
+
+
+// Audit Logs - tracks all authentication and admin events
+export const auditLogs = mysqlTable("auditLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  eventType: varchar("eventType", { length: 100 }).notNull(),
+  description: text("description").notNull(),
+  ipAddress: varchar("ipAddress", { length: 45 }), // IPv4 or IPv6
+  userAgent: text("userAgent"),
+  metadata: json("metadata"), // Additional context as JSON
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;

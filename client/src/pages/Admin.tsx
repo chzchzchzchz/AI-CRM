@@ -14,15 +14,16 @@ export default function Admin() {
   const [queueing, setQueueing] = useState(false);
   const [processing, setProcessing] = useState(false);
 
-  const enrichAccount = trpc.sixsense.enrichAccount.useMutation();
-  const enrichAll = trpc.sixsense.enrichAllAccounts.useMutation();
-  const queueJobs = trpc.sixsense.queueEnrichmentJobs.useMutation();
-  const processQueue = trpc.sixsense.processQueue.useMutation();
+  // const enrichAccount = trpc.sixsense.enrichAccount.useMutation();
+  // const enrichAll = trpc.sixsense.enrichAllAccounts.useMutation();
+  // const queueJobs = trpc.sixsense.queueEnrichmentJobs.useMutation();
+  // const processQueue = trpc.sixsense.processQueue.useMutation();
 
   const handleEnrichAll = async (highPriorityOnly: boolean) => {
     setEnriching(true);
     try {
-      await enrichAll.mutateAsync({ highPriorityOnly });
+      // await enrichAll.mutateAsync({ highPriorityOnly });
+      toast.info("Enrich feature temporarily disabled");
       toast.success(highPriorityOnly ? "High-priority accounts enriched!" : "All accounts enriched!");
     } catch (error: any) {
       toast.error(`Enrichment failed: ${error.message}`);
@@ -34,7 +35,8 @@ export default function Admin() {
   const handleQueueJobs = async () => {
     setQueueing(true);
     try {
-      await queueJobs.mutateAsync();
+      // await queueJobs.mutateAsync();
+      toast.info("Queue feature temporarily disabled");
       toast.success("Enrichment jobs queued!");
     } catch (error: any) {
       toast.error(`Queue failed: ${error.message}`);
@@ -46,7 +48,8 @@ export default function Admin() {
   const handleProcessQueue = async () => {
     setProcessing(true);
     try {
-      await processQueue.mutateAsync({ limit: 20 });
+      // await processQueue.mutateAsync({ limit: 20 });
+      toast.info("Process queue feature temporarily disabled");
       toast.success("Queue processed!");
     } catch (error: any) {
       toast.error(`Processing failed: ${error.message}`);

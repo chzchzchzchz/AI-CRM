@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { Sparkles, FileText, RefreshCw, Clock } from "lucide-react";
-import { Streamdown } from "streamdown";
-import { TechStackAnalysis } from "./TechStackAnalysis";
+import { SafeStreamdown } from "@/components/SafeStreamdown";
+import { TechStackDisplay } from "./TechStackDisplay";
 
 interface OverviewTabProps {
   accountId: number;
@@ -14,14 +14,24 @@ interface OverviewTabProps {
 export function OverviewTab({ accountId, account }: OverviewTabProps) {
   const { data, isLoading, refetch } = trpc.ai.compileOverview.useQuery({ accountId });
 
-  // Parse stack data
-  let stackData: any = {};
+  // Parse tech stack and security stack data
+  let techStack: string[] | null = null;
+  let securityStack: string[] | null = null;
+  
   try {
     if (account.techStack) {
-      stackData = typeof account.techStack === 'string' ? JSON.parse(account.techStack) : account.techStack;
+      techStack = typeof account.techStack === 'string' ? JSON.parse(account.techStack) : account.techStack;
     }
   } catch (e) {
-    console.error('Failed to parse stack data:', e);
+    console.error('Failed to parse tech stack:', e);
+  }
+  
+  try {
+    if (account.securityStack) {
+      securityStack = typeof account.securityStack === 'string' ? JSON.parse(account.securityStack) : account.securityStack;
+    }
+  } catch (e) {
+    console.error('Failed to parse security stack:', e);
   }
 
   const handleRefresh = () => {
@@ -76,7 +86,7 @@ export function OverviewTab({ accountId, account }: OverviewTabProps) {
             </div>
           ) : data ? (
             <div className="prose prose-sm dark:prose-invert max-w-none">
-              <Streamdown>{data.summary}</Streamdown>
+              <SafeStreamdown>{data.summary}</SafeStreamdown>
             </div>
           ) : (
             <div className="p-4 rounded-lg bg-muted/50 text-center text-muted-foreground">
@@ -102,9 +112,7 @@ export function OverviewTab({ accountId, account }: OverviewTabProps) {
       )}
 
       {/* Technology Stack */}
-      {Object.keys(stackData).length > 0 && (
-        <TechStackAnalysis accountId={accountId} />
-      )}
+      <TechStackDisplay techStack={techStack} securityStack={securityStack} />
     </div>
   );
 }

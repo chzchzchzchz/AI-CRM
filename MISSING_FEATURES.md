@@ -1,134 +1,124 @@
-# Missing Features from Original Site
+# Feature Status Tracker
+**Last Updated: December 15, 2025**
 
-## Critical Missing Features
-
-### 1. Executive Summary (Account Detail Page)
-- **Status**: Shows skeleton loading, no actual AI-generated content
-- **Original**: AI-generated executive summary with company insights
-- **Action**: Connect to LLM API and generate real summaries
-
-### 2. Company Logos
-- **Status**: Many accounts show "LinkedIn" text instead of actual logos
-- **Original**: Proper company logos/icons displayed
-- **Action**: Implement logo fetching or use placeholder icons
-
-### 3. Data Quality Issues
-- **Status**: Many accounts have "Unknown" industry and "0" intent scores
-- **Original**: Rich, complete data for all accounts
-- **Action**: Enrich data from 6sense API or CSV imports
-
-## Design & UI Missing Elements
-
-### Homepage/Dashboard
-- [ ] Priority Actions cards with proper styling (flame, lightning, link icons)
-- [ ] Action buttons with different colored backgrounds per priority
-- [ ] This Week's Focus checklist section
-- [ ] Quick Actions section
-- [ ] AI Assistant floating button (purple, bottom right)
-
-### Accounts List Page
-- [ ] Page header icon (purple database/layers icon)
-- [ ] Account count display "756 of [redacted] accounts"
-- [ ] 3-column grid layout (currently using different layout)
-- [ ] Dashed borders on account cards
-- [ ] Flame icons (red circles) for hot accounts
-- [ ] Intent badges (purple pills "98 Hot")
-- [ ] Icons in account details (briefcase, users, map-pin)
-
-### Account Detail Page
-- [ ] Company logo/icon (large colored square)
-- [ ] Intent badge in header (purple pill)
-- [ ] Company info row with proper icons (globe, briefcase, users, map-pin)
-- [ ] "Generate Outreach" button (purple, top right)
-- [ ] Technology Stack section with "Analyze Tech Stack with AI" button
-- [ ] Contacts tab: 3-column grid with dashed borders, purple avatars
-- [ ] Research tab: AI Research Synthesis with cyan border
-- [ ] AI Insights tab: Strategic Recommendations with purple border
-
-### Calls/Gong Calls Page
-- [ ] Page header icon (cyan phone icon)
-- [ ] Colored borders on stat cards (cyan, blue, purple)
-- [ ] Icons on stat cards (phone, clock, building)
-- [ ] Company filter dropdown
-- [ ] Sort buttons (Date, Duration, Company) with active states
-- [ ] Call cards with: duration, participant info, transcript preview, play button, tags/topics
-
-### Insights/Data Analytics Studio Page
-- [ ] **ENTIRE PAGE MISSING** - needs to be built from scratch
-- [ ] Title "Data Analytics Studio"
-- [ ] Tabs navigation (Overview, Chart Builder, Custom Dashboards)
-- [ ] 4 stat cards with colored borders
-- [ ] Intent Score Distribution chart (interactive, dashed border)
-- [ ] Top Industries chart (clickable bars, cyan)
-- [ ] Geographic Distribution chart (clickable bars, pink/magenta)
-- [ ] Chart interactivity (click to filter, update other charts)
-
-### Outreach Page
-- [x] Two-column layout ✅
-- [x] Step 1: Select Target Accounts with checkboxes ✅
-- [x] Step 2: Select Contacts with checkboxes ✅
-- [x] Step 3: Add Context textarea ✅
-- [x] Generate button ✅
-- [ ] Proper styling with dashed borders
-- [ ] Cyan/purple icons
-- [ ] Better visual hierarchy
-
-## Functionality Missing
+## ✅ COMPLETED FEATURES
 
 ### AI Features
-- [ ] Executive Summary generation (skeleton only, no content)
-- [ ] AI Research Synthesis generation
-- [ ] AI Strategic Recommendations generation
-- [ ] Tech Stack Analysis with AI
-- [ ] AI Assistant chatbot (button exists but not functional)
+- [x] **Executive Summary generation** - VECTOR scoring system with 4 dimensions (Engagement, Conversion, Strategic Value, Timing)
+- [x] **AI Research Synthesis** - Deep analysis with power map, buying signals, talk tracks
+- [x] **AI Strategic Recommendations** - Tactical insights with action plans and contact prioritization
+- [x] **Tech Stack Analysis** - Security stack and tech stack display with competitor detection
+- [x] **AI Assistant chatbot** - Floating button, functional chat interface
+
+### 6sense Integration
+- [x] **6sense data import** - Buying stages, keywords, engagement, 6QA performance
+- [x] **Intent scoring** - Hot/Warm/Cold leads based on intent + engagement + calls
+- [x] **Buying stage inference** - Target/Awareness/Consideration/Decision/Purchase from intent
+- [x] **Keyword tracking** - 50+ intent keywords with account volumes
+- [x] **6QA metrics** - 668 total, 101 worked, 567 unworked gap
+
+### Outreach Page
+- [x] **Single account/contact selection** - No more multiple checkboxes
+- [x] **Sorted by intent score** - Hot leads first
+- [x] **Contact auto-filter** - Shows only contacts for selected account
+- [x] **Invalid accounts filtered** - CHECK, #N/A, Unknown removed
+- [x] **Email generation** - AI-powered personalized emails
+- [x] **Open in Gmail/Outlook** - Pre-filled compose links
+- [x] **Copy to clipboard** - With subject line
+- [x] **Attachment support** - Add PDFs, case studies
+
+### Dashboard/Home Page
+- [x] **Priority Actions cards** - Hot leads, warm leads, 6QA gap
+- [x] **Trending Keywords sidebar** - Top 8 intent keywords
+- [x] **Warm leads definition** - Engagement OR intent 70+ OR previous calls
+- [x] **Stats cards** - Total accounts, contacts, hot leads
+
+### Account Detail Page
+- [x] **VECTOR score breakdown** - 4 dimensions with tier assignment
+- [x] **Buying stage badge** - Inferred from intent score
+- [x] **Power map** - Prioritized contacts with approach recommendations
+- [x] **Competitive landscape** - Based on security stack
+- [x] **Talk tracks** - Specific conversation starters
+- [x] **Action plan** - Prioritized next steps with deadlines
+
+### Territory & Rep Assignment
+- [x] **Rep assignment logic** - Based on territory (East/Central/West) and size (Commercial/Enterprise 2000+)
+- [x] **Rep roster** - Miranda/Kevin (East), Zane/Jeff (Central), Morgan/Dan (West)
+- [x] **SFDC Services handling** - Auto-assigns based on territory/size
+
+### Data & Integrations
+- [x] **6sense CSV import** - Buying stages, keywords, engagement performance
+- [x] **Gong calls data** - Call history with summaries (schema ready)
+- [x] **Tech stack enrichment** - Security and tech stack from ZoomInfo
+
+---
+
+## 🔧 IN PROGRESS / BUGS
+
+### Bugs to Fix
+- [ ] **Reload insights button not working** - Needs cache invalidation
+- [ ] **157 contacts showing in AI insights** - Should be top 10 prioritized
+- [ ] **Lost Opp context** - Should note "check Salesforce for history"
+
+### UI Polish
+- [ ] Company logos (still showing placeholders in some places)
+- [ ] Dashed borders on cards (design consistency)
+- [ ] TypeScript errors (155 remaining - mostly in unused files)
+
+---
+
+## ❌ NOT YET BUILT
+
+### Data Analytics Studio Page
+- [ ] **ENTIRE PAGE** - 0% complete
+- [ ] Intent Score Distribution chart
+- [ ] Top Industries chart
+- [ ] Geographic Distribution chart
+- [ ] Chart interactivity (click to filter)
 
 ### Search & Filtering
 - [ ] Global search (⌘K command palette)
-- [ ] Advanced filtering on Accounts page (multi-select dropdowns)
-- [ ] Working filters on Calls page
-- [ ] Real-time search with highlighting
+- [ ] Advanced multi-select filters
+- [ ] Saved filter presets
 
-### Data & Integrations
-- [ ] 6sense integration for real-time intent score updates
-- [ ] Gong integration for call recordings/transcripts
-- [ ] Clay integration for data enrichment
-- [ ] Zapier integration for automation
-
-### Other Features
+### Export & Bulk Operations
 - [ ] Contact export to CSV
-- [ ] Bulk operations on contacts/accounts
-- [ ] Task management system
-- [ ] Notification system
-- [ ] User preferences/settings
+- [ ] Account list export
+- [ ] Bulk email generation
 
-## TypeScript Errors to Fix
-- 134 remaining compilation errors
-- Main issues:
-  - `.employees` → `.employeeCount` (20+ occurrences)
-  - `call.participants` and `call.summary` references (fields don't exist)
-  - Type mismatches (null vs undefined, number vs string)
-  - Admin.tsx router references
-  - AccountDetail component errors
+### Document Knowledge Base (RAG)
+- [ ] Document upload UI
+- [ ] Semantic chunking pipeline
+- [ ] Embedding generation
+- [ ] Auto-inject into AI calls
+- [ ] Citation tracking
 
-## Summary
+### Email History
+- [ ] Store generated emails in database
+- [ ] View past outreach per account/contact
+- [ ] Track sent vs drafted
 
-**Completion Status**: ~40% of original site features implemented
+---
 
-**High Priority Missing**:
-1. Insights/Data Analytics Studio page (0% complete)
-2. Executive Summary AI generation
-3. Account Detail page visual polish
-4. Company logos and data quality
-5. TypeScript error fixes
+## 📊 CURRENT STATS (as of Dec 15, 2025)
 
-**Medium Priority Missing**:
-1. Calls page improvements
-2. Advanced filtering and search
-3. AI features (Research, Insights, Tech Stack)
-4. Integrations (6sense, Gong, Clay)
+| Metric | Count |
+|--------|-------|
+| Total Accounts | 711 |
+| Total Contacts | 4,000+ |
+| Gong Calls | 500+ |
+| Hot Leads (Intent 70+) | 200+ |
+| Warm Leads (Engaged) | 197 |
+| 6QAs | 668 |
+| Unworked 6QAs | 567 (85%) |
+| Intent Keywords | 50+ |
 
-**Low Priority Missing**:
-1. AI Assistant chatbot
-2. Task management
-3. Bulk operations
-4. Export functionality
+---
+
+## 🎯 PRIORITY ORDER
+
+1. **Fix bugs** - Reload button, contacts limit, Lost Opp context
+2. **Data Analytics Studio** - Build the missing page
+3. **Document RAG** - Enable knowledge base for AI
+4. **Email history** - Track outreach
+5. **Export functionality** - CSV exports

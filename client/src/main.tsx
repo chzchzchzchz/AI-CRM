@@ -21,21 +21,22 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   window.location.href = getLoginUrl();
 };
 
-queryClient.getQueryCache().subscribe(event => {
-  if (event.type === "updated" && event.action.type === "error") {
-    const error = event.query.state.error;
-    redirectToLoginIfUnauthorized(error);
-    console.error("[API Query Error]", error);
-  }
-});
+// Disabled OAuth redirects - no authentication required
+// queryClient.getQueryCache().subscribe(event => {
+//   if (event.type === "updated" && event.action.type === "error") {
+//     const error = event.query.state.error;
+//     redirectToLoginIfUnauthorized(error);
+//     console.error("[API Query Error]", error);
+//   }
+// });
 
-queryClient.getMutationCache().subscribe(event => {
-  if (event.type === "updated" && event.action.type === "error") {
-    const error = event.mutation.state.error;
-    redirectToLoginIfUnauthorized(error);
-    console.error("[API Mutation Error]", error);
-  }
-});
+// queryClient.getMutationCache().subscribe(event => {
+//   if (event.type === "updated" && event.action.type === "error") {
+//     const error = event.mutation.state.error;
+//     redirectToLoginIfUnauthorized(error);
+//     console.error("[API Mutation Error]", error);
+//   }
+// });
 
 const trpcClient = trpc.createClient({
   links: [

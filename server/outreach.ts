@@ -5,6 +5,25 @@ import { eq, inArray } from "drizzle-orm";
 import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
 
+// Clean email generation prompt - NO tracking, NO scoring, NO internal data mentions
+const CLEAN_EMAIL_SYSTEM_PROMPT = `You are an elite Enterprise Account Executive for the company, a passwordless MFA/Zero Trust security company.
+
+CRITICAL RULES FOR EMAILS:
+1. NEVER mention "intent score", "6sense", "tracking", "we noticed you're researching", or any data that reveals surveillance
+2. NEVER mention internal scoring, buying stages, or analytics
+3. NEVER say things like "your 97 intent score" or "based on our data"
+4. DO reference their tech stack, company size, industry - things that are publicly known
+5. DO reference their likely pain points based on their tech stack (Okta/Duo = phishing risk, etc.)
+6. BE HUMAN - write like a real person, not a marketing robot
+7. BE SHORT - 3-5 sentences max
+8. ONE CLEAR ASK at the end
+
+GOOD: "Given your Okta deployment, you've likely seen the rise in MFA bypass attacks..."
+BAD: "Your 97 intent score suggests you're actively evaluating identity solutions..."
+
+GOOD: "Companies with your security stack often struggle with..."
+BAD: "Based on our 6sense data, we can see you're in the purchase stage..."`;
+
 export const outreachRouter = router({
   generateEmail: protectedProcedure
     .input(
@@ -29,6 +48,8 @@ export const outreachRouter = router({
         throw new Error("No accounts found");
       }
 
+      const account = accountData[0];
+
       // Fetch contact data if provided
       let contactData: any[] = [];
       if (input.contactIds && input.contactIds.length > 0) {
@@ -38,144 +59,144 @@ export const outreachRouter = router({
           .where(inArray(contacts.id, input.contactIds));
       }
 
-      // Build context from account data
-      const accountContext = accountData
-        .map((acc) => {
-          let context = `Company: ${acc.name}`;
-          if (acc.industry) context += `\nIndustry: ${acc.industry}`;
-          if (acc.employeeCount) context += `\nSize: ${acc.employeeCount} employees`;
-          if (acc.region) context += `\nRegion: ${acc.region}`;
-          
-          // Parse tech stack
-          if (acc.techStack) {
-            try {
-              const stack = typeof acc.techStack === 'string' ? JSON.parse(acc.techStack) : acc.techStack;
-              if (stack && typeof stack === 'object') {
-                const techs = Object.values(stack).flat().filter(Boolean);
-                if (techs.length > 0) {
-                  context += `\nTech Stack: ${techs.slice(0, 5).join(", ")}`;
-                }
-              }
-            } catch (e) {
-              // Ignore parse errors
+      const contact = contactData[0];
+
+      // Build CLEAN context - only publicly known info
+      let accountContext = `Company: ${account.name}`;
+      if (account.industry) accountContext += `\nIndustry: ${account.industry}`;
+      if (account.employeeCount) accountContext += `\nSize: ${account.employeeCount} employees`;
+      if (account.region) accountContext += `\nRegion: ${account.region}`;
+      
+      // Parse tech stack - this is public info
+      if (account.techStack) {
+        try {
+          const stack = typeof account.techStack === 'string' ? JSON.parse(account.techStack) : account.techStack;
+          if (stack && typeof stack === 'object') {
+            const techs = Object.values(stack).flat().filter(Boolean);
+            if (techs.length > 0) {
+              accountContext += `\nTech Stack: ${techs.slice(0, 8).join(", ")}`;
             }
           }
-
-          // Research field doesn't exist in schema
-
-          // Add intent score if available
-          if (acc.intentScore) {
-            const score = typeof acc.intentScore === 'string' ? parseInt(acc.intentScore) : acc.intentScore;
-            if (!isNaN(score) && score >= 40) {
-              const level = score >= 70 ? "High" : "Medium";
-              context += `\nBuying Intent: ${level} (${score}/100)`;
-            }
-          }
-
-          // Add raw data insights (6sense, buying stage, trigger events, etc.)
-          if (acc.rawData) {
-            try {
-              const raw = typeof acc.rawData === 'string' ? JSON.parse(acc.rawData) : acc.rawData;
-              if (raw && typeof raw === 'object') {
-                if (raw['6sense Buying Stage']) {
-                  context += `\nBuying Stage: ${raw['6sense Buying Stage']}`;
-                }
-                if (raw.keywords && Array.isArray(raw.keywords)) {
-                  context += `\nKeywords: ${raw.keywords.slice(0, 3).join(", ")}`;
-                }
-              }
-            } catch (e) {
-              // Ignore parse errors
-            }
-          }
-
-          return context;
-        })
-        .join("\n\n");
-
-      // Build contact context
-      let contactContext = "";
-      if (contactData.length > 0) {
-        contactContext = "\n\nTarget Contacts:\n" + contactData
-          .map((contact) => {
-            let ctx = `- ${contact.name}`;
-            if (contact.title) ctx += ` (${contact.title})`;
-            if (contact.company) ctx += ` at ${contact.company}`;
-            return ctx;
-          })
-          .join("\n");
+        } catch (e) {}
       }
 
-      // Build LLM prompt with Elite Enterprise AE methodology
-      const systemPrompt = `You are an elite Enterprise Account Executive for the company, a passwordless MFA/SSO/Zero Trust security company.
+      // Parse security stack - this is public info
+      if (account.securityStack) {
+        try {
+          const stack = typeof account.securityStack === 'string' ? JSON.parse(account.securityStack) : account.securityStack;
+          if (stack && typeof stack === 'object') {
+            const techs = Object.values(stack).flat().filter(Boolean);
+            if (techs.length > 0) {
+              accountContext += `\nSecurity Stack: ${techs.slice(0, 5).join(", ")}`;
+            }
+          }
+        } catch (e) {}
+      }
 
-Your job is to generate TARGETING INTELLIGENCE and INGRESS STRATEGIES, not generic outreach advice.
+      // Parse rawData for SSO/MFA info (public)
+      let rawData: Record<string, any> = {};
+      try {
+        if (account.rawData) {
+          rawData = typeof account.rawData === 'string' ? JSON.parse(account.rawData) : account.rawData;
+        }
+      } catch (e) {}
 
-BANNED PHRASES (never use these):
-- "Schedule a discovery call"
-- "Reach out"
-- "Discuss needs"
-- "Assess fit"
+      // Add ONLY publicly known info
+      if (rawData['SSO Provider']) {
+        accountContext += `\nCurrent SSO: ${rawData['SSO Provider']}`;
+      }
+      if (rawData['MFA Solution']) {
+        accountContext += `\nCurrent MFA: ${rawData['MFA Solution']}`;
+      }
+      // Company description is public
+      if (rawData['Company Description']) {
+        accountContext += `\nAbout: ${rawData['Company Description'].slice(0, 300)}`;
+      }
 
-Your output MUST follow this exact structure:
+      // Contact context
+      let contactContext = "";
+      if (contact) {
+        contactContext = `\n\nTarget Contact:
+Name: ${contact.name}
+Title: ${contact.title || "Unknown"}
+Email: ${contact.email || "Unknown"}`;
+      }
 
-🚨 TARGETING INTELLIGENCE
+      const firstName = contact?.name?.split(' ')[0] || "there";
 
-SIGNAL: [Interpret the Intent Score specifically—what are they likely researching? Are they in RFP phase? Comparing vendors?]
-
-🎯 THE PERSONA: [Exact job title to target based on their data. If high R&D spend → VP Engineering. If security-focused → CISO. Be specific.]
-
-🧩 THE HYPOTHESIS:
-"Because they use [Current Tech from their stack] and [specific company vital like R&D spend/employee count/funding], they are likely trying to solve [Specific Pain Point]."
-
-⚔️ THE PLAY (Ingress Strategy)
-
-Option A (The "Rip & Replace" Angle):
-[Specific talking point about displacing their current MFA/SSO solution. Reference their actual tech stack.]
-
-Option B (The "Innovation" Angle):
-[Specific talking point about their R&D/Patents/Growth. Connect to securing innovation without slowing teams.]
-
-📧 THE COLD OPENER (Copy/Paste Ready)
-
-Subject: [One sentence referencing their specific data—R&D spend, tech stack, or recent event]
-
-Opening Line: "[One sentence that connects Intent Score + Tech Stack + Company Vitals. Use their actual company name and data points. Include {{firstName}} and {{company}} placeholders.]"
-
-RULES:
-- Use REAL data from the account context provided
-- Be specific, not generic
-- Focus on HOW to get the meeting, not just "get a meeting"
-- Form hypothesis from their actual tech stack
-- Target the RIGHT persona based on their business model`;
-
-      const userPrompt = `Generate TARGETING INTELLIGENCE for this account:
+      // ============================================
+      // SINGLE PASS: Generate Clean, Professional Email
+      // ============================================
+      const emailPrompt = `Write a cold email for this prospect.
 
 ${accountContext}${contactContext}
 
-Additional Context: ${input.prompt || "Focus on passwordless MFA and Zero Trust security."}
+Additional context from rep: ${input.prompt || "Focus on passwordless MFA and Zero Trust security."}
 
-Remember:
-- Interpret their Intent Score specifically
-- Map to the RIGHT persona based on their business
-- Form hypothesis from their ACTUAL tech stack
-- Generate TWO ingress strategies (Rip & Replace + Innovation)
-- Write a copy-paste ready cold opener with subject line
-- Use their real data points, not generic templates`;
+REQUIREMENTS:
+- Start with "${firstName},"
+- 3-5 sentences MAXIMUM
+- Reference their tech stack or industry situation naturally
+- End with ONE clear ask (15-minute call)
+- NO subject line, NO signature
+- Sound like a human, not a marketing bot
 
-      // Call LLM
-      const response = await invokeLLM({
+OUTPUT ONLY THE EMAIL BODY. Nothing else.`;
+
+      const emailResponse = await invokeLLM({
         messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
+          { role: "system", content: CLEAN_EMAIL_SYSTEM_PROMPT },
+          { role: "user", content: emailPrompt },
         ],
       });
 
-      const generatedContent = response.choices[0]?.message?.content || "";
+      const emailContent = emailResponse.choices[0]?.message?.content || "";
+      const email = typeof emailContent === 'string' ? emailContent : JSON.stringify(emailContent);
 
+      // Return ONLY the email - no strategy, no reasoning
       return {
-        content: generatedContent,
+        content: email.trim(),
         accountCount: accountData.length,
+      };
+    }),
+
+  // Refine an existing email based on feedback
+  refineEmail: protectedProcedure
+    .input(
+      z.object({
+        currentEmail: z.string(),
+        feedback: z.string(),
+        accountName: z.string().optional(),
+        contactName: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const refinePrompt = `Here is a cold email that needs refinement:
+
+---
+${input.currentEmail}
+---
+
+User feedback: "${input.feedback}"
+
+Rewrite the email incorporating this feedback. Keep it:
+- 3-5 sentences max
+- Human and direct
+- One clear ask at the end
+
+OUTPUT ONLY THE REVISED EMAIL. Nothing else.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: CLEAN_EMAIL_SYSTEM_PROMPT },
+          { role: "user", content: refinePrompt },
+        ],
+      });
+
+      const content = response.choices[0]?.message?.content;
+      const cleanContent = typeof content === 'string' ? content.trim() : (content ? JSON.stringify(content) : input.currentEmail);
+      return {
+        content: cleanContent,
       };
     }),
 });

@@ -1,15 +1,43 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 import { InsertUser, users, accounts, InsertAccount, contacts, /* people, InsertPerson, clayRequests, InsertClayRequest, gongCalls, InsertGongCall */ calls } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _pool: mysql.Pool | null = null;
+
+// Get raw mysql2 pool for direct queries
+export async function getPool(): Promise<mysql.Pool | null> {
+  if (!_pool && process.env.DATABASE_URL) {
+    try {
+      const url = new URL(process.env.DATABASE_URL);
+      _pool = mysql.createPool({
+        host: url.hostname,
+        port: parseInt(url.port || '3306'),
+        user: url.username,
+        password: url.password,
+        database: url.pathname.slice(1),
+        ssl: { rejectUnauthorized: false },
+        waitForConnections: true,
+        connectionLimit: 10,
+      });
+    } catch (error) {
+      console.warn("[Database] Failed to create pool:", error);
+      _pool = null;
+    }
+  }
+  return _pool;
+}
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const pool = await getPool();
+      if (pool) {
+        _db = drizzle(pool);
+      }
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -107,14 +135,22 @@ export async function upsertAccount(account: InsertAccount) {
   }
 }
 
-export async function getAllAccounts() {
+export async function getAllAccounts(isDemoUser: boolean = false) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get accounts: database not available");
     return [];
   }
 
-  return await db.select().from(accounts).orderBy(desc(accounts.createdAt));
+  const allAccounts = await db.select().from(accounts).orderBy(desc(accounts.createdAt));
+  
+  // If demo user, only show demo accounts (those with name starting with "Demo_")
+  if (isDemoUser) {
+    return allAccounts.filter(a => a.name?.startsWith('Demo_'));
+  }
+  
+  // For regular users, exclude demo accounts
+  return allAccounts.filter(a => !a.name?.startsWith('Demo_'));
 }
 
 export async function getAccountById(id: number) {
@@ -170,7 +206,7 @@ export async function getAllPeople() {
     return [];
   }
 
-  // Join with accounts to get company information
+  // Join with accounts to get company information AND account-level engagement data
   const results = await db
     .select({
       id: contacts.id,
@@ -185,16 +221,63 @@ export async function getAllPeople() {
       linkedinUrl: contacts.linkedinUrl,
       location: contacts.location,
       department: contacts.department,
+      sfdcContactId: contacts.sfdcContactId,
+      mobilePhone: contacts.mobilePhone,
+      directPhone: contacts.directPhone,
       createdAt: contacts.createdAt,
       updatedAt: contacts.updatedAt,
+      // Account data
       company: accounts.name,
       companyDomain: accounts.domain,
+      accountIntentScore: accounts.intentScore,
+      accountIndustry: accounts.industry,
+      accountRegion: accounts.region,
+      accountEmployeeCount: accounts.employeeCount,
+      accountTechStack: accounts.techStack,
+      accountSecurityStack: accounts.securityStack,
+      accountSfdcAccountId: accounts.sfdcAccountId,
     })
     .from(contacts)
     .leftJoin(accounts, eq(contacts.accountId, accounts.id))
     .orderBy(desc(contacts.createdAt));
   
   return results;
+}
+
+// Paginated version for performance
+export async function getPeoplePaginated(limit: number = 100, offset: number = 0) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get people: database not available");
+    return { people: [], total: 0 };
+  }
+
+  const [peopleResult, countResult] = await Promise.all([
+    db
+      .select({
+        id: contacts.id,
+        accountId: contacts.accountId,
+        name: contacts.name,
+        title: contacts.title,
+        email: contacts.email,
+        phone: contacts.phone,
+        linkedinUrl: contacts.linkedinUrl,
+        location: contacts.location,
+        company: accounts.name,
+        accountIntentScore: accounts.intentScore,
+      })
+      .from(contacts)
+      .leftJoin(accounts, eq(contacts.accountId, accounts.id))
+      .orderBy(desc(contacts.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(contacts)
+  ]);
+
+  return { 
+    people: peopleResult, 
+    total: countResult[0]?.count || 0 
+  };
 }
 
 export async function getPeopleByCompany(companyName: string) {
@@ -305,6 +388,25 @@ export async function getAllGongCalls() {
   }
 
   return await db.select().from(calls).orderBy(desc(calls.callDate));
+}
+
+// Paginated version for performance
+export async function getGongCallsPaginated(limit: number = 50, offset: number = 0) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get calls: database not available");
+    return { calls: [], total: 0 };
+  }
+
+  const [callsResult, countResult] = await Promise.all([
+    db.select().from(calls).orderBy(desc(calls.callDate)).limit(limit).offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(calls)
+  ]);
+
+  return { 
+    calls: callsResult, 
+    total: countResult[0]?.count || 0 
+  };
 }
 
 export async function getGongCallsByCompany(companyName: string) {
