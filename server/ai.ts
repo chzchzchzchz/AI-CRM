@@ -1,5 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import { getAllAccounts, getAllPeople, getAllGongCalls } from "./db";
+import { withRCP, asRevenueArchitect, REVENUE_ARCHITECT_PERSONA } from "./ai-system-prompt";
 
 /**
  * AI Service Layer
@@ -74,7 +75,7 @@ Focus on:
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a sales intelligence AI for the company. Analyze accounts and provide actionable insights." },
+      { role: "system", content: asRevenueArchitect("Analyze this target account and provide tactical sales intelligence. Use REAL data only.") },
       { role: "user", content: prompt }
     ],
     response_format: {
@@ -126,7 +127,7 @@ Provide a JSON response with:
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a sales call analyzer for the company. Extract insights from call transcripts." },
+      { role: "system", content: withRCP("You are a sales call analyzer for the company. Extract insights from call transcripts.") },
       { role: "user", content: prompt }
     ],
     response_format: {
@@ -182,7 +183,7 @@ Return only the email body (no subject line).
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a sales email writer for the company. Write personalized, high-converting outreach emails." },
+      { role: "system", content: asRevenueArchitect("Write a personalized outreach email. Use REAL contact names and account data provided. Never fabricate details.") },
       { role: "user", content: prompt }
     ]
   });
@@ -223,7 +224,7 @@ Examples:
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a search query interpreter. Understand user intent and translate to database filters." },
+      { role: "system", content: withRCP("You are a search query interpreter. Understand user intent and translate to database filters.") },
       { role: "user", content: prompt }
     ],
     response_format: {
@@ -266,7 +267,7 @@ Return a JSON array of contact IDs sorted by priority (highest first), with reas
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a contact prioritization AI. Rank contacts by likelihood to engage and influence deals." },
+      { role: "system", content: withRCP("You are a contact prioritization AI. Rank contacts by likelihood to engage and influence deals.") },
       { role: "user", content: prompt }
     ],
     response_format: {
@@ -299,5 +300,21 @@ Return a JSON array of contact IDs sorted by priority (highest first), with reas
   });
 
   const content = response.choices[0].message.content;
-  return JSON.parse(typeof content === 'string' ? content : JSON.stringify(content)).rankings;
+  const rankings = JSON.parse(typeof content === 'string' ? content : JSON.stringify(content)).rankings;
+  
+  // Map rankings back to full contact objects, sorted by priority
+  const contactMap = new Map(contacts.map(c => [c.id, c]));
+  const sortedContacts = rankings
+    .sort((a: any, b: any) => b.priority - a.priority)
+    .map((r: any) => {
+      const contact = contactMap.get(r.contactId);
+      if (contact) {
+        return { ...contact, aiPriority: r.priority, aiReasoning: r.reasoning };
+      }
+      return null;
+    })
+    .filter(Boolean);
+  
+  // Return top 10 prioritized contacts with full data
+  return sortedContacts.slice(0, 10);
 }

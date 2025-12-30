@@ -110,7 +110,7 @@ export default function ContactDetail() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <Navigation />
-      <AIAssistant context={{ type: "contact", id: personId, name: contact.name }} />
+      <AIAssistant context={{ type: "contact", id: personId, name: contact.name || undefined }} />
 
       <div className="container py-12 space-y-8 max-w-7xl">
         {/* Header */}
@@ -141,11 +141,12 @@ export default function ContactDetail() {
                     <div className="flex items-center gap-2">
                       <Building2 className="h-4 w-4" />
                       {relatedAccount ? (
-                        <Link href={`/accounts/${relatedAccount.id}`}>
-                          <span className="hover:text-primary transition-colors cursor-pointer">
-                            {contact.company}
-                          </span>
-                        </Link>
+                        <span 
+                          className="hover:text-primary transition-colors cursor-pointer"
+                          onClick={() => window.location.href = `/accounts/${relatedAccount.id}`}
+                        >
+                          {contact.company}
+                        </span>
                       ) : (
                         <span>{contact.company}</span>
                       )}
@@ -162,12 +163,20 @@ export default function ContactDetail() {
             </div>
           </div>
 
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 flex-shrink-0 flex-wrap">
+            {contact.phone && (
+              <Button variant="outline" className="border-green-500 text-green-600 hover:bg-green-50" asChild>
+                <a href={`tel:${contact.phone}`}>
+                  <Phone className="mr-2 h-4 w-4" />
+                  Call
+                </a>
+              </Button>
+            )}
             {contact.email && (
               <Button className="gradient-primary text-white" asChild>
                 <a href={`mailto:${contact.email}`}>
                   <Mail className="mr-2 h-4 w-4" />
-                  Send Email
+                  Email
                 </a>
               </Button>
             )}
@@ -176,7 +185,14 @@ export default function ContactDetail() {
                 <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer">
                   <Linkedin className="mr-2 h-4 w-4" />
                   LinkedIn
-                  <ExternalLink className="ml-2 h-3 w-3" />
+                </a>
+              </Button>
+            )}
+            {(contact as any).sfdcContactId && (
+              <Button variant="outline" className="border-blue-500 text-blue-600 hover:bg-blue-50" asChild>
+                <a href={`https://company.lightning.force.com/lightning/r/Contact/${(contact as any).sfdcContactId}/view`} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Salesforce
                 </a>
               </Button>
             )}
@@ -184,7 +200,7 @@ export default function ContactDetail() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-4">
           <Card className="card-elevated border-l-4 border-l-cyan-500">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -207,7 +223,7 @@ export default function ContactDetail() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold line-clamp-1">{contact.company}</div>
-              <p className="text-xs text-muted-foreground mt-1">Organization</p>
+              <p className="text-xs text-muted-foreground mt-1">{relatedAccount?.industry || "Unknown industry"}</p>
             </CardContent>
           </Card>
 
@@ -219,11 +235,62 @@ export default function ContactDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{relatedAccount?.intentScore || "N/A"}</div>
-              <p className="text-xs text-muted-foreground mt-1">Company intent score</p>
+              <div className={`text-3xl font-bold ${Number(relatedAccount?.intentScore) >= 70 ? 'text-red-500' : Number(relatedAccount?.intentScore) >= 40 ? 'text-amber-500' : ''}`}>
+                {relatedAccount?.intentScore || "N/A"}%
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {Number(relatedAccount?.intentScore) >= 70 ? 'Hot lead' : Number(relatedAccount?.intentScore) >= 40 ? 'Warm lead' : 'Cold lead'}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-elevated border-l-4 border-l-green-500">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Users className="h-4 w-4 text-green-500" />
+                Company Size
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{relatedAccount?.employeeCount?.toLocaleString() || "N/A"}</div>
+              <p className="text-xs text-muted-foreground mt-1">{relatedAccount?.region || "Unknown region"}</p>
             </CardContent>
           </Card>
         </div>
+
+        {/* Tech Stack & Security Stack */}
+        {(relatedAccount?.techStack || relatedAccount?.securityStack) && (
+          <div className="grid gap-6 md:grid-cols-2">
+            {relatedAccount?.techStack && (
+              <Card className="card-elevated">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium">Tech Stack</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {relatedAccount.techStack.split(',').map((tech, i) => (
+                      <Badge key={i} variant="outline">{tech.trim()}</Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {relatedAccount?.securityStack && (
+              <Card className="card-elevated">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium">Security Stack</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {relatedAccount.securityStack.split(',').map((sec, i) => (
+                      <Badge key={i} variant="secondary">{sec.trim()}</Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
 
         {/* Contact Information */}
         <Card className="card-elevated">

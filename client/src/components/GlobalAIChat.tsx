@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { MessageSquare, X, Maximize2, Minimize2, Bot, Send, Loader2, Sparkles, Zap } from "lucide-react";
-import { Streamdown } from "streamdown";
+import { useLocation } from "wouter";
+import { SafeStreamdown } from "@/components/SafeStreamdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -20,6 +21,12 @@ interface Message {
  * - War Room mode: Enhanced full-screen with additional context
  */
 export function GlobalAIChat() {
+  const [location] = useLocation();
+  
+  // Hide on pages that have contextual AI bar
+  const pagesWithContextualAI = ['/', '/accounts', '/contacts'];
+  const shouldHide = pagesWithContextualAI.some(p => location === p);
+  
   const [isOpen, setIsOpen] = useState(false);
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
 
@@ -117,6 +124,11 @@ export function GlobalAIChat() {
     "Find accounts with MFA buying signals",
     "Generate outreach email for a prospect"
   ];
+
+  // Don't render on pages with contextual AI bar
+  if (shouldHide) {
+    return null;
+  }
 
   if (!isOpen) {
     return (
@@ -246,7 +258,7 @@ export function GlobalAIChat() {
                           : "bg-slate-900 border border-slate-800 text-slate-300"
                       }`}>
                         {msg.role === "assistant" ? (
-                          <Streamdown className="text-sm leading-relaxed">{msg.content}</Streamdown>
+                          <SafeStreamdown className="text-sm leading-relaxed">{msg.content}</SafeStreamdown>
                         ) : (
                           <p className="text-sm leading-relaxed">{msg.content}</p>
                         )}
@@ -377,7 +389,7 @@ export function GlobalAIChat() {
                     : "bg-slate-950 border border-slate-800 text-slate-300"
                 }`}>
                   {msg.role === "assistant" ? (
-                    <Streamdown className="text-sm">{msg.content}</Streamdown>
+                    <SafeStreamdown className="text-sm">{msg.content}</SafeStreamdown>
                   ) : (
                     <p className="text-sm">{msg.content}</p>
                   )}

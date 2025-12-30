@@ -54,8 +54,8 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     const q = query.toLowerCase();
     return (
       call.title?.toLowerCase().includes(q) ||
-      call.accountId?.toLowerCase().includes(q) ||
-      call.participants?.toLowerCase().includes(q)
+      String(call.accountId || '').toLowerCase().includes(q) ||
+      String((call as any).participants || '').toLowerCase().includes(q)
     );
   }).slice(0, 5);
 
@@ -185,7 +185,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-white truncate">{call.title || 'Untitled Call'}</div>
                           <div className="text-sm text-slate-400 truncate">
-                            {call.accountId || 'No company'} • {call.participants || 'No speakers'}
+                            {call.accountId || 'No company'} • {(call as any).participants || 'No speakers'}
                           </div>
                         </div>
                       </button>

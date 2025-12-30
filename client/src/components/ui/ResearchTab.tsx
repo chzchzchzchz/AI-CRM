@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { Sparkles, TrendingUp, RefreshCw, Newspaper, Clock } from "lucide-react";
-import { Streamdown } from "streamdown";
+import { SafeStreamdown } from "@/components/SafeStreamdown";
 
 interface ResearchTabProps {
   accountId: number;
@@ -61,7 +61,7 @@ export function ResearchTab({ accountId }: ResearchTabProps) {
           ) : data ? (
             <>
               <div className="prose prose-sm dark:prose-invert max-w-none">
-                <Streamdown>{data.insights}</Streamdown>
+                <SafeStreamdown>{data.insights}</SafeStreamdown>
               </div>
 
               {/* Raw Trigger Events */}
