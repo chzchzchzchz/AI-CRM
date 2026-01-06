@@ -23,7 +23,6 @@ export default function AccountDetailEnhanced() {
   const { id } = useParams<{ id: string }>();
   const accountId = parseInt(id || "0");
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [showFullTranscript, setShowFullTranscript] = useState<Record<number, boolean>>({});
 
   const { data: account, isLoading } = trpc.accounts.getById.useQuery({ id: accountId });
   const { data: people } = trpc.people.getByAccountId.useQuery(
@@ -31,10 +30,7 @@ export default function AccountDetailEnhanced() {
     { enabled: accountId > 0 }
   );
   
-  const { data: gongCalls } = trpc.gong.getByAccountId.useQuery(
-    { accountId },
-    { enabled: accountId > 0 }
-  );
+
   
 
   const generateSummaryMutation = trpc.ai.generateAccountSummary.useMutation();
@@ -366,18 +362,7 @@ export default function AccountDetailEnhanced() {
             </CardContent>
           </Card>
 
-          <Card className="card-elevated border-l-4 border-l-cyan-500">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Phone className="h-4 w-4 text-cyan-500" />
-                Calls
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{gongCalls?.length || 0}</div>
-              <p className="text-xs text-muted-foreground mt-1">Recorded calls</p>
-            </CardContent>
-          </Card>
+
 
           <Card className="card-elevated border-l-4 border-l-indigo-500">
             <CardHeader className="pb-3">
@@ -434,7 +419,6 @@ export default function AccountDetailEnhanced() {
           <TabsList className="bg-card border">
             <TabsTrigger value="intelligence">Intelligence</TabsTrigger>
             <TabsTrigger value="contacts">Contacts ({people?.length || 0})</TabsTrigger>
-            <TabsTrigger value="calls">Calls ({gongCalls?.length || 0})</TabsTrigger>
           </TabsList>
 
           {/* Intelligence Tab */}
@@ -508,79 +492,7 @@ export default function AccountDetailEnhanced() {
             )}
           </TabsContent>
 
-          {/* Calls Tab */}
-          <TabsContent value="calls" className="space-y-6">
-            {!gongCalls || gongCalls.length === 0 ? (
-              <Card className="card-elevated">
-                <CardContent className="py-16 text-center">
-                  <Phone className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">No calls recorded</h3>
-                  <p className="text-muted-foreground">No Gong calls have been recorded for this account yet</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {gongCalls.map((call) => (
-                  <Card key={call.id} className="card-elevated">
-                    <CardHeader>
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="line-clamp-1">{call.title || "Untitled Call"}</CardTitle>
-                          <CardDescription className="flex items-center gap-4 mt-2">
-                            {call.callDate && (
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-4 w-4" />
-                                {new Date(call.callDate).toLocaleDateString()}
-                              </span>
-                            )}
-                            {call.duration && (
-                              <span>{call.duration}</span>
-                            )}
-                          </CardDescription>
-                        </div>
-                        {call.recordingUrl && (
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={call.recordingUrl} target="_blank" rel="noopener noreferrer">
-                              View in Gong
-                              <ExternalLink className="ml-2 h-4 w-4" />
-                            </a>
-                          </Button>
-                        )}
-                      </div>
-                    </CardHeader>
-                    {call.transcriptUrl && (
-                      <CardContent>
-                        <div className="prose prose-sm max-w-none dark:prose-invert">
-                          {showFullTranscript[call.id] ? (
-                            <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                              {call.transcriptUrl}
-                            </div>
-                          ) : (
-                            <div className="text-sm text-muted-foreground line-clamp-3">
-                              {call.transcriptUrl}
-                            </div>
-                          )}
-                          {call.transcriptUrl.length > 200 && (
-                            <Button
-                              variant="link"
-                              size="sm"
-                              className="mt-2 p-0 h-auto"
-                              onClick={() => setShowFullTranscript(prev => ({
-                                ...prev,
-                                [call.id]: !prev[call.id]
-                              }))}
-                            >
-                              {showFullTranscript[call.id] ? "Show less" : "Show more"}
-                            </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    )}
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
+
 
 
         </Tabs>

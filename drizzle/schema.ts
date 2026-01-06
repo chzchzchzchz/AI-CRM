@@ -616,3 +616,24 @@ export const auditLogs = mysqlTable("auditLogs", {
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
+
+// Dust API cache for storing query results
+export const dustCache = mysqlTable('dust_cache', {
+  id: int().primaryKey().autoincrement(),
+  queryHash: varchar('query_hash', { length: 64 }).notNull().unique(),
+  query: text('query').notNull(),
+  result: longtext('result').notNull(),
+  accountId: int('account_id'),
+  contactId: int('contact_id'),
+  createdAt: timestamp('created_at').defaultNow(),
+  expiresAt: timestamp('expires_at'),
+  
+  // Indexes
+}, (table) => ({
+  accountIdx: index('dust_cache_account_id').on(table.accountId),
+  contactIdx: index('dust_cache_contact_id').on(table.contactId),
+  expiryIdx: index('dust_cache_expires_at').on(table.expiresAt),
+}));
+
+export type DustCache = typeof dustCache.$inferSelect;
+export type DustCacheInsert = typeof dustCache.$inferInsert;

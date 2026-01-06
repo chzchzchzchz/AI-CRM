@@ -29,9 +29,11 @@ import { deepThink, deepThinkSales, deepThinkHelp } from "./deep-think";
 import { toolsRouter } from "./tools-router";
 import { adminRouter } from "./admin-router";
 import { emailVerificationRouter } from "./email-verification-router";
+import { dustRouter } from "./routers/dust";
 
 
 export const appRouter = router({
+  dust: dustRouter,
   tools: toolsRouter,
   clay: clayRouter,
   gemini: geminiRouter,
