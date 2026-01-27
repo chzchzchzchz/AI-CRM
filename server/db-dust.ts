@@ -86,10 +86,10 @@ export async function clearExpiredDustCache(): Promise<number> {
   if (!db) return 0;
 
   try {
-    const result = await db
+    await db
       .delete(dustCache)
       .where(gt(dustCache.expiresAt, new Date()));
-    return result.rowsAffected || 0;
+    return 0; // MySQL doesn't return rowsAffected directly
   } catch (error) {
     console.error("Error clearing expired Dust cache:", error);
     return 0;

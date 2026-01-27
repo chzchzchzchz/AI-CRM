@@ -441,3 +441,195 @@ export async function getGongCallsByPersonId(personId: number) {
   // personId column is now contactId
   return await db.select().from(calls).where(eq(calls.contactId, personId)).orderBy(desc(calls.callDate));
 }
+
+
+// ============================================
+// SALESFORCE SYNC FUNCTIONS
+// ============================================
+
+/**
+ * Bulk upsert accounts from Salesforce
+ * Uses sfdcAccountId as the unique key for matching
+ */
+export async function bulkUpsertAccountsFromSalesforce(accountsData: Array<{
+  name: string;
+  domain: string | null;
+  industry: string | null;
+  employeeCount: number | null;
+  region: string;
+  website: string | null;
+  sfdcAccountId: string;
+  description: string | null;
+  phone: string | null;
+  type: string | null;
+}>) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot bulk upsert accounts: database not available");
+    return { inserted: 0, updated: 0, errors: 0 };
+  }
+
+  let inserted = 0;
+  let updated = 0;
+  let errors = 0;
+
+  for (const account of accountsData) {
+    try {
+      // Check if account exists by sfdcAccountId
+      const existing = await db
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(eq(accounts.sfdcAccountId, account.sfdcAccountId))
+        .limit(1);
+
+      if (existing.length > 0) {
+        // Update existing
+        await db.update(accounts)
+          .set({
+            name: account.name,
+            domain: account.domain,
+            industry: account.industry,
+            employeeCount: account.employeeCount,
+            region: account.region,
+            website: account.website,
+            description: account.description,
+            phone: account.phone,
+            type: account.type,
+            updatedAt: new Date(),
+          })
+          .where(eq(accounts.sfdcAccountId, account.sfdcAccountId));
+        updated++;
+      } else {
+        // Insert new
+        await db.insert(accounts).values({
+          name: account.name,
+          domain: account.domain,
+          industry: account.industry,
+          employeeCount: account.employeeCount,
+          region: account.region,
+          website: account.website,
+          sfdcAccountId: account.sfdcAccountId,
+          description: account.description,
+          phone: account.phone,
+          type: account.type,
+        });
+        inserted++;
+      }
+    } catch (error) {
+      console.error(`[Database] Failed to upsert account ${account.name}:`, error);
+      errors++;
+    }
+  }
+
+  return { inserted, updated, errors };
+}
+
+/**
+ * Bulk upsert contacts from Salesforce
+ * Uses sfdcContactId as the unique key for matching
+ * Links to accounts via sfdcAccountId
+ */
+export async function bulkUpsertContactsFromSalesforce(contactsData: Array<{
+  name: string;
+  email: string | null;
+  title: string | null;
+  phone: string | null;
+  sfdcContactId: string;
+  sfdcAccountId: string | null;
+  linkedinUrl: string | null;
+  location: string | null;
+}>) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot bulk upsert contacts: database not available");
+    return { inserted: 0, updated: 0, linked: 0, errors: 0 };
+  }
+
+  let inserted = 0;
+  let updated = 0;
+  let linked = 0;
+  let errors = 0;
+
+  // Build a map of sfdcAccountId -> accountId for linking
+  const accountMap = new Map<string, number>();
+  const allAccounts = await db.select({ id: accounts.id, sfdcAccountId: accounts.sfdcAccountId }).from(accounts);
+  for (const acc of allAccounts) {
+    if (acc.sfdcAccountId) {
+      accountMap.set(acc.sfdcAccountId, acc.id);
+    }
+  }
+
+  for (const contact of contactsData) {
+    try {
+      // Find the account ID from sfdcAccountId
+      const accountId = contact.sfdcAccountId ? accountMap.get(contact.sfdcAccountId) : null;
+      
+      // Check if contact exists by sfdcContactId
+      const existing = await db
+        .select({ id: contacts.id })
+        .from(contacts)
+        .where(eq(contacts.sfdcContactId, contact.sfdcContactId))
+        .limit(1);
+
+      if (existing.length > 0) {
+        // Update existing
+        await db.update(contacts)
+          .set({
+            name: contact.name,
+            email: contact.email,
+            title: contact.title,
+            phone: contact.phone,
+            linkedinUrl: contact.linkedinUrl,
+            location: contact.location,
+            accountId: accountId || null,
+            updatedAt: new Date(),
+          })
+          .where(eq(contacts.sfdcContactId, contact.sfdcContactId));
+        updated++;
+        if (accountId) linked++;
+      } else {
+        // Insert new
+        await db.insert(contacts).values({
+          name: contact.name,
+          email: contact.email,
+          title: contact.title,
+          phone: contact.phone,
+          sfdcContactId: contact.sfdcContactId,
+          linkedinUrl: contact.linkedinUrl,
+          location: contact.location,
+          accountId: accountId || null,
+        });
+        inserted++;
+        if (accountId) linked++;
+      }
+    } catch (error) {
+      console.error(`[Database] Failed to upsert contact ${contact.name}:`, error);
+      errors++;
+    }
+  }
+
+  return { inserted, updated, linked, errors };
+}
+
+/**
+ * Get sync status - counts of accounts and contacts
+ */
+export async function getSyncStatus() {
+  const db = await getDb();
+  if (!db) {
+    return { accounts: 0, contacts: 0, linkedContacts: 0 };
+  }
+
+  const [accountCount] = await db.select({ count: sql<number>`count(*)` }).from(accounts);
+  const [contactCount] = await db.select({ count: sql<number>`count(*)` }).from(contacts);
+  const [linkedCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(contacts)
+    .where(sql`${contacts.accountId} IS NOT NULL`);
+
+  return {
+    accounts: accountCount?.count || 0,
+    contacts: contactCount?.count || 0,
+    linkedContacts: linkedCount?.count || 0,
+  };
+}

@@ -250,6 +250,7 @@ export default function Home() {
               </CardContent>
             </Card>
           </Link>
+          {/* HIDDEN - Gong Calls removed per user request
           {!isDemoUser && (
             <Link href="/calls">
               <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
@@ -265,6 +266,7 @@ export default function Home() {
               </Card>
             </Link>
           )}
+          */}
           <Link href="/top-accounts">
             <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full border-indigo-500/30">
               <CardContent className="p-4 flex items-center gap-3">

@@ -22,6 +22,7 @@ const SmartSearch = lazyLoad(() => import("./pages/SmartSearch"));
 const DataValidation = lazyLoad(() => import("./pages/DataValidation"));
 const BulkInsights = lazyLoad(() => import("./pages/BulkInsights"));
 const SixsenseSync = lazyLoad(() => import("./pages/SixsenseSync"));
+const SalesforceSync = lazyLoad(() => import("./pages/SalesforceSync"));
 const SixsenseAnalytics = lazyLoad(() => import("./pages/SixsenseAnalytics"));
 const CsvProcessor = lazyLoad(() => import("./pages/CsvProcessor"));
 const DataHub = lazyLoad(() => import("./pages/DataHub"));
@@ -61,6 +62,7 @@ function Router() {
       <Route path="/validation" component={DataValidation} />
       <Route path="/bulk-insights" component={BulkInsights} />
       <Route path="/sixsense-sync" component={SixsenseSync} />
+      <Route path="/salesforce-sync" component={SalesforceSync} />
       <Route path="/sixsense-analytics" component={SixsenseAnalytics} />
       <Route path="/csv-processor" component={CsvProcessor} />
       <Route path="/data-hub" component={DataHub} />

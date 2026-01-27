@@ -54,7 +54,7 @@ export async function verifyContactAccountMatch(
   contactId: number
 ): Promise<{
   isValid: boolean;
-  currentAccountId: number;
+  currentAccountId: number | null;
   suggestedAccountId: number | null;
   reason: string;
 }> {
