@@ -53,6 +53,9 @@ const tourSteps: TourStep[] = [
 ];
 
 export function DemoTour() {
+  // DISABLED - Demo tour hidden per user request
+  return null;
+  
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const [hasSeenTour, setHasSeenTour] = useState(false);

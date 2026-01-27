@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, tinyint, decimal } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, tinyint, decimal, index } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -72,6 +72,8 @@ export const accounts = mysqlTable("accounts", {
   lastSixsenseSync: timestamp("lastSixsenseSync"),
   // Salesforce integration fields
   sfdcAccountId: varchar("sfdcAccountId", { length: 18 }), // Salesforce 18-char ID
+  phone: varchar("phone", { length: 50 }),
+  type: varchar("type", { length: 100 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -82,7 +84,7 @@ export type InsertAccount = typeof accounts.$inferInsert;
 // Contacts table
 export const contacts = mysqlTable("contacts", {
   id: int("id").autoincrement().primaryKey(),
-  accountId: int("accountId").notNull(),
+  accountId: int("accountId"),  // Nullable to allow contacts without accounts during sync
   clayRecordId: varchar("clayRecordId", { length: 255 }).unique(),
   firstName: varchar("firstName", { length: 255 }),
   lastName: varchar("lastName", { length: 255 }),
@@ -622,7 +624,7 @@ export const dustCache = mysqlTable('dust_cache', {
   id: int().primaryKey().autoincrement(),
   queryHash: varchar('query_hash', { length: 64 }).notNull().unique(),
   query: text('query').notNull(),
-  result: longtext('result').notNull(),
+  result: text('result').notNull(),
   accountId: int('account_id'),
   contactId: int('contact_id'),
   createdAt: timestamp('created_at').defaultNow(),

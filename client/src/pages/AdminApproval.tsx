@@ -3,7 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle2, XCircle, Clock, Mail, Building2, MessageSquare } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Clock, Mail, Building2, MessageSquare, Users, UserCheck, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Navigation } from "@/components/Navigation";
@@ -16,6 +16,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function AdminApproval() {
   const { user, loading } = useAuth();
@@ -25,6 +33,18 @@ export default function AdminApproval() {
 
   // Fetch pending access requests
   const { data: requests, isLoading, refetch } = trpc.admin.getPendingRequests.useQuery(
+    undefined,
+    { enabled: user?.role === "admin" }
+  );
+
+  // Fetch pending user registrations
+  const { data: pendingUsers, isLoading: loadingPendingUsers, refetch: refetchPendingUsers } = trpc.admin.getPendingUsers.useQuery(
+    undefined,
+    { enabled: user?.role === "admin" }
+  );
+
+  // Fetch all users
+  const { data: allUsers, isLoading: loadingAllUsers, refetch: refetchAllUsers } = trpc.admin.getAllUsers.useQuery(
     undefined,
     { enabled: user?.role === "admin" }
   );
@@ -51,6 +71,41 @@ export default function AdminApproval() {
     },
     onError: (error: any) => {
       toast.error(`Failed to deny: ${error.message}`);
+    },
+  });
+
+  // Approve user registration mutation
+  const approveUserMutation = trpc.admin.approveUser.useMutation({
+    onSuccess: () => {
+      toast.success("User approved!");
+      refetchPendingUsers();
+      refetchAllUsers();
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to approve: ${error.message}`);
+    },
+  });
+
+  // Deny/delete user mutation
+  const denyUserMutation = trpc.admin.denyUser.useMutation({
+    onSuccess: () => {
+      toast.success("User removed!");
+      refetchPendingUsers();
+      refetchAllUsers();
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to remove: ${error.message}`);
+    },
+  });
+
+  // Update user role mutation
+  const updateRoleMutation = trpc.admin.updateUserRole.useMutation({
+    onSuccess: () => {
+      toast.success("User role updated!");
+      refetchAllUsers();
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to update role: ${error.message}`);
     },
   });
 
@@ -85,9 +140,12 @@ export default function AdminApproval() {
     );
   }
 
-  const pendingCount = requests?.filter((r: any) => r.status === "pending").length || 0;
+  const pendingRequestCount = requests?.filter((r: any) => r.status === "pending").length || 0;
+  const pendingUserCount = pendingUsers?.length || 0;
+  const totalPendingCount = pendingRequestCount + pendingUserCount;
   const approvedCount = requests?.filter((r: any) => r.status === "approved").length || 0;
   const deniedCount = requests?.filter((r: any) => r.status === "denied").length || 0;
+  const totalUserCount = allUsers?.length || 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -99,15 +157,27 @@ export default function AdminApproval() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-slate-900/50 border-slate-800">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-slate-400 text-sm">Pending</p>
-                  <p className="text-3xl font-bold text-yellow-400">{pendingCount}</p>
+                  <p className="text-slate-400 text-sm">Pending Approval</p>
+                  <p className="text-3xl font-bold text-yellow-400">{totalPendingCount}</p>
                 </div>
                 <Clock className="h-8 w-8 text-yellow-400 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-slate-900/50 border-slate-800">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-slate-400 text-sm">Total Users</p>
+                  <p className="text-3xl font-bold text-cyan-400">{totalUserCount}</p>
+                </div>
+                <Users className="h-8 w-8 text-cyan-400 opacity-50" />
               </div>
             </CardContent>
           </Card>
@@ -137,16 +207,126 @@ export default function AdminApproval() {
           </Card>
         </div>
 
-        {/* Pending Requests */}
-        <Card className="bg-slate-900/50 border-slate-800">
-          <CardHeader>
-            <CardTitle>Pending Requests</CardTitle>
-            <CardDescription>
-              {pendingCount === 0
-                ? "No pending requests"
-                : `${pendingCount} request${pendingCount !== 1 ? "s" : ""} awaiting approval`}
-            </CardDescription>
-          </CardHeader>
+        <Tabs defaultValue="pending" className="space-y-6">
+          <TabsList className="bg-slate-800/50">
+            <TabsTrigger value="pending" className="data-[state=active]:bg-amber-600">
+              <Clock className="h-4 w-4 mr-2" />
+              Pending Approval
+              {totalPendingCount > 0 && (
+                <Badge variant="secondary" className="ml-2 bg-amber-500/20 text-amber-300">
+                  {totalPendingCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="users" className="data-[state=active]:bg-cyan-600">
+              <Users className="h-4 w-4 mr-2" />
+              All Users
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pending" className="space-y-6">
+            {/* Pending User Registrations */}
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-500/20 rounded-lg">
+                    <UserCheck className="h-6 w-6 text-amber-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-white">Pending User Registrations</CardTitle>
+                    <CardDescription>
+                      {pendingUserCount === 0
+                        ? "No pending user registrations"
+                        : `${pendingUserCount} user${pendingUserCount !== 1 ? "s" : ""} awaiting approval`}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingPendingUsers ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
+                  </div>
+                ) : pendingUsers?.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400">
+                    <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-green-500/50" />
+                    <p>No pending user registrations</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {pendingUsers?.map((u: any) => (
+                      <div
+                        key={u.id}
+                        className="p-4 bg-slate-800/50 border border-slate-700 rounded-lg hover:border-slate-600 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-lg font-semibold text-white">{u.name}</h3>
+                              <Badge variant="outline" className="bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
+                                Pending
+                              </Badge>
+                            </div>
+                            <div className="space-y-2 text-sm text-slate-400">
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-4 w-4" />
+                                <span>{u.email}</span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-3">
+                              Registered {new Date(u.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+                              onClick={() => approveUserMutation.mutate({ userId: u.id })}
+                              disabled={approveUserMutation.isPending}
+                            >
+                              {approveUserMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <CheckCircle2 className="h-4 w-4" />
+                              )}
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-2 border-red-500/50 text-red-400 hover:bg-red-500/10"
+                              onClick={() => denyUserMutation.mutate({ userId: u.id })}
+                              disabled={denyUserMutation.isPending}
+                            >
+                              <XCircle className="h-4 w-4" />
+                              Deny
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Pending Access Requests */}
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-500/20 rounded-lg">
+                    <Shield className="h-6 w-6 text-purple-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-white">Demo Access Requests</CardTitle>
+                    <CardDescription>
+                      {pendingRequestCount === 0
+                        ? "No pending access requests"
+                        : `${pendingRequestCount} request${pendingRequestCount !== 1 ? "s" : ""} awaiting approval`}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
@@ -236,54 +416,110 @@ export default function AdminApproval() {
           </CardContent>
         </Card>
 
-        {/* All Requests History */}
-        <Card className="bg-slate-900/50 border-slate-800">
-          <CardHeader>
-            <CardTitle>Request History</CardTitle>
-            <CardDescription>All access requests (approved, denied, pending)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {requests?.map((request: any) => (
-                  <div
-                    key={request.id}
-                    className="flex items-center justify-between p-3 bg-slate-800/30 border border-slate-700/50 rounded-lg"
-                  >
-                    <div className="flex-1">
-                      <p className="text-white font-medium">{request.name}</p>
-                      <p className="text-sm text-slate-400">{request.email}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {request.status === "pending" && (
-                        <Badge variant="outline" className="bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
-                          Pending
-                        </Badge>
-                      )}
-                      {request.status === "approved" && (
-                        <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30">
-                          Approved
-                        </Badge>
-                      )}
-                      {request.status === "denied" && (
-                        <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30">
-                          Denied
-                        </Badge>
-                      )}
-                      <span className="text-xs text-slate-500">
-                        {new Date(request.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
+          </TabsContent>
+
+          {/* All Users Tab */}
+          <TabsContent value="users">
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-cyan-500/20 rounded-lg">
+                    <Users className="h-6 w-6 text-cyan-400" />
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  <div>
+                    <CardTitle className="text-white">All Users</CardTitle>
+                    <CardDescription>Manage all registered users and their roles</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingAllUsers ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
+                  </div>
+                ) : allUsers?.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400">
+                    <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No users found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {allUsers?.map((u: any) => (
+                      <div
+                        key={u.id}
+                        className="flex items-center justify-between p-4 bg-slate-800/30 border border-slate-700/50 rounded-lg hover:border-slate-600 transition-colors"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <p className="text-white font-medium">{u.name || 'No name'}</p>
+                            {u.isApproved ? (
+                              <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30">
+                                Approved
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
+                                Pending
+                              </Badge>
+                            )}
+                            {u.role === 'admin' && (
+                              <Badge variant="outline" className="bg-purple-500/10 text-purple-400 border-purple-500/30">
+                                Admin
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-slate-400">{u.email}</p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {u.loginMethod} • Last sign in: {u.lastSignedIn ? new Date(u.lastSignedIn).toLocaleDateString() : 'Never'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Select
+                            value={u.role}
+                            onValueChange={(value: "user" | "admin") => 
+                              updateRoleMutation.mutate({ userId: u.id, role: value })
+                            }
+                            disabled={u.id === user?.id}
+                          >
+                            <SelectTrigger className="w-24 bg-slate-800 border-slate-700 text-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-800 border-slate-700">
+                              <SelectItem value="user">User</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {!u.isApproved && (
+                            <Button
+                              size="sm"
+                              className="gap-1 bg-green-600 hover:bg-green-700 text-white"
+                              onClick={() => approveUserMutation.mutate({ userId: u.id })}
+                              disabled={approveUserMutation.isPending}
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                              Approve
+                            </Button>
+                          )}
+                          {u.id !== user?.id && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1 border-red-500/50 text-red-400 hover:bg-red-500/10"
+                              onClick={() => denyUserMutation.mutate({ userId: u.id })}
+                              disabled={denyUserMutation.isPending}
+                            >
+                              <XCircle className="h-4 w-4" />
+                              Remove
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Deny Reason Dialog */}

@@ -83,4 +83,95 @@ export const adminRouter = router({
 
       return { success: true };
     }),
+
+  // Get all users for admin management
+  getAllUsers: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user?.role !== "admin") {
+      throw new Error("Admin access required");
+    }
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    return await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      isApproved: users.isApproved,
+      loginMethod: users.loginMethod,
+      createdAt: users.createdAt,
+      lastSignedIn: users.lastSignedIn,
+    }).from(users).orderBy(users.createdAt);
+  }),
+
+  // Get pending users (registered but not approved)
+  getPendingUsers: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user?.role !== "admin") {
+      throw new Error("Admin access required");
+    }
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    return await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      isApproved: users.isApproved,
+      loginMethod: users.loginMethod,
+      createdAt: users.createdAt,
+    }).from(users).where(eq(users.isApproved, false)).orderBy(users.createdAt);
+  }),
+
+  // Approve a registered user
+  approveUser: protectedProcedure
+    .input(z.object({ userId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") {
+        throw new Error("Admin access required");
+      }
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      await db
+        .update(users)
+        .set({ isApproved: true })
+        .where(eq(users.id, input.userId));
+
+      return { success: true };
+    }),
+
+  // Deny/delete a registered user
+  denyUser: protectedProcedure
+    .input(z.object({ userId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") {
+        throw new Error("Admin access required");
+      }
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      await db.delete(users).where(eq(users.id, input.userId));
+
+      return { success: true };
+    }),
+
+  // Update user role
+  updateUserRole: protectedProcedure
+    .input(z.object({ 
+      userId: z.number(),
+      role: z.enum(["user", "admin"])
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") {
+        throw new Error("Admin access required");
+      }
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      await db
+        .update(users)
+        .set({ role: input.role })
+        .where(eq(users.id, input.userId));
+
+      return { success: true };
+    }),
 });

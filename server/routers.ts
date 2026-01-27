@@ -30,10 +30,12 @@ import { toolsRouter } from "./tools-router";
 import { adminRouter } from "./admin-router";
 import { emailVerificationRouter } from "./email-verification-router";
 import { dustRouter } from "./routers/dust";
+import { salesforceRouter } from "./routers/salesforce";
 
 
 export const appRouter = router({
   dust: dustRouter,
+  salesforce: salesforceRouter,
   tools: toolsRouter,
   clay: clayRouter,
   gemini: geminiRouter,
@@ -186,7 +188,7 @@ export const appRouter = router({
           name: input.name,
           passwordHash,
           loginMethod: "email",
-          isApproved: true, // Auto-approve for now
+          isApproved: false, // Require admin approval
           role: "user",
         });
         
@@ -727,15 +729,52 @@ export const appRouter = router({
           
           // First call without tool support (webSearch module not available)
           console.log(`[compileOverview] Calling invokeLLM...`);
+          
+          // Build contacts string
+          const contactsStr = dataContext.keyContacts.length > 0 
+            ? dataContext.keyContacts.map((c: any) => `- ${c.name} (${c.title || 'No title'}${c.email ? ', ' + c.email : ''})`).join('\n')
+            : 'NO CONTACTS IN DATABASE';
+          
           let response = await invokeLLM({
             messages: [
               {
                 role: "system",
-                content: `You are a sales intelligence analyst. Provide BRIEF, actionable insights. Keep your response under 800 words. Use markdown formatting with headers and bullet points. Do NOT include any XML tags, reasoning steps, or internal thinking - only the final analysis.`
+                content: `You are a data reporter. Your job is to summarize ONLY the data provided. 
+
+CRITICAL RULES:
+1. ONLY state facts from the data provided - NEVER make up information
+2. If data is missing or zero, say "No data available" - do NOT guess or suggest
+3. Do NOT give generic sales advice like "reach out" or "engage stakeholders"
+4. Do NOT make up contact names, emails, or titles that aren't in the data
+5. Do NOT speculate about pain points, tech stack, or buying signals unless explicitly in the data
+6. Keep it SHORT - under 300 words
+7. Use markdown formatting
+
+If contacts = 0, say "No contacts in database - add contacts before outreach"
+If calls = 0, say "No call history"
+NEVER suggest "identify key contacts" - either we have them or we don't.`
               },
               {
                 role: "user",
-                content: `Provide a brief sales analysis for ${dataContext.company.name}:\n\n**Company:** ${dataContext.company.name} (${dataContext.company.industry})\n**Intent Score:** ${dataContext.company.intentScore}\n**Buying Stage:** ${dataContext.company.buyingStage}\n**Employees:** ${dataContext.company.employees}\n**Key Contacts:** ${dataContext.keyContacts.map((c: any) => c.name + ' - ' + c.title).join(', ')}\n**Total Contacts:** ${dataContext.totalContacts}\n**Recent Calls:** ${dataContext.recentCalls}\n\nProvide:\n1. **Key Opportunity** (2-3 sentences)\n2. **Recommended Actions** (3-4 bullet points)\n3. **Risk Factors** (2-3 bullet points)\n4. **Best Contact Strategy** (who to reach, how)`
+                content: `Report the facts for this account. DO NOT add recommendations or speculation.
+
+## DATABASE FACTS:
+- Company: ${dataContext.company.name}
+- Domain: ${dataContext.company.domain || 'Not set'}
+- Industry: ${dataContext.company.industry || 'Unknown'}
+- Employees: ${dataContext.company.employees || 'Unknown'}
+- Intent Score: ${dataContext.company.intentScore || 'Not set'}
+- Buying Stage: ${dataContext.company.buyingStage}
+- Profile Fit: ${(account as any).profileFit || 'Unknown'}
+- Relationship: ${dataContext.company.relationship || 'Unknown'}
+
+## CONTACTS IN DATABASE (${dataContext.totalContacts} total):
+${contactsStr}
+
+## CALL HISTORY:
+${dataContext.recentCalls} calls recorded
+
+Now write a brief factual summary. Start with "## Account Overview" and list the facts. If we have contacts, list them. If we don't, say so. End with "## Status" indicating if this account is ready for outreach (has contacts) or needs contacts added first.`
               }
             ]
           });

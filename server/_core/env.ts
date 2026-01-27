@@ -15,4 +15,8 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   sixSenseApiKey: process.env.SIXSENSE_API_KEY ?? process.env['6Sense_API'] ?? "",
   clayWebhookUrl: process.env.CLAY_WEBHOOK_URL ?? "",
+  // Salesforce OAuth credentials
+  salesforceClientId: process.env.SALESFORCE_CLIENT_ID ?? "",
+  salesforceClientSecret: process.env.SALESFORCE_CLIENT_SECRET ?? "",
+  salesforceInstanceUrl: process.env.SALESFORCE_INSTANCE_URL ?? "https://login.salesforce.com",
 };

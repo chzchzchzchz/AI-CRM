@@ -20,9 +20,7 @@ export default function SignUp() {
   const signUpMutation = trpc.auth.signUp.useMutation({
     onSuccess: () => {
       setSuccess(true);
-      setTimeout(() => {
-        setLocation("/login");
-      }, 2000);
+      // Don't auto-redirect - user needs to wait for admin approval
     },
     onError: (err) => {
       setError(err.message || "Failed to create account");
@@ -57,10 +55,11 @@ export default function SignUp() {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center gap-4 text-center">
-              <CheckCircle className="h-16 w-16 text-green-500" />
-              <h2 className="text-2xl font-bold">Account Created!</h2>
+              <CheckCircle className="h-16 w-16 text-amber-500" />
+              <h2 className="text-2xl font-bold">Account Pending Approval</h2>
               <p className="text-muted-foreground">
-                Your account has been created. Redirecting to login...
+                Your account has been created and is pending admin approval.
+                You'll receive an email once your account is approved.
               </p>
             </div>
           </CardContent>

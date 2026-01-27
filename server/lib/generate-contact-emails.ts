@@ -64,6 +64,10 @@ async function main() {
     }
     
     // Get account
+    if (!contact.accountId) {
+      skipped++;
+      continue;
+    }
     const account = accountMap.get(contact.accountId);
     if (!account || !account.domain) {
       skipped++;
