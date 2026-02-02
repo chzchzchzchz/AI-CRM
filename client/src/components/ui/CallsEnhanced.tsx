@@ -37,7 +37,7 @@ export default function CallsEnhanced() {
   // Extract unique companies
   const companies = useMemo(() => {
     if (!calls) return [];
-    return Array.from(new Set(calls.map((c: any) => c.company).filter(Boolean))).sort();
+    return Array.from(new Set(calls.map((c: any) => c.company).filter(Boolean))).sort() as string[];
   }, [calls]);
 
   // Filter and sort calls
@@ -170,7 +170,7 @@ export default function CallsEnhanced() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Companies</SelectItem>
-                  {companies.slice(0, 50).map(company => (
+                  {companies.slice(0, 50).map((company: string) => (
                     <SelectItem key={company} value={company!}>{company}</SelectItem>
                   ))}
                 </SelectContent>

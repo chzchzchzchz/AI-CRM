@@ -31,7 +31,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
   const isLoading = accountsLoading || peopleLoading || callsLoading;
 
-  const filteredAccounts = accounts?.filter(account => {
+  const filteredAccounts = accounts?.filter((account: any) => {
     const q = query.toLowerCase();
     return (
       account.name?.toLowerCase().includes(q) ||
@@ -40,7 +40,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     );
   }).slice(0, 5);
 
-  const filteredPeople = people?.filter(person => {
+  const filteredPeople = people?.filter((person: any) => {
     const q = query.toLowerCase();
     return (
       person.name?.toLowerCase().includes(q) ||
@@ -50,7 +50,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     );
   }).slice(0, 5);
 
-  const filteredCalls = calls?.filter(call => {
+  const filteredCalls = calls?.filter((call: any) => {
     const q = query.toLowerCase();
     return (
       call.title?.toLowerCase().includes(q) ||
@@ -117,7 +117,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                     Accounts
                   </div>
                   <div className="space-y-1">
-                    {filteredAccounts.map((account) => (
+                    {filteredAccounts.map((account: any) => (
                       <button
                         key={account.id}
                         onClick={() => handleSelect('account', account.id)}
@@ -145,7 +145,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                     Contacts
                   </div>
                   <div className="space-y-1">
-                    {filteredPeople.map((person) => (
+                    {filteredPeople.map((person: any) => (
                       <button
                         key={person.id}
                         onClick={() => handleSelect('contact', person.id)}
@@ -173,7 +173,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                     Calls
                   </div>
                   <div className="space-y-1">
-                    {filteredCalls.map((call) => (
+                    {filteredCalls.map((call: any) => (
                       <button
                         key={call.id}
                         onClick={() => handleSelect('call', call.id)}

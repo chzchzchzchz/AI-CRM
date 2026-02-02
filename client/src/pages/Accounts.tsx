@@ -44,7 +44,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   // Extract unique values for filters
   const regions = useMemo(() => {
     if (!accounts) return [];
-    return Array.from(new Set(accounts.map(a => a.region).filter(Boolean)));
+    return Array.from(new Set(accounts.map((a: any) => a.region).filter(Boolean))) as string[];
   }, [accounts]);
 
   // MFA/Identity Provider options - hardcoded list of identity/auth vendors
@@ -71,7 +71,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     if (!accounts) return [];
     const foundProviders = new Set<string>();
     
-    accounts.forEach(account => {
+    accounts.forEach((account: any) => {
       if (account.techStack) {
         const techLower = String(account.techStack).toLowerCase();
         MFA_PROVIDERS.forEach(provider => {
@@ -117,7 +117,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   const filteredAccounts = useMemo(() => {
     if (!accounts) return [];
 
-    let filtered = accounts.filter(account => {
+    let filtered = accounts.filter((account: any) => {
       // Rep territory filter (if in rep mode)
       const employeeCount = parseInt(String(account.employeeCount || '0').replace(/[^0-9]/g, '') || '0');
       const matchesRepTerritory = matchesTerritory(account.region || '', employeeCount);
@@ -155,7 +155,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     });
 
     // Sort
-    filtered.sort((a, b) => {
+    filtered.sort((a: any, b: any) => {
       let aVal: any, bVal: any;
 
       switch (sortField) {
@@ -239,8 +239,8 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     );
   }
 
-  const hotCount = filteredAccounts.filter(a => parseInt(String(a.intentScore || "0")) >= 70).length;
-  const warmCount = filteredAccounts.filter(a => {
+  const hotCount = filteredAccounts.filter((a: any) => parseInt(String(a.intentScore || "0")) >= 70).length;
+  const warmCount = filteredAccounts.filter((a: any) => {
     const score = parseInt(String(a.intentScore || "0"));
     return score >= 40 && score < 70;
   }).length;
@@ -353,7 +353,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Regions</SelectItem>
-                  {regions.map(region => (
+                  {regions.map((region: string) => (
                     <SelectItem key={region} value={region!}>{region}</SelectItem>
                   ))}
                 </SelectContent>
@@ -457,7 +457,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
           </Card>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredAccounts.map((account) => {
+            {filteredAccounts.map((account: any) => {
               const intentBadge = getIntentBadge(String(account.intentScore || "0"));
               const IntentIcon = intentBadge.icon;
 

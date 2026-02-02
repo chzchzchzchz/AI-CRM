@@ -50,7 +50,7 @@ export async function getContext(type: string, key?: string): Promise<any[]> {
       .orderBy(desc(contextStore.createdAt))
       .limit(10);
     
-    return results.map(r => ({
+    return results.map((r: any) => ({
       ...r,
       metadata: r.metadata ? JSON.parse(r.metadata) : null
     }));
@@ -61,7 +61,7 @@ export async function getContext(type: string, key?: string): Promise<any[]> {
       .orderBy(desc(contextStore.createdAt))
       .limit(50);
     
-    return results.map(r => ({
+    return results.map((r: any) => ({
       ...r,
       metadata: r.metadata ? JSON.parse(r.metadata) : null
     }));
@@ -431,7 +431,7 @@ CONTACT INFO:
 - Phone: ${contact[0].phone || 'Unknown'}
 - Location: ${contact[0].location || 'Unknown'}${linkedInSection}${accountContext}
 
-CALL HISTORY (${contactCalls.length} calls): ${contactCalls.length > 0 ? JSON.stringify(contactCalls.slice(0, 3).map(c => ({ date: c.callDate, duration: c.duration, summary: c.summary?.substring(0, 200) })), null, 2) : 'No recorded calls'}
+CALL HISTORY (${contactCalls.length} calls): ${contactCalls.length > 0 ? JSON.stringify(contactCalls.slice(0, 3).map((c: any) => ({ date: c.callDate, duration: c.duration, summary: c.summary?.substring(0, 200) })), null, 2) : 'No recorded calls'}
 
 ${storedInsights.length > 0 ? `PREVIOUS INSIGHTS:\n${storedInsights.map(i => `- ${i.value}`).join('\n')}` : ''}
 

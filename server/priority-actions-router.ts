@@ -1,6 +1,7 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getAllAccounts, getContactsByAccountId, getGongCallsByAccountId } from "./db";
+import { Account, Contact, Call } from "../drizzle/schema";
 import { calculateVectorScores, type AccountData } from "./vectorScoring";
 
 // Rep territory assignments
@@ -50,7 +51,7 @@ export const priorityActionsRouter = router({
       // Apply rep-specific filtering only for non-demo users
       if (!isDemoUser && userEmail && REP_TERRITORIES[userEmail]) {
         const territory = REP_TERRITORIES[userEmail];
-        accounts = accounts.filter(a => {
+        accounts = accounts.filter((a: Account) => {
           const empCount = a.employeeCount || 0;
           return a.region === territory.region && 
             empCount >= territory.minEmployees && 
@@ -59,17 +60,17 @@ export const priorityActionsRouter = router({
       }
       
       const hotAccounts = accounts
-        .filter(a => (a.intentScore || 0) >= 70)
-        .sort((a, b) => (b.intentScore || 0) - (a.intentScore || 0))
+        .filter((a: Account) => (a.intentScore || 0) >= 70)
+        .sort((a: Account, b: Account) => (b.intentScore || 0) - (a.intentScore || 0))
         .slice(0, limit);
 
       const enrichedActions = await Promise.all(
-        hotAccounts.map(async (account) => {
+        hotAccounts.map(async (account: Account) => {
           const contacts = await getContactsByAccountId(account.id);
           const calls = await getGongCallsByAccountId(account.id);
           
           // Sort contacts: key titles first, then by name
-          const sortedContacts = [...contacts].sort((a, b) => {
+          const sortedContacts = [...contacts].sort((a: Contact, b: Contact) => {
             const aIsKey = isKeyTitle(a.title);
             const bIsKey = isKeyTitle(b.title);
             if (aIsKey && !bIsKey) return -1;
@@ -77,7 +78,7 @@ export const priorityActionsRouter = router({
             return (a.name || '').localeCompare(b.name || '');
           });
           
-          const topContacts = sortedContacts.slice(0, 5).map(c => ({
+          const topContacts = sortedContacts.slice(0, 5).map((c: Contact) => ({
             name: c.name,
             title: c.title,
             email: c.email,
@@ -90,7 +91,7 @@ export const priorityActionsRouter = router({
           
           // Calculate last call date and days since
           const lastCallDate = calls.length > 0 
-            ? new Date(Math.max(...calls.map(c => new Date(c.callDate || 0).getTime())))
+            ? new Date(Math.max(...calls.map((c: Call) => new Date(c.callDate || 0).getTime())))
             : null;
           
           const daysSinceLastCall = lastCallDate 
@@ -235,15 +236,15 @@ export const priorityActionsRouter = router({
       
       const isDemoUser = ctx.user?.email?.includes('demo') || false;
       const accounts = await getAllAccounts(isDemoUser);
-      const repAccounts = accounts.filter(a => {
+      const repAccounts = accounts.filter((a: Account) => {
         const empCount = a.employeeCount || 0;
         return a.region === territory.region && 
           empCount >= territory.minEmployees && 
           empCount < territory.maxEmployees;
       });
       
-      const hotLeads = repAccounts.filter(a => (a.intentScore || 0) >= 70).length;
-      const warmLeads = repAccounts.filter(a => {
+      const hotLeads = repAccounts.filter((a: Account) => (a.intentScore || 0) >= 70).length;
+      const warmLeads = repAccounts.filter((a: Account) => {
         const score = a.intentScore || 0;
         return score >= 40 && score < 70;
       }).length;
@@ -267,7 +268,7 @@ export const priorityActionsRouter = router({
       // Apply rep-specific filtering if user email matches a known rep
       if (input?.userEmail && REP_TERRITORIES[input.userEmail]) {
         const territory = REP_TERRITORIES[input.userEmail];
-        accounts = accounts.filter(a => {
+        accounts = accounts.filter((a: Account) => {
           const empCount = a.employeeCount || 0;
           return a.region === territory.region && 
             empCount >= territory.minEmployees && 
@@ -275,15 +276,15 @@ export const priorityActionsRouter = router({
         });
       }
       
-      const hotLeads = accounts.filter(a => (a.intentScore || 0) >= 70).length;
-      const warmLeads = accounts.filter(a => {
+      const hotLeads = accounts.filter((a: Account) => (a.intentScore || 0) >= 70).length;
+      const warmLeads = accounts.filter((a: Account) => {
         const score = a.intentScore || 0;
         return score >= 40 && score < 70;
       }).length;
-      const coldLeads = accounts.filter(a => (a.intentScore || 0) < 40).length;
+      const coldLeads = accounts.filter((a: Account) => (a.intentScore || 0) < 40).length;
       
       // Calculate 6QA opportunity gap (accounts with 6QA but no opportunities)
-      const sixQAGap = accounts.filter(a => {
+      const sixQAGap = accounts.filter((a: Account) => {
         const rawData = a.rawData as any;
         return rawData?.sixqa_qualified === true && !rawData?.has_opportunity;
       }).length;

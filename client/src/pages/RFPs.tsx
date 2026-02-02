@@ -51,7 +51,7 @@ export default function RFPs() {
     scrapeMutation.mutate({ apiKey });
   };
 
-  const filteredRFPs = rfps.filter(rfp => {
+  const filteredRFPs = rfps.filter((rfp: any) => {
     const matchesSearch = !searchQuery || 
       rfp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (rfp.agency && rfp.agency.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -188,7 +188,7 @@ export default function RFPs() {
           </Card>
         ) : (
           <div className="grid gap-4">
-            {filteredRFPs.map((rfp) => {
+            {filteredRFPs.map((rfp: any) => {
               // keywords field removed from schema
               
               return (

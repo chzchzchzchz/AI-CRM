@@ -1,7 +1,7 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb } from "./db";
-import { rfps } from "../drizzle/schema";
+import { rfps, RFP } from "../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 
 /**
@@ -269,9 +269,9 @@ export const rfpRouter = router({
 
     return {
       total: allRfps.length,
-      open: allRfps.filter(r => r.status === "open").length,
-      closed: allRfps.filter(r => r.status === "closed").length,
-      awarded: allRfps.filter(r => r.status === "awarded").length,
+      open: allRfps.filter((r: RFP) => r.status === "open").length,
+      closed: allRfps.filter((r: RFP) => r.status === "closed").length,
+      awarded: allRfps.filter((r: RFP) => r.status === "awarded").length,
       government: 0, // type column doesn't exist in schema
       private: 0, // type column doesn't exist in schema
     };

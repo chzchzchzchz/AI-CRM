@@ -470,7 +470,7 @@ export async function validateAllAccounts(limit: number = 20): Promise<Validatio
 export async function validateAllContacts(limit: number = 30): Promise<ValidationIssue[]> {
   const contacts = await getAllPeople();
   const accounts = await getAllAccounts();
-  const accountMap = new Map(accounts.map(a => [a.id, a]));
+  const accountMap = new Map(accounts.map((a: any) => [a.id, a]));
   
   const allIssues: ValidationIssue[] = [];
 
@@ -504,20 +504,20 @@ export async function getValidationSummary() {
 
   // Quick validation without web searches
   const accountIssues = {
-    missingDomain: accounts.filter(a => !a.domain).length,
-    missingIndustry: accounts.filter(a => !a.industry).length,
-    missingEmployeeCount: accounts.filter(a => !a.employeeCount).length,
-    invalidIntentScore: accounts.filter(a => {
+    missingDomain: accounts.filter((a: any) => !a.domain).length,
+    missingIndustry: accounts.filter((a: any) => !a.industry).length,
+    missingEmployeeCount: accounts.filter((a: any) => !a.employeeCount).length,
+    invalidIntentScore: accounts.filter((a: any) => {
       const score = a.intentScore;
       return score && (score < 0 || score > 100);
     }).length
   };
 
   const contactIssues = {
-    missingEmail: contacts.filter(c => !c.email).length,
-    missingTitle: contacts.filter(c => !c.title).length,
-    missingPhone: contacts.filter(c => !c.phone).length,
-    noAccountLink: contacts.filter(c => !c.accountId).length
+    missingEmail: contacts.filter((c: any) => !c.email).length,
+    missingTitle: contacts.filter((c: any) => !c.title).length,
+    missingPhone: contacts.filter((c: any) => !c.phone).length,
+    noAccountLink: contacts.filter((c: any) => !c.accountId).length
   };
 
   return {

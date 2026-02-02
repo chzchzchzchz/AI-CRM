@@ -118,17 +118,17 @@ export default function Home() {
 
   // Process accounts data - filtered by rep territory
   const topAccounts = accounts
-    ?.filter(a => matchesTerritory(a.region || '', a.employeeCount || 0))
-    .map(a => ({
+    ?.filter((a: any) => matchesTerritory(a.region || '', a.employeeCount || 0))
+    .map((a: any) => ({
       ...a,
       intentScoreNum: parseInt(String(a.intentScore || 0), 10)
     }))
-    .sort((a, b) => b.intentScoreNum - a.intentScoreNum)
+    .sort((a: any, b: any) => b.intentScoreNum - a.intentScoreNum)
     .slice(0, 15) || [];
 
   // Use rep-specific stats if available, otherwise fall back to all accounts
-  const hotLeads = repStats?.hotLeads ?? accounts?.filter(a => parseInt(String(a.intentScore || 0)) >= 70).length ?? 0;
-  const warmLeads = repStats?.warmLeads ?? accounts?.filter(a => {
+  const hotLeads = repStats?.hotLeads ?? accounts?.filter((a: any) => parseInt(String(a.intentScore || 0)) >= 70).length ?? 0;
+  const warmLeads = repStats?.warmLeads ?? accounts?.filter((a: any) => {
     const score = parseInt(String(a.intentScore || 0));
     return score >= 40 && score < 70;
   }).length ?? 0;
@@ -499,7 +499,7 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {topAccounts.slice(0, 5).map((account, index) => {
+                  {topAccounts.slice(0, 5).map((account: any, index: number) => {
                     const intentScore = account.intentScoreNum;
                     const intentLevel = intentScore >= 70 ? "hot" : intentScore >= 40 ? "warm" : "cold";
                     const badgeClass = intentScore >= 70 ? "badge-danger" : intentScore >= 40 ? "badge-warning" : "badge-primary";

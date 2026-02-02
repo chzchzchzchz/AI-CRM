@@ -147,11 +147,11 @@ export async function getAllAccounts(isDemoUser: boolean = false) {
   
   // If demo user, only show demo accounts (those with name starting with "Demo_")
   if (isDemoUser) {
-    return allAccounts.filter(a => a.name?.startsWith('Demo_'));
+    return allAccounts.filter((a: any) => a.name?.startsWith('Demo_'));
   }
   
   // For regular users, exclude demo accounts
-  return allAccounts.filter(a => !a.name?.startsWith('Demo_'));
+  return allAccounts.filter((a: any) => !a.name?.startsWith('Demo_'));
 }
 
 export async function getAccountById(id: number) {
