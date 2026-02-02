@@ -34,6 +34,7 @@ import { salesforceRouter } from "./routers/salesforce";
 import { notifyOwner } from "./_core/notification";
 import { getApprovalLinks } from "./admin-approval-api";
 import { hotLeadsRouter } from "./hot-leads-router";
+import { recordFailedLogin, clearLoginAttempts, validatePasswordComplexity, logSecurityEvent } from "./_core/security";
 
 
 export const appRouter = router({
@@ -174,6 +175,13 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
+        
+        // Validate password complexity
+        const passwordError = validatePasswordComplexity(input.password);
+        if (passwordError) {
+          throw new Error(passwordError);
+        }
+        
         // Check if email already exists
         const existing = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
         if (existing.length > 0) {
@@ -243,17 +251,30 @@ Or go to the Admin Panel: /admin/approval`
       .mutation(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
+        
+        // Get client IP for brute force protection
+        const clientIP = ctx.req.headers["x-forwarded-for"]?.toString().split(",")[0].trim() || 
+                         ctx.req.ip || 
+                         ctx.req.socket.remoteAddress || 
+                         "unknown";
+        
         // Find user by email
         const userResults = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
         const user = userResults[0];
         
         if (!user || !user.passwordHash) {
+          // Record failed attempt
+          recordFailedLogin(clientIP);
+          logSecurityEvent("LOGIN_FAILED", { email: input.email, reason: "user_not_found", ip: clientIP }, "warn");
           throw new Error("Invalid email or password");
         }
         
         // Verify password
         const isValid = await bcrypt.compare(input.password, user.passwordHash);
         if (!isValid) {
+          // Record failed attempt
+          recordFailedLogin(clientIP);
+          logSecurityEvent("LOGIN_FAILED", { email: input.email, reason: "invalid_password", ip: clientIP }, "warn");
           throw new Error("Invalid email or password");
         }
         
@@ -261,6 +282,10 @@ Or go to the Admin Panel: /admin/approval`
         if (!user.isApproved) {
           throw new Error("Your account is pending approval");
         }
+        
+        // Clear failed login attempts on successful login
+        clearLoginAttempts(clientIP);
+        logSecurityEvent("LOGIN_SUCCESS", { email: input.email, userId: user.id, ip: clientIP }, "info");
         
         // Update last signed in
         await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
