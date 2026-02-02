@@ -32,6 +32,7 @@ import { emailVerificationRouter } from "./email-verification-router";
 import { dustRouter } from "./routers/dust";
 import { salesforceRouter } from "./routers/salesforce";
 import { notifyOwner } from "./_core/notification";
+import { getApprovalLinks } from "./admin-approval-api";
 
 
 export const appRouter = router({
@@ -196,8 +197,12 @@ export const appRouter = router({
         // Get the new user ID
         const newUserId = result[0].insertId;
         
-        // Send notification to admin for approval
+        // Send notification to admin for approval with one-click links
         try {
+          // Generate one-click approval links
+          const baseUrl = process.env.VITE_APP_URL || 'https://target-account-dashboard.manus.space';
+          const { approveUrl, denyUrl } = getApprovalLinks(newUserId, baseUrl);
+          
           await notifyOwner({
             title: `🔔 New User Registration: ${input.name}`,
             content: `A new user has registered and is awaiting approval.
@@ -207,13 +212,17 @@ export const appRouter = router({
 **User ID:** ${newUserId}
 **Registered:** ${new Date().toISOString()}
 
-**To approve this user:**
-1. Go to the Admin Approval page: /admin/approval
-2. Find the user in the "Pending Approval" tab
-3. Click "Approve" or "Deny"
+---
 
-Alternatively, you can approve directly via the database:
-UPDATE users SET isApproved = 1 WHERE id = ${newUserId};`
+**One-Click Actions:**
+
+✅ [APPROVE USER](${approveUrl})
+
+❌ [DENY USER](${denyUrl})
+
+---
+
+Or go to the Admin Panel: /admin/approval`
           });
         } catch (notifyError) {
           console.error("Failed to send admin notification:", notifyError);
