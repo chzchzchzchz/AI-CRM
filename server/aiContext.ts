@@ -375,40 +375,62 @@ ${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `
 }
 
 /**
- * Auto-generate contact summary with AI
+ * Auto-generate contact summary with AI, optionally including LinkedIn data
  */
-export async function generateContactSummary(contactId: number): Promise<string> {
+export async function generateContactSummary(contactId: number, includeLinkedIn: boolean = false): Promise<string> {
   const db = await getDb();
   if (!db) return "Unable to generate summary";
 
-  const { contacts, calls } = await import("../drizzle/schema");
+  const { contacts, calls, accounts } = await import("../drizzle/schema");
   
   const contact = await db.select().from(contacts).where(eq(contacts.id, contactId)).limit(1);
   if (!contact[0]) return "Contact not found";
+
+  // Get account context if available
+  let accountContext = '';
+  if (contact[0].accountId) {
+    const account = await db.select().from(accounts).where(eq(accounts.id, contact[0].accountId)).limit(1);
+    if (account[0]) {
+      accountContext = `\nACCOUNT CONTEXT:\n- Company: ${account[0].name}\n- Industry: ${account[0].industry || 'Unknown'}\n- Intent Score: ${account[0].intentScore || 'N/A'}\n- Buying Stage: ${(account[0] as any).buyingStage || 'Unknown'}`;
+    }
+  }
 
   const contactCalls = await db.select().from(calls).where(eq(calls.contactId, contactId)).limit(10);
 
   // Get stored insights
   const storedInsights = await getContext('contact_insight', `contact_${contactId}`);
 
+  // Build LinkedIn section if available
+  let linkedInSection = '';
+  if (contact[0].linkedinUrl) {
+    linkedInSection = `\nLINKEDIN PROFILE: ${contact[0].linkedinUrl}\n(Use this to research their background, experience, education, and recent activity)`;
+  }
+
   const prompt = `Generate a comprehensive profile summary for this contact:
 
-CONTACT: ${JSON.stringify(contact[0], null, 2)}
-CALL HISTORY (${contactCalls.length}): ${JSON.stringify(contactCalls.slice(0, 3), null, 2)}
+CONTACT INFO:
+- Name: ${contact[0].name}
+- Title: ${contact[0].title || 'Unknown'}
+- Company: ${contact[0].company || 'Unknown'}
+- Email: ${contact[0].email || 'Unknown'}
+- Phone: ${contact[0].phone || 'Unknown'}
+- Location: ${contact[0].location || 'Unknown'}${linkedInSection}${accountContext}
 
-${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `- ${i.value}`).join('\n')}` : ''}
+CALL HISTORY (${contactCalls.length} calls): ${contactCalls.length > 0 ? JSON.stringify(contactCalls.slice(0, 3).map(c => ({ date: c.callDate, duration: c.duration, summary: c.summary?.substring(0, 200) })), null, 2) : 'No recorded calls'}
 
-Create a 2-3 paragraph profile covering:
-1. Role, responsibilities, and influence in the organization
-2. Engagement history and topics of interest
-3. Pain points and priorities based on conversations
-4. Best approach for outreach
+${storedInsights.length > 0 ? `PREVIOUS INSIGHTS:\n${storedInsights.map(i => `- ${i.value}`).join('\n')}` : ''}
 
-Be specific and personalized.`;
+Create a concise but insightful profile covering:
+1. **Role & Influence**: Their position, responsibilities, and decision-making authority
+2. **Background**: Professional experience and expertise areas (infer from title and company)
+3. **Engagement**: Key topics from past conversations and their priorities
+4. **Outreach Strategy**: Best approach, talking points, and timing recommendations
+
+Be specific, actionable, and avoid generic statements. Focus on what makes this contact unique and how to effectively engage them.`;
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: withRCP("You are a sales intelligence analyst. Create detailed contact profiles.") },
+      { role: "system", content: withRCP("You are a sales intelligence analyst specializing in B2B enterprise sales. Create actionable contact profiles that help sales reps effectively engage prospects. Be concise, specific, and avoid generic advice. Output only the final profile - no reasoning or thinking sections.") },
       { role: "user", content: prompt }
     ]
   });

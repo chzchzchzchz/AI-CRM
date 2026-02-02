@@ -675,9 +675,9 @@ Or go to the Admin Panel: /admin/approval`
       }),
 
     generateContactSummary: protectedProcedure
-      .input(z.object({ contactId: z.number() }))
+      .input(z.object({ contactId: z.number(), includeLinkedIn: z.boolean().optional() }))
       .mutation(async ({ input }) => {
-        return await generateContactSummary(input.contactId);
+        return await generateContactSummary(input.contactId, input.includeLinkedIn ?? false);
       }),
 
     compileOverview: protectedProcedure

@@ -1,22 +1,17 @@
 import { useState } from "react";
-import { TechStackAnalysis } from "@/components/TechStackAnalysis";
-import { IntelligenceTab } from "@/components/IntelligenceTab";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Navigation } from "@/components/Navigation";
 import { AIAssistant } from "@/components/AIAssistant";
 import { trpc } from "@/lib/trpc";
 import { 
-  ArrowLeft, ExternalLink, Users, 
-  FileText, Phone, TrendingUp, MapPin, Building2, 
-  Sparkles, Copy, Check, Zap, Flame, Target,
-  Mail, Linkedin, Briefcase, Globe, Calendar,
-  MessageSquare, BarChart3, Loader2
+  ArrowLeft, ExternalLink, Users, Phone, TrendingUp, MapPin, Building2, 
+  Sparkles, Copy, Check, Flame, Target, Mail, Linkedin, Globe, 
+  Loader2, ChevronRight, Shield, AlertTriangle, Zap, RefreshCw
 } from "lucide-react";
 import { Link, useParams } from "wouter";
-import { Streamdown } from "streamdown";
+import { SafeStreamdown } from "@/components/SafeStreamdown";
 import { toast } from "sonner";
 
 export default function AccountDetailEnhanced() {
@@ -29,46 +24,13 @@ export default function AccountDetailEnhanced() {
     { accountId },
     { enabled: accountId > 0 }
   );
-  
 
-  
-
-  const generateSummaryMutation = trpc.ai.generateAccountSummary.useMutation();
-  const geminiResearchMutation = trpc.gemini.researchAccount.useMutation();
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
-  const [geminiResearch, setGeminiResearch] = useState<string | null | undefined>(null);
-  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
-  const [isGeneratingGemini, setIsGeneratingGemini] = useState(false);
-
-  const handleGenerateSummary = async () => {
-    setIsGeneratingSummary(true);
-    try {
-      const summary = await generateSummaryMutation.mutateAsync({ accountId });
-      setAiSummary(summary);
-      toast.success("AI summary generated!");
-    } catch (error) {
-      toast.error("Failed to generate summary");
-    } finally {
-      setIsGeneratingSummary(false);
-    }
-  };
-
-  const handleGeminiResearch = async () => {
-    setIsGeneratingGemini(true);
-    try {
-      const result = await geminiResearchMutation.mutateAsync({ accountId });
-      if (result.success) {
-        setGeminiResearch(result.research);
-        toast.success("Gemini research complete!");
-      } else {
-        toast.error(result.error || "Failed to generate research");
-      }
-    } catch (error) {
-      toast.error("Failed to generate Gemini research");
-    } finally {
-      setIsGeneratingGemini(false);
-    }
-  };
+  // AI Intelligence queries
+  const overviewQuery = trpc.ai.compileOverview.useQuery({ accountId }, { enabled: accountId > 0 });
+  const insightsQuery = trpc.ai.generateStrategicInsights.useQuery(
+    { accountId, forceRefresh: false },
+    { enabled: accountId > 0 }
+  );
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -77,95 +39,44 @@ export default function AccountDetailEnhanced() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const parseJSON = (data: string | null | undefined): Record<string, any> => {
-    if (!data) return {};
-    try {
-      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-      if (typeof parsed !== 'object') return {};
-      
-      return Object.entries(parsed).reduce((acc, [key, value]) => {
-        const strValue = String(value);
-        if (value && 
-            strValue !== 'null' && 
-            strValue !== '' && 
-            strValue !== 'No relevant text found' &&
-            strValue !== '❌ No People Found.' &&
-            !strValue.startsWith('❌')) {
-          acc[key] = value;
-        }
-        return acc;
-      }, {} as Record<string, any>);
-    } catch (e) {
-      return {};
-    }
-  };
-
-  const stackData = parseJSON(account?.techStack);
-  const researchData = null; // No research field in schema
-  const triggerData = parseJSON(account?.triggerEvents);
-  
-  // Extract rawData fields
+  // Parse rawData for additional fields
   const rawData = (account?.rawData as Record<string, any>) || {};
-  const temperature = rawData.temperature;
-  const daysSinceLastEngagement = rawData.daysSinceLastEngagement || rawData.lastSalesActivityDays;
   const accountOwner = rawData.accountOwner || rawData.owner;
-  const opportunityStatus = rawData.opportunityStatus;
-  const salesActivities = rawData.salesActivities || rawData.engagementActivities || 0;
-  const lastSalesActivity = rawData.lastSalesActivity || rawData.latestEngagementActivity;
-  const recentSecurityIncidents = rawData['Recent Security Incidents'];
   const ssoProvider = rawData['SSO Provider'];
+  const mfaSolution = rawData['MFA Solution'];
+  const securityIncidents = rawData['Recent Security Incidents'];
+  const competitorIntent = rawData['Competitor MFA Intent'];
 
-  const formatFieldName = (key: string): string => {
-    return key
-      .replace(/_/g, ' ')
-      .replace(/summary /gi, '')
-      .replace(/^find /, '')
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+  const getIntentColor = (score: number) => {
+    if (score >= 80) return 'text-red-500';
+    if (score >= 60) return 'text-orange-500';
+    if (score >= 40) return 'text-yellow-500';
+    return 'text-gray-500';
   };
 
-  const getIntentBadge = (score: string | number) => {
-    const numScore = typeof score === 'string' ? parseInt(score) : score;
-    if (numScore >= 70) return { 
-      color: 'badge-danger', 
-      label: 'Hot Lead',
-      icon: Flame,
-      gradient: 'from-red-600 to-orange-600'
-    };
-    if (numScore >= 40) return { 
-      color: 'badge-warning', 
-      label: 'Warm Lead',
-      icon: TrendingUp,
-      gradient: 'from-orange-600 to-amber-600'
-    };
-    return { 
-      color: 'badge-primary', 
-      label: 'Cold Lead',
-      icon: Target,
-      gradient: 'from-blue-600 to-cyan-600'
-    };
+  const getBuyingStageColor = (stage: string) => {
+    switch (stage) {
+      case 'Purchase': return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'Decision': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
+      case 'Consideration': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      case 'Awareness': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+    }
   };
 
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="min-h-screen bg-background">
         <Navigation />
-        <div className="container py-12 space-y-8 max-w-7xl">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 skeleton rounded-2xl" />
-            <div className="space-y-2 flex-1">
-              <div className="h-10 w-96 skeleton" />
-              <div className="h-6 w-64 skeleton" />
+        <div className="container py-6 max-w-7xl">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 w-64 bg-muted rounded" />
+            <div className="grid grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-muted rounded" />)}
             </div>
+            <div className="h-96 bg-muted rounded" />
           </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-32 skeleton rounded-xl" />
-            ))}
-          </div>
-          <div className="h-96 skeleton rounded-xl" />
         </div>
       </div>
     );
@@ -174,328 +85,288 @@ export default function AccountDetailEnhanced() {
   // Not found state
   if (!account) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="min-h-screen bg-background">
         <Navigation />
-        <div className="container py-20 max-w-2xl">
-          <Card className="card-elevated">
-            <CardContent className="py-16 text-center">
-              <Building2 className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-              <h3 className="text-2xl font-semibold mb-2">Account not found</h3>
-              <p className="text-muted-foreground mb-6">This account doesn't exist or has been removed</p>
-              <Button asChild>
-                <Link href="/accounts">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Accounts
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+        <div className="container py-12 max-w-2xl text-center">
+          <Building2 className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+          <h3 className="text-2xl font-semibold mb-2">Account not found</h3>
+          <Button asChild><Link href="/accounts"><ArrowLeft className="mr-2 h-4 w-4" />Back</Link></Button>
         </div>
       </div>
     );
   }
 
-  const intentBadge = getIntentBadge(account.intentScore || 0);
-  const IntentIcon = intentBadge.icon;
+  const intentScore = account.intentScore || 0;
+  const buyingStage = (account as any).buyingStage || (
+    intentScore >= 86 ? 'Purchase' :
+    intentScore >= 70 ? 'Decision' :
+    intentScore >= 50 ? 'Consideration' :
+    intentScore >= 20 ? 'Awareness' : 'Target'
+  );
+
+  // Extract final AI output (hide reasoning)
+  const extractFinalOutput = (text: string | null | undefined): string => {
+    if (!text) return '';
+    // Remove XML tags and reasoning sections
+    let clean = text
+      .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+      .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
+      .replace(/<strategy>[\s\S]*?<\/strategy>/gi, '')
+      .replace(/<notes>[\s\S]*?<\/notes>/gi, '')
+      .replace(/---+/g, '')
+      .trim();
+    // If there's an OUTPUT section, extract just that
+    const outputMatch = clean.match(/OUTPUT[:\s]*([\s\S]*?)(?:$|---)/i);
+    if (outputMatch) clean = outputMatch[1].trim();
+    return clean;
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+    <div className="min-h-screen bg-background">
       <Navigation />
       <AIAssistant context={{ type: 'account', id: accountId, name: account.name }} />
 
-      <div className="container py-12 space-y-8 max-w-7xl">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-6">
-          <div className="flex items-start gap-4 flex-1 min-w-0">
-            <Button variant="outline" size="icon" asChild className="flex-shrink-0">
-              <Link href="/accounts">
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
+      <div className="container py-6 space-y-6 max-w-7xl">
+        {/* Compact Header */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <Button variant="ghost" size="icon" asChild>
+              <Link href="/accounts"><ArrowLeft className="h-5 w-5" /></Link>
             </Button>
-            
-            <div className="flex items-start gap-4 flex-1 min-w-0">
-              <div className={`p-4 bg-gradient-to-br ${intentBadge.gradient} rounded-2xl shadow-lg flex-shrink-0`}>
-                <IntentIcon className="h-8 w-8 text-white" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold truncate">{account.name}</h1>
+                <Badge className={getBuyingStageColor(buyingStage)}>{buyingStage}</Badge>
               </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-4xl font-bold tracking-tight line-clamp-1">{account.name}</h1>
-                  <Badge className={intentBadge.color}>
-                    {account.intentScore} {intentBadge.label}
-                  </Badge>
-                  {(account as any).buyingStage && (
-                    <Badge variant="outline" className={`
-                      ${(account as any).buyingStage === 'Purchase' ? 'border-green-500 text-green-500' : ''}
-                      ${(account as any).buyingStage === 'Decision' ? 'border-cyan-500 text-cyan-500' : ''}
-                      ${(account as any).buyingStage === 'Consideration' ? 'border-yellow-500 text-yellow-500' : ''}
-                      ${(account as any).buyingStage === 'Awareness' ? 'border-orange-500 text-orange-500' : ''}
-                      ${(account as any).buyingStage === 'Target' ? 'border-gray-500 text-gray-500' : ''}
-                    `}>
-                      {(account as any).buyingStage} Stage
-                    </Badge>
-                  )}
-                </div>
-                
-                <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
-                  {account.domain && (
-                    <a 
-                      href={`https://${account.domain}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 hover:text-primary transition-colors"
-                    >
-                      <Globe className="h-4 w-4" />
-                      <span>{account.domain}</span>
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
-                  {account.industry && (
-                    <div className="flex items-center gap-2">
-                      <Briefcase className="h-4 w-4" />
-                      <span>{account.industry}</span>
-                    </div>
-                  )}
-                  {account.employeeCount && (
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      <span>{account.employeeCount} employees</span>
-                    </div>
-                  )}
-                  {account.region && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      <span>{account.region}</span>
-                    </div>
-                  )}
-                  {accountOwner && (
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      <span>Owner: {accountOwner}</span>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Temperature & Activity Badges */}
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {temperature && (
-                    <Badge className={`text-xs ${
-                      temperature === 'Hot' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                      temperature === 'Warm' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
-                      'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                    }`}>
-                      {temperature === 'Hot' ? '🔥' : temperature === 'Warm' ? '🌡️' : '❄️'} {temperature}
-                    </Badge>
-                  )}
-                  {daysSinceLastEngagement !== null && daysSinceLastEngagement !== undefined && (
-                    <Badge variant="outline" className={`text-xs ${
-                      daysSinceLastEngagement <= 7 ? 'border-green-500 text-green-400' :
-                      daysSinceLastEngagement <= 30 ? 'border-yellow-500 text-yellow-400' :
-                      'border-red-500 text-red-400'
-                    }`}>
-                      {daysSinceLastEngagement}d since activity
-                    </Badge>
-                  )}
-                  {salesActivities > 0 && (
-                    <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
-                      {salesActivities} activities
-                    </Badge>
-                  )}
-                  {opportunityStatus && (
-                    <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-400">
-                      Opp: {opportunityStatus}
-                    </Badge>
-                  )}
-                  {lastSalesActivity && (
-                    <Badge variant="outline" className="text-xs border-gray-500/50 text-gray-400">
-                      Last: {lastSalesActivity}
-                    </Badge>
-                  )}
-                  {ssoProvider && (
-                    <Badge variant="outline" className="text-xs border-indigo-500/50 text-indigo-400">
-                      SSO: {ssoProvider}
-                    </Badge>
-                  )}
-                </div>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                {account.domain && (
+                  <a href={`https://${account.domain}`} target="_blank" rel="noopener noreferrer" 
+                     className="flex items-center gap-1 hover:text-primary">
+                    <Globe className="h-3 w-3" />{account.domain}
+                  </a>
+                )}
+                {account.industry && <span>{account.industry}</span>}
+                {account.employeeCount && <span>{account.employeeCount} employees</span>}
+                {accountOwner && <span>Owner: {accountOwner}</span>}
               </div>
             </div>
           </div>
-
-          <div className="flex gap-2 flex-shrink-0 flex-wrap">
-            <Button className="gradient-primary text-white" asChild>
-              <Link href="/outreach">
-                <Mail className="mr-2 h-4 w-4" />
-                Generate Outreach
-              </Link>
+          <div className="flex gap-2 flex-shrink-0">
+            <Button size="sm" className="gradient-primary text-white" asChild>
+              <Link href="/outreach"><Mail className="mr-1 h-4 w-4" />Outreach</Link>
             </Button>
             {account.linkedinUrl && (
-              <Button variant="outline" asChild>
-                <a href={account.linkedinUrl} target="_blank" rel="noopener noreferrer">
-                  <Linkedin className="mr-2 h-4 w-4" />
-                  LinkedIn
-                </a>
+              <Button size="sm" variant="outline" asChild>
+                <a href={account.linkedinUrl} target="_blank"><Linkedin className="mr-1 h-4 w-4" />LinkedIn</a>
               </Button>
             )}
             {(account as any).sfdcAccountId && (
-              <Button variant="outline" className="border-blue-500 text-blue-600 hover:bg-blue-50" asChild>
-                <a href={`https://company.lightning.force.com/lightning/r/Account/${(account as any).sfdcAccountId}/view`} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  Salesforce
+              <Button size="sm" variant="outline" className="border-blue-500 text-blue-500" asChild>
+                <a href={`https://company.lightning.force.com/lightning/r/Account/${(account as any).sfdcAccountId}/view`} target="_blank">
+                  <ExternalLink className="mr-1 h-4 w-4" />Salesforce
                 </a>
               </Button>
             )}
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid gap-6 md:grid-cols-4">
-          <Card className="card-elevated border-l-4 border-l-purple-500">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Users className="h-4 w-4 text-purple-500" />
-                Contacts
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{people?.length || 0}</div>
-              <p className="text-xs text-muted-foreground mt-1">Key contacts</p>
-            </CardContent>
+        {/* Key Metrics Row - Dense */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <Card className="p-4">
+            <div className="text-xs text-muted-foreground mb-1">Intent Score</div>
+            <div className={`text-3xl font-bold ${getIntentColor(intentScore)}`}>{intentScore}</div>
+            <div className="text-xs text-muted-foreground">
+              {intentScore >= 80 ? '🔥 Hot' : intentScore >= 60 ? '🌡️ Warm' : '❄️ Cold'}
+            </div>
           </Card>
-
-
-
-          <Card className="card-elevated border-l-4 border-l-indigo-500">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-indigo-500" />
-                Intent Score
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{account.intentScore || 0}</div>
-              <p className="text-xs text-muted-foreground mt-1">{intentBadge.label}</p>
-            </CardContent>
+          <Card className="p-4">
+            <div className="text-xs text-muted-foreground mb-1">Buying Stage</div>
+            <div className="text-xl font-semibold">{buyingStage}</div>
+            <div className="text-xs text-muted-foreground">
+              {(account as any).buyingStage ? '6sense' : 'Inferred'}
+            </div>
           </Card>
-
-          <Card className="card-elevated border-l-4 border-l-emerald-500">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Target className="h-4 w-4 text-emerald-500" />
-                Buying Stage
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {(() => {
-                // Infer buying stage from intent score if not set
-                const intentNum = parseInt(String(account.intentScore || 0));
-                const stage = (account as any).buyingStage || (
-                  intentNum >= 86 ? 'Purchase' :
-                  intentNum >= 70 ? 'Decision' :
-                  intentNum >= 50 ? 'Consideration' :
-                  intentNum >= 20 ? 'Awareness' :
-                  'Target'
-                );
-                const stageColor = 
-                  stage === 'Purchase' ? 'text-green-500' :
-                  stage === 'Decision' ? 'text-cyan-500' :
-                  stage === 'Consideration' ? 'text-yellow-500' :
-                  stage === 'Awareness' ? 'text-orange-500' :
-                  'text-gray-500';
-                return (
-                  <>
-                    <div className={`text-2xl font-bold ${stageColor}`}>{stage}</div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {(account as any).buyingStage ? '6sense' : 'Inferred from intent'}
-                    </p>
-                  </>
-                );
-              })()}
-            </CardContent>
+          <Card className="p-4">
+            <div className="text-xs text-muted-foreground mb-1">Profile Fit</div>
+            <div className="text-xl font-semibold">{(account as any).sixsenseProfileFit || 'Unknown'}</div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-xs text-muted-foreground mb-1">Contacts</div>
+            <div className="text-3xl font-bold text-purple-500">{people?.length || 0}</div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-xs text-muted-foreground mb-1">Relationship</div>
+            <div className="text-xl font-semibold">{account.relationship || 'Prospect'}</div>
           </Card>
         </div>
 
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="intelligence" className="space-y-6">
-          <TabsList className="bg-card border">
-            <TabsTrigger value="intelligence">Intelligence</TabsTrigger>
-            <TabsTrigger value="contacts">Contacts ({people?.length || 0})</TabsTrigger>
-          </TabsList>
-
-          {/* Intelligence Tab */}
-          <TabsContent value="intelligence" className="space-y-6">
-            <IntelligenceTab accountId={accountId} account={account} />
-          </TabsContent>
-
-          {/* Contacts Tab */}
-          <TabsContent value="contacts" className="space-y-6">
-            {!people || people.length === 0 ? (
-              <Card className="card-elevated">
-                <CardContent className="py-16 text-center">
-                  <Users className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">No contacts found</h3>
-                  <p className="text-muted-foreground">No contacts have been added to this account yet</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {people.map((person) => (
-                  <Link key={person.id} href={`/contacts/${person.id}`}>
-                    <Card className="card-elevated hover:scale-[1.02] transition-all cursor-pointer group h-full">
-                      <CardHeader>
-                        <div className="flex items-start gap-3">
-                          <div className="p-3 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl shadow-lg flex-shrink-0">
-                            <Users className="h-5 w-5 text-white" />
+        {/* Two Column Layout */}
+        <div className="grid md:grid-cols-3 gap-6">
+          {/* Left Column - Contacts & Security Intel */}
+          <div className="md:col-span-1 space-y-4">
+            {/* Key Contacts */}
+            <Card>
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-purple-500" />
+                    Key Contacts ({people?.length || 0})
+                  </span>
+                  <Link href={`/contacts?account=${accountId}`} className="text-xs text-primary hover:underline">
+                    View all
+                  </Link>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 space-y-2">
+                {!people || people.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No contacts found</p>
+                ) : (
+                  people.slice(0, 5).map((person) => (
+                    <Link key={person.id} href={`/contacts/${person.id}`}>
+                      <div className="flex items-center justify-between p-2 rounded hover:bg-muted/50 cursor-pointer group">
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm truncate group-hover:text-primary">
+                            {person.name}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <CardTitle className="text-lg group-hover:text-primary transition-colors line-clamp-1">
-                              {person.name}
-                            </CardTitle>
-                            <CardDescription className="line-clamp-1">
-                              {person.title || "No title"}
-                            </CardDescription>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {person.title || 'No title'}
                           </div>
                         </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {person.email && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Mail className="h-4 w-4 flex-shrink-0" />
-                            <span className="line-clamp-1">{person.email}</span>
-                          </div>
-                        )}
-                        {person.linkedinUrl && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Linkedin className="h-4 w-4 flex-shrink-0 text-blue-500" />
-                            <a 
-                              href={person.linkedinUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="hover:text-primary transition-colors line-clamp-1"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              LinkedIn Profile
-                              <ExternalLink className="inline h-3 w-3 ml-1" />
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {person.linkedinUrl && (
+                            <a href={person.linkedinUrl} target="_blank" onClick={(e) => e.stopPropagation()}
+                               className="p-1 hover:bg-blue-500/20 rounded">
+                              <Linkedin className="h-3 w-3 text-blue-500" />
                             </a>
-                          </div>
-                        )}
-                        {person.location && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <MapPin className="h-4 w-4 flex-shrink-0" />
-                            <span className="line-clamp-1">{person.location}</span>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
+                          )}
+                          {person.email && (
+                            <button onClick={(e) => { e.preventDefault(); copyToClipboard(person.email!, 'email'); }}
+                                    className="p-1 hover:bg-muted rounded">
+                              {copiedField === 'email' ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                            </button>
+                          )}
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Security Intelligence */}
+            {(ssoProvider || mfaSolution || securityIncidents || competitorIntent) && (
+              <Card>
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-blue-500" />
+                    Security Intel
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4 space-y-3">
+                  {ssoProvider && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">SSO</span>
+                      <span className="font-medium">{ssoProvider}</span>
+                    </div>
+                  )}
+                  {mfaSolution && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">MFA</span>
+                      <span className="font-medium">{mfaSolution}</span>
+                    </div>
+                  )}
+                  {competitorIntent && (
+                    <div className="p-2 rounded bg-yellow-500/10 border border-yellow-500/30">
+                      <div className="flex items-center gap-1 text-xs text-yellow-500 mb-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Competitor Intent
+                      </div>
+                      <p className="text-xs">{competitorIntent}</p>
+                    </div>
+                  )}
+                  {securityIncidents && (
+                    <div className="p-2 rounded bg-red-500/10 border border-red-500/30">
+                      <div className="flex items-center gap-1 text-xs text-red-500 mb-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Security Incidents
+                      </div>
+                      <p className="text-xs">{String(securityIncidents).slice(0, 200)}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             )}
-          </TabsContent>
+          </div>
 
+          {/* Right Column - AI Intelligence */}
+          <div className="md:col-span-2 space-y-4">
+            {/* AI Overview */}
+            <Card>
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-amber-500" />
+                    AI Account Brief
+                  </span>
+                  {overviewQuery.data?.cached && (
+                    <Badge variant="outline" className="text-xs">
+                      Updated {Math.round((Date.now() - new Date(overviewQuery.data.generatedAt || 0).getTime()) / 60000)}m ago
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                {overviewQuery.isLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating overview...
+                  </div>
+                ) : overviewQuery.data?.overview ? (
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <SafeStreamdown>{extractFinalOutput(overviewQuery.data.overview)}</SafeStreamdown>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No overview available</p>
+                )}
+              </CardContent>
+            </Card>
 
-
-
-        </Tabs>
+            {/* Strategic Insights */}
+            <Card>
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-cyan-500" />
+                    Strategic Insights
+                  </span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => insightsQuery.refetch()}
+                    disabled={insightsQuery.isFetching}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${insightsQuery.isFetching ? 'animate-spin' : ''}`} />
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                {insightsQuery.isLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating insights...
+                  </div>
+                ) : insightsQuery.data?.insights ? (
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <SafeStreamdown>{extractFinalOutput(insightsQuery.data.insights)}</SafeStreamdown>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No insights available</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
