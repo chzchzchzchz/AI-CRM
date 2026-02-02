@@ -8,7 +8,7 @@ import { getDb } from "./db";
 import { eq } from "drizzle-orm";
 import { sdk } from "./_core/sdk";
 import { z } from "zod";
-import { getAllAccounts, getAccountById, updateAccount, getAllPeople, getPeoplePaginated, getPeopleByCompany, getContactsByAccountId, /* createClayRequest, updateClayRequest, getAllClayRequests, getClayRequest, */ upsertAccount, upsertPerson, getAllGongCalls, getGongCallsPaginated, getGongCallsByCompany, getGongCallsByAccountId } from "./db";
+import { getAllAccounts, getAccountById, updateAccount, getAllPeople, getPeoplePaginated, getPeopleByCompany, getContactsByAccountId, getPersonById, /* createClayRequest, updateClayRequest, getAllClayRequests, getClayRequest, */ upsertAccount, upsertPerson, getAllGongCalls, getGongCallsPaginated, getGongCallsByCompany, getGongCallsByAccountId } from "./db";
 import { enrichAccountWithAI, analyzeGongCall, generateOutreachEmail, intelligentSearch, prioritizeContacts } from "./ai";
 import { enrichAccount } from "./sixsense";
 import { conversationWithMemory, generateAccountSummary, generateContactSummary } from "./aiContext";
@@ -510,6 +510,11 @@ Or go to the Admin Panel: /admin/approval`
   }),
 
   people: router({
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return await getPersonById(input.id);
+      }),
     list: protectedProcedure.query(async () => {
       return await getAllPeople();
     }),
