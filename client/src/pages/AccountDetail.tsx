@@ -133,6 +133,19 @@ export default function AccountDetailEnhanced() {
             <Button variant="ghost" size="icon" asChild>
               <Link href="/accounts"><ArrowLeft className="h-5 w-5" /></Link>
             </Button>
+            {/* Company Logo */}
+            <div className="w-12 h-12 rounded-lg bg-card border border-border flex-shrink-0 overflow-hidden">
+              <img
+                src={`https://logo.clearbit.com/${account.domain}`}
+                alt={`${account.name} logo`}
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold text-xl">${account.name.charAt(0)}</div>`;
+                }}
+              />
+            </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold truncate">{account.name}</h1>

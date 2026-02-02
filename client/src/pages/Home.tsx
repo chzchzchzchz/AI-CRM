@@ -324,8 +324,18 @@ export default function Home() {
                     <Card key={action.id} className="card-elevated hover:scale-[1.01] transition-transform cursor-pointer group">
                       <CardContent className="p-6">
                         <div className="flex items-start gap-4">
-                          <div className={`p-3 bg-gradient-to-br ${action.gradient} rounded-xl shadow-lg group-hover:shadow-xl transition-shadow`}>
-                            <Icon className="h-6 w-6 text-white" />
+                          {/* Company Logo */}
+                          <div className="w-12 h-12 rounded-lg bg-card border border-border flex-shrink-0 overflow-hidden">
+                            <img
+                              src={`https://logo.clearbit.com/${action.domain}`}
+                              alt={`${action.name} logo`}
+                              className="w-full h-full object-contain"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br ${action.gradient} rounded-lg"><svg class="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>`;
+                              }}
+                            />
                           </div>
                           <div className="flex-1 min-w-0 space-y-3">
                             {/* Account Header with VECTOR Score */}

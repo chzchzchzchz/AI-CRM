@@ -466,13 +466,28 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                   <Card className="card-elevated hover:scale-[1.02] transition-all cursor-pointer group h-full">
                     <CardHeader>
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-xl group-hover:text-primary transition-colors line-clamp-1">
-                            {account.name}
-                          </CardTitle>
-                          <CardDescription className="mt-1 line-clamp-1">
-                            {account.domain}
-                          </CardDescription>
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          {/* Company Logo */}
+                          <div className="w-10 h-10 rounded-lg bg-card border border-border flex-shrink-0 overflow-hidden">
+                            <img
+                              src={`https://logo.clearbit.com/${account.domain}`}
+                              alt={`${account.name} logo`}
+                              className="w-full h-full object-contain"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold text-lg">${account.name.charAt(0)}</div>`;
+                              }}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-xl group-hover:text-primary transition-colors line-clamp-1">
+                              {account.name}
+                            </CardTitle>
+                            <CardDescription className="mt-1 line-clamp-1">
+                              {account.domain}
+                            </CardDescription>
+                          </div>
                         </div>
                         <div className={`p-2 bg-gradient-to-br ${intentBadge.gradient} rounded-lg shadow-lg flex-shrink-0`}>
                           <IntentIcon className="h-5 w-5 text-white" />
