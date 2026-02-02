@@ -36,17 +36,17 @@ export default function ContactsEnhanced() {
   // Extract unique values for filters
   const companies = useMemo(() => {
     if (!contacts) return [];
-    return Array.from(new Set(contacts.map(c => c.company).filter(Boolean))).sort();
+    return Array.from(new Set(contacts.map((c: any) => c.company).filter(Boolean))).sort() as string[];
   }, [contacts]);
 
   const titleKeywords = useMemo(() => {
     if (!contacts) return [];
     const keywords = new Set<string>();
-    contacts.forEach(c => {
+    contacts.forEach((c: any) => {
       if (c.title) {
         // Extract key title words (CEO, VP, Director, Manager, etc.)
         const words = c.title.toLowerCase().match(/\b(ceo|cto|cfo|cio|ciso|vp|svp|evp|director|head|manager|lead|engineer|analyst|specialist)\b/g);
-        words?.forEach(w => keywords.add(w));
+        words?.forEach((w: string) => keywords.add(w));
       }
     });
     return Array.from(keywords).sort();
@@ -56,7 +56,7 @@ export default function ContactsEnhanced() {
   const filteredContacts = useMemo(() => {
     if (!contacts) return [];
 
-    let filtered = contacts.filter(contact => {
+    let filtered = contacts.filter((contact: any) => {
       // Search filter
       const matchesSearch = !searchQuery || 
         (contact.name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
@@ -75,7 +75,7 @@ export default function ContactsEnhanced() {
     });
 
     // Sort
-    filtered.sort((a, b) => {
+    filtered.sort((a: any, b: any) => {
       let aVal: string, bVal: string;
 
       switch (sortField) {
@@ -162,7 +162,7 @@ export default function ContactsEnhanced() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Companies</SelectItem>
-                  {companies.slice(0, 50).map(company => (
+                  {companies.slice(0, 50).map((company: string) => (
                     <SelectItem key={company} value={company!}>{company}</SelectItem>
                   ))}
                 </SelectContent>
@@ -229,7 +229,7 @@ export default function ContactsEnhanced() {
           </Card>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredContacts.map((contact) => (
+            {filteredContacts.map((contact: any) => (
               <Link key={contact.id} href={`/contacts/${contact.id}`}>
                 <Card className="bg-slate-900/50 border-slate-800 hover:border-green-500/50 transition-all cursor-pointer group h-full">
                   <CardHeader>

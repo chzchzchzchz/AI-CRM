@@ -29,7 +29,7 @@ export default function Insights() {
   // Filter accounts by rep territory
   const accounts = useMemo(() => {
     if (!allAccounts) return undefined;
-    return allAccounts.filter(account => {
+    return allAccounts.filter((account: any) => {
       const employeeCount = parseInt(String(account.employeeCount || '0').replace(/[^0-9]/g, '') || '0');
       return matchesTerritory(account.region || '', employeeCount);
     });
@@ -50,12 +50,12 @@ export default function Insights() {
   const totalCalls = calls?.length || 0;
   const totalContacts = contacts?.length || 0;
   const avgIntent = accounts && totalAccounts > 0 
-    ? accounts.reduce((sum, a) => sum + (Number(a.intentScore) || 0), 0) / totalAccounts 
+    ? accounts.reduce((sum: number, a: any) => sum + (Number(a.intentScore) || 0), 0) / totalAccounts 
     : 0;
 
   // Group by industry
   const industryData = useMemo(() => {
-    return accounts?.reduce((acc: Record<string, number>, account) => {
+    return accounts?.reduce((acc: Record<string, number>, account: any) => {
       const industry = account.industry || "Unknown";
       acc[industry] = (acc[industry] || 0) + 1;
       return acc;
@@ -64,7 +64,7 @@ export default function Insights() {
 
   // Group by region
   const regionData = useMemo(() => {
-    return accounts?.reduce((acc: Record<string, number>, account) => {
+    return accounts?.reduce((acc: Record<string, number>, account: any) => {
       const region = account.region || "Unknown";
       acc[region] = (acc[region] || 0) + 1;
       return acc;
@@ -73,7 +73,7 @@ export default function Insights() {
 
   // Group by buying stage
   const buyingStageData = useMemo(() => {
-    return accounts?.reduce((acc: Record<string, number>, account) => {
+    return accounts?.reduce((acc: Record<string, number>, account: any) => {
       const stage = account.sixsenseBuyingStage || "Unknown";
       acc[stage] = (acc[stage] || 0) + 1;
       return acc;
@@ -83,7 +83,7 @@ export default function Insights() {
   // Intent distribution
   const intentBuckets = useMemo(() => {
     const buckets = { hot: 0, warm: 0, cold: 0 };
-    accounts?.forEach(a => {
+    accounts?.forEach((a: any) => {
       const score = Number(a.intentScore) || 0;
       if (score >= 70) buckets.hot++;
       else if (score >= 40) buckets.warm++;
@@ -105,7 +105,7 @@ export default function Insights() {
   const filteredAccounts = useMemo(() => {
     if (!activeFilter || !accounts) return [];
     
-    return accounts.filter(account => {
+    return accounts.filter((account: any) => {
       switch (activeFilter.type) {
         case "intent":
           const score = Number(account.intentScore) || 0;
@@ -173,7 +173,7 @@ export default function Insights() {
         default:
           return false;
       }
-    }).sort((a, b) => (Number(b.intentScore) || 0) - (Number(a.intentScore) || 0));
+    }).sort((a: any, b: any) => (Number(b.intentScore) || 0) - (Number(a.intentScore) || 0));
   }, [accounts, activeFilter]);
 
   const handleFilterClick = (type: FilterType, value: string, label: string, category?: string) => {
@@ -411,7 +411,7 @@ export default function Insights() {
                 <CardContent>
                   <div className="space-y-2">
                     {Object.entries(industryData)
-                      .sort(([, a], [, b]) => b - a)
+                      .sort(([, a], [, b]) => (b as number) - (a as number))
                       .slice(0, 8)
                       .map(([industry, count]) => (
                         <button
@@ -425,12 +425,12 @@ export default function Insights() {
                         >
                           <div className="flex justify-between items-center mb-1">
                             <span className="text-sm text-slate-300 truncate max-w-[150px]">{industry}</span>
-                            <span className="text-sm font-semibold text-white">{count}</span>
+                            <span className="text-sm font-semibold text-white">{count as number}</span>
                           </div>
                           <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-gradient-to-r from-cyan-500 to-blue-500"
-                              style={{ width: `${(count / totalAccounts) * 100}%` }}
+                              style={{ width: `${((count as number) / totalAccounts) * 100}%` }}
                             />
                           </div>
                         </button>
@@ -451,7 +451,7 @@ export default function Insights() {
                 <CardContent>
                   <div className="space-y-2">
                     {Object.entries(regionData)
-                      .sort(([, a], [, b]) => b - a)
+                      .sort(([, a], [, b]) => (b as number) - (a as number))
                       .slice(0, 8)
                       .map(([region, count]) => (
                         <button
@@ -465,12 +465,12 @@ export default function Insights() {
                         >
                           <div className="flex justify-between items-center mb-1">
                             <span className="text-sm text-slate-300">{region}</span>
-                            <span className="text-sm font-semibold text-white">{count}</span>
+                            <span className="text-sm font-semibold text-white">{count as number}</span>
                           </div>
                           <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
-                              style={{ width: `${(count / totalAccounts) * 100}%` }}
+                              style={{ width: `${((count as number) / totalAccounts) * 100}%` }}
                             />
                           </div>
                         </button>
@@ -492,7 +492,7 @@ export default function Insights() {
               <CardContent>
                 <div className="flex flex-wrap gap-3">
                   {Object.entries(buyingStageData)
-                    .sort(([, a], [, b]) => b - a)
+                    .sort(([, a], [, b]) => (b as number) - (a as number))
                     .map(([stage, count]) => {
                       const stageColors: Record<string, string> = {
                         "Target": "bg-slate-500/20 border-slate-500/50 hover:bg-slate-500/30",
@@ -512,7 +512,7 @@ export default function Insights() {
                             isActive ? "ring-2 ring-cyan-500 " + colorClass : colorClass
                           }`}
                         >
-                          <div className="text-2xl font-bold text-white">{count}</div>
+                          <div className="text-2xl font-bold text-white">{count as number}</div>
                           <div className="text-sm text-slate-400">{stage}</div>
                         </button>
                       );
@@ -553,7 +553,7 @@ export default function Insights() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredAccounts.slice(0, 20).map((account) => (
+                        {filteredAccounts.slice(0, 20).map((account: any) => (
                           <tr key={account.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-3">
@@ -724,7 +724,7 @@ export default function Insights() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredAccounts.slice(0, 25).map((account) => (
+                        {filteredAccounts.slice(0, 25).map((account: any) => (
                           <tr key={account.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-3">

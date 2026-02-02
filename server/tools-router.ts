@@ -677,7 +677,7 @@ ${input.transcript}`;
             
             if (matchedAccounts.length > 0) {
               // Find best match by similarity
-              const bestMatch = matchedAccounts.reduce((best, acc) => {
+              const bestMatch = matchedAccounts.reduce((best: { similarity: number; id?: number; name?: string; industry?: string | null; intentScore?: number | null }, acc: typeof matchedAccounts[0]) => {
                 const similarity = acc.name.toLowerCase().includes(companyName) ? 1 : 
                   companyName.includes(acc.name.toLowerCase()) ? 0.8 : 0.5;
                 return similarity > (best.similarity || 0) ? { ...acc, similarity } : best;

@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import bcrypt from "bcryptjs";
-import { users, accessRequests } from "../drizzle/schema";
+import { users, accessRequests, Account, Contact, Call } from "../drizzle/schema";
 import { getDb } from "./db";
 import { eq } from "drizzle-orm";
 import { sdk } from "./_core/sdk";
@@ -88,7 +88,7 @@ export const appRouter = router({
 
       // Calculate intent score distribution
       const intentScores = accounts
-        .map(a => {
+        .map((a: Account) => {
           const score = a.intentScore;
           if (typeof score === 'string') {
             const parsed = parseInt(score, 10);
@@ -96,13 +96,13 @@ export const appRouter = router({
           }
           return score;
         })
-        .filter((score): score is number => score !== null);
+        .filter((score: number | null): score is number => score !== null);
       const avgIntentScore = intentScores.length > 0
-        ? Math.round(intentScores.reduce((sum, score) => sum + score, 0) / intentScores.length)
+        ? Math.round(intentScores.reduce((sum: number, score: number) => sum + score, 0) / intentScores.length)
         : 0;
 
       // Parse rawData for buying stage
-      const buyingStages = accounts.reduce((acc, account) => {
+      const buyingStages = accounts.reduce((acc: Record<string, number>, account: Account) => {
         let stage = 'Unknown';
         if (account.rawData && typeof account.rawData === 'string') {
           try {
@@ -115,7 +115,7 @@ export const appRouter = router({
       }, {} as Record<string, number>);
 
       // Industry distribution
-      const industries = accounts.reduce((acc, account) => {
+      const industries = accounts.reduce((acc: Record<string, number>, account: Account) => {
         const industry = account.industry || 'Unknown';
         acc[industry] = (acc[industry] || 0) + 1;
         return acc;
@@ -123,16 +123,16 @@ export const appRouter = router({
 
       // Top accounts by intent score
       const topAccounts = accounts
-        .map(a => ({
+        .map((a: Account) => ({
           ...a,
           parsedIntentScore: typeof a.intentScore === 'string' ? parseInt(a.intentScore, 10) || 0 : (a.intentScore || 0)
         }))
-        .filter(a => a.parsedIntentScore > 0)
-        .sort((a, b) => b.parsedIntentScore - a.parsedIntentScore)
+        .filter((a: Account & { parsedIntentScore: number }) => a.parsedIntentScore > 0)
+        .sort((a: Account & { parsedIntentScore: number }, b: Account & { parsedIntentScore: number }) => b.parsedIntentScore - a.parsedIntentScore)
         .slice(0, 10);
 
       // Gong calls by month
-      const callsByMonth = calls.reduce((acc, call) => {
+      const callsByMonth = calls.reduce((acc: Record<string, number>, call: Call) => {
         if (call.callDate) {
           const month = new Date(call.callDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
           acc[month] = (acc[month] || 0) + 1;
@@ -385,13 +385,13 @@ Or go to the Admin Panel: /admin/approval`
       const calls = await getAllGongCalls();
       
       // Calculate hot leads (intent score >= 70)
-      const hotLeads = accounts.filter(a => {
+      const hotLeads = accounts.filter((a: Account) => {
         const score = typeof a.intentScore === 'string' ? parseInt(a.intentScore, 10) : a.intentScore;
         return score && score >= 70;
       }).length;
       
       // Calculate warm leads (intent score 40-69)
-      const warmLeads = accounts.filter(a => {
+      const warmLeads = accounts.filter((a: Account) => {
         const score = typeof a.intentScore === 'string' ? parseInt(a.intentScore, 10) : a.intentScore;
         return score && score >= 40 && score < 70;
       }).length;
@@ -443,7 +443,7 @@ Or go to the Admin Panel: /admin/approval`
         }> = [];
         
         // Add calls to timeline
-        calls.forEach(call => {
+        calls.forEach((call: Call) => {
           activities.push({
             id: `call-${call.id}`,
             type: 'call',
@@ -622,7 +622,7 @@ Or go to the Admin Panel: /admin/approval`
       .input(z.object({ callId: z.number() }))
       .mutation(async ({ input }) => {
         const calls = await getAllGongCalls();
-        const call = calls.find(c => c.id === input.callId);
+        const call = calls.find((c: Call) => c.id === input.callId);
         if (!call) throw new Error('Call not found');
         return await analyzeGongCall(call);
       }),
@@ -636,7 +636,7 @@ Or go to the Admin Panel: /admin/approval`
       .mutation(async ({ input }) => {
         const account = await getAccountById(input.accountId);
         const people = await getAllPeople();
-        const contact = people.find(p => p.id === input.contactId);
+        const contact = people.find((p: Contact) => p.id === input.contactId);
         if (!account || !contact) throw new Error('Account or contact not found');
         return await generateOutreachEmail(account, contact, input.context);
       }),

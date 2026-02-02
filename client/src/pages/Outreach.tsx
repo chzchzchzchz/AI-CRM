@@ -206,13 +206,13 @@ export default function Outreach() {
     if (!allContacts || !selectedAccountId) return [];
     
     // Filter to ONLY contacts from selected account
-    let filtered = allContacts.filter(contact => 
+    let filtered = allContacts.filter((contact: any) => 
       contact.accountId === selectedAccountId
     );
     
     // Sort by title relevance (security/IT roles first)
     const priorityTitles = ['ciso', 'cio', 'cto', 'vp', 'vice president', 'director', 'head', 'chief', 'security', 'it '];
-    filtered.sort((a, b) => {
+    filtered.sort((a: any, b: any) => {
       const titleA = (a.title || '').toLowerCase();
       const titleB = (b.title || '').toLowerCase();
       const scoreA = priorityTitles.some(t => titleA.includes(t)) ? 1 : 0;
@@ -223,7 +223,7 @@ export default function Outreach() {
     // Apply search filter
     if (contactSearchQuery.trim()) {
       const query = contactSearchQuery.toLowerCase();
-      filtered = filtered.filter(contact =>
+      filtered = filtered.filter((contact: any) =>
         (contact.name && contact.name.toLowerCase().includes(query)) ||
         (contact.title && contact.title.toLowerCase().includes(query))
       );
@@ -232,8 +232,8 @@ export default function Outreach() {
     return filtered.slice(0, 20); // Top 20 contacts max
   }, [allContacts, selectedAccountId, contactSearchQuery]);
 
-  const selectedAccount = accounts?.find(a => a.id === selectedAccountId);
-  const selectedContact = allContacts?.find(c => c.id === selectedContactId);
+  const selectedAccount = accounts?.find((a: any) => a.id === selectedAccountId);
+  const selectedContact = allContacts?.find((c: any) => c.id === selectedContactId);
 
   // Build Gmail/Outlook URLs
   const getGmailUrl = () => {
@@ -362,7 +362,7 @@ export default function Outreach() {
                           No contacts found for this account
                         </div>
                       ) : (
-                        filteredContacts.map((contact) => {
+                        filteredContacts.map((contact: any) => {
                           const isSelected = selectedContactId === contact.id;
                           return (
                             <div

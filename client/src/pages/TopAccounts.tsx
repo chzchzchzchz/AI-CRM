@@ -37,12 +37,12 @@ export default function TopAccounts() {
   // Process accounts by region
   const accountsByRegion = REGIONS.reduce((acc, region) => {
     acc[region] = (accounts || [])
-      .filter(a => a.region === region)
-      .map(a => ({
+      .filter((a: any) => a.region === region)
+      .map((a: any) => ({
         ...a,
         intentScoreNum: parseInt(String(a.intentScore || 0), 10)
       }))
-      .sort((a, b) => b.intentScoreNum - a.intentScoreNum)
+      .sort((a: any, b: any) => b.intentScoreNum - a.intentScoreNum)
       .slice(0, 15);
     return acc;
   }, {} as Record<string, typeof accounts>);
@@ -54,17 +54,17 @@ export default function TopAccounts() {
     
     const isSmall = ae.size === "<2K";
     return (accounts || [])
-      .filter(a => {
+      .filter((a: any) => {
         const matchesRegion = a.region === ae.region;
         const empCount = a.employeeCount || 0;
         const matchesSize = isSmall ? empCount < 2000 : empCount >= 2000;
         return matchesRegion && matchesSize;
       })
-      .map(a => ({
+      .map((a: any) => ({
         ...a,
         intentScoreNum: parseInt(String(a.intentScore || 0), 10)
       }))
-      .sort((a, b) => b.intentScoreNum - a.intentScoreNum)
+      .sort((a: any, b: any) => b.intentScoreNum - a.intentScoreNum)
       .slice(0, 15);
   };
 

@@ -100,7 +100,7 @@ export default function Dashboard() {
                 </div>
               ) : highIntentAccounts.length > 0 ? (
                 <div className="space-y-3">
-                  {highIntentAccounts.map((account) => (
+                  {highIntentAccounts.map((account: any) => (
                     <Link key={account.id} href={`/accounts/${account.id}`}>
                       <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors">
                         <div>
@@ -135,7 +135,7 @@ export default function Dashboard() {
                 </div>
               ) : recentCalls.length > 0 ? (
                 <div className="space-y-3">
-                  {recentCalls.map((call) => (
+                  {recentCalls.map((call: any) => (
                     <Link key={call.id} href={`/calls/${call.id}`}>
                       <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors">
                         <div>

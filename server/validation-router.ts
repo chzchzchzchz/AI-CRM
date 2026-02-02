@@ -9,6 +9,7 @@ import {
   ValidationIssue
 } from "./dataValidation";
 import { getAccountById, getAllAccounts, getAllPeople } from "./db";
+import { Account, Contact } from "../drizzle/schema";
 
 /**
  * Validation router - AI-powered data quality checks with web search verification
@@ -52,14 +53,14 @@ export const validationRouter = router({
     }))
     .mutation(async ({ input }) => {
       const contacts = await getAllPeople();
-      const contact = contacts.find(c => c.id === input.contactId);
+      const contact = contacts.find((c: Contact) => c.id === input.contactId);
       
       if (!contact) {
         throw new Error(`Contact ${input.contactId} not found`);
       }
       
       const accounts = await getAllAccounts();
-      const account = accounts.find(a => a.id === contact.accountId);
+      const account = accounts.find((a: Account) => a.id === contact.accountId);
       
       const issues = await validateContact(contact, account);
       return {
@@ -139,7 +140,7 @@ export const validationRouter = router({
       for (let i = 0; i < totalAccounts; i += batchSize) {
         const batch = accounts.slice(i, i + batchSize);
         const batchIssues = await Promise.all(
-          batch.map(account => validateAccount(account))
+          batch.map((account: Account) => validateAccount(account))
         );
         allIssues.push(...batchIssues.flat());
       }

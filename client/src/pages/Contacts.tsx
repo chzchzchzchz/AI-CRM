@@ -65,16 +65,16 @@ export default function ContactsEnhanced() {
   // Extract unique values for filters
   const companies = useMemo(() => {
     if (!contacts) return [];
-    return Array.from(new Set(contacts.map(c => c.company).filter(Boolean))).sort();
+    return Array.from(new Set(contacts.map((c: any) => c.company).filter(Boolean))).sort() as string[];
   }, [contacts]);
 
   const titleKeywords = useMemo(() => {
     if (!contacts) return [];
     const keywords = new Set<string>();
-    contacts.forEach(c => {
+    contacts.forEach((c: any) => {
       if (c.title) {
         const words = c.title.toLowerCase().match(/\b(ceo|cto|cfo|cio|ciso|vp|svp|evp|director|head|manager|lead|engineer|analyst|specialist)\b/g);
-        words?.forEach(w => keywords.add(w));
+        words?.forEach((w: string) => keywords.add(w));
       }
     });
     return Array.from(keywords).sort();
@@ -138,7 +138,7 @@ export default function ContactsEnhanced() {
     const sourceContacts = showAIPriority && prioritizedContacts ? prioritizedContacts : contacts;
     if (!sourceContacts) return [];
 
-    let filtered = sourceContacts.filter(contact => {
+    let filtered = sourceContacts.filter((contact: any) => {
       // Territory filter - only show contacts from accounts in rep's territory
       const matchesTerritory = !territoryAccountIds || 
         territoryAccountIds.has(contact.company?.toLowerCase() || '');
@@ -167,7 +167,7 @@ export default function ContactsEnhanced() {
 
     // Skip manual sorting if AI Priority is on (already sorted by priority)
     if (!showAIPriority) {
-      filtered.sort((a, b) => {
+      filtered.sort((a: any, b: any) => {
         let aVal: string, bVal: string;
 
         switch (sortField) {
@@ -319,7 +319,7 @@ export default function ContactsEnhanced() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
-                {filteredContacts.filter(c => 
+                {filteredContacts.filter((c: any) => 
                   c.title?.toLowerCase().match(/\b(ceo|cto|cfo|cio|vp|svp|evp|director|head)\b/)
                 ).length}
               </div>
@@ -351,7 +351,7 @@ export default function ContactsEnhanced() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Companies</SelectItem>
-                  {companies.map(company => (
+                  {companies.map((company: string) => (
                     <SelectItem key={company} value={company!}>{company}</SelectItem>
                   ))}
                 </SelectContent>
@@ -432,7 +432,7 @@ export default function ContactsEnhanced() {
           </Card>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {paginatedContacts.map((contact) => (
+            {paginatedContacts.map((contact: any) => (
               <Link key={contact.id} href={`/contacts/${contact.id}`}>
                 <Card className="card-elevated hover:scale-[1.02] transition-all cursor-pointer group h-full">
                   <CardHeader>

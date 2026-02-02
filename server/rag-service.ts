@@ -140,17 +140,17 @@ export async function searchKnowledgeBase(
     .where(userId ? eq(knowledgeBase.userId, userId) : sql`1=1`);
   
   // Calculate similarities
-  const scored = allChunks.map(chunk => ({
+  const scored = allChunks.map((chunk: any) => ({
     ...chunk,
     score: cosineSimilarity(queryEmbedding, chunk.embedding as number[] || []),
   }));
   
   // Sort by score and take top K
-  scored.sort((a, b) => b.score - a.score);
+  scored.sort((a: any, b: any) => b.score - a.score);
   const topChunks = scored.slice(0, topK);
   
   // Get document names
-  const results = await Promise.all(topChunks.map(async chunk => {
+  const results = await Promise.all(topChunks.map(async (chunk: any) => {
     const [doc] = await db
       .select({ fileName: knowledgeBase.fileName })
       .from(knowledgeBase)

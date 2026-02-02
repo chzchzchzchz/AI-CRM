@@ -34,7 +34,7 @@ export default function CallsEnhanced() {
 
   const companies = useMemo(() => {
     if (!calls) return [];
-    return Array.from(new Set(calls.map((c: any) => c.company).filter(Boolean))).sort();
+    return Array.from(new Set(calls.map((c: any) => c.company).filter(Boolean))).sort() as string[];
   }, [calls]);
 
   const filteredCalls = useMemo(() => {
@@ -122,7 +122,7 @@ export default function CallsEnhanced() {
     );
   }
 
-  const totalDuration = filteredCalls.reduce((acc, call: any) => {
+  const totalDuration = filteredCalls.reduce((acc: number, call: any) => {
     const mins = parseInt(call.duration?.replace(/[^0-9]/g, "") || "0");
     return acc + mins;
   }, 0);
@@ -213,7 +213,7 @@ export default function CallsEnhanced() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Companies</SelectItem>
-                  {companies.map(company => (
+                  {companies.map((company: string) => (
                     <SelectItem key={company} value={company!}>{company}</SelectItem>
                   ))}
                 </SelectContent>

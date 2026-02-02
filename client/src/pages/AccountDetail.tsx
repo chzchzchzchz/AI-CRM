@@ -221,7 +221,7 @@ export default function AccountDetailEnhanced() {
                 {!people || people.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No contacts found</p>
                 ) : (
-                  people.slice(0, 5).map((person) => (
+                  people.slice(0, 5).map((person: any) => (
                     <Link key={person.id} href={`/contacts/${person.id}`}>
                       <div className="flex items-center justify-between p-2 rounded hover:bg-muted/50 cursor-pointer group">
                         <div className="min-w-0">

@@ -1,7 +1,7 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb } from "./db";
-import { emailSequences as sequences } from "../drizzle/schema";
+import { emailSequences as sequences, EmailSequence } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 const SequenceStepSchema = z.object({
@@ -20,7 +20,7 @@ export const sequencesRouter = router({
     
     const allSequences = await db.select().from(sequences).orderBy(sequences.updatedAt);
     
-    return allSequences.map(seq => ({
+    return allSequences.map((seq: EmailSequence) => ({
       ...seq,
       steps: typeof seq.steps === 'string' ? JSON.parse(seq.steps) : seq.steps
     }));

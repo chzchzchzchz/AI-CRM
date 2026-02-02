@@ -63,17 +63,17 @@ export default function Insights() {
   const totalAccounts = accounts?.length || 0;
   const totalCalls = calls?.length || 0;
   const totalContacts = contacts?.length || 0;
-  const avgIntent = accounts && totalAccounts > 0 ? accounts.reduce((sum, a) => sum + (Number(a.intentScore) || 0), 0) / totalAccounts : 0;
+  const avgIntent = accounts && totalAccounts > 0 ? accounts.reduce((sum: number, a: any) => sum + (Number(a.intentScore) || 0), 0) / totalAccounts : 0;
 
   // Group by industry
-  const industryData = accounts?.reduce((acc: Record<string, number>, account) => {
+  const industryData = accounts?.reduce((acc: Record<string, number>, account: any) => {
     const industry = account.industry || "Unknown";
     acc[industry] = (acc[industry] || 0) + 1;
     return acc;
   }, {}) || {};
 
   // Group by region
-  const regionData = accounts?.reduce((acc: Record<string, number>, account) => {
+  const regionData = accounts?.reduce((acc: Record<string, number>, account: any) => {
     const region = account.region || "Unknown";
     acc[region] = (acc[region] || 0) + 1;
     return acc;
@@ -81,7 +81,7 @@ export default function Insights() {
 
   // Intent distribution
   const intentBuckets = { hot: 0, warm: 0, cold: 0 };
-  accounts?.forEach(a => {
+  accounts?.forEach((a: any) => {
     const score = Number(a.intentScore) || 0;
     if (score >= 70) intentBuckets.hot++;
     else if (score >= 40) intentBuckets.warm++;
@@ -227,7 +227,7 @@ export default function Insights() {
                 <CardContent>
                   <div className="space-y-3">
                     {Object.entries(industryData)
-                      .sort(([, a], [, b]) => b - a)
+                      .sort(([, a], [, b]) => (b as number) - (a as number))
                       .slice(0, 5)
                       .map(([industry, count]) => (
                         <button
@@ -239,12 +239,12 @@ export default function Insights() {
                             <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
                               {industry}
                             </span>
-                            <span className="text-sm font-semibold text-white">{count}</span>
+                            <span className="text-sm font-semibold text-white">{count as number}</span>
                           </div>
                           <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 group-hover:from-cyan-400 group-hover:to-blue-400 transition-colors"
-                              style={{ width: `${(count / totalAccounts) * 100}%` }}
+                              style={{ width: `${((count as number) / totalAccounts) * 100}%` }}
                             />
                           </div>
                         </button>
@@ -265,7 +265,7 @@ export default function Insights() {
                 <CardContent>
                   <div className="space-y-3">
                     {Object.entries(regionData)
-                      .sort(([, a], [, b]) => b - a)
+                      .sort(([, a], [, b]) => (b as number) - (a as number))
                       .slice(0, 5)
                       .map(([region, count]) => (
                         <button
@@ -277,12 +277,12 @@ export default function Insights() {
                             <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
                               {region}
                             </span>
-                            <span className="text-sm font-semibold text-white">{count}</span>
+                            <span className="text-sm font-semibold text-white">{count as number}</span>
                           </div>
                           <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-gradient-to-r from-purple-500 to-pink-500 group-hover:from-purple-400 group-hover:to-pink-400 transition-colors"
-                              style={{ width: `${(count / totalAccounts) * 100}%` }}
+                              style={{ width: `${((count as number) / totalAccounts) * 100}%` }}
                             />
                           </div>
                         </button>
