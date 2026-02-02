@@ -1,4 +1,5 @@
 import { router, publicProcedure } from "./_core/trpc";
+import { validatePasswordComplexity, logSecurityEvent } from "./_core/security";
 import { z } from "zod";
 import { users, emailVerificationCodes, passwordResetCodes } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -155,6 +156,12 @@ export const emailVerificationRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+      
+      // Validate password complexity
+      const passwordError = validatePasswordComplexity(input.newPassword);
+      if (passwordError) {
+        throw new Error(passwordError);
+      }
 
       const resetCode = await db
         .select()
@@ -187,6 +194,8 @@ export const emailVerificationRouter = router({
         .update(passwordResetCodes)
         .set({ used: true })
         .where(eq(passwordResetCodes.id, code.id));
+      
+      logSecurityEvent("PASSWORD_RESET", { userId: code.userId, email: code.email }, "info");
 
       return { success: true };
     }),

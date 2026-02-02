@@ -1,8 +1,14 @@
 // Dust integration service
 
-const DUST_WORKSPACE_ID = "ASiAFMZt5a";
-const DUST_API_KEY = "[redacted-api-key]";
+// Dust configuration - API key should be in environment variables
+const DUST_WORKSPACE_ID = process.env.DUST_WORKSPACE_ID || "ASiAFMZt5a";
+const DUST_API_KEY = process.env.DUST_API_KEY || "";
 const DUST_BASE_URL = `https://dust.tt/api/v1/w/${DUST_WORKSPACE_ID}`;
+
+// Log warning if API key is not configured
+if (!DUST_API_KEY) {
+  console.warn("[Dust] DUST_API_KEY not configured in environment variables");
+}
 
 export interface DustQueryOptions {
   assistant?: "dust" | "deep-dive" | "gpt-5-nano" | "gpt-5";
