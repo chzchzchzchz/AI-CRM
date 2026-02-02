@@ -11,7 +11,7 @@ const loginAttemptStore = new Map<string, { count: number; lockUntil: number }>(
 
 // Configuration
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const RATE_LIMIT_MAX_REQUESTS = 100; // Max requests per window
+const RATE_LIMIT_MAX_REQUESTS = 1000; // Max requests per window
 const LOGIN_MAX_ATTEMPTS = 5; // Max login attempts before lockout
 const LOGIN_LOCKOUT_MS = 15 * 60 * 1000; // 15 minute lockout
 
