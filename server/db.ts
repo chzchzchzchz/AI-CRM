@@ -293,6 +293,46 @@ export async function getPeopleByCompany(companyName: string) {
   return [];
 }
 
+export async function getPersonById(id: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get person: database not available");
+    return null;
+  }
+
+  const results = await db
+    .select({
+      id: contacts.id,
+      accountId: contacts.accountId,
+      clayRecordId: contacts.clayRecordId,
+      firstName: contacts.firstName,
+      lastName: contacts.lastName,
+      name: contacts.name,
+      title: contacts.title,
+      email: contacts.email,
+      phone: contacts.phone,
+      linkedinUrl: contacts.linkedinUrl,
+      location: contacts.location,
+      department: contacts.department,
+      sfdcContactId: contacts.sfdcContactId,
+      mobilePhone: contacts.mobilePhone,
+      directPhone: contacts.directPhone,
+      createdAt: contacts.createdAt,
+      updatedAt: contacts.updatedAt,
+      company: accounts.name,
+      companyDomain: accounts.domain,
+      accountIntentScore: accounts.intentScore,
+      accountIndustry: accounts.industry,
+      accountBuyingStage: accounts.sixsenseBuyingStage,
+    })
+    .from(contacts)
+    .leftJoin(accounts, eq(contacts.accountId, accounts.id))
+    .where(eq(contacts.id, id))
+    .limit(1);
+  
+  return results[0] || null;
+}
+
 export async function getContactsByAccountId(accountId: number) {
   const db = await getDb();
   if (!db) {

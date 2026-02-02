@@ -311,7 +311,7 @@ export default function AccountDetailEnhanced() {
                   </span>
                   {overviewQuery.data?.cached && (
                     <Badge variant="outline" className="text-xs">
-                      Updated {Math.round((Date.now() - new Date(overviewQuery.data.generatedAt || 0).getTime()) / 60000)}m ago
+                      Updated {overviewQuery.data.cacheAge}m ago
                     </Badge>
                   )}
                 </CardTitle>
