@@ -4,7 +4,8 @@ import mysql from "mysql2/promise";
 import { InsertUser, users, accounts, InsertAccount, contacts, /* people, InsertPerson, clayRequests, InsertClayRequest, gongCalls, InsertGongCall */ calls } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
-let _db: ReturnType<typeof drizzle> | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _db: any = null;
 let _pool: mysql.Pool | null = null;
 
 // Get raw mysql2 pool for direct queries
@@ -36,7 +37,7 @@ export async function getDb() {
     try {
       const pool = await getPool();
       if (pool) {
-        _db = drizzle(pool);
+        _db = drizzle(pool) as any;
       }
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
