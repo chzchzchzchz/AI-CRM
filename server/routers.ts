@@ -33,9 +33,11 @@ import { dustRouter } from "./routers/dust";
 import { salesforceRouter } from "./routers/salesforce";
 import { notifyOwner } from "./_core/notification";
 import { getApprovalLinks } from "./admin-approval-api";
+import { hotLeadsRouter } from "./hot-leads-router";
 
 
 export const appRouter = router({
+  hotLeads: hotLeadsRouter,
   dust: dustRouter,
   salesforce: salesforceRouter,
   tools: toolsRouter,
