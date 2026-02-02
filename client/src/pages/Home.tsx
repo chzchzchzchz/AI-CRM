@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Linkedin, Phone, TrendingUp, Building2, Users, Flame, Zap, ArrowRight, Sparkles, Target, Calendar, MapPin, UserCircle, FileSpreadsheet } from "lucide-react";
 import { ContextualAI } from "@/components/ContextualAI";
 import { DemoTour } from "@/components/DemoTour";
+import { HotLeadsWidget } from "@/components/HotLeadsWidget";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
@@ -529,6 +530,9 @@ export default function Home() {
 
           {/* Right Column - Tasks & Quick Actions */}
           <div className="space-y-6">
+            {/* Hot Leads Widget */}
+            <HotLeadsWidget limit={10} compact={false} />
+
             {/* This Week's Focus */}
             <Card className="card-elevated">
               <CardHeader>

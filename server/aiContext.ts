@@ -382,6 +382,7 @@ export async function generateContactSummary(contactId: number, includeLinkedIn:
   if (!db) return "Unable to generate summary";
 
   const { contacts, calls, accounts } = await import("../drizzle/schema");
+  const { getLinkedInContextForContact } = await import("./linkedin");
   
   const contact = await db.select().from(contacts).where(eq(contacts.id, contactId)).limit(1);
   if (!contact[0]) return "Contact not found";
@@ -391,7 +392,7 @@ export async function generateContactSummary(contactId: number, includeLinkedIn:
   if (contact[0].accountId) {
     const account = await db.select().from(accounts).where(eq(accounts.id, contact[0].accountId)).limit(1);
     if (account[0]) {
-      accountContext = `\nACCOUNT CONTEXT:\n- Company: ${account[0].name}\n- Industry: ${account[0].industry || 'Unknown'}\n- Intent Score: ${account[0].intentScore || 'N/A'}\n- Buying Stage: ${(account[0] as any).buyingStage || 'Unknown'}`;
+      accountContext = `\nACCOUNT CONTEXT:\n- Company: ${account[0].name}\n- Industry: ${account[0].industry || 'Unknown'}\n- Intent Score: ${account[0].intentScore || 'N/A'}\n- Buying Stage: ${(account[0] as any).sixsenseBuyingStage || 'Unknown'}`;
     }
   }
 
@@ -400,10 +401,24 @@ export async function generateContactSummary(contactId: number, includeLinkedIn:
   // Get stored insights
   const storedInsights = await getContext('contact_insight', `contact_${contactId}`);
 
-  // Build LinkedIn section if available
+  // Fetch real-time LinkedIn data if requested and URL is available
   let linkedInSection = '';
   if (contact[0].linkedinUrl) {
-    linkedInSection = `\nLINKEDIN PROFILE: ${contact[0].linkedinUrl}\n(Use this to research their background, experience, education, and recent activity)`;
+    if (includeLinkedIn) {
+      try {
+        const linkedInContext = await getLinkedInContextForContact(contact[0].linkedinUrl);
+        if (linkedInContext) {
+          linkedInSection = `\n\nREAL-TIME LINKEDIN DATA:\n${linkedInContext}`;
+        } else {
+          linkedInSection = `\nLINKEDIN PROFILE: ${contact[0].linkedinUrl}\n(Unable to fetch real-time data)`;
+        }
+      } catch (error) {
+        console.error('Error fetching LinkedIn data:', error);
+        linkedInSection = `\nLINKEDIN PROFILE: ${contact[0].linkedinUrl}\n(Error fetching real-time data)`;
+      }
+    } else {
+      linkedInSection = `\nLINKEDIN PROFILE: ${contact[0].linkedinUrl}`;
+    }
   }
 
   const prompt = `Generate a comprehensive profile summary for this contact:
