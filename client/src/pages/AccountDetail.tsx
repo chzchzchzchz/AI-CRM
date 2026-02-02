@@ -322,9 +322,9 @@ export default function AccountDetailEnhanced() {
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Generating overview...
                   </div>
-                ) : overviewQuery.data?.overview ? (
+                ) : overviewQuery.data?.summary ? (
                   <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <SafeStreamdown>{extractFinalOutput(overviewQuery.data.overview)}</SafeStreamdown>
+                    <SafeStreamdown>{extractFinalOutput(overviewQuery.data.summary)}</SafeStreamdown>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">No overview available</p>
@@ -356,9 +356,9 @@ export default function AccountDetailEnhanced() {
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Generating insights...
                   </div>
-                ) : insightsQuery.data?.insights ? (
+                ) : insightsQuery.data?.recommendations ? (
                   <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <SafeStreamdown>{extractFinalOutput(insightsQuery.data.insights)}</SafeStreamdown>
+                    <SafeStreamdown>{extractFinalOutput(insightsQuery.data.recommendations)}</SafeStreamdown>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">No insights available</p>
