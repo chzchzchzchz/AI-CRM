@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { mockAuthContext } from "./test-utils";
 
 describe("CSV Processor", () => {
   describe("getTemplateInfo", () => {
@@ -6,8 +7,8 @@ describe("CSV Processor", () => {
       // Import the router directly to test
       const { csvProcessorRouter } = await import("./csv-processor-router");
       
-      // Create a mock caller
-      const caller = csvProcessorRouter.createCaller({});
+      // Create a mock caller with authenticated context
+      const caller = csvProcessorRouter.createCaller(mockAuthContext);
       
       const result = await caller.getTemplateInfo();
       
@@ -17,7 +18,7 @@ describe("CSV Processor", () => {
       expect(result.fields.length).toBeGreaterThan(0);
       
       // Check required fields are present
-      const fieldNames = result.fields.map(f => f.name);
+      const fieldNames = result.fields.map((f: { name: string }) => f.name);
       expect(fieldNames).toContain("Email");
       expect(fieldNames).toContain("First Name");
       expect(fieldNames).toContain("Last Name");
@@ -43,7 +44,7 @@ describe("CSV Processor", () => {
     // Skip this test as it requires external LLM API call which times out in test environment
     it.skip("should map common CSV headers to template fields", async () => {
       const { csvProcessorRouter } = await import("./csv-processor-router");
-      const caller = csvProcessorRouter.createCaller({});
+      const caller = csvProcessorRouter.createCaller(mockAuthContext);
       
       const sourceHeaders = [
         "email_address",
@@ -83,7 +84,7 @@ describe("CSV Processor", () => {
   describe("processData", () => {
     it("should transform data according to mappings", async () => {
       const { csvProcessorRouter } = await import("./csv-processor-router");
-      const caller = csvProcessorRouter.createCaller({});
+      const caller = csvProcessorRouter.createCaller(mockAuthContext);
       
       const rows = [
         {
@@ -139,7 +140,7 @@ describe("CSV Processor", () => {
 
     it("should apply country transformation correctly", async () => {
       const { csvProcessorRouter } = await import("./csv-processor-router");
-      const caller = csvProcessorRouter.createCaller({});
+      const caller = csvProcessorRouter.createCaller(mockAuthContext);
       
       const rows = [
         { "country": "US" },
