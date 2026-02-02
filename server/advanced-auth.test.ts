@@ -261,9 +261,9 @@ describe("Advanced Authentication System", () => {
       const resetLog = logs.find(
         (log: any) => log.eventType === "USER_PASSWORD_RESET"
       );
-      // Should not contain actual password
-      expect(resetLog.description).not.toContain("password");
-      expect(resetLog.description).toContain("reset password");
+      // Should not contain actual password value, only the action description
+      expect(resetLog.description).not.toContain("TestPassword123!");
+      expect(resetLog.description).toContain("reset");
     });
 
     it("should track failed login attempts via audit logs", async () => {
