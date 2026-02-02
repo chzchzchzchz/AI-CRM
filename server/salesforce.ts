@@ -167,7 +167,7 @@ export async function fetchContacts(): Promise<SalesforceContact[]> {
 /**
  * Test the Salesforce connection
  */
-export async function testConnection(): Promise<{ success: boolean; message: string; accountCount?: number; contactCount?: number }> {
+export async function testConnection(): Promise<{ success: boolean; connected: boolean; message: string; accountCount?: number; contactCount?: number; error?: string }> {
   try {
     const { token, instanceUrl } = await getAccessToken();
     
@@ -177,6 +177,7 @@ export async function testConnection(): Promise<{ success: boolean; message: str
     
     return {
       success: true,
+      connected: true,
       message: `Connected to Salesforce at ${instanceUrl}`,
       accountCount: accountResult.totalSize,
       contactCount: contactResult.totalSize,
@@ -184,7 +185,9 @@ export async function testConnection(): Promise<{ success: boolean; message: str
   } catch (error) {
     return {
       success: false,
+      connected: false,
       message: error instanceof Error ? error.message : 'Unknown error connecting to Salesforce',
+      error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 }

@@ -479,7 +479,7 @@ export async function validateAllContacts(limit: number = 30): Promise<Validatio
   
   for (let i = 0; i < batch.length; i++) {
     const contact = batch[i];
-    const account = accountMap.get(contact.accountId);
+    const account = contact.accountId ? accountMap.get(contact.accountId) : undefined;
     
     console.log(`Validating contact ${i + 1}/${batch.length}: ${contact.name}`);
     

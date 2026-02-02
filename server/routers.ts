@@ -31,6 +31,7 @@ import { adminRouter } from "./admin-router";
 import { emailVerificationRouter } from "./email-verification-router";
 import { dustRouter } from "./routers/dust";
 import { salesforceRouter } from "./routers/salesforce";
+import { notifyOwner } from "./_core/notification";
 
 
 export const appRouter = router({
@@ -182,7 +183,7 @@ export const appRouter = router({
         // Create user with unique openId
         const openId = `email_${Date.now()}_${Math.random().toString(36).substring(7)}`;
         
-        await db.insert(users).values({
+        const result = await db.insert(users).values({
           openId,
           email: input.email,
           name: input.name,
@@ -191,6 +192,33 @@ export const appRouter = router({
           isApproved: false, // Require admin approval
           role: "user",
         });
+        
+        // Get the new user ID
+        const newUserId = result[0].insertId;
+        
+        // Send notification to admin for approval
+        try {
+          await notifyOwner({
+            title: `🔔 New User Registration: ${input.name}`,
+            content: `A new user has registered and is awaiting approval.
+
+**Name:** ${input.name}
+**Email:** ${input.email}
+**User ID:** ${newUserId}
+**Registered:** ${new Date().toISOString()}
+
+**To approve this user:**
+1. Go to the Admin Approval page: /admin/approval
+2. Find the user in the "Pending Approval" tab
+3. Click "Approve" or "Deny"
+
+Alternatively, you can approve directly via the database:
+UPDATE users SET isApproved = 1 WHERE id = ${newUserId};`
+          });
+        } catch (notifyError) {
+          console.error("Failed to send admin notification:", notifyError);
+          // Don't fail the signup if notification fails
+        }
         
         return { success: true };
       }),

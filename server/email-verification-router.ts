@@ -79,12 +79,10 @@ export const emailVerificationRouter = router({
         .set({ verified: true })
         .where(eq(emailVerificationCodes.id, verCode.id));
 
-      await db
-        .update(users)
-        .set({ isApproved: true })
-        .where(eq(users.id, input.userId));
+      // Note: Email verification does NOT auto-approve users
+      // Admin must manually approve via the admin panel or email notification
 
-      return { success: true };
+      return { success: true, message: "Email verified. Your account is pending admin approval." };
     }),
 
   resendVerificationCode: publicProcedure
