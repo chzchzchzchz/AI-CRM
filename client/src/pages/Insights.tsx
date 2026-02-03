@@ -672,7 +672,7 @@ export default function Insights() {
                         </div>
                         <div className="bg-slate-800/50 rounded-lg p-2">
                           <div className="text-slate-400 text-xs">6QA</div>
-                          <div className="text-green-400 font-bold">{kw.accountsWith6QA}</div>
+                          <div className="text-green-400 font-bold">{kw.accountsWith6Qa}</div>
                         </div>
                         <div className="bg-slate-800/50 rounded-lg p-2">
                           <div className="text-slate-400 text-xs">Opportunities</div>

@@ -5,13 +5,16 @@ import {
   sixsenseBuyingStageMetrics,
   sixsenseEngagementMetrics,
   sixsenseKeywords,
-  sixsense6QAPerformance,
-  type SixsenseBuyingStageMetric,
-  type SixsenseEngagementMetric,
-  type SixsenseKeyword,
-  type Sixsense6QAPerformance,
+  sixsense6QaPerformance,
 } from "../drizzle/schema";
+
 import { desc } from "drizzle-orm";
+
+// Infer types from table schema
+type SixsenseBuyingStageMetric = typeof sixsenseBuyingStageMetrics.$inferSelect;
+type SixsenseEngagementMetric = typeof sixsenseEngagementMetrics.$inferSelect;
+type SixsenseKeyword = typeof sixsenseKeywords.$inferSelect;
+type Sixsense6QaPerformance = typeof sixsense6QaPerformance.$inferSelect;
 
 export const sixsenseAnalyticsRouter = router({
   // Get buying stage funnel data
@@ -70,7 +73,7 @@ export const sixsenseAnalyticsRouter = router({
       metrics: latestData.map((d: SixsenseEngagementMetric) => ({
         state: d.engagementState,
         accounts: d.accounts,
-        amount: d.amountUSD,
+        amount: d.amountUsd,
       })),
     };
   }),
@@ -121,10 +124,10 @@ export const sixsenseAnalyticsRouter = router({
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    const data: Sixsense6QAPerformance[] = await db
+    const data: Sixsense6QaPerformance[] = await db
       .select()
-      .from(sixsense6QAPerformance)
-      .orderBy(desc(sixsense6QAPerformance.day))
+      .from(sixsense6QaPerformance)
+      .orderBy(desc(sixsense6QaPerformance.day))
       .limit(30);
 
     const latest = data[0];
@@ -148,7 +151,7 @@ export const sixsenseAnalyticsRouter = router({
             avgDaysSinceLastActivity: latest.avgDaysSinceLastActivity,
           }
         : null,
-      trend: data.reverse().map((d: Sixsense6QAPerformance) => ({
+      trend: data.reverse().map((d: Sixsense6QaPerformance) => ({
         day: d.day,
         total6QAs: d.total6QAs,
         worked: d.worked,
@@ -163,10 +166,10 @@ export const sixsenseAnalyticsRouter = router({
     if (!db) throw new Error("Database not available");
 
     // Get latest 6QA performance
-    const performanceData: Sixsense6QAPerformance[] = await db
+    const performanceData: Sixsense6QaPerformance[] = await db
       .select()
-      .from(sixsense6QAPerformance)
-      .orderBy(desc(sixsense6QAPerformance.day))
+      .from(sixsense6QaPerformance)
+      .orderBy(desc(sixsense6QaPerformance.day))
       .limit(1);
     const performance = performanceData[0];
 

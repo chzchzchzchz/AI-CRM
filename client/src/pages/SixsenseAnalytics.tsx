@@ -305,7 +305,7 @@ export default function SixsenseAnalytics() {
                         <td className="py-2 px-2 font-medium">{kw.keyword}</td>
                         <td className="py-2 px-2 text-right">{kw.totalAccounts}</td>
                         <td className="py-2 px-2 text-right">{kw.accountsWithWebVisits}</td>
-                        <td className="py-2 px-2 text-right">{kw.accountsWith6QA}</td>
+                        <td className="py-2 px-2 text-right">{kw.accountsWith6Qa}</td>
                         <td className="py-2 px-2 text-right">{kw.accountsWithOpportunities}</td>
                         <td className="py-2 px-2">
                           <Badge 
