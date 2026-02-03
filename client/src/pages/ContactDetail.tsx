@@ -33,6 +33,33 @@ export default function ContactDetail() {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // SDR Export
+  const sdrExportMutation = trpc.sdr.export.useMutation();
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportForSDR = async () => {
+    if (!contact?.accountId) {
+      toast.error("Contact must be linked to an account");
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const result = await sdrExportMutation.mutateAsync({
+        accountId: contact.accountId,
+        contactId: personId,
+      });
+      if (result.success) {
+        const payload = JSON.stringify(result.data, null, 2);
+        await navigator.clipboard.writeText(payload);
+        toast.success("SDR data copied to clipboard! Paste into Claude.");
+      }
+    } catch (error) {
+      toast.error("Failed to export SDR data");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleGenerateSummary = async () => {
     if (!contact?.linkedinUrl) {
       toast.error("No LinkedIn profile available for this contact");
@@ -161,6 +188,10 @@ export default function ContactDetail() {
                 <a href={`mailto:${contact.email}`}><Mail className="mr-1 h-4 w-4" />Email</a>
               </Button>
             )}
+            <Button size="sm" variant="outline" onClick={handleExportForSDR} disabled={isExporting}>
+              <Copy className="mr-1 h-4 w-4" />
+              {isExporting ? "Exporting..." : "Export for SDR"}
+            </Button>
             {contact.linkedinUrl && (
               <Button size="sm" variant="outline" asChild>
                 <a href={contact.linkedinUrl} target="_blank"><Linkedin className="mr-1 h-4 w-4" />LinkedIn</a>
