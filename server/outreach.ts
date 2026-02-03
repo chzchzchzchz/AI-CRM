@@ -4,6 +4,8 @@ import { invokeLLM } from "./_core/llm";
 import { eq, inArray } from "drizzle-orm";
 import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
+import { generateAccountSummary } from "./account-summary";
+import { generateContactSummary } from "./contact-summary";
 
 // Clean email generation prompt - NO tracking, NO scoring, NO internal data mentions
 const CLEAN_EMAIL_SYSTEM_PROMPT = `You are an elite Enterprise Account Executive for the company, a passwordless MFA/Zero Trust security company.
@@ -18,10 +20,11 @@ CRITICAL RULES FOR EMAILS:
 7. BE SHORT - 3-5 sentences max
 8. ONE CLEAR ASK at the end
 
-GOOD: "Given your Okta deployment, you've likely seen the rise in MFA bypass attacks..."
+CRITICAL: Reference Ping (PingOne, PingFederate) as the primary identity platform context
+GOOD: "Given your Ping deployment, you've likely seen the complexity of managing passwordless at scale..."
+GOOD: "Companies modernizing from Ping often struggle with..."
+GOOD: "Your Silverfort integration with Ping shows you're thinking about unified identity fabric..."
 BAD: "Your 97 intent score suggests you're actively evaluating identity solutions..."
-
-GOOD: "Companies with your security stack often struggle with..."
 BAD: "Based on our 6sense data, we can see you're in the purchase stage..."`;
 
 export const outreachRouter = router({
@@ -60,6 +63,28 @@ export const outreachRouter = router({
       }
 
       const contact = contactData[0];
+
+      // ============================================
+      // PHASE 1: Generate Account-Level Summary
+      // ============================================
+      let accountSummary = "";
+      try {
+        accountSummary = await generateAccountSummary(account.id);
+      } catch (e) {
+        console.error("Failed to generate account summary:", e);
+      }
+
+      // ============================================
+      // PHASE 2: Generate Contact-Level Summary (if contact provided)
+      // ============================================
+      let contactSummary = "";
+      if (contact) {
+        try {
+          contactSummary = await generateContactSummary(contact.id);
+        } catch (e) {
+          console.error("Failed to generate contact summary:", e);
+        }
+      }
 
       // Build CLEAN context - only publicly known info
       let accountContext = `Company: ${account.name}`;
@@ -125,9 +150,20 @@ Email: ${contact.email || "Unknown"}`;
       const firstName = contact?.name?.split(' ')[0] || "there";
 
       // ============================================
-      // SINGLE PASS: Generate Clean, Professional Email
+      // PHASE 3: Generate Email Using Summaries
       // ============================================
-      const emailPrompt = `Write a cold email for this prospect.
+      // Build comprehensive context from summaries
+      let summaryContext = "";
+      if (accountSummary) {
+        summaryContext += `\n\n=== ACCOUNT INTELLIGENCE ===\n${accountSummary}`;
+      }
+      if (contactSummary) {
+        summaryContext += `\n\n=== CONTACT INTELLIGENCE ===\n${contactSummary}`;
+      }
+
+      const emailPrompt = `Write a cold email for this prospect. Use the intelligence provided below to create a deeply personalized, highly relevant message.${summaryContext}
+
+Write a cold email for this prospect.
 
 ${accountContext}${contactContext}
 
