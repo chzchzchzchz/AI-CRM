@@ -5,6 +5,25 @@ import { getDb } from "./db";
 import { getCompanyByDomain } from "./sixsense";
 import { getLinkedInProfile, extractLinkedInUsername } from "./linkedin";
 import { z } from "zod";
+import { getSequenceContextForAccount } from "./sequences/sequence-detector";
+
+interface SequenceContextData {
+  sequenceType: string;
+  sequenceMarkers: {
+    sequenceType: string | null;
+    campaignFocus: string | null;
+    buyingStage: string | null;
+    arr: number | null;
+    accountStatus: string | null;
+  };
+  platformContext: Record<string, unknown>;
+}
+
+interface AISummaryData {
+  accountBrief: string | null;
+  contactBrief: string | null;
+  emailSystemPrompt: string | null;
+}
 
 interface SDRExportPayload {
   account: AccountData;
@@ -16,6 +35,8 @@ interface SDRExportPayload {
   rfps: RFPData[];
   emailSequences: EmailSequenceData[];
   outreachHistory: OutreachHistoryData;
+  sequenceContext: SequenceContextData;
+  aiSummaries: AISummaryData;
   exportedAt: string;
 }
 
@@ -358,6 +379,20 @@ export const sdrExportRouter = router({
           ? accountCampaigns[0].createdAt?.toISOString() || null
           : null;
 
+      // Get sequence context based on Salesforce markers
+      const sequenceContext = getSequenceContextForAccount({
+        sequenceType: account.sequenceType,
+        campaignFocus: account.campaignFocus,
+        buyingStage: account.buyingStage,
+        industry: account.industry,
+        name: account.name,
+      });
+
+      // Get AI summaries using sequence context
+      const accountBrief = account.aiOverviewCache || null;
+      const contactBrief = (contact as any).aiSummary || null;
+      const emailSystemPrompt = sequenceContext.getEmailSystemPrompt();
+
       const payload: SDRExportPayload = {
         account: {
           id: account.id,
@@ -439,6 +474,22 @@ export const sdrExportRouter = router({
           responseRate: null,
           engagementScore: null,
           nextBestAction: null,
+        },
+        sequenceContext: {
+          sequenceType: sequenceContext.type,
+          sequenceMarkers: {
+            sequenceType: account.sequenceType,
+            campaignFocus: account.campaignFocus,
+            buyingStage: account.buyingStage,
+            arr: account.arr,
+            accountStatus: account.accountStatus,
+          },
+          platformContext: sequenceContext.platformContext,
+        },
+        aiSummaries: {
+          accountBrief,
+          contactBrief,
+          emailSystemPrompt,
         },
         exportedAt: new Date().toISOString(),
       };
