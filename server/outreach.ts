@@ -4,6 +4,9 @@ import { invokeLLM } from "./_core/llm";
 import { eq, inArray } from "drizzle-orm";
 import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
+import { generateAccountSummary } from "./account-summary";
+import { generateContactSummary } from "./contact-summary";
+import { getPingEmailSystemPrompt } from "./sequences/ping-context";
 
 // Clean email generation prompt - NO tracking, NO scoring, NO internal data mentions
 const CLEAN_EMAIL_SYSTEM_PROMPT = `You are an elite Enterprise Account Executive for the company, a passwordless MFA/Zero Trust security company.
@@ -60,6 +63,24 @@ export const outreachRouter = router({
       }
 
       const contact = contactData[0];
+
+      // MANDATE: Generate account-level AI summary first
+      let accountSummary = "";
+      try {
+        accountSummary = await generateAccountSummary(account.id, "ping");
+      } catch (e) {
+        console.error("Error generating account summary:", e);
+      }
+
+      // MANDATE: Generate contact-level AI summary if contact provided
+      let contactSummary = "";
+      if (contact) {
+        try {
+          contactSummary = await generateContactSummary(contact.id, "ping");
+        } catch (e) {
+          console.error("Error generating contact summary:", e);
+        }
+      }
 
       // Build CLEAN context - only publicly known info
       let accountContext = `Company: ${account.name}`;
@@ -127,9 +148,16 @@ Email: ${contact.email || "Unknown"}`;
       // ============================================
       // SINGLE PASS: Generate Clean, Professional Email
       // ============================================
+      const emailSystemPrompt = getPingEmailSystemPrompt();
+
       const emailPrompt = `Write a cold email for this prospect.
 
 ${accountContext}${contactContext}
+
+ACCOUNT BRIEF:
+${accountSummary}
+
+${contactSummary ? "CONTACT BRIEF:\n" + contactSummary + "\n" : ""}
 
 Additional context from rep: ${input.prompt || "Focus on passwordless MFA and Zero Trust security."}
 
@@ -140,12 +168,13 @@ REQUIREMENTS:
 - End with ONE clear ask (15-minute call)
 - NO subject line, NO signature
 - Sound like a human, not a marketing bot
+- Use the account and contact briefs above to deeply personalize the email
 
 OUTPUT ONLY THE EMAIL BODY. Nothing else.`;
 
       const emailResponse = await invokeLLM({
         messages: [
-          { role: "system", content: CLEAN_EMAIL_SYSTEM_PROMPT },
+          { role: "system", content: emailSystemPrompt },
           { role: "user", content: emailPrompt },
         ],
       });
