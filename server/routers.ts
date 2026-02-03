@@ -35,9 +35,11 @@ import { notifyOwner } from "./_core/notification";
 import { getApprovalLinks } from "./admin-approval-api";
 import { hotLeadsRouter } from "./hot-leads-router";
 import { recordFailedLogin, clearLoginAttempts, validatePasswordComplexity, logSecurityEvent } from "./_core/security";
+import { sdrExportRouter } from "./sdr-export-router";
 
 
 export const appRouter = router({
+  sdr: sdrExportRouter,
   hotLeads: hotLeadsRouter,
   dust: dustRouter,
   salesforce: salesforceRouter,

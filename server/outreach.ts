@@ -1,4 +1,3 @@
-import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { eq, inArray } from "drizzle-orm";
@@ -7,6 +6,7 @@ import { getDb } from "./db";
 import { generateAccountSummary } from "./account-summary";
 import { generateContactSummary } from "./contact-summary";
 import { getPingEmailSystemPrompt } from "./sequences/ping-context";
+import { router, protectedProcedure } from "./_core/trpc";
 
 // Clean email generation prompt - NO tracking, NO scoring, NO internal data mentions
 const CLEAN_EMAIL_SYSTEM_PROMPT = `You are an elite Enterprise Account Executive for the company, a passwordless MFA/Zero Trust security company.
