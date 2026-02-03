@@ -28,7 +28,7 @@ export function Navigation({ onSearchClick }: NavigationProps) {
     { path: "/contacts", label: "Contacts", icon: Contact },
     // { path: "/calls", label: "Calls", icon: Phone }, // Hidden per user request
     { path: "/insights", label: "Insights", icon: BarChart3 },
-    { path: "/outreach", label: "Outreach", icon: Send },
+    { path: "/sdr", label: "SDR Export", icon: Send },
 
     // Admin-only pages
     { path: "/rfps", label: "RFPs", icon: FileText, adminOnly: true },
