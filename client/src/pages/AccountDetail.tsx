@@ -165,6 +165,27 @@ export default function AccountDetailEnhanced() {
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0">
+            <Button size="sm" variant="outline" onClick={() => {
+              const sdrData = JSON.stringify({
+                account: {
+                  id: account.id,
+                  name: account.name,
+                  domain: account.domain,
+                  industry: account.industry,
+                  employeeCount: account.employeeCount,
+                  intentScore: account.intentScore,
+                  buyingStage: account.buyingStage,
+                  linkedinUrl: account.linkedinUrl,
+                  rawData: account.rawData
+                },
+                contacts: people || [],
+                timestamp: new Date().toISOString()
+              }, null, 2);
+              navigator.clipboard.writeText(sdrData);
+              toast.success("Account data copied to clipboard! Paste into Claude.");
+            }}>
+              <Copy className="mr-1 h-4 w-4" />Export for Claude
+            </Button>
             <Button size="sm" className="gradient-primary text-white" asChild>
               <Link href="/outreach"><Mail className="mr-1 h-4 w-4" />Outreach</Link>
             </Button>
