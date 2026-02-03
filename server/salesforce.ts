@@ -4,6 +4,7 @@
  */
 
 import { ENV } from './_core/env';
+import { normalizeDomain, extractDomainFromEmail } from './domain-utils';
 
 // Salesforce OAuth configuration
 const SALESFORCE_CLIENT_ID = ENV.salesforceClientId;
@@ -32,6 +33,14 @@ interface SalesforceAccount {
   Type?: string;
   Phone?: string;
   OwnerId?: string;
+  // Sequence markers
+  Sequence_Type__c?: string; // 'Ping', 'Silverfort', 'AI', 'SDO'
+  Campaign_Focus__c?: string;
+  Intent_Score__c?: number;
+  Buying_Stage__c?: string;
+  // Additional fields
+  ARR__c?: number;
+  Account_Status__c?: string;
 }
 
 interface SalesforceContact {
@@ -136,7 +145,9 @@ export async function query<T>(soql: string): Promise<SalesforceQueryResponse<T>
 export async function fetchAccounts(): Promise<SalesforceAccount[]> {
   const soql = `
     SELECT Id, Name, Website, Industry, NumberOfEmployees, 
-           BillingCity, BillingState, BillingCountry, Description, Type, Phone, OwnerId
+           BillingCity, BillingState, BillingCountry, Description, Type, Phone, OwnerId,
+           Sequence_Type__c, Campaign_Focus__c, Intent_Score__c, Buying_Stage__c,
+           ARR__c, Account_Status__c
     FROM Account
     WHERE IsDeleted = false
     ORDER BY Name
@@ -153,11 +164,11 @@ export async function fetchAccounts(): Promise<SalesforceAccount[]> {
 export async function fetchContacts(): Promise<SalesforceContact[]> {
   const soql = `
     SELECT Id, FirstName, LastName, Name, Email, Phone, Title, AccountId, 
-           Account.Name, MailingCity, MailingState, MailingCountry
+           Account.Name, MailingCity, MailingState, MailingCountry, LinkedIn_URL__c
     FROM Contact
     WHERE IsDeleted = false
     ORDER BY Name
-    LIMIT 5000
+    LIMIT 10000
   `;
   
   const result = await query<SalesforceContact>(soql);
@@ -196,14 +207,7 @@ export async function testConnection(): Promise<{ success: boolean; connected: b
  * Extract domain from website URL
  */
 function extractDomain(website: string | undefined): string | null {
-  if (!website) return null;
-  try {
-    const url = website.startsWith('http') ? website : `https://${website}`;
-    const domain = new URL(url).hostname.replace('www.', '');
-    return domain;
-  } catch {
-    return website.replace('www.', '').split('/')[0];
-  }
+  return normalizeDomain(website);
 }
 
 /**
@@ -239,6 +243,12 @@ export function transformAccount(sfAccount: SalesforceAccount): {
   description: string | null;
   phone: string | null;
   type: string | null;
+  sequenceType: string | null;
+  campaignFocus: string | null;
+  intentScore: number | null;
+  buyingStage: string | null;
+  arr: number | null;
+  accountStatus: string | null;
 } {
   return {
     name: sfAccount.Name,
@@ -251,6 +261,12 @@ export function transformAccount(sfAccount: SalesforceAccount): {
     description: sfAccount.Description || null,
     phone: sfAccount.Phone || null,
     type: sfAccount.Type || null,
+    sequenceType: sfAccount.Sequence_Type__c || null,
+    campaignFocus: sfAccount.Campaign_Focus__c || null,
+    intentScore: sfAccount.Intent_Score__c || null,
+    buyingStage: sfAccount.Buying_Stage__c || null,
+    arr: sfAccount.ARR__c || null,
+    accountStatus: sfAccount.Account_Status__c || null,
   };
 }
 
