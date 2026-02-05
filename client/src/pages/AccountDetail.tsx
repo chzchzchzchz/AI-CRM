@@ -14,6 +14,47 @@ import { Link, useParams } from "wouter";
 import { SafeStreamdown } from "@/components/SafeStreamdown";
 import { toast } from "sonner";
 
+function ExportButton({ accountId }: { accountId: number }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const exportMutation = trpc.accountExport.exportAccount.useMutation();
+
+  const handleExport = async () => {
+    try {
+      setIsLoading(true);
+      const result = await exportMutation.mutateAsync({ accountId });
+      
+      if (result.success && result.data) {
+        const jsonStr = JSON.stringify(result.data, null, 2);
+        navigator.clipboard.writeText(jsonStr);
+        toast.success("Comprehensive account data copied to clipboard!");
+      } else {
+        toast.error("Failed to export account data");
+      }
+    } catch (error) {
+      toast.error("Error exporting account data");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Button 
+      size="sm" 
+      variant="outline" 
+      onClick={handleExport}
+      disabled={isLoading}
+    >
+      {isLoading ? (
+        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+      ) : (
+        <Copy className="mr-1 h-4 w-4" />
+      )}
+      Export for Claude
+    </Button>
+  );
+}
+
 export default function AccountDetailEnhanced() {
   const { id } = useParams<{ id: string }>();
   const accountId = parseInt(id || "0");
@@ -165,6 +206,10 @@ export default function AccountDetailEnhanced() {
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0">
+            <ExportButton accountId={accountId} />
+            <Button size="sm" className="gradient-primary text-white" asChild>
+              <Link href="/outreach"><Mail className="mr-1 h-4 w-4" />Outreach</Link>
+            </Button>
             <Button size="sm" variant="outline" onClick={() => {
               const sdrData = JSON.stringify({
                 account: {
@@ -184,10 +229,7 @@ export default function AccountDetailEnhanced() {
               navigator.clipboard.writeText(sdrData);
               toast.success("Account data copied to clipboard! Paste into Claude.");
             }}>
-              <Copy className="mr-1 h-4 w-4" />Export for Claude
-            </Button>
-            <Button size="sm" className="gradient-primary text-white" asChild>
-              <Link href="/outreach"><Mail className="mr-1 h-4 w-4" />Outreach</Link>
+              <Copy className="mr-1 h-4 w-4" />Export (Old Format)
             </Button>
             {account.linkedinUrl && (
               <Button size="sm" variant="outline" asChild>
