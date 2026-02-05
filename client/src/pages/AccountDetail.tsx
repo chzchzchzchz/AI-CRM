@@ -131,7 +131,7 @@ export default function AccountDetailEnhanced() {
         <div className="container py-12 max-w-2xl text-center">
           <Building2 className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
           <h3 className="text-2xl font-semibold mb-2">Account not found</h3>
-          <Button asChild><Link href="/accounts"><ArrowLeft className="mr-2 h-4 w-4" />Back</Link></Button>
+          <Button asChild><Link href="/accounts"><ArrowLeft className="mr-2 h-4 w-4" /></Link></Button>
         </div>
       </div>
     );
@@ -232,15 +232,13 @@ export default function AccountDetailEnhanced() {
               <Copy className="mr-1 h-4 w-4" />Export (Old Format)
             </Button>
             {account.linkedinUrl && (
-              <Button size="sm" variant="outline" asChild>
-                <a href={account.linkedinUrl} target="_blank"><Linkedin className="mr-1 h-4 w-4" />LinkedIn</a>
+              <Button size="sm" variant="outline" onClick={() => window.open(account.linkedinUrl, '_blank')}>
+                <Linkedin className="mr-1 h-4 w-4" />LinkedIn
               </Button>
             )}
             {(account as any).sfdcAccountId && (
-              <Button size="sm" variant="outline" className="border-blue-500 text-blue-500" asChild>
-                <a href={`https://company.lightning.force.com/lightning/r/Account/${(account as any).sfdcAccountId}/view`} target="_blank">
-                  <ExternalLink className="mr-1 h-4 w-4" />Salesforce
-                </a>
+              <Button size="sm" variant="outline" className="border-blue-500 text-blue-500" onClick={() => window.open(`https://company.lightning.force.com/lightning/r/Account/${(account as any).sfdcAccountId}/view`, '_blank')}>
+                <ExternalLink className="mr-1 h-4 w-4" />Salesforce
               </Button>
             )}
           </div>
