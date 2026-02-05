@@ -31,6 +31,8 @@ import { adminRouter } from "./admin-router";
 import { emailVerificationRouter } from "./email-verification-router";
 import { dustRouter } from "./routers/dust";
 import { salesforceRouter } from "./routers/salesforce";
+import { salesforceSyncRouter } from "./routers/salesforce-sync-router";
+import { accountExportRouter } from "./routers/account-export-router";
 import { notifyOwner } from "./_core/notification";
 import { getApprovalLinks } from "./admin-approval-api";
 import { hotLeadsRouter } from "./hot-leads-router";
@@ -43,6 +45,8 @@ export const appRouter = router({
   hotLeads: hotLeadsRouter,
   dust: dustRouter,
   salesforce: salesforceRouter,
+  salesforceSync: salesforceSyncRouter,
+  accountExport: accountExportRouter,
   tools: toolsRouter,
   clay: clayRouter,
   gemini: geminiRouter,
