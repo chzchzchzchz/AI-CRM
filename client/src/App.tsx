@@ -30,7 +30,6 @@ const ContentStudio = lazyLoad(() => import("./pages/ContentStudio"));
 const TranscriptAnalyzer = lazyLoad(() => import("./pages/TranscriptAnalyzer"));
 const AITools = lazyLoad(() => import("./pages/AITools"));
 const TopAccounts = lazyLoad(() => import("./pages/TopAccounts"));
-const UnifiedEnrichment = lazyLoad(() => import("./pages/UnifiedEnrichment"));
 const Login = lazyLoad(() => import("./pages/Login"));
 const SignUp = lazyLoad(() => import("./pages/SignUp"));
 const RequestAccess = lazyLoad(() => import("./pages/RequestAccess"));
@@ -71,7 +70,6 @@ function Router() {
       <Route path="/transcript-analyzer" component={TranscriptAnalyzer} />
       <Route path="/tools" component={AITools} />
       <Route path="/top-accounts" component={TopAccounts} />
-      <Route path="/enrich" component={UnifiedEnrichment} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
