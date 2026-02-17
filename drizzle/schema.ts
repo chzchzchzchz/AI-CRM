@@ -74,12 +74,6 @@ export const accounts = mysqlTable("accounts", {
   sfdcAccountId: varchar("sfdcAccountId", { length: 18 }), // Salesforce 18-char ID
   phone: varchar("phone", { length: 50 }),
   type: varchar("type", { length: 100 }),
-  // Sequence markers from Salesforce
-  sequenceType: varchar("sequenceType", { length: 50 }), // 'Ping', 'Silverfort', 'AI', 'SDO'
-  campaignFocus: varchar("campaignFocus", { length: 255 }),
-  buyingStage: varchar("buyingStage", { length: 100 }),
-  arr: int("arr"), // Annual Recurring Revenue
-  accountStatus: varchar("accountStatus", { length: 50 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

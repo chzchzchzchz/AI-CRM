@@ -14,47 +14,6 @@ import { Link, useParams } from "wouter";
 import { SafeStreamdown } from "@/components/SafeStreamdown";
 import { toast } from "sonner";
 
-function ExportButton({ accountId }: { accountId: number }) {
-  const [isLoading, setIsLoading] = useState(false);
-  const exportMutation = trpc.accountExport.exportAccount.useMutation();
-
-  const handleExport = async () => {
-    try {
-      setIsLoading(true);
-      const result = await exportMutation.mutateAsync({ accountId });
-      
-      if (result.success && result.data) {
-        const jsonStr = JSON.stringify(result.data, null, 2);
-        navigator.clipboard.writeText(jsonStr);
-        toast.success("Comprehensive account data copied to clipboard!");
-      } else {
-        toast.error("Failed to export account data");
-      }
-    } catch (error) {
-      toast.error("Error exporting account data");
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <Button 
-      size="sm" 
-      variant="outline" 
-      onClick={handleExport}
-      disabled={isLoading}
-    >
-      {isLoading ? (
-        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-      ) : (
-        <Copy className="mr-1 h-4 w-4" />
-      )}
-      Export for Claude
-    </Button>
-  );
-}
-
 export default function AccountDetailEnhanced() {
   const { id } = useParams<{ id: string }>();
   const accountId = parseInt(id || "0");
@@ -131,7 +90,7 @@ export default function AccountDetailEnhanced() {
         <div className="container py-12 max-w-2xl text-center">
           <Building2 className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
           <h3 className="text-2xl font-semibold mb-2">Account not found</h3>
-          <Button asChild><Link href="/accounts"><ArrowLeft className="mr-2 h-4 w-4" /></Link></Button>
+          <Button asChild><Link href="/accounts"><ArrowLeft className="mr-2 h-4 w-4" />Back</Link></Button>
         </div>
       </div>
     );
@@ -206,39 +165,19 @@ export default function AccountDetailEnhanced() {
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0">
-            <ExportButton accountId={accountId} />
             <Button size="sm" className="gradient-primary text-white" asChild>
               <Link href="/outreach"><Mail className="mr-1 h-4 w-4" />Outreach</Link>
             </Button>
-            <Button size="sm" variant="outline" onClick={() => {
-              const sdrData = JSON.stringify({
-                account: {
-                  id: account.id,
-                  name: account.name,
-                  domain: account.domain,
-                  industry: account.industry,
-                  employeeCount: account.employeeCount,
-                  intentScore: account.intentScore,
-                  buyingStage: account.buyingStage,
-                  linkedinUrl: account.linkedinUrl,
-                  rawData: account.rawData
-                },
-                contacts: people || [],
-                timestamp: new Date().toISOString()
-              }, null, 2);
-              navigator.clipboard.writeText(sdrData);
-              toast.success("Account data copied to clipboard! Paste into Claude.");
-            }}>
-              <Copy className="mr-1 h-4 w-4" />Export (Old Format)
-            </Button>
             {account.linkedinUrl && (
-              <Button size="sm" variant="outline" onClick={() => window.open(account.linkedinUrl, '_blank')}>
-                <Linkedin className="mr-1 h-4 w-4" />LinkedIn
+              <Button size="sm" variant="outline" asChild>
+                <a href={account.linkedinUrl} target="_blank"><Linkedin className="mr-1 h-4 w-4" />LinkedIn</a>
               </Button>
             )}
             {(account as any).sfdcAccountId && (
-              <Button size="sm" variant="outline" className="border-blue-500 text-blue-500" onClick={() => window.open(`https://company.lightning.force.com/lightning/r/Account/${(account as any).sfdcAccountId}/view`, '_blank')}>
-                <ExternalLink className="mr-1 h-4 w-4" />Salesforce
+              <Button size="sm" variant="outline" className="border-blue-500 text-blue-500" asChild>
+                <a href={`https://company.lightning.force.com/lightning/r/Account/${(account as any).sfdcAccountId}/view`} target="_blank">
+                  <ExternalLink className="mr-1 h-4 w-4" />Salesforce
+                </a>
               </Button>
             )}
           </div>
