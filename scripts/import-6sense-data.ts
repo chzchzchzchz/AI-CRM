@@ -85,7 +85,7 @@ const keywordsData = [
   { keyword: "Credential Stuffing", totalAccounts: 383, accountsWithWebVisits: 241, accountsWith6QA: 281, accountsWithOpportunities: 6, accountsWithRelevantOpportunities: 6, category: "threat" },
   { keyword: "access identity management", totalAccounts: 383, accountsWithWebVisits: 201, accountsWith6QA: 237, accountsWithOpportunities: 5, accountsWithRelevantOpportunities: 5, category: "product" },
   { keyword: "passwordless authentication", totalAccounts: 367, accountsWithWebVisits: 265, accountsWith6QA: 291, accountsWithOpportunities: 7, accountsWithRelevantOpportunities: 7, category: "product" },
-  { keyword: "the company", totalAccounts: 349, accountsWithWebVisits: 244, accountsWith6QA: 267, accountsWithOpportunities: 6, accountsWithRelevantOpportunities: 6, category: "brand" },
+  { keyword: "{COMPANY_NAME}", totalAccounts: 349, accountsWithWebVisits: 244, accountsWith6QA: 267, accountsWithOpportunities: 6, accountsWithRelevantOpportunities: 6, category: "brand" },
   { keyword: "endpoint protection", totalAccounts: 336, accountsWithWebVisits: 207, accountsWith6QA: 231, accountsWithOpportunities: 6, accountsWithRelevantOpportunities: 6, category: "product" },
   { keyword: "identity platform", totalAccounts: 331, accountsWithWebVisits: 197, accountsWith6QA: 219, accountsWithOpportunities: 7, accountsWithRelevantOpportunities: 7, category: "product" },
   { keyword: "Cyber Liability Insurance", totalAccounts: 328, accountsWithWebVisits: 198, accountsWith6QA: 237, accountsWithOpportunities: 5, accountsWithRelevantOpportunities: 5, category: "compliance" },

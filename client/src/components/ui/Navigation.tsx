@@ -29,7 +29,7 @@ export function Navigation({ onSearchClick }: NavigationProps) {
         <div className="flex items-center gap-8">
           <Link href="/">
             <span className="flex items-center hover:opacity-80 transition-opacity cursor-pointer">
-              <img src={APP_LOGO} alt="the company" className="h-8" />
+              <img src={APP_LOGO} alt="{COMPANY_NAME}" className="h-8" />
             </span>
           </Link>
 

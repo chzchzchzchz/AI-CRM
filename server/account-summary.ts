@@ -51,7 +51,7 @@ export async function generateAccountSummary(
     });
   } else {
     // Default prompt for other sequences (to be implemented)
-    systemPrompt = `You are an elite Enterprise Account Executive and strategic advisor for the company.
+    systemPrompt = `You are an elite Enterprise Account Executive and strategic advisor for {COMPANY_NAME}.
 
 Your task is to generate a comprehensive, data-driven account brief for ${account.name || "this company"}.
 
@@ -73,7 +73,7 @@ Generate a structured brief with these sections:
   }
 
   // Prepare context for LLM
-  const userMessage = `Generate an account brief for ${account.name}. Include all relevant information about their business, technology, and how the company can help.`;
+  const userMessage = `Generate an account brief for ${account.name}. Include all relevant information about their business, technology, and how {COMPANY_NAME} can help.`;
 
   try {
     const response = await invokeLLM({

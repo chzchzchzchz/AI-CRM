@@ -7,9 +7,9 @@ import { withRCP, asRevenueArchitect, REVENUE_ARCHITECT_PERSONA } from "./ai-sys
  * Handles all intelligent processing, learning, and recommendations
  */
 
-// Company context - the company's sales methodology and ICP
+// Company context - {COMPANY_NAME}'s sales methodology and ICP
 const COMPANY_CONTEXT = `
-the company is a passwordless authentication and identity security company.
+{COMPANY_NAME} is a passwordless authentication and identity security company.
 
 TARGET CUSTOMER PROFILE:
 - Enterprise companies (1000+ employees)
@@ -127,7 +127,7 @@ Provide a JSON response with:
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: withRCP("You are a sales call analyzer for the company. Extract insights from call transcripts.") },
+      { role: "system", content: withRCP("You are a sales call analyzer for {COMPANY_NAME}. Extract insights from call transcripts.") },
       { role: "user", content: prompt }
     ],
     response_format: {

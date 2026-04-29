@@ -3,6 +3,7 @@ import { getDb } from "./db";
 import { aiResponseCache } from "../drizzle/schema";
 import { eq, and, gt } from "drizzle-orm";
 import crypto from "crypto";
+import { getCompanyContext } from "./config";
 
 /**
  * DEEP-THINK ARCHITECTURE
@@ -258,7 +259,7 @@ Transform this into a polished, human response.`;
 
 /**
  * Deep-Think for Sales Intelligence
- * Specialized version with the company context
+ * Specialized version with {COMPANY_NAME} context
  */
 export async function deepThinkSales(params: {
   query: string;
@@ -271,10 +272,7 @@ export async function deepThinkSales(params: {
   const { query, accountData, contactData, additionalContext, debugMode = false, skipCache = false } = params;
 
   // Build rich context
-  let context = `COMPANY: the company (passwordless MFA/SSO/Zero Trust security)
-TARGET CUSTOMERS: Enterprise 1000+ employees, Financial Services, Healthcare, Tech, Government
-KEY DIFFERENTIATORS: Phishing-resistant MFA, device trust, seamless UX
-COMPETITORS: Okta, Ping Identity, Microsoft Azure AD, Duo`;
+  let context = getCompanyContext();
 
   if (accountData) {
     context += `\n\nACCOUNT DATA:\n${JSON.stringify(accountData, null, 2)}`;

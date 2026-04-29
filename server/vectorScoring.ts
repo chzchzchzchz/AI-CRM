@@ -511,7 +511,7 @@ CRITICAL RULES - FOLLOW EXACTLY
 3. If data is missing, say "Data not available" - NEVER fabricate
 4. Be tactical and specific - NO GENERIC SALES ADVICE like "build relationships" or "identify buying center"
 5. Every recommendation must reference SPECIFIC data points from this account
-6. Focus on the company's value prop: phishing-resistant MFA, passwordless auth
+6. Focus on {COMPANY_NAME}'s value prop: phishing-resistant MFA, passwordless auth
 
 ⚠️ MATURITY-AWARE RULES (CRITICAL):
 7. If ACCOUNT MATURITY is "DEEP" or "ACTIVE" - DO NOT recommend:

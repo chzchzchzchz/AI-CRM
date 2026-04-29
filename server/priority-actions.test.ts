@@ -93,7 +93,7 @@ describe('Revenue Architect Persona', () => {
     
     expect(REVENUE_ARCHITECT_PERSONA).toBeDefined();
     expect(REVENUE_ARCHITECT_PERSONA).toContain('Revenue Architect');
-    expect(REVENUE_ARCHITECT_PERSONA).toContain('the company');
+    expect(REVENUE_ARCHITECT_PERSONA).toContain('{COMPANY_NAME}');
     
     expect(STANDARDIZED_OUTPUT_STRUCTURE).toBeDefined();
     expect(STANDARDIZED_OUTPUT_STRUCTURE).toContain('EXECUTIVE SUMMARY');

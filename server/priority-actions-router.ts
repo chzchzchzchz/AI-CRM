@@ -9,13 +9,13 @@ import { calculateVectorScores, type AccountData } from "./vectorScoring";
 // Over 2000 employees: Jeff (Central), Dan (West), Kevin (East)
 const REP_TERRITORIES: Record<string, { region: string; minEmployees: number; maxEmployees: number }> = {
   // Under 2000 employees
-  "zane.torres@company.com": { region: "Central", minEmployees: 0, maxEmployees: 2000 },
-  "morgan.iler@company.com": { region: "West", minEmployees: 0, maxEmployees: 2000 },
-  "miranda.thomas@company.com": { region: "East", minEmployees: 0, maxEmployees: 2000 },
+  "zane.torres@{COMPANY_EMAIL_DOMAIN}": { region: "Central", minEmployees: 0, maxEmployees: 2000 },
+  "morgan.iler@{COMPANY_EMAIL_DOMAIN}": { region: "West", minEmployees: 0, maxEmployees: 2000 },
+  "miranda.thomas@{COMPANY_EMAIL_DOMAIN}": { region: "East", minEmployees: 0, maxEmployees: 2000 },
   // Over 2000 employees
-  "jeff.klein@company.com": { region: "Central", minEmployees: 2000, maxEmployees: Infinity },
-  "dan.hamilton@company.com": { region: "West", minEmployees: 2000, maxEmployees: Infinity },
-  "kevin.huelster@company.com": { region: "East", minEmployees: 2000, maxEmployees: Infinity },
+  "jeff.klein@{COMPANY_EMAIL_DOMAIN}": { region: "Central", minEmployees: 2000, maxEmployees: Infinity },
+  "dan.hamilton@{COMPANY_EMAIL_DOMAIN}": { region: "West", minEmployees: 2000, maxEmployees: Infinity },
+  "kevin.huelster@{COMPANY_EMAIL_DOMAIN}": { region: "East", minEmployees: 2000, maxEmployees: Infinity },
 };
 
 // Key executive titles to prioritize
