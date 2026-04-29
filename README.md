@@ -1,7 +1,5 @@
 # 🎯 TargetDash - AI-Native CRM That Replaces Salesforce
 
-> **Built by a former the company sales engineer who got tired of Salesforce being dumb.**
-
 [![GitHub stars](https://img.shields.io/github/stars/chzchzchzchz/AI-CRM?style=social)](https://github.com/chzchzchzchz/AI-CRM)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Live Demo](https://img.shields.io/badge/🚀%20Live%20Demo-targetdash.com-blue)](https://targetdash-pwcs8qfq.manus.space)
