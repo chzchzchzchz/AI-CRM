@@ -9,7 +9,7 @@
 | B002 | Add LinkedIn API integration (profile scraping, company data) | Engineering | High | api, integration, linkedin |
 | B003 | Add 6sense intent data integration | Engineering | Medium | api, integration, 6sense |
 | B004 | Add Gong call recording integration | Engineering | Medium | api, integration, gong |
-| B005 | Build MCP server for agent-first CRM (YC RFS 2026) | Engineering | High | mcp, agent-first, yc2026 |
+| B005 | Build MCP server for agent-first CRM | Engineering | High | mcp, agent-first |
 | B006 | Create company hierarchy documentation | Product | High | docs, setup |
 | B007 | Clean all {COMPANY_NAME} references from codebase | Product | High | cleanup, tech-debt |
 | B008 | Build natural language UI (chat-based CRM) | Product/Design | Medium | ui, nlu, chat |

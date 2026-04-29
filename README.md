@@ -186,20 +186,7 @@ Uses AI embeddings to score accounts by:
 
 ---
 
-## 🏆 YC 2026 Positioning
 
-> **"AI-Native CRM, agent-first, zero manual entry, AI at every layer."**
-
-**Why VCs care:**
-1. **CRM is a $100B+ market** (Salesforce市值 ~$300B)
-2. **AI-native is the wedge** (Salesforce's Einstein is bolt-on garbage)
-3. **MCP server = platform play** (every AI agent needs CRM data)
-4. **Real traction** (built inside the company, 14K contacts, shipping)
-
-**The pitch:** 
-> "Salesforce is a 25-year-old database with AI duct-taped on. We're the AI-Native CRM built from scratch for the agent era. Zero manual entry. MCP-ready. Replace Salesforce in 5 minutes."
-
----
 
 ## 🔐 Security & Compliance
 
@@ -220,7 +207,7 @@ Uses AI embeddings to score accounts by:
 - [x] **Phase 4: MCP server** (AI agent integration) ✅
 - [ ] **Phase 5: Multi-tenant SaaS** (self-serve onboarding)
 - [ ] **Phase 6: Open-source core** (community + enterprise tiers)
-- [ ] **Phase 7: YC Demo Day** (March 2026 🚀)
+
 
 ---
 
@@ -245,7 +232,7 @@ PRs welcome! Especially:
 - 💼 [LinkedIn](https://linkedin.com/in/ryan-chazi)  
 - 🐙 [GitHub](https://github.com/chzchzchzchz)  
 
-**Hiring?** I'm raising for YC 2026. Let's talk.
+
 
 ---
 
@@ -276,9 +263,9 @@ MIT License — free for personal & commercial use.
 > 
 > Replace Salesforce in 5 minutes: https://github.com/chzchzchzchz/AI-CRM
 > 
-> Looking for YC 2026 batch. If you're building the future of sales, let's talk.
+
 > 
-> #SalesforceKiller #AI #CRM #YC2026 #OpenSource
+> #SalesforceKiller #AI #CRM #OpenSource
 
 ---
 
