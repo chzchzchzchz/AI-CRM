@@ -162,7 +162,7 @@ export default function Insights() {
             return intentScore >= 70; // Hot leads
           }
           
-          // Brand keywords (the company) - show engaged accounts
+          // Brand keywords ({COMPANY_NAME}) - show engaged accounts
           if (category === "brand") {
             const engagementActivities = Number(rawData?.engagementActivities) || 0;
             return engagementActivities > 0 || intentScore >= 60;

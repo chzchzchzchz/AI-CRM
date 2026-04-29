@@ -545,9 +545,9 @@ describe("Job Posting Scout", () => {
 
 ---
 
-## Why This Matters for the company
+## Why This Matters for {COMPANY_NAME}
 
-the company becomes the **identity layer for autonomous agents**:
+{COMPANY_NAME} becomes the **identity layer for autonomous agents**:
 
 1. **Agent Authentication**: Each agent has a unique identity
 2. **Action Attribution**: Every action is tied to an agent
@@ -555,7 +555,7 @@ the company becomes the **identity layer for autonomous agents**:
 4. **Permission Control**: Different agents have different permissions
 5. **Compliance**: SOC2, HIPAA, etc. ready
 
-This positions the company as the infrastructure for the AI-native company.
+This positions {COMPANY_NAME} as the infrastructure for the AI-native company.
 
 ---
 

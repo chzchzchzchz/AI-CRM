@@ -41,7 +41,7 @@ const MFA_TEMPLATES: SequenceTemplate[] = [
       { type: "wait", day: 2, notes: "Wait 2 days for response" },
       { type: "linkedin", day: 2, notes: "Send LinkedIn connection request with note about MFA" },
       { type: "call", day: 3, notes: "Call attempt - reference email" },
-      { type: "email", day: 5, subject: "Following up - MFA demo for {{company}}", content: "Hi {{firstName}},\n\nWanted to follow up on my previous email. I have a 10-minute demo that shows how {{competitor}} reduced helpdesk tickets by 70% after switching to the company.\n\nAre you available this week?" },
+      { type: "email", day: 5, subject: "Following up - MFA demo for {{company}}", content: "Hi {{firstName}},\n\nWanted to follow up on my previous email. I have a 10-minute demo that shows how {{competitor}} reduced helpdesk tickets by 70% after switching to {COMPANY_NAME}.\n\nAre you available this week?" },
       { type: "call", day: 7, notes: "Final call attempt before moving to nurture" }
     ]
   },

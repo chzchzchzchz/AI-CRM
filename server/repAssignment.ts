@@ -2,9 +2,8 @@
  * Rep Assignment Logic
  * 
  * Territory Assignments:
- * - East: Miranda (Commercial <2000) + Kevin (Enterprise 2000+)
- * - Central: Zane (Commercial <2000) + Jeff (Enterprise 2000+)
- * - West: Morgan (Commercial <2000) + Dan (Enterprise 2000+)
+ * - Configure reps below for East/Central/West territories
+ * - Commercial (<2000 employees) and Enterprise (2000+ employees)
  * 
  * Special Cases:
  * - Lost Opp: Data exists in Salesforce, rep should check SFDC
@@ -19,51 +18,11 @@ export interface RepInfo {
 }
 
 export const REPS: Record<string, RepInfo> = {
-  // East Territory
-  miranda: {
-    name: 'Miranda',
-    email: 'miranda@company.com',
-    type: 'commercial',
-    territory: 'East'
-  },
-  kevin: {
-    name: 'Kevin',
-    email: 'kevin@company.com',
-    type: 'enterprise',
-    territory: 'East'
-  },
-  // Central Territory
-  zane: {
-    name: 'Zane',
-    email: 'zane.torres@company.com',
-    type: 'commercial',
-    territory: 'Central'
-  },
-  jeff: {
-    name: 'Jeff',
-    email: 'jeff@company.com',
-    type: 'enterprise',
-    territory: 'Central'
-  },
-  // West Territory
-  morgan: {
-    name: 'Morgan',
-    email: 'morgan@company.com',
-    type: 'commercial',
-    territory: 'West'
-  },
-  dan: {
-    name: 'Dan',
-    email: 'dan@company.com',
-    type: 'enterprise',
-    territory: 'West'
-  }
+  // Add reps here for new company
 };
 
 export const TERRITORY_REPS: Record<string, { commercial: string; enterprise: string }> = {
-  'East': { commercial: 'miranda', enterprise: 'kevin' },
-  'Central': { commercial: 'zane', enterprise: 'jeff' },
-  'West': { commercial: 'morgan', enterprise: 'dan' }
+  // Configure territory-rep mappings here
 };
 
 /**

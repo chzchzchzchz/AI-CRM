@@ -14,12 +14,12 @@ import { useRep, REP_TERRITORIES } from "@/contexts/RepContext";
 
 // AE definitions with their territories
 const AE_LIST = [
-  { email: "zane.torres@company.com", name: "Zane Torres", region: "Central", size: "<2K" },
-  { email: "morgan.iler@company.com", name: "Morgan Iler", region: "West", size: "<2K" },
-  { email: "miranda.thomas@company.com", name: "Miranda Thomas", region: "East", size: "<2K" },
-  { email: "jeff.klein@company.com", name: "Jeff Klein", region: "Central", size: "2K+" },
-  { email: "dan.hamilton@company.com", name: "Dan Hamilton", region: "West", size: "2K+" },
-  { email: "kevin.huelster@company.com", name: "Kevin Huelster", region: "East", size: "2K+" },
+  { email: "zane.torres@{COMPANY_EMAIL_DOMAIN}", name: "Zane Torres", region: "Central", size: "<2K" },
+  { email: "morgan.iler@{COMPANY_EMAIL_DOMAIN}", name: "Morgan Iler", region: "West", size: "<2K" },
+  { email: "miranda.thomas@{COMPANY_EMAIL_DOMAIN}", name: "Miranda Thomas", region: "East", size: "<2K" },
+  { email: "jeff.klein@{COMPANY_EMAIL_DOMAIN}", name: "Jeff Klein", region: "Central", size: "2K+" },
+  { email: "dan.hamilton@{COMPANY_EMAIL_DOMAIN}", name: "Dan Hamilton", region: "West", size: "2K+" },
+  { email: "kevin.huelster@{COMPANY_EMAIL_DOMAIN}", name: "Kevin Huelster", region: "East", size: "2K+" },
 ];
 
 const REGIONS = ["West", "Central", "East"];

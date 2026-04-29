@@ -2,12 +2,12 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 
 // Rep territory definitions
 export const REP_TERRITORIES = {
-  "zane.torres@company.com": { name: "Zane Torres", region: "Central", sizeFilter: "<2000", label: "Central <2K" },
-  "morgan.iler@company.com": { name: "Morgan Iler", region: "West", sizeFilter: "<2000", label: "West <2K" },
-  "miranda.thomas@company.com": { name: "Miranda Thomas", region: "East", sizeFilter: "<2000", label: "East <2K" },
-  "jeff.klein@company.com": { name: "Jeff Klein", region: "Central", sizeFilter: ">=2000", label: "Central 2K+" },
-  "dan.hamilton@company.com": { name: "Dan Hamilton", region: "West", sizeFilter: ">=2000", label: "West 2K+" },
-  "kevin.huelster@company.com": { name: "Kevin Huelster", region: "East", sizeFilter: ">=2000", label: "East 2K+" },
+  "zane.torres@{COMPANY_EMAIL_DOMAIN}": { name: "Zane Torres", region: "Central", sizeFilter: "<2000", label: "Central <2K" },
+  "morgan.iler@{COMPANY_EMAIL_DOMAIN}": { name: "Morgan Iler", region: "West", sizeFilter: "<2000", label: "West <2K" },
+  "miranda.thomas@{COMPANY_EMAIL_DOMAIN}": { name: "Miranda Thomas", region: "East", sizeFilter: "<2000", label: "East <2K" },
+  "jeff.klein@{COMPANY_EMAIL_DOMAIN}": { name: "Jeff Klein", region: "Central", sizeFilter: ">=2000", label: "Central 2K+" },
+  "dan.hamilton@{COMPANY_EMAIL_DOMAIN}": { name: "Dan Hamilton", region: "West", sizeFilter: ">=2000", label: "West 2K+" },
+  "kevin.huelster@{COMPANY_EMAIL_DOMAIN}": { name: "Kevin Huelster", region: "East", sizeFilter: ">=2000", label: "East 2K+" },
 } as const;
 
 export type RepEmail = keyof typeof REP_TERRITORIES | "";
@@ -98,10 +98,10 @@ export function useRep() {
 // Rep options for dropdown
 export const REP_OPTIONS = [
   { value: "all", label: "All Accounts (General View)", email: "" as RepEmail },
-  { value: "zane", label: "Zane Torres (Central <2K)", email: "zane.torres@company.com" as RepEmail },
-  { value: "morgan", label: "Morgan Iler (West <2K)", email: "morgan.iler@company.com" as RepEmail },
-  { value: "miranda", label: "Miranda Thomas (East <2K)", email: "miranda.thomas@company.com" as RepEmail },
-  { value: "jeff", label: "Jeff Klein (Central 2K+)", email: "jeff.klein@company.com" as RepEmail },
-  { value: "dan", label: "Dan Hamilton (West 2K+)", email: "dan.hamilton@company.com" as RepEmail },
-  { value: "kevin", label: "Kevin Huelster (East 2K+)", email: "kevin.huelster@company.com" as RepEmail },
+  { value: "zane", label: "Zane Torres (Central <2K)", email: "zane.torres@{COMPANY_EMAIL_DOMAIN}" as RepEmail },
+  { value: "morgan", label: "Morgan Iler (West <2K)", email: "morgan.iler@{COMPANY_EMAIL_DOMAIN}" as RepEmail },
+  { value: "miranda", label: "Miranda Thomas (East <2K)", email: "miranda.thomas@{COMPANY_EMAIL_DOMAIN}" as RepEmail },
+  { value: "jeff", label: "Jeff Klein (Central 2K+)", email: "jeff.klein@{COMPANY_EMAIL_DOMAIN}" as RepEmail },
+  { value: "dan", label: "Dan Hamilton (West 2K+)", email: "dan.hamilton@{COMPANY_EMAIL_DOMAIN}" as RepEmail },
+  { value: "kevin", label: "Kevin Huelster (East 2K+)", email: "kevin.huelster@{COMPANY_EMAIL_DOMAIN}" as RepEmail },
 ];

@@ -163,7 +163,7 @@ export async function conversationWithMemory(params: {
   }
 
   // Build comprehensive prompt
-  const systemPrompt = withRCP(`You are an AI sales intelligence assistant for the company, a passwordless authentication company.
+  const systemPrompt = withRCP(`You are an AI sales intelligence assistant for {COMPANY_NAME}, a passwordless authentication company.
 
 COMPANY CONTEXT:
 - Target customers: Enterprise (1000+ employees) in Financial Services, Healthcare, Technology, Government
@@ -301,7 +301,7 @@ export async function generateAccountSummary(accountId: number): Promise<string>
 
   const contactNames = accountContacts.map((c: any) => `${c.name} - ${c.title || 'No title'}`).join('\n');
 
-  const prompt = `You are a sales intelligence analyst for the company, a passwordless MFA/SSO security company.
+  const prompt = `You are a sales intelligence analyst for {COMPANY_NAME}, a passwordless MFA/SSO security company.
 
 Generate an executive summary using this EXACT structure:
 
