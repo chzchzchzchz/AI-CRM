@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+const cors = require("cors");
 
 /**
  * Security middleware for the Target Account Dashboard
@@ -26,6 +27,30 @@ function getClientIP(req: Request): string {
   }
   return req.ip || req.socket.remoteAddress || "unknown";
 }
+
+/**
+ * CORS middleware
+ * Configurable Cross-Origin Resource Sharing
+ */
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    // In production, specify allowed origins
+    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173'];
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS policy: Origin not allowed'), false);
+    }
+  },
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+export const corsMiddleware = cors(corsOptions);
 
 /**
  * Security headers middleware

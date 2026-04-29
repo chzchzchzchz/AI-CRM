@@ -8,7 +8,7 @@ import { registerAdminApprovalRoutes } from "../admin-approval-api";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { securityHeaders, rateLimiter } from "./security";
+import { securityHeaders, rateLimiter, corsMiddleware } from "./security";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -34,6 +34,7 @@ async function startServer() {
   const server = createServer(app);
   
   // Security middleware - apply first
+  app.use(corsMiddleware);
   app.use(securityHeaders);
   app.use(rateLimiter);
   
