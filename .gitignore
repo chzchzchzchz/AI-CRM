@@ -105,3 +105,12 @@ temp/
 *.db
 *.sqlite
 *.sqlite3
+
+# Data files with PII (anonymized before commit)
+*.csv
+*parsed_*.json
+*import*.json
+scripts/parsed_*.json
+scripts/*import*.json
+SFDC-*.csv
+Find-people-*.csv
