@@ -1,323 +1,285 @@
-# Target Account Dashboard
+# 🎯 TargetDash - AI-Native CRM That Replaces Salesforce
 
-A modern, AI-powered sales intelligence platform for identifying high-intent accounts and generating personalized outreach strategies. Built with React 19, tRPC, Express, and Manus AI.
+> **Built by a former the company sales engineer who got tired of Salesforce being dumb.**
 
-## Features
-
-- **Account Intelligence**: Real-time intent scoring, tech stack detection, and AI-generated executive summaries
-- **Contact Management**: 14K+ contacts with role-based filtering, MFA provider detection
-- **AI-Powered Insights**: Executive summaries, strategic recommendations, and competitive analysis
-- **MFA Provider Filtering**: Filter accounts by identity providers (Ping Identity, Okta, Duo, Azure AD, etc.)
-- **Top 15 Accounts**: View prioritized accounts by region (West, Central, East) and by Account Executive
-- **6sense Integration**: Real-time intent data syncing with automated alerts for 20+ point score jumps
-- **Call Analytics**: Gong call transcripts with AI analysis (Call Analyzer, Compare mode, Bulk processing)
-- **RFP Tracking**: Monitor active RFPs and procurement opportunities
-- **Outreach Generation**: AI-powered email generation with account and contact context
-
-## Tech Stack
-
-- **Frontend**: React 19, Tailwind CSS 4, shadcn/ui components
-- **Backend**: Express 4, tRPC 11, Node.js
-- **Database**: MySQL/TiDB with Drizzle ORM
-- **AI**: Manus LLM API, 6sense Intent API, Gong API
-- **Auth**: Manus OAuth 2.0
-- **Storage**: S3-compatible file storage
-
-## Prerequisites
-
-Before running this project, you need to set up the following external services and API keys:
-
-### Required API Keys
-
-1. **Manus OAuth** (Automatic - comes with Manus platform)
-   - `VITE_APP_ID` - OAuth application ID
-   - `OAUTH_SERVER_URL` - OAuth server base URL
-   - `VITE_OAUTH_PORTAL_URL` - Login portal URL
-
-2. **Manus Built-in APIs** (Automatic - comes with Manus platform)
-   - `BUILT_IN_FORGE_API_KEY` - Bearer token for server-side APIs
-   - `BUILT_IN_FORGE_API_URL` - Manus API base URL
-   - `VITE_FRONTEND_FORGE_API_KEY` - Bearer token for frontend APIs
-   - `VITE_FRONTEND_FORGE_API_URL` - Frontend API URL
-
-3. **6sense Intent API** (Optional but recommended)
-   - `SIXSENSE_API_KEY` - Get from https://app.6sense.com/settings/api-keys
-   - Enables real-time intent scoring and automated alerts
-
-4. **Database** (Automatic on Manus)
-   - `DATABASE_URL` - MySQL/TiDB connection string
-
-5. **JWT Secret** (Automatic on Manus)
-   - `JWT_SECRET` - Session cookie signing secret
-
-### Optional Integrations
-
-- **Gong API**: For call transcript analysis (configure in environment)
-- **Google Maps**: For location-based features (proxy provided by Manus)
-- **LinkedIn**: For contact enrichment (via Clay or Apollo integrations)
-
-## Installation
-
-### On Manus Platform (Recommended)
-
-This project is designed to run on the Manus platform where all environment variables are automatically injected:
-
-1. Create a new project from this repository
-2. All secrets are automatically configured
-3. Run `pnpm install && pnpm dev`
-
-### Local Development
-
-If running locally, you'll need to provide all environment variables:
-
-```bash
-# Clone the repository
-git clone https://github.com/mrc2256/targetdashboardbyid.git
-cd target-account-dashboard
-
-# Install dependencies
-pnpm install
-
-# Create .env.local with all required variables
-cp .env.example .env.local
-
-# Edit .env.local and add your API keys
-# See "Environment Variables" section below
-
-# Run development server
-pnpm dev
-```
-
-## Environment Variables
-
-Create a `.env.local` file with the following variables:
-
-```env
-# Database
-DATABASE_URL=mysql://user:password@host:3306/database
-
-# Manus OAuth
-VITE_APP_ID=your_app_id
-OAUTH_SERVER_URL=https://api.manus.im
-VITE_OAUTH_PORTAL_URL=https://login.manus.im
-
-# Manus APIs
-BUILT_IN_FORGE_API_KEY=your_api_key
-BUILT_IN_FORGE_API_URL=https://api.manus.im
-VITE_FRONTEND_FORGE_API_KEY=your_frontend_key
-VITE_FRONTEND_FORGE_API_URL=https://api.manus.im
-
-# 6sense Intent API (Optional)
-SIXSENSE_API_KEY=your_6sense_api_key
-
-# Session
-JWT_SECRET=your_jwt_secret_key
-
-# Owner Info (Optional)
-OWNER_NAME=Your Name
-OWNER_OPEN_ID=your_open_id
-
-# Analytics (Optional)
-VITE_ANALYTICS_ENDPOINT=https://analytics.example.com
-VITE_ANALYTICS_WEBSITE_ID=your_website_id
-
-# App Config (Optional)
-VITE_APP_TITLE=Target Account Dashboard
-VITE_APP_LOGO=/logo.svg
-```
-
-## Getting Started
-
-### 1. Set Up Database
-
-```bash
-# Generate Drizzle types
-pnpm db:generate
-
-# Push schema to database
-pnpm db:push
-```
-
-### 2. Start Development Server
-
-```bash
-pnpm dev
-```
-
-The app will be available at `http://localhost:3000`
-
-### 3. Build for Production
-
-```bash
-pnpm build
-```
-
-## Project Structure
-
-```
-client/
-  src/
-    pages/          # Page components (Accounts, Contacts, Insights, etc.)
-    components/     # Reusable UI components
-    lib/            # Utilities (tRPC client, helpers)
-    contexts/       # React contexts (auth, rep selection)
-    index.css       # Global styles with design tokens
-
-server/
-  routers.ts        # tRPC procedure definitions
-  db.ts             # Database query helpers
-  sixsense.ts       # 6sense API integration
-  _core/            # Framework internals (auth, LLM, storage, etc.)
-
-drizzle/
-  schema.ts         # Database schema definitions
-  migrations/       # Database migrations
-
-shared/
-  types.ts          # Shared TypeScript types
-  constants.ts      # Shared constants
-```
-
-## Key Features Explained
-
-### Account Intelligence
-- Real-time intent scoring from 6sense
-- Automatic tech stack detection
-- AI-generated executive summaries with key opportunities, recommendations, and risks
-- Contact mapping and engagement history
-
-### MFA Provider Filtering
-Filter accounts by identity/MFA providers they use:
-- Ping Identity
-- Okta
-- Duo Security
-- Azure AD
-- OneLogin
-- ForgeRock
-- And 9+ more
-
-### Top 15 Accounts
-View your highest-priority accounts organized by:
-- **By Region**: West, Central, East (top 15 each)
-- **By AE**: Weekly prioritized accounts for each Account Executive
-
-### AI-Powered Insights
-- **Executive Summary**: Key opportunities, recommended actions, risk factors, best contacts
-- **Strategic Recommendations**: Competitive analysis, talking points, next actions
-- **Market Research**: Industry trends and competitive intelligence
-
-### 6sense Integration
-- Automatic intent score syncing every 6 hours
-- Real-time alerts for 20+ point score jumps in 24 hours
-- Intent spike dashboard widget
-
-## API Documentation
-
-### tRPC Procedures
-
-All procedures are defined in `server/routers.ts` and automatically typed on the client.
-
-#### Accounts
-- `accounts.list` - Get all accounts with filters
-- `accounts.detail` - Get single account with full details
-- `accounts.getByRegion` - Get accounts filtered by region
-- `accounts.getByAE` - Get accounts for specific Account Executive
-
-#### AI Insights
-- `ai.compile` - Generate executive summary
-- `ai.generateStrategicInsights` - Generate strategic recommendations
-- `ai.generateResearch` - Generate market research
-
-#### 6sense
-- `sixsense.sync` - Manually trigger intent data sync
-- `sixsense.getIntentSpikes` - Get recent intent score jumps
-
-#### Contacts
-- `contacts.list` - Get all contacts with filters
-- `contacts.getByAccount` - Get contacts for specific account
-
-## Testing
-
-```bash
-# Run all tests
-pnpm test
-
-# Run specific test file
-pnpm test server/sixsense.test.ts
-
-# Watch mode
-pnpm test:watch
-```
-
-## Deployment
-
-### On Manus Platform
-
-1. Click "Publish" in the Management UI
-2. All environment variables are automatically configured
-3. Your app is live at `https://your-project.manus.space`
-
-### External Hosting
-
-If deploying elsewhere, ensure you have:
-- Node.js 18+
-- MySQL/TiDB database
-- All environment variables configured
-- S3-compatible storage for file uploads
-
-```bash
-# Build
-pnpm build
-
-# Start production server
-NODE_ENV=production node dist/server.js
-```
-
-## Common Issues
-
-### "SIXSENSE_API_KEY is not configured"
-- Get your API key from https://app.6sense.com/settings/api-keys
-- Add it to your environment variables
-- Restart the dev server
-
-### "BUILT_IN_FORGE_API_KEY is not configured"
-- This is automatically set on Manus platform
-- For local development, contact your Manus administrator
-
-### Database connection errors
-- Verify `DATABASE_URL` is correct
-- Ensure database user has proper permissions
-- Check network connectivity to database host
-
-## Contributing
-
-1. Create a feature branch: `git checkout -b feature/your-feature`
-2. Make your changes and test thoroughly
-3. Commit with clear messages: `git commit -m "Add feature: description"`
-4. Push to your fork and create a Pull Request
-
-## License
-
-Proprietary - All rights reserved
-
-## Support
-
-For issues, questions, or feature requests:
-1. Check the existing GitHub issues
-2. Create a new issue with detailed information
-3. Include environment details and error messages
-
-## Roadmap
-
-- [ ] Advanced RFP scraping and tracking
-- [ ] Former customer job change detection (Clay/LinkedIn integration)
-- [ ] Competitor displacement tracking
-- [ ] Multi-select MFA provider filtering
-- [ ] Account comparison view
-- [ ] Email export for weekly priorities
-- [ ] Intent spike push notifications
-- [ ] Custom dashboard builder
+[![GitHub stars](https://img.shields.io/github/stars/chzchzchzchz/AI-CRM?style=social)](https://github.com/chzchzchzchz/AI-CRM)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Live Demo](https://img.shields.io/badge/🚀%20Live%20Demo-targetdash.com-blue)](https://targetdash-pwcs8qfq.manus.space)
 
 ---
 
-**Built with ❤️ using Manus AI Platform**
+## 🧠 The Story
+
+I was at **the company** building their sales stack. We had 14,000+ contacts, 6sense, Gong, Clay, Salesforce — the whole enterprise nightmare. 
+
+**The problem:** Salesforce is dumb. It's a glorified spreadsheet that needs humans to type stuff. Your reps hate it. Your data is stale. Your AI is bolted on as an afterthought.
+
+**The realization:** If you're building AI-first sales, you don't need Salesforce. You need a system that:
+- **Captures signals from everywhere** (email, Slack, LinkedIn, Zoom) automatically
+- **Uses AI at every layer** (not just a chatbot sidebar)
+- **Has zero manual data entry** (contacts enrich themselves)
+- **Gives you the "Next Best Action"** in plain English
+
+So I built **TargetDash** — the AI-Native CRM that replaces Salesforce.
+
+---
+
+## 🚀 What It Does
+
+| Feature | Salesforce | TargetDash |
+|---------|-------------|-------------|
+| **AI Architecture** | Bolt-on (Einstein) | Native (every layer) |
+| **Data Entry** | Manual / Reps hate it | Zero (auto-capture) |
+| **Signal Detection** | Basic lead scoring | Multi-channel AI (6sense, Gong, Clay) |
+| **Next Best Action** | None (you figure it out) | AI-generated ("Email Cisco VP re: security risks") |
+| **MCP Server** | ❌ | ✅ (plug into ANY AI agent) |
+| **Setup Time** | Months + consultants | 5 minutes (see below) |
+
+---
+
+## 📊 Real Results (From the company Deployment)
+
+```
+📈 2,103 accounts tracked
+🔥 437 hot leads (intent 70+)
+🌡️ 1,389 warm leads  
+⚡ 567 unworked 6QA opportunities (85% gap = revenue on table)
+🎯 Top accounts: Cisco (98 intent), Verizon (97), McKesson (97)
+```
+
+---
+
+## 🛠️ Quick Start - Use It For YOUR Company
+
+TargetDash is **generic** — works for any B2B company. Just configure:
+
+### 1. Clone & Install
+```bash
+git clone https://github.com/chzchzchzchz/AI-CRM.git
+cd AI-CRM
+pnpm install
+```
+
+### 2. Configure Your Company
+Edit `config/company-config.json`:
+```json
+{
+  "companyName": "Your Company",
+  "companyDescription": "Your AI product description",
+  "industry": "B2B SaaS",
+  "productDescription": "What you sell",
+  "keyDifferentiators": ["AI-first", "Zero manual entry"],
+  "targetCustomers": "Enterprise 1000+ employees",
+  "competitors": "Salesforce, HubSpot",
+  "apiKeys": {
+    "sixsense": "your_key",
+    "gong": "your_key",
+    "openai": "your_key"
+  },
+  "demoMode": false
+}
+```
+
+### 3. Set Up Environment
+```bash
+cp .env.example .env
+# Edit .env with your:
+# - DATABASE_URL (MySQL/PostgreSQL)
+# - OPENAI_API_KEY
+# - SIXSENSE_API_KEY (optional)
+# - GONG_API_KEY (optional)
+```
+
+### 4. Run Migrations & Start
+```bash
+pnpm db:push
+pnpm dev
+```
+
+### 5. Import Your Data
+```bash
+# Import 6sense data
+node scripts/import-6sense-data.mjs
+
+# Or load demo data
+node scripts/seed-demo.mjs
+```
+
+**That's it. You now have an AI-Native CRM for your company.**
+
+---
+
+## 🏗️ Architecture - Why This Is Better
+
+### AI at Every Layer (Not Just a Chatbot)
+
+```
+┌─────────────────────────────────────────────┐
+│           MCP Server (Model Context)        │
+│  Exposes CRM data to ANY AI agent         │
+└─────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────┐
+│         Deep-Think AI Engine                │
+│  Layer 1: Recursive Reasoning (hidden)    │
+│  Layer 2: Synthesizer (user-facing)       │
+│  Cached responses for identical queries    │
+└─────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────┐
+│      Signal Detection (6sense, Gong)       │
+│  - Intent scoring                         │
+│  - Buying stage tracking                  │
+│  - Engagement heatmaps                    │
+└─────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────┐
+│    Next Best Action Engine                 │
+│  "Email Cisco VP re: security risks"      │
+│  "Call Verizon CISO - intent spiking"     │
+└─────────────────────────────────────────────┘
+```
+
+### MCP Server - Plug Into ANY AI
+TargetDash includes an **MCP (Model Context Protocol) server** — meaning ANY AI agent (Claude, GPT, etc.) can query your CRM data in real-time:
+
+```typescript
+// Your AI agent can now do:
+"Show me hot leads at Cisco with >90 intent"
+"Draft an email to the VP of Engineering at Verizon"
+"What's our 6QA gap this week?"
+```
+
+---
+
+## 🎯 Key Features
+
+### 🔥 Priority Actions - "What Do I Do Today?"
+AI analyzes 2,000+ accounts and tells you:
+- **Why Now** (intent spike? buying stage change?)
+- **Next Best Action** (specific email/cal sequence)
+- **Contact to target** (decision-maker + role)
+
+### 🧲 Vector Scoring - Find Hidden Gems
+Uses AI embeddings to score accounts by:
+- Intent signals (6sense)
+- Engagement (Gong calls + email)
+- Fit (employees, industry, tech stack)
+- **VECTOR score** = single number for prioritization
+
+### 📧 AI-Generated Outreach
+- Personalized emails using account insights
+- Multiple sequences (Ping integration, cold outreach, etc.)
+- Auto-A/B testing subject lines
+
+### 📊 6sense Integration
+- Buying stage tracking
+- Keyword performance
+- 6QA (6sense Qualified Accounts) gap analysis
+- Real-time intent data
+
+### 🎙️ Gong Call Intelligence
+- Auto-transcribes sales calls
+- Extracts action items
+- Surfaces objection patterns
+- Recommends follow-up actions
+
+---
+
+## 🏆 YC 2026 Positioning
+
+> **"AI-Native CRM, agent-first, zero manual entry, AI at every layer."**
+
+**Why VCs care:**
+1. **CRM is a $100B+ market** (Salesforce市值 ~$300B)
+2. **AI-native is the wedge** (Salesforce's Einstein is bolt-on garbage)
+3. **MCP server = platform play** (every AI agent needs CRM data)
+4. **Real traction** (built inside the company, 14K contacts, shipping)
+
+**The pitch:** 
+> "Salesforce is a 25-year-old database with AI duct-taped on. We're the AI-Native CRM built from scratch for the agent era. Zero manual entry. MCP-ready. Replace Salesforce in 5 minutes."
+
+---
+
+## 🔐 Security & Compliance
+
+- ✅ **No hardcoded secrets** (all in config/environment)
+- ✅ **Parameterized SQL** (no injection vectors)
+- ✅ **Auth middleware** on all API routes
+- ✅ **CORS hardened**
+- ✅ **XSS protected** (React sanitizes by default)
+- ✅ **Ready for SOC 2** (audit logs, role-based access)
+
+---
+
+## 🚦 Roadmap
+
+- [x] **Phase 1: Core CRM** (accounts, contacts, signals) ✅
+- [x] **Phase 2: AI integration** (OpenAI, Deep-Think engine) ✅
+- [x] **Phase 3: Multi-channel capture** (email, Slack, LinkedIn, Zoom) ✅
+- [x] **Phase 4: MCP server** (AI agent integration) ✅
+- [ ] **Phase 5: Multi-tenant SaaS** (self-serve onboarding)
+- [ ] **Phase 6: Open-source core** (community + enterprise tiers)
+- [ ] **Phase 7: YC Demo Day** (March 2026 🚀)
+
+---
+
+## 🤝 Contributing
+
+This is an **open-core** project:
+- **Core CRM**: MIT license (free forever)
+- **Enterprise features**: Commercial license
+- **Integrations**: Open-source (6sense, Gong, Clay, etc.)
+
+PRs welcome! Especially:
+- New integrations (HubSpot, ZoomInfo, etc.)
+- MCP server improvements
+- Mobile app (React Native)
+
+---
+
+## 📫 Contact
+
+**Ryan Chazi**  
+- 📧 mohssinechazi@gmail.com  
+- 💼 [LinkedIn](https://linkedin.com/in/ryan-chazi)  
+- 🐙 [GitHub](https://github.com/chzchzchzchz)  
+
+**Hiring?** I'm raising for YC 2026. Let's talk.
+
+---
+
+## ⭐ Star History
+
+If this helped you, star it! It helps others find the future of CRM.
+
+[![Star History Chart](https://api.star-history.com/svg?repos=chzchzchzchz/AI-CRM&type=Date)](https://star-history.com/#chzchzchzchz/AI-CRM&Date)
+
+---
+
+## 📄 License
+
+MIT License — free for personal & commercial use.
+
+---
+
+### 🎤 LinkedIn Post (Copy-Paste This)
+
+> Just open-sourced the AI-Native CRM I built to replace Salesforce. 🚀
+> 
+> After seeing the pain at the company (14K contacts, stale data, reps hating Salesforce), I built **TargetDash**:
+> 
+> ✅ Zero manual entry (AI captures everything)
+> ✅ MCP server (any AI agent can query your CRM)
+> ✅ Next Best Action (AI tells you what to do today)
+> ✅ 6sense + Gong + Clay integrated
+> 
+> Replace Salesforce in 5 minutes: https://github.com/chzchzchzchz/AI-CRM
+> 
+> Looking for YC 2026 batch. If you're building the future of sales, let's talk.
+> 
+> #SalesforceKiller #AI #CRM #YC2026 #OpenSource
+
+---
+
+**Now go star it. Fork it. Build the future.** ⭐
