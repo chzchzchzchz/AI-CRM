@@ -1,4 +1,4 @@
-# 🎯 TargetDash - AI-Native CRM That Replaces Salesforce
+# 🎯 TargetDash - AI-Powered Prospect Relationship Layer for Salesforce
 
 [![GitHub stars](https://img.shields.io/github/stars/chzchzchzchz/AI-CRM?style=social)](https://github.com/chzchzchzchz/AI-CRM)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -8,27 +8,30 @@
 
 ## 🧠 The Story
 
-I was at **the company** building their sales stack. We had 14,000+ contacts, 6sense, Gong, Clay, Salesforce — the whole enterprise nightmare. 
+I was at **the company** building their sales stack. We had 14,000+ contacts, 6sense, Gong, Clay, Salesforce — the whole enterprise nightmare.
 
 **The problem:** Salesforce is dumb. It's a glorified spreadsheet that needs humans to type stuff. Your reps hate it. Your data is stale. Your AI is bolted on as an afterthought.
 
-**The realization:** If you're building AI-first sales, you don't need Salesforce. You need a system that:
+**The realization:** Reps don't need a new CRM. They need a **prospect relationship layer** that sits on top of Salesforce and actually makes it useful:
+
 - **Captures signals from everywhere** (email, Slack, LinkedIn, Zoom) automatically
 - **Uses AI at every layer** (not just a chatbot sidebar)
 - **Has zero manual data entry** (contacts enrich themselves)
 - **Gives you the "Next Best Action"** in plain English
 
-So I built **TargetDash** — the AI-Native CRM that replaces Salesforce.
+So I built **TargetDash** — the AI-powered layer that makes Salesforce actually work for your reps.
 
 ---
 
 ## 🚀 What It Does
 
-| Feature | Salesforce | TargetDash |
-|---------|-------------|-------------|
-| **AI Architecture** | Bolt-on (Einstein) | Native (every layer) |
-| **Data Entry** | Manual / Reps hate it | Zero (auto-capture) |
-| **Signal Detection** | Basic lead scoring | Multi-channel AI (6sense, Gong, Clay) |
+**TargetDash sits on top of Salesforce** to give your reps AI-powered prospect intelligence:
+
+| Feature | Salesforce Alone | Salesforce + TargetDash |
+|---------|-----------------|---------------------------|
+| **AI Architecture** | Bolt-on (Einstein) | Native layer (every touchpoint) |
+| **Data Entry** | Manual / Reps hate it | Zero (auto-capture from 6sense, Gong, Clay) |
+| **Signal Detection** | Basic lead scoring | Multi-channel AI (intent, calls, engagement) |
 | **Next Best Action** | None (you figure it out) | AI-generated ("Email Cisco VP re: security risks") |
 | **MCP Server** | ❌ | ✅ (plug into ANY AI agent) |
 | **Setup Time** | Months + consultants | 5 minutes (see below) |
@@ -107,39 +110,43 @@ node scripts/seed-demo.mjs
 
 ---
 
-## 🏗️ Architecture - Why This Is Better
+## 🏗️ Architecture - AI Layer on Top of Salesforce
 
-### AI at Every Layer (Not Just a Chatbot)
+TargetDash **sits between your reps and Salesforce**, adding AI intelligence to every touchpoint:
 
 ```
 ┌─────────────────────────────────────────────┐
 │           MCP Server (Model Context)        │
 │  Exposes CRM data to ANY AI agent         │
 └─────────────────────────────────────────────┘
-                    ↓
+                   ↓
 ┌─────────────────────────────────────────────┐
-│         Deep-Think AI Engine                │
+│         Deep-Thik AI Engine                │
 │  Layer 1: Recursive Reasoning (hidden)    │
 │  Layer 2: Synthesizer (user-facing)       │
 │  Cached responses for identical queries    │
 └─────────────────────────────────────────────┘
-                    ↓
+                   ↓
 ┌─────────────────────────────────────────────┐
 │      Signal Detection (6sense, Gong)       │
 │  - Intent scoring                         │
 │  - Buying stage tracking                  │
 │  - Engagement heatmaps                    │
 └─────────────────────────────────────────────┘
-                    ↓
+                   ↓
 ┌─────────────────────────────────────────────┐
 │    Next Best Action Engine                 │
 │  "Email Cisco VP re: security risks"      │
 │  "Call Verizon CISO - intent spiking"     │
 └─────────────────────────────────────────────┘
+                   ↓
+┌─────────────────────────────────────────────┐
+│         Salesforce (your source of truth)    │
+└─────────────────────────────────────────────┘
 ```
 
 ### MCP Server - Plug Into ANY AI
-TargetDash includes an **MCP (Model Context Protocol) server** — meaning ANY AI agent (Claude, GPT, etc.) can query your CRM data in real-time:
+TargetDash includes an **MCP (Model Context Protocol) server** — meaning ANY AI agent (Claude, GPT, etc.) can query your Salesforce data in real-time:
 
 ```typescript
 // Your AI agent can now do:
@@ -250,20 +257,20 @@ MIT License — free for personal & commercial use.
 
 ### 🎤 LinkedIn Post (Copy-Paste This)
 
-> Just open-sourced the AI-Native CRM I built to replace Salesforce. 🚀
+> Just open-sourced the AI-powered prospect relationship layer I built for Salesforce reps. 🚀
 > 
 > After seeing the pain at the company (14K contacts, stale data, reps hating Salesforce), I built **TargetDash**:
 > 
-> ✅ Zero manual entry (AI captures everything)
-> ✅ MCP server (any AI agent can query your CRM)
+> ✅ Zero manual entry (AI captures everything from 6sense, Gong, Clay)
+> ✅ MCP server (any AI agent can query your Salesforce data)
 > ✅ Next Best Action (AI tells you what to do today)
-> ✅ 6sense + Gong + Clay integrated
+> ✅ Multi-channel signal detection (intent, calls, engagement)
 > 
-> Replace Salesforce in 5 minutes: https://github.com/chzchzchzchz/AI-CRM
+> Layer it on top of Salesforce in 5 minutes: https://github.com/chzchzchz/AI-CRM
 > 
-
+> #Salesforce #AI #SalesReps #OpenSource
 > 
-> #SalesforceKiller #AI #CRM #OpenSource
+> #Salesforce #AI #SalesReps #OpenSource
 
 ---
 
