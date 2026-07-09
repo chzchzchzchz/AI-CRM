@@ -226,7 +226,7 @@ PRs welcome! Especially:
 ## 📫 Contact
 
 **Ryan Chazi**  
-- 📧 mohssinechazi@gmail.com  
+- 📧 you@example.com  
 - 💼 [LinkedIn](https://linkedin.com/in/ryan-chazi)  
 - 🐙 [GitHub](https://github.com/chzchzchzchz)  
 

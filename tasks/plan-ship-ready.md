@@ -15,8 +15,8 @@ a 2-layer "Deep-Think" LLM pipeline with response caching, RAG knowledge base, C
 data-validation system, rep/territory assignment, 2FA + email-verification auth, audit logs.
 
 **History (reconstructed from todo.md, PRD, git log):**
-1. Built as an internal sales tool at a previous employer (an identity-security vendor),
-   loaded with their real Salesforce/6sense/Gong data (~765 accounts, ~4,000 contacts, 549 calls).
+1. Built as an internal sales tool at a previous employer (a B2B software vendor),
+   loaded with their real Salesforce/6sense/Gong data (counts redacted).
 2. Originally built on the Manus platform (Manus OAuth, Manus Forge LLM gateway).
 3. Then pivoted to a generic, open-core B2B product ("TargetDash") — `tasks/prd-perfect-repo.md`
    is the cleanup PRD, and git history shows that effort mid-flight (junk dirs removed,
@@ -48,13 +48,13 @@ as a B2B tool without confirming ownership is a real legal risk.** Options, in i
   product** (the architecture and lessons are yours; the specific artifact may not be).
 
 ### 2. Previous-employer data still in the repo
-- `SFDC-Final-Target-Accounts-*.csv` — half-anonymized: fake names ("Umbrella Corp", "globex.io")
-  but **real company descriptions/columns leak through** (e.g. Coalition Inc.).
+- `SFDC-Final-Target-Accounts-*.csv` — half-anonymized: fake names in some rows
+  but **real company descriptions/columns leak through** (real customer names).
 - `Find-people-Table-*.csv` — contact-shaped export (names/emails/LinkedIn risk).
-- `server/sequences/ping-context.ts` — hardcoded Ping Identity sequence context with the previous
-  employer's actual value props ("reduce attack surface by over 80%", etc.).
-- `README.md` — publishes the employer's real 6sense intent data: "Cisco (98 intent),
-  Verizon (97), McKesson (97)", 2,103 accounts, 6QA gap numbers. That's their confidential
+- `server/sequences/ping-context.ts` — hardcoded vendor-specific sequence context with the previous
+  employer's actual value props (quantified marketing claims, etc.).
+- `README.md` — published the employer's real 6sense intent data (named accounts with
+  intent scores, total account counts, 6QA gap numbers). That's their confidential
   business data, in a public-facing README.
 - `demo-db.json` / `demo-db.backup.json` / `presentation-materials.tar.gz` — need audit for real names.
 - Local MySQL DB (`DATABASE_URL` in `.env`) presumably still holds the full real dataset.

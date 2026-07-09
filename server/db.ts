@@ -517,6 +517,18 @@ class MockDrizzleQueryBuilder {
           }
         }
 
+        // Upsert-by-primary-key for tables whose upsert passes an existing id
+        // (e.g. opportunities). Without this the insert appends a duplicate row
+        // sharing the same id instead of updating in place.
+        if (this.tableName === 'opportunities' && record.id != null) {
+          const idx = tableData.findIndex((r: any) => r.id === record.id);
+          if (idx !== -1) {
+            tableData[idx] = { ...tableData[idx], ...newRecord, updatedAt: new Date().toISOString() };
+            inserted.push(tableData[idx]);
+            continue;
+          }
+        }
+
         tableData.push(newRecord);
         inserted.push(newRecord);
       }
