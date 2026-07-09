@@ -1,8 +1,9 @@
 # 🎯 TargetDash - AI-Powered Prospect Relationship Layer for Salesforce
 
+[![CI](https://github.com/chzchzchzchz/AI-CRM/actions/workflows/ci.yml/badge.svg)](https://github.com/chzchzchzchz/AI-CRM/actions/workflows/ci.yml)
 [![GitHub stars](https://img.shields.io/github/stars/chzchzchzchz/AI-CRM?style=social)](https://github.com/chzchzchzchz/AI-CRM)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Live Demo](https://img.shields.io/badge/🚀%20Live%20Demo-targetdash.com-blue)](https://targetdash-pwcs8qfq.manus.space)
+[![Live Demo](https://img.shields.io/badge/🚀%20Live%20Demo-online-blue)](https://targetdash-pwcs8qfq.manus.space)
 
 ---
 
@@ -114,7 +115,7 @@ TargetDash **sits between your reps and Salesforce**, adding AI intelligence to 
 └─────────────────────────────────────────────┘
                    ↓
 ┌─────────────────────────────────────────────┐
-│         Deep-Thik AI Engine                │
+│         Deep-Think AI Engine               │
 │  Layer 1: Recursive Reasoning (hidden)    │
 │  Layer 2: Synthesizer (user-facing)       │
 │  Cached responses for identical queries    │
@@ -259,7 +260,7 @@ MIT License — free for personal & commercial use.
 > ✅ Next Best Action (AI tells you what to do today)
 > ✅ Multi-channel signal detection (intent, calls, engagement)
 > 
-> Layer it on top of Salesforce in 5 minutes: https://github.com/chzchzchz/AI-CRM
+> Layer it on top of Salesforce in 5 minutes: https://github.com/chzchzchzchz/AI-CRM
 > 
 > #Salesforce #AI #SalesReps #OpenSource
 > 
