@@ -50,8 +50,8 @@
       "sixsenseBuyingStage": "Purchase",
       "sixsenseProfileFit": "Strong",
       "sfdcAccountId": "acc_northwind_001",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 2,
@@ -73,8 +73,8 @@
       "sixsenseBuyingStage": "Decision",
       "sixsenseProfileFit": "Strong",
       "sfdcAccountId": "acc_brightwave_002",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 3,
@@ -96,8 +96,8 @@
       "sixsenseBuyingStage": "Purchase",
       "sixsenseProfileFit": "Strong",
       "sfdcAccountId": "acc_vertexcloud_003",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 4,
@@ -119,8 +119,8 @@
       "sixsenseBuyingStage": "Decision",
       "sixsenseProfileFit": "Good",
       "sfdcAccountId": "acc_meridianfin_004",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 5,
@@ -142,8 +142,8 @@
       "sixsenseBuyingStage": "Purchase",
       "sixsenseProfileFit": "Strong",
       "sfdcAccountId": "acc_cobaltsec_005",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 6,
@@ -165,8 +165,8 @@
       "sixsenseBuyingStage": "Consideration",
       "sixsenseProfileFit": "Good",
       "sfdcAccountId": "acc_lumenretail_006",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 7,
@@ -188,8 +188,8 @@
       "sixsenseBuyingStage": "Awareness",
       "sixsenseProfileFit": "Good",
       "sfdcAccountId": "acc_apexmfg_007",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 8,
@@ -211,8 +211,8 @@
       "sixsenseBuyingStage": "Consideration",
       "sixsenseProfileFit": "Good",
       "sfdcAccountId": "acc_skylinemedia_008",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 9,
@@ -234,8 +234,8 @@
       "sixsenseBuyingStage": "Decision",
       "sixsenseProfileFit": "Strong",
       "sfdcAccountId": "acc_greenfield_009",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 10,
@@ -257,8 +257,8 @@
       "sixsenseBuyingStage": "Purchase",
       "sixsenseProfileFit": "Strong",
       "sfdcAccountId": "acc_pinnaclesw_010",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 11,
@@ -280,8 +280,8 @@
       "sixsenseBuyingStage": "Awareness",
       "sixsenseProfileFit": "Good",
       "sfdcAccountId": "acc_harborins_011",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 12,
@@ -303,8 +303,8 @@
       "sixsenseBuyingStage": "Decision",
       "sixsenseProfileFit": "Strong",
       "sfdcAccountId": "acc_quantumanalytics_012",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 13,
@@ -326,8 +326,8 @@
       "sixsenseBuyingStage": "Awareness",
       "sixsenseProfileFit": "Fair",
       "sfdcAccountId": "acc_cedaredu_013",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 14,
@@ -349,8 +349,8 @@
       "sixsenseBuyingStage": "Consideration",
       "sixsenseProfileFit": "Good",
       "sfdcAccountId": "acc_atlastravel_014",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 15,
@@ -372,8 +372,8 @@
       "sixsenseBuyingStage": "Decision",
       "sixsenseProfileFit": "Strong",
       "sfdcAccountId": "acc_ironcladlegal_015",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 16,
@@ -395,8 +395,8 @@
       "sixsenseBuyingStage": "Consideration",
       "sixsenseProfileFit": "Good",
       "sfdcAccountId": "acc_solsticebio_016",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     }
   ],
   "contacts": [
@@ -414,8 +414,8 @@
       "location": "Chicago, IL",
       "department": "Sales",
       "sfdcContactId": "con_sarah_001",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 2,
@@ -431,8 +431,8 @@
       "location": "Chicago, IL",
       "department": "Revenue Operations",
       "sfdcContactId": "con_marcus_002",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 3,
@@ -448,8 +448,8 @@
       "location": "Boston, MA",
       "department": "Revenue Operations",
       "sfdcContactId": "con_david_003",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 4,
@@ -465,8 +465,8 @@
       "location": "Boston, MA",
       "department": "Executive",
       "sfdcContactId": "con_priya_004",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 5,
@@ -482,8 +482,8 @@
       "location": "Boston, MA",
       "department": "Sales",
       "sfdcContactId": "con_james_005",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 6,
@@ -499,8 +499,8 @@
       "location": "Seattle, WA",
       "department": "Executive",
       "sfdcContactId": "con_nina_006",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 7,
@@ -516,8 +516,8 @@
       "location": "Seattle, WA",
       "department": "Sales",
       "sfdcContactId": "con_carlos_007",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 8,
@@ -533,8 +533,8 @@
       "location": "New York, NY",
       "department": "Sales",
       "sfdcContactId": "con_tom_008",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 9,
@@ -550,8 +550,8 @@
       "location": "New York, NY",
       "department": "Sales Development",
       "sfdcContactId": "con_aisha_009",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 10,
@@ -567,8 +567,8 @@
       "location": "New York, NY",
       "department": "Marketing",
       "sfdcContactId": "con_kevin_010",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 11,
@@ -584,8 +584,8 @@
       "location": "Austin, TX",
       "department": "Sales Development",
       "sfdcContactId": "con_maria_011",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 12,
@@ -601,8 +601,8 @@
       "location": "Austin, TX",
       "department": "Marketing",
       "sfdcContactId": "con_daniel_012",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 13,
@@ -618,8 +618,8 @@
       "location": "Columbus, OH",
       "department": "Marketing",
       "sfdcContactId": "con_andre_013",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 14,
@@ -635,8 +635,8 @@
       "location": "Columbus, OH",
       "department": "Sales",
       "sfdcContactId": "con_grace_014",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 15,
@@ -652,8 +652,8 @@
       "location": "Columbus, OH",
       "department": "Revenue Operations",
       "sfdcContactId": "con_victor_015",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 16,
@@ -669,8 +669,8 @@
       "location": "Detroit, MI",
       "department": "Sales",
       "sfdcContactId": "con_lena_016",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 17,
@@ -686,8 +686,8 @@
       "location": "Detroit, MI",
       "department": "Revenue Operations",
       "sfdcContactId": "con_omar_017",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 18,
@@ -703,8 +703,8 @@
       "location": "Los Angeles, CA",
       "department": "Revenue Operations",
       "sfdcContactId": "con_marcus_018",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 19,
@@ -720,8 +720,8 @@
       "location": "Los Angeles, CA",
       "department": "Executive",
       "sfdcContactId": "con_elena_019",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 20,
@@ -737,8 +737,8 @@
       "location": "Los Angeles, CA",
       "department": "Sales",
       "sfdcContactId": "con_david_020",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 21,
@@ -754,8 +754,8 @@
       "location": "Denver, CO",
       "department": "Executive",
       "sfdcContactId": "con_priya_021",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 22,
@@ -771,8 +771,8 @@
       "location": "Denver, CO",
       "department": "Sales",
       "sfdcContactId": "con_james_022",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 23,
@@ -788,8 +788,8 @@
       "location": "San Francisco, CA",
       "department": "Sales",
       "sfdcContactId": "con_carlos_023",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 24,
@@ -805,8 +805,8 @@
       "location": "San Francisco, CA",
       "department": "Sales Development",
       "sfdcContactId": "con_rachel_024",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 25,
@@ -822,8 +822,8 @@
       "location": "San Francisco, CA",
       "department": "Marketing",
       "sfdcContactId": "con_tom_025",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 26,
@@ -839,8 +839,8 @@
       "location": "Hartford, CT",
       "department": "Sales Development",
       "sfdcContactId": "con_aisha_026",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 27,
@@ -856,8 +856,8 @@
       "location": "Hartford, CT",
       "department": "Marketing",
       "sfdcContactId": "con_kevin_027",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 28,
@@ -873,8 +873,8 @@
       "location": "San Jose, CA",
       "department": "Marketing",
       "sfdcContactId": "con_daniel_028",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 29,
@@ -890,8 +890,8 @@
       "location": "San Jose, CA",
       "department": "Sales",
       "sfdcContactId": "con_sophia_029",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 30,
@@ -907,8 +907,8 @@
       "location": "San Jose, CA",
       "department": "Revenue Operations",
       "sfdcContactId": "con_andre_030",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 31,
@@ -924,8 +924,8 @@
       "location": "Raleigh, NC",
       "department": "Sales",
       "sfdcContactId": "con_grace_031",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 32,
@@ -941,8 +941,8 @@
       "location": "Raleigh, NC",
       "department": "Revenue Operations",
       "sfdcContactId": "con_victor_032",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 33,
@@ -958,8 +958,8 @@
       "location": "Miami, FL",
       "department": "Revenue Operations",
       "sfdcContactId": "con_omar_033",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 34,
@@ -975,8 +975,8 @@
       "location": "Miami, FL",
       "department": "Executive",
       "sfdcContactId": "con_sarah_034",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 35,
@@ -992,8 +992,8 @@
       "location": "Miami, FL",
       "department": "Sales",
       "sfdcContactId": "con_marcus_035",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 36,
@@ -1009,8 +1009,8 @@
       "location": "Washington, DC",
       "department": "Executive",
       "sfdcContactId": "con_elena_036",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 37,
@@ -1026,8 +1026,8 @@
       "location": "Washington, DC",
       "department": "Sales",
       "sfdcContactId": "con_david_037",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 38,
@@ -1043,8 +1043,8 @@
       "location": "San Diego, CA",
       "department": "Sales",
       "sfdcContactId": "con_james_038",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 39,
@@ -1060,8 +1060,8 @@
       "location": "San Diego, CA",
       "department": "Sales Development",
       "sfdcContactId": "con_nina_039",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 40,
@@ -1077,8 +1077,8 @@
       "location": "San Diego, CA",
       "department": "Marketing",
       "sfdcContactId": "con_carlos_040",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     }
   ],
   "calls": [
@@ -1094,9 +1094,9 @@
       "sentiment": "positive",
       "keyTopics": "[\"New VP Sales hire\",\"manual CRM entry\",\"rep adoption\"]",
       "actionItems": "[\"Send tailored demo\",\"Loop in RevOps\",\"Share pilot terms\"]",
-      "callDate": "2026-07-09T02:04:46.426Z",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "callDate": "2026-07-01T12:00:00.000Z",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 2,
@@ -1110,9 +1110,9 @@
       "sentiment": "positive",
       "keyTopics": "[\"Expanding sales team\",\"manual CRM entry\",\"rep adoption\"]",
       "actionItems": "[\"Send tailored demo\",\"Loop in RevOps\",\"Share pilot terms\"]",
-      "callDate": "2026-07-08T02:04:46.426Z",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "callDate": "2026-06-30T12:00:00.000Z",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 3,
@@ -1126,9 +1126,9 @@
       "sentiment": "positive",
       "keyTopics": "[\"CRO transition\",\"manual CRM entry\",\"rep adoption\"]",
       "actionItems": "[\"Send tailored demo\",\"Loop in RevOps\",\"Share pilot terms\"]",
-      "callDate": "2026-07-07T02:04:46.426Z",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "callDate": "2026-06-29T12:00:00.000Z",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 4,
@@ -1142,9 +1142,9 @@
       "sentiment": "neutral",
       "keyTopics": "[\"New funding round\",\"manual CRM entry\",\"rep adoption\"]",
       "actionItems": "[\"Send tailored demo\",\"Loop in RevOps\",\"Share pilot terms\"]",
-      "callDate": "2026-07-06T02:04:46.426Z",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "callDate": "2026-06-28T12:00:00.000Z",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 5,
@@ -1158,9 +1158,9 @@
       "sentiment": "positive",
       "keyTopics": "[\"Hiring 10 SDRs\",\"manual CRM entry\",\"rep adoption\"]",
       "actionItems": "[\"Send tailored demo\",\"Loop in RevOps\",\"Share pilot terms\"]",
-      "callDate": "2026-07-05T02:04:46.426Z",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "callDate": "2026-06-27T12:00:00.000Z",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 6,
@@ -1174,9 +1174,9 @@
       "sentiment": "neutral",
       "keyTopics": "[\"New CMO\",\"manual CRM entry\",\"rep adoption\"]",
       "actionItems": "[\"Send tailored demo\",\"Loop in RevOps\",\"Share pilot terms\"]",
-      "callDate": "2026-07-02T02:04:46.426Z",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "callDate": "2026-06-24T12:00:00.000Z",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 7,
@@ -1190,9 +1190,9 @@
       "sentiment": "neutral",
       "keyTopics": "[\"Govt contract win\",\"manual CRM entry\",\"rep adoption\"]",
       "actionItems": "[\"Send tailored demo\",\"Loop in RevOps\",\"Share pilot terms\"]",
-      "callDate": "2026-07-01T02:04:46.426Z",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "callDate": "2026-06-23T12:00:00.000Z",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 8,
@@ -1206,9 +1206,9 @@
       "sentiment": "positive",
       "keyTopics": "[\"Series C raise\",\"manual CRM entry\",\"rep adoption\"]",
       "actionItems": "[\"Send tailored demo\",\"Loop in RevOps\",\"Share pilot terms\"]",
-      "callDate": "2026-06-30T02:04:46.426Z",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "callDate": "2026-06-22T12:00:00.000Z",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 9,
@@ -1222,9 +1222,9 @@
       "sentiment": "neutral",
       "keyTopics": "[\"AI product launch\",\"manual CRM entry\",\"rep adoption\"]",
       "actionItems": "[\"Send tailored demo\",\"Loop in RevOps\",\"Share pilot terms\"]",
-      "callDate": "2026-06-28T02:04:46.426Z",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "callDate": "2026-06-20T12:00:00.000Z",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 10,
@@ -1238,9 +1238,9 @@
       "sentiment": "neutral",
       "keyTopics": "[\"Funding round\",\"manual CRM entry\",\"rep adoption\"]",
       "actionItems": "[\"Send tailored demo\",\"Loop in RevOps\",\"Share pilot terms\"]",
-      "callDate": "2026-06-25T02:04:46.426Z",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "callDate": "2026-06-17T12:00:00.000Z",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     }
   ],
   "opportunities": [
@@ -1252,12 +1252,12 @@
       "stage": "Proposal",
       "probability": 82,
       "status": "Open",
-      "expectedCloseDate": "2026-08-08T02:04:46.426Z",
+      "expectedCloseDate": "2026-07-31T12:00:00.000Z",
       "sfdcOpportunityId": "opp_northwind_001",
       "aiSuccessScore": 89,
       "aiInsights": "Strong buying signals (Purchase stage, Strong fit). Trigger: New VP Sales hire. Next best action: send tailored demo to the VP Sales.",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 2,
@@ -1267,12 +1267,12 @@
       "stage": "Discovery",
       "probability": 78,
       "status": "Open",
-      "expectedCloseDate": "2026-08-11T02:04:46.426Z",
+      "expectedCloseDate": "2026-08-03T12:00:00.000Z",
       "sfdcOpportunityId": "opp_brightwave_001",
       "aiSuccessScore": 85,
       "aiInsights": "Strong buying signals (Decision stage, Strong fit). Trigger: Expanding sales team. Next best action: send tailored demo to the RevOps Director.",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 3,
@@ -1282,12 +1282,12 @@
       "stage": "Proposal",
       "probability": 85,
       "status": "Open",
-      "expectedCloseDate": "2026-08-14T02:04:46.426Z",
+      "expectedCloseDate": "2026-08-06T12:00:00.000Z",
       "sfdcOpportunityId": "opp_vertexcloud_001",
       "aiSuccessScore": 92,
       "aiInsights": "Strong buying signals (Purchase stage, Strong fit). Trigger: CRO transition. Next best action: send tailored demo to the Chief Revenue Officer.",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 4,
@@ -1297,12 +1297,12 @@
       "stage": "Qualification",
       "probability": 74,
       "status": "Open",
-      "expectedCloseDate": "2026-08-17T02:04:46.426Z",
+      "expectedCloseDate": "2026-08-09T12:00:00.000Z",
       "sfdcOpportunityId": "opp_meridianfin_001",
       "aiSuccessScore": 81,
       "aiInsights": "Strong buying signals (Decision stage, Good fit). Trigger: New funding round. Next best action: send tailored demo to the Head of Sales Enablement.",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 5,
@@ -1312,12 +1312,12 @@
       "stage": "Discovery",
       "probability": 80,
       "status": "Open",
-      "expectedCloseDate": "2026-08-20T02:04:46.426Z",
+      "expectedCloseDate": "2026-08-12T12:00:00.000Z",
       "sfdcOpportunityId": "opp_cobaltsec_001",
       "aiSuccessScore": 87,
       "aiInsights": "Strong buying signals (Purchase stage, Strong fit). Trigger: Hiring 10 SDRs. Next best action: send tailored demo to the SDR Manager.",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 6,
@@ -1327,12 +1327,12 @@
       "stage": "Qualification",
       "probability": 72,
       "status": "Open",
-      "expectedCloseDate": "2026-09-01T02:04:46.426Z",
+      "expectedCloseDate": "2026-08-24T12:00:00.000Z",
       "sfdcOpportunityId": "opp_greenfield_001",
       "aiSuccessScore": 79,
       "aiInsights": "Strong buying signals (Decision stage, Strong fit). Trigger: Govt contract win. Next best action: send tailored demo to the Chief Revenue Officer.",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 7,
@@ -1342,12 +1342,12 @@
       "stage": "Proposal",
       "probability": 83,
       "status": "Open",
-      "expectedCloseDate": "2026-09-04T02:04:46.426Z",
+      "expectedCloseDate": "2026-08-27T12:00:00.000Z",
       "sfdcOpportunityId": "opp_pinnaclesw_001",
       "aiSuccessScore": 90,
       "aiInsights": "Strong buying signals (Purchase stage, Strong fit). Trigger: Series C raise. Next best action: send tailored demo to the Head of Sales Enablement.",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     },
     {
       "id": 8,
@@ -1357,12 +1357,12 @@
       "stage": "Qualification",
       "probability": 77,
       "status": "Open",
-      "expectedCloseDate": "2026-09-10T02:04:46.426Z",
+      "expectedCloseDate": "2026-09-02T12:00:00.000Z",
       "sfdcOpportunityId": "opp_quantumanalytics_001",
       "aiSuccessScore": 84,
       "aiInsights": "Strong buying signals (Decision stage, Strong fit). Trigger: AI product launch. Next best action: send tailored demo to the VP Marketing.",
-      "createdAt": "2026-07-09T02:04:46.426Z",
-      "updatedAt": "2026-07-09T02:04:46.426Z"
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
     }
   ],
   "contextStore": [],
