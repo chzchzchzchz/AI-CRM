@@ -20,7 +20,9 @@ const db = base
       opportunities: [], contextStore: [], auditLogs: [],
       email_verification_codes: [], password_reset_codes: [] };
 
-const now = new Date().toISOString();
+// Fixed anchor date so the generated seed is byte-stable across runs (no spurious
+// git diffs). Override with SEED_DATE=<ISO> to generate fresh-looking demo dates.
+const now = new Date(process.env.SEED_DATE || "2026-07-01T12:00:00.000Z").toISOString();
 const iso = (d) => new Date(d).toISOString();
 const J = (a) => JSON.stringify(a);
 
