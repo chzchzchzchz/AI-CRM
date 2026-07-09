@@ -8,13 +8,13 @@
 
 ## 🧠 The Story
 
-I was at **the company** building their sales stack. We had 14,000+ contacts, 6sense, Gong, Clay, Salesforce — the whole enterprise nightmare.
+I was at an enterprise B2B company building their sales stack. We had 14,000+ contacts, 6sense, Gong, Clay, Salesforce — the whole enterprise nightmare.
 
 **The problem:** Salesforce is dumb. It's a glorified spreadsheet that needs humans to type stuff. Your reps hate it. Your data is stale. Your AI is bolted on as an afterthought.
 
 **The realization:** Reps don't need a new CRM. They need a **prospect relationship layer** that sits on top of Salesforce and actually makes it useful:
 
-- **Captures signals from everywhere** (email, Slack, LinkedIn, Zoom) automatically
+- **Captures signals automatically** (6sense intent, Gong calls, Clay enrichment — no manual entry)
 - **Uses AI at every layer** (not just a chatbot sidebar)
 - **Has zero manual data entry** (contacts enrich themselves)
 - **Gives you the "Next Best Action"** in plain English
@@ -32,21 +32,25 @@ So I built **TargetDash** — the AI-powered layer that makes Salesforce actuall
 | **AI Architecture** | Bolt-on (Einstein) | Native layer (every touchpoint) |
 | **Data Entry** | Manual / Reps hate it | Zero (auto-capture from 6sense, Gong, Clay) |
 | **Signal Detection** | Basic lead scoring | Multi-channel AI (intent, calls, engagement) |
-| **Next Best Action** | None (you figure it out) | AI-generated ("Email Cisco VP re: security risks") |
+| **Next Best Action** | None (you figure it out) | AI-generated ("Email Vertex Cloud VP re: renewal risk") |
 | **MCP Server** | ❌ | ✅ (plug into ANY AI agent) |
 | **Setup Time** | Months + consultants | 5 minutes (see below) |
 
 ---
 
-## 📊 Real Results (From the company Deployment)
+## 📊 What You Get (Demo Dataset)
+
+Spin it up with `pnpm dev` and the seeded demo dataset looks like this out of the box:
 
 ```
-📈 2,103 accounts tracked
-🔥 437 hot leads (intent 70+)
-🌡️ 1,389 warm leads  
-⚡ 567 unworked 6QA opportunities (85% gap = revenue on table)
-🎯 Top accounts: Cisco (98 intent), Verizon (97), McKesson (97)
+📈 16 accounts tracked (scores to thousands with real data)
+🔥 13 hot leads (intent 70+)
+🌡️ 3 warm leads
+📇 40 contacts, 8 open opportunities
+🎯 Top accounts ranked by VECTOR score, e.g. Vertex Cloud Systems (95), Pinnacle Software (93)
 ```
+
+Point it at your own 6sense/Gong/Clay/Salesforce data and it scales to your real book of business.
 
 ---
 
@@ -62,24 +66,13 @@ pnpm install
 ```
 
 ### 2. Configure Your Company
-Edit `config/company-config.json`:
-```json
-{
-  "companyName": "Your Company",
-  "companyDescription": "Your AI product description",
-  "industry": "B2B SaaS",
-  "productDescription": "What you sell",
-  "keyDifferentiators": ["AI-first", "Zero manual entry"],
-  "targetCustomers": "Enterprise 1000+ employees",
-  "competitors": "Salesforce, HubSpot",
-  "apiKeys": {
-    "sixsense": "your_key",
-    "gong": "your_key",
-    "openai": "your_key"
-  },
-  "demoMode": false
-}
+```bash
+cp config/company-config.json.example config/company-config.json
 ```
+Then edit `config/company-config.json` with your company name, product, differentiators,
+and competitors — this is what drives the AI prompts (account briefs, outreach emails, etc.).
+If you skip this step, the app falls back to `COMPANY_*` environment variables (see `.env.example`),
+and finally to generic demo defaults — it always works, just less personalized.
 
 ### 3. Set Up Environment
 ```bash
@@ -100,9 +93,9 @@ pnpm dev
 ### 5. Import Your Data
 ```bash
 # Import 6sense data
-node scripts/import-6sense-data.mjs
+npx tsx scripts/import-6sense-data.ts
 
-# Or load demo data
+# Or (re)generate the synthetic demo dataset
 node scripts/seed-demo.mjs
 ```
 
@@ -136,8 +129,8 @@ TargetDash **sits between your reps and Salesforce**, adding AI intelligence to 
                    ↓
 ┌─────────────────────────────────────────────┐
 │    Next Best Action Engine                 │
-│  "Email Cisco VP re: security risks"      │
-│  "Call Verizon CISO - intent spiking"     │
+│  "Email VP re: renewal risk"               │
+│  "Call CISO - intent spiking"              │
 └─────────────────────────────────────────────┘
                    ↓
 ┌─────────────────────────────────────────────┐
@@ -150,8 +143,8 @@ TargetDash includes an **MCP (Model Context Protocol) server** — meaning ANY A
 
 ```typescript
 // Your AI agent can now do:
-"Show me hot leads at Cisco with >90 intent"
-"Draft an email to the VP of Engineering at Verizon"
+"Show me hot leads with >90 intent"
+"Draft an email to the VP of Engineering at our top account"
 "What's our 6QA gap this week?"
 ```
 
@@ -160,7 +153,7 @@ TargetDash includes an **MCP (Model Context Protocol) server** — meaning ANY A
 ## 🎯 Key Features
 
 ### 🔥 Priority Actions - "What Do I Do Today?"
-AI analyzes 2,000+ accounts and tells you:
+AI analyzes your whole book of accounts and tells you:
 - **Why Now** (intent spike? buying stage change?)
 - **Next Best Action** (specific email/cal sequence)
 - **Contact to target** (decision-maker + role)
@@ -196,11 +189,11 @@ Uses AI embeddings to score accounts by:
 ## 🔐 Security & Compliance
 
 - ✅ **No hardcoded secrets** (all in config/environment)
-- ✅ **Parameterized SQL** (no injection vectors)
-- ✅ **Auth middleware** on all API routes
+- ✅ **Parameterized SQL** (Drizzle ORM, no injection vectors)
+- ✅ **Email/password + 2FA auth**, session cookies, audit logging (bypassed only when `DEMO_MODE=true`)
 - ✅ **CORS hardened**
 - ✅ **XSS protected** (React sanitizes by default)
-- ✅ **Ready for SOC 2** (audit logs, role-based access)
+- ⚠️ Audit logs and role-based access are in place as a foundation — not a certified SOC 2 posture
 
 ---
 
@@ -208,8 +201,8 @@ Uses AI embeddings to score accounts by:
 
 - [x] **Phase 1: Core CRM** (accounts, contacts, signals) ✅
 - [x] **Phase 2: AI integration** (OpenAI, Deep-Think engine) ✅
-- [x] **Phase 3: Multi-channel capture** (email, Slack, LinkedIn, Zoom) ✅
-- [x] **Phase 4: MCP server** (AI agent integration) ✅
+- [x] **Phase 3: MCP server** (AI agent integration) ✅
+- [ ] **Phase 4: Multi-channel capture** (email, Slack, LinkedIn, Zoom)
 - [ ] **Phase 5: Multi-tenant SaaS** (self-serve onboarding)
 - [ ] **Phase 6: Open-source core** (community + enterprise tiers)
 
@@ -259,7 +252,7 @@ MIT License — free for personal & commercial use.
 
 > Just open-sourced the AI-powered prospect relationship layer I built for Salesforce reps. 🚀
 > 
-> After seeing the pain at the company (14K contacts, stale data, reps hating Salesforce), I built **TargetDash**:
+> After seeing the pain of managing enterprise sales data (14K contacts, stale data, reps hating Salesforce), I built **TargetDash**:
 > 
 > ✅ Zero manual entry (AI captures everything from 6sense, Gong, Clay)
 > ✅ MCP server (any AI agent can query your Salesforce data)

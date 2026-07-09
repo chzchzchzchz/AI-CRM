@@ -1,0 +1,16 @@
+{
+  "companyName": "Your Company",
+  "companyDescription": "Your AI product description",
+  "industry": "B2B SaaS",
+  "productDescription": "What you sell",
+  "keyDifferentiators": ["AI-first", "Zero manual entry", "Real-time signals"],
+  "targetCustomers": "Enterprise 1000+ employees",
+  "competitors": "Salesforce, HubSpot",
+  "apiKeys": {
+    "sixsense": "",
+    "gong": "",
+    "clay": "",
+    "openai": ""
+  },
+  "demoMode": false
+}
