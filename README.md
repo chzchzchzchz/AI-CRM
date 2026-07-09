@@ -55,52 +55,44 @@ Point it at your own 6sense/Gong/Clay/Salesforce data and it scales to your real
 
 ---
 
-## 🛠️ Quick Start - Use It For YOUR Company
+## 🛠️ Quick Start
 
-TargetDash is **generic** — works for any B2B company. Just configure:
-
-### 1. Clone & Install
+### Run the demo — zero config, ~2 minutes
+No database, no API keys. Boots with a synthetic dataset (16 accounts, 40 contacts, $1.02M pipeline).
 ```bash
 git clone https://github.com/chzchzchzchz/AI-CRM.git
 cd AI-CRM
 pnpm install
+cp .env.example .env           # ships with DEMO_MODE=true and PORT=3333
+pnpm dev                       # → http://localhost:3333
 ```
+(Or skip the copy and run `DEMO_MODE=true pnpm dev` — it just picks the first free port from 3000.)
+The AI features (account briefs, outreach, chat) work for free too — they fall back to a local
+Ollama model when no cloud key is set. See [SETUP.md](SETUP.md) for the one-time Ollama step.
 
-### 2. Configure Your Company
-```bash
-cp config/company-config.json.example config/company-config.json
-```
-Then edit `config/company-config.json` with your company name, product, differentiators,
-and competitors — this is what drives the AI prompts (account briefs, outreach emails, etc.).
-If you skip this step, the app falls back to `COMPANY_*` environment variables (see `.env.example`),
-and finally to generic demo defaults — it always works, just less personalized.
+### Use it for YOUR company
+TargetDash is **generic** — it works for any B2B company once you point it at your data.
 
-### 3. Set Up Environment
-```bash
-cp .env.example .env
-# Edit .env with your:
-# - DATABASE_URL (MySQL/PostgreSQL)
-# - OPENAI_API_KEY
-# - SIXSENSE_API_KEY (optional)
-# - GONG_API_KEY (optional)
-```
+1. **Configure your company** (drives the AI prompts):
+   ```bash
+   cp config/company-config.json.example config/company-config.json
+   ```
+   Edit it with your name, product, differentiators, and competitors. Skip it and the app falls back
+   to `COMPANY_*` env vars (see `.env.example`), then to generic defaults — it always runs.
+2. **Point at a real database** (optional — demo mode needs none):
+   ```bash
+   cp .env.example .env          # set DATABASE_URL and DEMO_MODE=false
+   pnpm db:push                  # run migrations
+   pnpm dev
+   ```
+3. **Load your data** (optional):
+   ```bash
+   npx tsx scripts/import-6sense-data.ts   # import 6sense intent data
+   node scripts/seed-demo.mjs              # or (re)generate the synthetic demo dataset
+   ```
 
-### 4. Run Migrations & Start
-```bash
-pnpm db:push
-pnpm dev
-```
-
-### 5. Import Your Data
-```bash
-# Import 6sense data
-npx tsx scripts/import-6sense-data.ts
-
-# Or (re)generate the synthetic demo dataset
-node scripts/seed-demo.mjs
-```
-
-**That's it. You now have an AI-Native CRM for your company.**
+Integration keys (6sense, Gong, Clay, Salesforce) are all optional and independent — full matrix in
+[SETUP.md](SETUP.md).
 
 ---
 
