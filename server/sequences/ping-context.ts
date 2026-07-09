@@ -1,9 +1,13 @@
 /**
- * PING SEQUENCE CONTEXT
- * 
- * Hardcoded Ping platform overview and context for email generation,
- * account briefs, and contact briefs. This ensures all Ping sequence
- * outreach references the correct platform capabilities and value props.
+ * PING SEQUENCE CONTEXT — EXAMPLE VERTICAL SEQUENCE
+ *
+ * Example "sequence" plugin showing how to give the AI deep, vertical-specific
+ * context (here: selling an identity/device-trust product that integrates with
+ * Ping Identity) for email generation, account briefs, and contact briefs.
+ *
+ * The {COMPANY_NAME} tokens below are resolved from company-config at prompt
+ * time. The capabilities/value-props are illustrative for an identity-security
+ * vendor — tailor them (or add your own sequence file) to match what YOU sell.
  */
 
 export const PING_PLATFORM_CONTEXT = {
@@ -54,9 +58,9 @@ export const PING_PLATFORM_CONTEXT = {
     ],
   },
   
-  // Customer example
+  // Customer example (illustrative — replace with your own reference story)
   customerExample: {
-    company: "Global financial software leader, 18K+ employees",
+    company: "Example enterprise customer, 10K+ employees",
     challenge: "Legacy VPN-based access with device-bound identity enforcement",
     solution: "{COMPANY_NAME} + Ping integration replaced VPN with device-bound identity",
     outcomes: [

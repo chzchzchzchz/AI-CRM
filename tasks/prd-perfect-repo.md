@@ -10,7 +10,7 @@ Transform the current messy AI-CRM repo into a flawless, production-ready GitHub
 4. **Missing critical files** — `package.json` was accidentally deleted by filter-repo, recreated but WRONG (missing half the deps)
 5. **Old docs** — audit reports from December 2025 that don't match current reality
 6. **Binary blobs in root** — `*.webp` screenshots, `*.csv` files with real PII
-7. **Inconsistent narrative** — README mentions "the company", YC references (removed but narrative broken)
+7. **Inconsistent narrative** — README mentions the previous employer, YC references (removed but narrative broken)
 
 ## Goals
 1. **Clean architecture** — `client/src/` (ONE set of components), `server/` (clear modules), `drizzle/` (ONE schema)
@@ -63,7 +63,7 @@ Transform the current messy AI-CRM repo into a flawless, production-ready GitHub
 **So that** I understand the value immediately.
 
 **Acceptance Criteria:**
-- [ ] No mentions of "the company" or old company references
+- [ ] No mentions of the previous employer or old company references
 - [ ] No YC/VC references
 - [ ] Clear feature list with ✅/⚠️/❌ status
 - [ ] One-command setup instructions
@@ -78,7 +78,7 @@ Transform the current messy AI-CRM repo into a flawless, production-ready GitHub
 **Acceptance Criteria:**
 - [ ] No CSV files in any commit
 - [ ] No JSON files with real PII in any commit
-- [ ] No email addresses like `mohssinechazi@gmail.com` in any commit
+- [ ] No personal email addresses in any commit
 - [ ] Use BFG or filter-repo to clean ALL history
 
 ### P5: Working Build

@@ -3,6 +3,7 @@ import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
 import { getPingAccountSummaryPrompt } from "./sequences/ping-context";
 import { invokeLLM } from "./_core/llm";
+import { getCompanyConfig } from "./config";
 
 /**
  * ACCOUNT-LEVEL AI SUMMARY GENERATOR
@@ -39,9 +40,11 @@ export async function generateAccountSummary(
 
   const account = accountData[0];
 
+  const companyName = getCompanyConfig().companyName;
+
   // Get sequence-specific system prompt
   let systemPrompt: string;
-  
+
   if (sequence === "ping") {
     systemPrompt = getPingAccountSummaryPrompt({
       name: account.name || "Unknown",
@@ -51,7 +54,7 @@ export async function generateAccountSummary(
     });
   } else {
     // Default prompt for other sequences (to be implemented)
-    systemPrompt = `You are an elite Enterprise Account Executive and strategic advisor for {COMPANY_NAME}.
+    systemPrompt = `You are an elite Enterprise Account Executive and strategic advisor for ${companyName}.
 
 Your task is to generate a comprehensive, data-driven account brief for ${account.name || "this company"}.
 
@@ -73,7 +76,7 @@ Generate a structured brief with these sections:
   }
 
   // Prepare context for LLM
-  const userMessage = `Generate an account brief for ${account.name}. Include all relevant information about their business, technology, and how {COMPANY_NAME} can help.`;
+  const userMessage = `Generate an account brief for ${account.name}. Include all relevant information about their business, technology, and how ${companyName} can help.`;
 
   try {
     const response = await invokeLLM({

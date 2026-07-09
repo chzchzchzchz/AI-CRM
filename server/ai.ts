@@ -1,6 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import { getAllAccounts, getAllPeople, getAllGongCalls } from "./db";
-import { withRCP, asRevenueArchitect, REVENUE_ARCHITECT_PERSONA } from "./ai-system-prompt";
+import { withRCP, asRevenueArchitect } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
 
 /**
@@ -138,7 +138,7 @@ Provide a JSON response with:
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: withRCP("You are a sales call analyzer for {COMPANY_NAME}. Extract insights from call transcripts.") },
+      { role: "system", content: withRCP(`You are a sales call analyzer for ${getCompanyConfig().companyName}. Extract insights from call transcripts.`) },
       { role: "user", content: prompt }
     ],
     response_format: {

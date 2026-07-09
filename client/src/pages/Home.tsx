@@ -229,7 +229,9 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                  ${(opportunitiesData?.reduce((sum: number, opp: any) => sum + Number(opp.amount), 0) || 0).toLocaleString()}
+                  ${(opportunitiesData
+                    ?.filter((opp: any) => String(opp.status ?? "Open").toLowerCase() === "open")
+                    .reduce((sum: number, opp: any) => sum + (Number(opp.amount) || 0), 0) || 0).toLocaleString()}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Total open pipeline</p>
               </CardContent>

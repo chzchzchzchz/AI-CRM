@@ -285,6 +285,11 @@ export function calculateVectorScores(data: AccountData): VectorScores {
  * Generate the master deep analysis prompt for an account
  */
 export function generateDeepAnalysisPrompt(data: AccountData, scores: VectorScores): string {
+  const promptConfig = getCompanyConfig();
+  const valueProp = promptConfig.keyDifferentiators?.length
+    ? promptConfig.keyDifferentiators.join(', ')
+    : promptConfig.productDescription || 'your core value proposition';
+
   // Prioritize contacts: executives first, then by title seniority
   const prioritizedContacts = (data.contacts || [])
     .sort((a, b) => {
@@ -516,7 +521,7 @@ CRITICAL RULES - FOLLOW EXACTLY
 3. If data is missing, say "Data not available" - NEVER fabricate
 4. Be tactical and specific - NO GENERIC SALES ADVICE like "build relationships" or "identify buying center"
 5. Every recommendation must reference SPECIFIC data points from this account
-6. Focus on {COMPANY_NAME}'s value prop: phishing-resistant MFA, passwordless auth
+6. Focus on ${promptConfig.companyName}'s value prop: ${valueProp}
 
 ⚠️ MATURITY-AWARE RULES (CRITICAL):
 7. If ACCOUNT MATURITY is "DEEP" or "ACTIVE" - DO NOT recommend:

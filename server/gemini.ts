@@ -2,6 +2,7 @@ import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getAccountById } from "./db";
 import { queryGemini } from "./gemini-automation";
+import { getCompanyConfig } from "./config";
 
 export const geminiRouter = router({
   /**
@@ -58,14 +59,15 @@ export const geminiRouter = router({
       // Removed to fix type errors
 
       // Build the Gemini prompt
-      const defaultPrompt = `You are an expert B2B sales researcher for {COMPANY_NAME}, a company that provides passwordless MFA and modern SSO solutions.
+      const cfg = getCompanyConfig();
+      const defaultPrompt = `You are an expert B2B sales researcher for ${cfg.companyName}, a company in ${cfg.industry}${cfg.productDescription ? ` that provides ${cfg.productDescription}` : ''}.
 
 Analyze this target account and provide:
-1. **Key Decision Makers** - Who would be involved in security/auth purchasing decisions?
-2. **Pain Points** - What authentication/security challenges might they face?
-3. **Buying Signals** - Any indicators they're in-market for MFA/SSO solutions?
-4. **Competitive Landscape** - What auth solutions might they currently use?
-5. **Recommended Approach** - How should we position {COMPANY_NAME} to them?
+1. **Key Decision Makers** - Who would be involved in the purchasing decision for our category?
+2. **Pain Points** - What challenges might they face that ${cfg.companyName} addresses?
+3. **Buying Signals** - Any indicators they're in-market for solutions like ours?
+4. **Competitive Landscape** - What solutions might they currently use (e.g. ${cfg.competitors})?
+5. **Recommended Approach** - How should we position ${cfg.companyName} to them?
 
 Keep your analysis concise, actionable, and focused on sales intelligence.
 

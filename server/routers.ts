@@ -545,19 +545,36 @@ Or go to the Admin Panel: /admin/approval`
     aiScore: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        // Mock AI scoring logic
         const opp = await getOpportunityById(input.id);
         if (!opp) throw new Error("Opportunity not found");
-        
-        const score = Math.floor(Math.random() * 40) + 60; // 60-100
-        const insights = "AI Analysis: Customer engagement is trending up. Technical fit is 95%. Budget is confirmed.";
-        
+
+        // Deterministic success score derived from real deal signals (stage
+        // progression + stated win probability), not a random number.
+        const STAGE_WEIGHT: Record<string, number> = {
+          discovery: 0.7, qualification: 0.75, validation: 0.85,
+          proposal: 0.9, negotiation: 1.0, "closed won": 1.0, "closed lost": 0,
+        };
+        const prob = Number((opp as any).probability) || 50;
+        const stageKey = String((opp as any).stage || "").toLowerCase();
+        const weight = STAGE_WEIGHT[stageKey] ?? 0.8;
+        const score = Math.max(5, Math.min(99, Math.round(prob * weight)));
+
+        const amountNum = Number((opp as any).amount) || 0;
+        const closeDate = (opp as any).expectedCloseDate
+          ? new Date((opp as any).expectedCloseDate).toLocaleDateString()
+          : null;
+        const insights =
+          `${(opp as any).name}: ${(opp as any).stage || "unstaged"} stage at ${prob}% stated win probability` +
+          (amountNum ? `, $${amountNum.toLocaleString()} in play` : "") +
+          (closeDate ? `, target close ${closeDate}` : "") +
+          `. Score weights stated probability by stage progression.`;
+
         await upsertOpportunity({
           ...opp,
           aiSuccessScore: score,
           aiInsights: insights,
         } as any);
-        
+
         return { score, insights };
       }),
   }),
@@ -1184,10 +1201,11 @@ Now write a brief factual summary. Start with "## Account Overview" and list the
         const analysisPrompt = generateDeepAnalysisPrompt(accountData, vectorScores);
 
         const { invokeLLM } = await import("./_core/llm");
-        const { REVENUE_ARCHITECT_PERSONA, STANDARDIZED_OUTPUT_STRUCTURE } = await import("./ai-system-prompt");
-        
-        // Use a simpler system prompt WITHOUT RCP to avoid verbose reasoning output
-        const simpleSystemPrompt = `${REVENUE_ARCHITECT_PERSONA}
+        const { getDynamicPersona, STANDARDIZED_OUTPUT_STRUCTURE } = await import("./ai-system-prompt");
+
+        // Resolve {COMPANY_NAME}/{COMPETITORS}/{KEY_DIFFERENTIATORS} etc. from company config.
+        // Use a simpler system prompt WITHOUT RCP to avoid verbose reasoning output.
+        const simpleSystemPrompt = `${getDynamicPersona()}
 
 ---
 
