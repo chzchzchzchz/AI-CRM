@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TargetDash — The AI layer that makes Salesforce actually useful</title>
+<meta name="description" content="TargetDash sits on top of Salesforce: auto-captures signals, enriches contacts with zero data entry, and gives reps the Next Best Action in plain English." />
+<style>
+  :root{
+    --bg:#0b0d17; --bg2:#11142400; --panel:#141829; --panel2:#1b2138;
+    --ink:#eef1fb; --mut:#9aa3c4; --acc:#5b8cff; --acc2:#7c5cff; --gold:#ffd24a;
+    --good:#37d39b; --line:#222840; --rad:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    background:radial-gradient(1200px 600px at 70% -10%,#1a1f3a 0,var(--bg) 55%);color:var(--ink);
+    line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+  nav{display:flex;align-items:center;justify-content:space-between;padding:20px 0}
+  .logo{font-weight:800;font-size:20px;letter-spacing:-.02em}
+  .logo span{color:var(--acc)}
+  .nav-cta{background:var(--acc);color:#fff;padding:10px 18px;border-radius:10px;font-weight:600;font-size:14px}
+  .btn{display:inline-block;padding:14px 26px;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;border:0}
+  .btn-primary{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff}
+  .btn-ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+  .hero{text-align:center;padding:70px 0 50px}
+  .pill{display:inline-block;background:var(--panel);border:1px solid var(--line);color:var(--mut);
+    padding:7px 16px;border-radius:999px;font-size:13px;margin-bottom:24px}
+  h1{font-size:clamp(34px,6vw,60px);line-height:1.05;letter-spacing:-.03em;font-weight:850}
+  h1 .hl{background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{font-size:clamp(17px,2.4vw,21px);color:var(--mut);max-width:680px;margin:22px auto 34px}
+  .cta-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  .trust{margin-top:26px;color:var(--mut);font-size:13px}
+  section{padding:56px 0}
+  .eyebrow{color:var(--acc);font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+  h2{font-size:clamp(26px,4vw,38px);letter-spacing:-.02em;margin:10px 0 14px;font-weight:800}
+  .lead{color:var(--mut);max-width:680px;font-size:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin-top:30px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:24px}
+  .card .ic{font-size:26px;margin-bottom:12px}
+  .card h3{font-size:18px;margin-bottom:8px}
+  .card p{color:var(--mut);font-size:15px}
+  table{width:100%;border-collapse:collapse;margin-top:28px;background:var(--panel);border-radius:var(--rad);overflow:hidden;border:1px solid var(--line)}
+  th,td{padding:15px 18px;text-align:left;font-size:15px;border-bottom:1px solid var(--line)}
+  th{background:var(--panel2);font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+  td.no{color:#ff7a7a}td.yes{color:var(--good);font-weight:600}
+  .price-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin-top:30px}
+  .price{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:28px;display:flex;flex-direction:column}
+  .price.feat{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc),0 20px 60px -30px var(--acc)}
+  .price .tag{font-size:13px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+  .price .amt{font-size:40px;font-weight:850;margin:8px 0}.price .amt small{font-size:15px;color:var(--mut);font-weight:500}
+  .price ul{list-style:none;margin:16px 0 22px;flex:1}.price li{padding:7px 0;color:var(--mut);font-size:15px}
+  .price li::before{content:"✓ ";color:var(--good);font-weight:800}
+  .story{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:34px;margin-top:8px}
+  .story p{color:var(--mut);font-size:17px;margin-bottom:14px}.story b{color:var(--ink)}
+  .final{text-align:center;background:linear-gradient(135deg,#19204a,#241a47);border:1px solid var(--line);border-radius:24px;padding:54px 24px;margin:20px 0}
+  form{display:flex;gap:10px;max-width:460px;margin:24px auto 0;flex-wrap:wrap;justify-content:center}
+  input[type=email]{flex:1;min-width:220px;padding:14px 16px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:15px}
+  footer{color:var(--mut);font-size:13px;text-align:center;padding:40px 0;border-top:1px solid var(--line)}
+  .note{color:var(--gold);font-size:13px;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <div class="logo">🎯 Target<span>Dash</span></div>
+    <a class="nav-cta" href="#access">Get early access</a>
+  </nav>
+
+  <header class="hero">
+    <div class="pill">AI prospect-relationship layer for Salesforce</div>
+    <h1>Salesforce is a dumb spreadsheet.<br><span class="hl">TargetDash makes it think.</span></h1>
+    <p class="sub">Auto-captures signals from every channel, enriches contacts with <b>zero manual entry</b>, and tells your reps the Next Best Action in plain English. Sits on top of Salesforce — no rip-and-replace.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" id="demoBtn" href="#access">▶ Try the live demo</a>
+      <a class="btn btn-ghost" href="#access">Book a 10-min walkthrough</a>
+    </div>
+    <div class="trust">Built by a former enterprise sales-stack engineer · Works with 6sense · Gong · Clay</div>
+  </header>
+</div>
+
+<section><div class="wrap">
+  <div class="eyebrow">The problem</div>
+  <h2>Your reps lose 5–8 hours a week to CRM busywork</h2>
+  <p class="lead">14,000 contacts. 6sense, Gong, Clay, Salesforce — the whole enterprise nightmare. Data goes stale the second it's entered. AI is bolted on as a chatbot afterthought. Reps hate it, so they don't use it.</p>
+</div></section>
+
+<section><div class="wrap">
+  <div class="eyebrow">The fix</div>
+  <h2>AI at every layer — not a sidebar</h2>
+  <div class="grid">
+    <div class="card"><div class="ic">📡</div><h3>Captures signals everywhere</h3><p>Email, calls, intent, engagement — pulled in automatically from your existing stack.</p></div>
+    <div class="card"><div class="ic">🪄</div><h3>Zero manual data entry</h3><p>Contacts enrich themselves from 6sense, Gong, and Clay. Reps stop typing, start selling.</p></div>
+    <div class="card"><div class="ic">🎯</div><h3>Next Best Action</h3><p>AI-generated, in plain English: "Email Cisco's VP re: security risks." Per account, ranked by intent.</p></div>
+    <div class="card"><div class="ic">🔌</div><h3>MCP server built in</h3><p>Plug your prospect intelligence into any AI agent. Native, not a bolt-on.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="eyebrow">Side by side</div>
+  <h2>Salesforce alone vs. Salesforce + TargetDash</h2>
+  <table>
+    <tr><th>Capability</th><th>Salesforce alone</th><th>+ TargetDash</th></tr>
+    <tr><td>AI architecture</td><td class="no">Bolt-on (Einstein)</td><td class="yes">Native layer, every touchpoint</td></tr>
+    <tr><td>Data entry</td><td class="no">Manual — reps hate it</td><td class="yes">Zero (auto-capture)</td></tr>
+    <tr><td>Signal detection</td><td class="no">Basic lead scoring</td><td class="yes">Multi-channel AI intent</td></tr>
+    <tr><td>Next Best Action</td><td class="no">You figure it out</td><td class="yes">AI-generated per account</td></tr>
+    <tr><td>Setup time</td><td class="no">Months + consultants</td><td class="yes">5 minutes</td></tr>
+  </table>
+</div></section>
+
+<section><div class="wrap">
+  <div class="eyebrow">Pricing</div>
+  <h2>Start free. No risk.</h2>
+  <div class="price-grid">
+    <div class="price"><div class="tag">Starter</div><div class="amt">$49<small>/mo</small></div>
+      <ul><li>1 seat</li><li>AI insights + Next Best Action</li><li>Signal capture</li><li>Demo data to start</li></ul>
+      <a class="btn btn-ghost" href="#access">Get started</a></div>
+    <div class="price feat"><div class="tag">★ Design Partner Pilot</div><div class="amt">$0<small>/30 days</small></div>
+      <ul><li>Everything in Team</li><li>White-glove 5-min setup on your data</li><li>Then $99/mo locked for a year</li><li>First 3 customers only</li></ul>
+      <a class="btn btn-primary" href="#access">Claim a pilot spot</a></div>
+    <div class="price"><div class="tag">Team</div><div class="amt">$199<small>/mo</small></div>
+      <ul><li>Up to 10 seats</li><li>Live Salesforce sync</li><li>6sense / Gong / Clay enrichment</li><li>MCP server access</li></ul>
+      <a class="btn btn-ghost" href="#access">Get started</a></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="eyebrow">Why I built it</div>
+  <div class="story">
+    <p>"I was at an enterprise B2B company building their sales stack. We had 14,000+ contacts and every tool money could buy — and reps <b>still</b> hated the CRM because it needed humans to keep it alive."</p>
+    <p>"Reps don't need a new CRM. They need a <b>prospect relationship layer</b> on top of the one they have that actually makes it useful. So I built TargetDash."</p>
+  </div>
+</div></section>
+
+<div class="wrap"><div class="final" id="access">
+  <h2>See it on your own accounts</h2>
+  <p class="lead" style="margin:10px auto 0">Drop your email — I'll send a tailored demo and a pilot spot.</p>
+  <form id="leadForm">
+    <input type="email" id="leadEmail" name="email" placeholder="you@company.com" required />
+    <button class="btn btn-primary" type="submit">Get early access</button>
+  </form>
+  <div id="leadOk" style="display:none;color:var(--good);font-weight:600;margin-top:16px">✓ Got it — I'll be in touch within a day with a tailored demo.</div>
+  <div class="note">⚙ One edit before deploying: set <code>DEMO_URL</code>, <code>FORMSPREE</code>, and <code>EMAIL</code> in the CONFIG block at the bottom of this file. Until then, the form falls back to a pre-filled email to you.</div>
+</div></div>
+
+<footer>© 2026 TargetDash · The AI layer that makes Salesforce actually useful · built by @chzchzchzchz</footer>
+
+<script>
+  /* ===== EDIT THESE 3 LINES, then deploy. ===== */
+  const CONFIG = {
+    DEMO_URL:  "",                        // your live demo link (e.g. https://targetdash.com)
+    FORMSPREE: "",                        // free formspree.io endpoint, e.g. https://formspree.io/f/abc
+    EMAIL:     "you@example.com"          // where leads should land if FORMSPREE is blank
+  };
+  /* ============================================ */
+
+  // wire the demo button to the live demo if set, else scroll to signup
+  const demoBtn = document.getElementById("demoBtn");
+  if (CONFIG.DEMO_URL) { demoBtn.href = CONFIG.DEMO_URL; demoBtn.target = "_blank"; }
+
+  // functional lead capture: Formspree if configured, else a pre-filled mailto fallback
+  const form = document.getElementById("leadForm");
+  const okMsg = document.getElementById("leadOk");
+  form.addEventListener("submit", async function(e){
+    e.preventDefault();
+    const email = document.getElementById("leadEmail").value.trim();
+    if(!email) return;
+    try {
+      if (CONFIG.FORMSPREE) {
+        await fetch(CONFIG.FORMSPREE, {
+          method:"POST", headers:{"Accept":"application/json","Content-Type":"application/json"},
+          body: JSON.stringify({ email, source:"targetdash-landing" })
+        });
+      } else {
+        window.location.href = "mailto:" + CONFIG.EMAIL +
+          "?subject=TargetDash%20early%20access&body=" + encodeURIComponent("Lead email: " + email);
+      }
+      form.style.display = "none";
+      okMsg.style.display = "block";
+    } catch (err) {
+      window.location.href = "mailto:" + CONFIG.EMAIL + "?subject=TargetDash%20early%20access&body=" + encodeURIComponent("Lead email: " + email);
+    }
+  });
+</script>
+</body>
+</html>
