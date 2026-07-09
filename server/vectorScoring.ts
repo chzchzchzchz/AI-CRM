@@ -7,6 +7,7 @@
  */
 
 import { getAssignedRep, formatRepAssignment } from './repAssignment';
+import { getCompanyConfig } from "./config";
 
 export interface VectorScores {
   engagement: number;      // 0-100: How engaged is this account?
@@ -215,9 +216,13 @@ export function calculateVectorScores(data: AccountData): VectorScores {
   }
   
   // Competitor presence (max 30 points) - displacement opportunity
-  const competitors = ['Okta', 'Duo', 'Ping Identity', 'Microsoft Entra', 'Auth0', 'OneLogin'];
+  const config = getCompanyConfig();
+  const competitors = config.competitors
+    ? config.competitors.split(',').map(c => c.trim())
+    : ['Okta', 'Duo', 'Ping Identity', 'Microsoft Entra', 'Auth0', 'OneLogin'];
   const securityStack = JSON.stringify(data.securityStack || {}).toLowerCase();
-  const hasCompetitor = competitors.some(c => securityStack.includes(c.toLowerCase()));
+  const techStack = JSON.stringify(data.techStack || {}).toLowerCase();
+  const hasCompetitor = competitors.some(c => securityStack.includes(c.toLowerCase()) || techStack.includes(c.toLowerCase()));
   if (hasCompetitor) strategic += 30;
   else strategic += 15; // Greenfield opportunity
   

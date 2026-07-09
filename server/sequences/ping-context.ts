@@ -112,6 +112,8 @@ export const PING_PLATFORM_CONTEXT = {
   },
 };
 
+import { getCompanyConfig } from "../config";
+
 /**
  * Generate Ping-specific account summary prompt
  */
@@ -121,7 +123,8 @@ export function getPingAccountSummaryPrompt(accountData: {
   employees?: number;
   techStack?: string[];
 }): string {
-  return `You are an elite Enterprise Account Executive for {COMPANY_NAME}, a passwordless MFA/Zero Trust security company.
+  const config = getCompanyConfig();
+  return `You are an elite Enterprise Account Executive for {COMPANY_NAME}, a company specializing in {COMPANY_INDUSTRY}.
 
 CRITICAL CONTEXT - PING SEQUENCE:
 This prospect uses Ping Identity (PingOne, PingFederate, or Ping Intelligent Cloud) for their identity infrastructure.
@@ -154,7 +157,9 @@ Provide a structured brief with these sections:
 - PAIN POINTS: Specific challenges for Ping customers that {COMPANY_NAME} solves
 - COMPETITIVE LANDSCAPE: How we differentiate from Okta, Azure, Silverfort
 - RECOMMENDED TALKING POINTS: 3-4 Ping-specific angles for outreach
-- ENGAGEMENT STRATEGY: Best approach for a Ping customer`;
+- ENGAGEMENT STRATEGY: Best approach for a Ping customer`
+    .replace(/{COMPANY_NAME}/g, config.companyName)
+    .replace(/{COMPANY_INDUSTRY}/g, config.industry);
 }
 
 /**
@@ -165,6 +170,7 @@ export function getPingContactSummaryPrompt(contactData: {
   title?: string;
   company?: string;
 }): string {
+  const config = getCompanyConfig();
   return `You are an elite Enterprise Account Executive for {COMPANY_NAME}.
 
 CRITICAL CONTEXT - PING SEQUENCE:
@@ -198,13 +204,15 @@ Provide a structured brief with these sections:
 - INFLUENCE LEVEL: Are they a decision-maker, influencer, or blocker?
 - BEST ANGLE: How to approach them with {COMPANY_NAME} + Ping value prop
 - PERSONALIZED TALKING POINTS: 3-4 angles tailored to their role
-- COMMUNICATION STYLE: Recommended tone and approach`;
+- COMMUNICATION STYLE: Recommended tone and approach`
+    .replace(/{COMPANY_NAME}/g, config.companyName);
 }
 
 /**
  * Generate Ping-specific email system prompt
  */
 export function getPingEmailSystemPrompt(): string {
+  const config = getCompanyConfig();
   return `You are an elite Enterprise Account Executive for {COMPANY_NAME}.
 
 CRITICAL CONTEXT - PING SEQUENCE:
@@ -236,5 +244,6 @@ BAD EXAMPLES:
 - Generic identity platform references without Ping context
 
 OUTPUT:
-Write only the email content itself, no preamble or explanation. The email should be immediately ready to send.`;
+Write only the email content itself, no preamble or explanation. The email should be immediately ready to send.`
+    .replace(/{COMPANY_NAME}/g, config.companyName);
 }

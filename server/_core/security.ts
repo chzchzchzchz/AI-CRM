@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-const cors = require("cors");
+import cors from "cors";
 
 /**
  * Security middleware for the Target Account Dashboard

@@ -56,15 +56,17 @@ export function getCompanyConfig(): CompanyConfig {
     }
 
     // Override with environment variables if present
-    if (process.env.COMPANY_NAME) cachedConfig.companyName = process.env.COMPANY_NAME;
-    if (process.env.COMPANY_DESCRIPTION) cachedConfig.companyDescription = process.env.COMPANY_DESCRIPTION;
-    if (process.env.COMPANY_INDUSTRY) cachedConfig.industry = process.env.COMPANY_INDUSTRY;
-    if (process.env.COMPANY_PRODUCT) cachedConfig.productDescription = process.env.COMPANY_PRODUCT;
-    if (process.env.COMPANY_DIFFERENTIATORS) cachedConfig.keyDifferentiators = process.env.COMPANY_DIFFERENTIATORS.split(',');
-    if (process.env.COMPANY_TARGET) cachedConfig.targetCustomers = process.env.COMPANY_TARGET;
-    if (process.env.COMPANY_COMPETITORS) cachedConfig.competitors = process.env.COMPANY_COMPETITORS;
+    if (cachedConfig) {
+      if (process.env.COMPANY_NAME) cachedConfig.companyName = process.env.COMPANY_NAME;
+      if (process.env.COMPANY_DESCRIPTION) cachedConfig.companyDescription = process.env.COMPANY_DESCRIPTION;
+      if (process.env.COMPANY_INDUSTRY) cachedConfig.industry = process.env.COMPANY_INDUSTRY;
+      if (process.env.COMPANY_PRODUCT) cachedConfig.productDescription = process.env.COMPANY_PRODUCT;
+      if (process.env.COMPANY_DIFFERENTIATORS) cachedConfig.keyDifferentiators = process.env.COMPANY_DIFFERENTIATORS.split(',');
+      if (process.env.COMPANY_TARGET) cachedConfig.targetCustomers = process.env.COMPANY_TARGET;
+      if (process.env.COMPANY_COMPETITORS) cachedConfig.competitors = process.env.COMPANY_COMPETITORS;
+    }
 
-    return cachedConfig;
+    return cachedConfig!;
   } catch (error) {
     console.error('Error loading company config:', error);
     // Return minimal default

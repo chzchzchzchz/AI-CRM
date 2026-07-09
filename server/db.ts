@@ -1,15 +1,643 @@
 import { eq, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
-import { InsertUser, users, accounts, InsertAccount, contacts, /* people, InsertPerson, clayRequests, InsertClayRequest, gongCalls, InsertGongCall */ calls } from "../drizzle/schema";
+import { InsertUser, users, accounts, InsertAccount, contacts, /* people, InsertPerson, clayRequests, InsertClayRequest, gongCalls, InsertGongCall */ calls, opportunities, Opportunity, InsertOpportunity } from "../drizzle/schema";
 import { ENV } from './_core/env';
+
+import fs from 'fs';
+import path from 'path';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _db: any = null;
 let _pool: mysql.Pool | null = null;
 
+const DEMO_DB_PATH = path.join(process.cwd(), 'demo-db.json');
+// Pristine, version-controlled seed. Copied to DEMO_DB_PATH on first boot so a fresh
+// clone gets the full demo dataset (16 accounts, 40 contacts, etc.) while the working
+// demo-db.json stays gitignored and mutable at runtime.
+const DEMO_SEED_PATH = path.join(process.cwd(), 'demo-db.seed.json');
+
+// Helper to get table name from Drizzle table object
+function getTableName(table: any): string {
+  if (!table) return '';
+  if (typeof table === 'string') return table;
+  const name = table._?.name || table.name;
+  if (name && typeof name === 'string') return name;
+
+  // Search all symbols on the object (for local Symbol keys)
+  const symbols = Object.getOwnPropertySymbols(table);
+  for (const sym of symbols) {
+    const desc = sym.description;
+    if (desc === 'drizzle:Name' || desc === 'drizzle:OriginalName') {
+      const val = table[sym];
+      if (val && typeof val === 'string') {
+        return val;
+      }
+    }
+  }
+  return '';
+}
+
+// Initial demo dataset
+function getInitialDemoData() {
+  return {
+    users: [
+      {
+        id: 1,
+        openId: "demo-user",
+        name: "Demo User",
+        email: "demo@sovereign-gtm.ai",
+        role: "admin",
+        isApproved: true,
+        loginMethod: "demo",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastSignedIn: new Date().toISOString()
+      }
+    ],
+    access_requests: [],
+    accounts: [
+      {
+        id: 1,
+        name: "Stark Industries",
+        domain: "starkindustries.com",
+        industry: "Defense & Technology",
+        employeeCount: 15000,
+        revenue: "$10B+",
+        location: "New York, NY",
+        region: "North America",
+        intentScore: 95,
+        relationship: "Prospect",
+        description: "Advanced technology, robotics, and defense solutions provider.",
+        website: "https://starkindustries.com",
+        linkedinUrl: "https://linkedin.com/company/stark-industries",
+        techStack: JSON.stringify(["Salesforce", "AWS", "Snowflake", "Jira"]),
+        securityStack: JSON.stringify(["Okta", "Duo", "CrowdStrike", "Splunk"]),
+        triggerEvents: JSON.stringify(["CISO transition", "Cloud migration"]),
+        sixsenseBuyingStage: "Purchase",
+        sixsenseProfileFit: "Strong",
+        sfdcAccountId: "acc_stark_001",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 2,
+        name: "Wayne Enterprises",
+        domain: "wayneenterprises.com",
+        industry: "Conglomerate & Aerospace",
+        employeeCount: 22000,
+        revenue: "$15B+",
+        location: "Gotham City, NJ",
+        region: "North America",
+        intentScore: 88,
+        relationship: "Customer",
+        description: "Diversified multinational conglomerate with defense, shipping, and tech divisions.",
+        website: "https://wayneenterprises.com",
+        linkedinUrl: "https://linkedin.com/company/wayne-enterprises",
+        techStack: JSON.stringify(["Salesforce", "ServiceNow", "Datadog"]),
+        securityStack: JSON.stringify(["Ping Identity", "Microsoft Entra ID", "SentinelOne"]),
+        triggerEvents: JSON.stringify(["Infrastructure upgrade"]),
+        sixsenseBuyingStage: "Decision",
+        sixsenseProfileFit: "Strong",
+        sfdcAccountId: "acc_wayne_002",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 3,
+        name: "Acme Corp",
+        domain: "acme.com",
+        industry: "Manufacturing & Retail",
+        employeeCount: 3000,
+        revenue: "$500M",
+        location: "Chicago, IL",
+        region: "North America",
+        intentScore: 45,
+        relationship: "Prospect",
+        description: "Leading manufacturer of diverse tools, gadgets, and roadrunner traps.",
+        website: "https://acme.com",
+        linkedinUrl: "https://linkedin.com/company/acme",
+        techStack: JSON.stringify(["HubSpot", "Google Workspace"]),
+        securityStack: JSON.stringify(["Auth0", "Duo"]),
+        triggerEvents: JSON.stringify(["Compliance audit"]),
+        sixsenseBuyingStage: "Awareness",
+        sixsenseProfileFit: "Medium",
+        sfdcAccountId: "acc_acme_003",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    ],
+    contacts: [
+      {
+        id: 1,
+        accountId: 1,
+        firstName: "Pepper",
+        lastName: "Potts",
+        name: "Pepper Potts",
+        title: "CEO",
+        email: "pepper@starkindustries.com",
+        phone: "555-0199",
+        linkedinUrl: "https://linkedin.com/in/pepper-potts",
+        location: "New York, NY",
+        department: "Executive",
+        sfdcContactId: "con_pepper_001",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 2,
+        accountId: 1,
+        firstName: "Happy",
+        lastName: "Hogan",
+        name: "Happy Hogan",
+        title: "Head of Security",
+        email: "happy@starkindustries.com",
+        phone: "555-0122",
+        linkedinUrl: "https://linkedin.com/in/happy-hogan",
+        location: "New York, NY",
+        department: "Security",
+        sfdcContactId: "con_happy_002",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 3,
+        accountId: 2,
+        firstName: "Lucius",
+        lastName: "Fox",
+        name: "Lucius Fox",
+        title: "CEO & President",
+        email: "lfox@wayneenterprises.com",
+        phone: "555-0244",
+        linkedinUrl: "https://linkedin.com/in/lucius-fox",
+        location: "Gotham City, NJ",
+        department: "Executive",
+        sfdcContactId: "con_lucius_003",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    ],
+    calls: [
+      {
+        id: 1,
+        accountId: 1,
+        contactId: 2,
+        title: "Stark Industries Intro & MFA Pain Points Discussion",
+        duration: 1800,
+        recordingUrl: "https://gong.io/calls/stark-intro",
+        transcriptUrl: "https://gong.io/transcripts/stark-intro",
+        gongCallId: "call_stark_001",
+        sentiment: "positive",
+        keyTopics: JSON.stringify(["MFA bypass", "Okta complexity", "compliance"]),
+        actionItems: JSON.stringify(["Send proposal", "Book follow-up demo"]),
+        callDate: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    ],
+    opportunities: [
+      {
+        id: 1,
+        accountId: 1,
+        name: "Stark Industries - Global Enterprise Upgrade",
+        amount: "500000.00",
+        stage: "Discovery",
+        probability: 20,
+        status: "Open",
+        expectedCloseDate: new Date("2026-09-30").toISOString(),
+        sfdcOpportunityId: "opp_stark_001",
+        aiSuccessScore: 78,
+        aiInsights: "Highly active buying signs. Security champion wants to move away from legacy MFA.",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 2,
+        accountId: 2,
+        name: "Wayne Enterprises - Expansion Opportunity",
+        amount: "250000.00",
+        stage: "Validation",
+        probability: 60,
+        status: "Open",
+        expectedCloseDate: new Date("2026-07-15").toISOString(),
+        sfdcOpportunityId: "opp_wayne_002",
+        aiSuccessScore: 85,
+        aiInsights: "Lucius Fox is supportive. Procurement process is ready.",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    ],
+    contextStore: []
+  };
+}
+
+// Read/write from JSON database
+function loadDemoDb(): any {
+  if (!fs.existsSync(DEMO_DB_PATH)) {
+    // Prefer the version-controlled seed; fall back to the minimal built-in dataset.
+    let initial: any;
+    if (fs.existsSync(DEMO_SEED_PATH)) {
+      try {
+        initial = JSON.parse(fs.readFileSync(DEMO_SEED_PATH, 'utf-8'));
+      } catch (e) {
+        console.error("[Database] Error reading demo-db.seed.json, using built-in seed", e);
+        initial = getInitialDemoData();
+      }
+    } else {
+      initial = getInitialDemoData();
+    }
+    fs.writeFileSync(DEMO_DB_PATH, JSON.stringify(initial, null, 2), 'utf-8');
+    return initial;
+  }
+  try {
+    const data = fs.readFileSync(DEMO_DB_PATH, 'utf-8');
+    return JSON.parse(data);
+  } catch (e) {
+    console.error("[Database] Error reading demo-db.json", e);
+    return getInitialDemoData();
+  }
+}
+
+function saveDemoDb(data: any): void {
+  try {
+    fs.writeFileSync(DEMO_DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (e) {
+    console.error("[Database] Error saving demo-db.json", e);
+  }
+}
+
+// Query builder for local JSON DB
+class MockDrizzleQueryBuilder {
+  private operation: 'select' | 'insert' | 'update' | 'delete';
+  private tableName: string = '';
+  private tableSchema: any = null;
+  private filters: Array<{ field: string; value: any; op?: string }> = [];
+  private limitCount: number = 0;
+  private offsetCount: number = 0;
+  private insertValues: any = null;
+  private updateValues: any = null;
+  private orderByField: string = '';
+  private orderDirection: 'asc' | 'desc' = 'asc';
+  public selectFields: any = null;
+
+  constructor(operation: 'select' | 'insert' | 'update' | 'delete') {
+    this.operation = operation;
+  }
+
+  from(table: any) {
+    this.tableName = getTableName(table);
+    this.tableSchema = table;
+    return this;
+  }
+
+  where(condition: any) {
+    this.parseCondition(condition);
+    return this;
+  }
+
+  private parseCondition(condition: any) {
+    if (!condition) return;
+
+    if (condition.queryChunks && Array.isArray(condition.queryChunks)) {
+      // Check for nested SQL / logical compound conditions
+      const sqlChunks = condition.queryChunks.filter((chunk: any) => chunk && chunk.queryChunks);
+      if (sqlChunks.length > 0) {
+        for (const subCond of sqlChunks) {
+          this.parseCondition(subCond);
+        }
+        return;
+      }
+
+      // Simple binary operator condition
+      const column = condition.queryChunks.find((chunk: any) => chunk && chunk.table && chunk.name);
+      const param = condition.queryChunks.find((chunk: any) => chunk && !Array.isArray(chunk.value) && 'value' in chunk);
+      
+      if (column) {
+        const field = column.name;
+        const value = param ? param.value : null;
+        this.filters.push({ field, value });
+      }
+    } else {
+      const sqlStr = String(condition);
+      if (sqlStr.includes('IS NOT NULL')) {
+        const match = sqlStr.match(/"([^"]+)"\."([^"]+)"\s+IS\s+NOT\s+NULL/i) || sqlStr.match(/`([^`]+)`\.`([^`]+)`\s+IS\s+NOT\s+NULL/i);
+        if (match) {
+          this.filters.push({ field: match[2], value: null, op: 'is_not_null' });
+        } else if (sqlStr.includes('accountId')) {
+          this.filters.push({ field: 'accountId', value: null, op: 'is_not_null' });
+        }
+      }
+    }
+  }
+
+  set(values: any) {
+    this.updateValues = values;
+    return this;
+  }
+
+  values(values: any) {
+    this.insertValues = values;
+    return this;
+  }
+
+  onDuplicateKeyUpdate(options: any) {
+    return this;
+  }
+
+  orderBy(orderExpr: any) {
+    if (orderExpr) {
+      this.orderByField = orderExpr.name || orderExpr.fieldName || '';
+      this.orderDirection = orderExpr.direction || 'asc';
+    }
+    return this;
+  }
+
+  limit(count: number) {
+    this.limitCount = count;
+    return this;
+  }
+
+  offset(count: number) {
+    this.offsetCount = count;
+    return this;
+  }
+
+  leftJoin(table: any, condition: any) {
+    return this;
+  }
+
+  async execute() {
+    const dbData = loadDemoDb();
+    if (!dbData[this.tableName]) {
+      dbData[this.tableName] = [];
+    }
+    const tableData = dbData[this.tableName];
+
+    if (this.operation === 'select') {
+      let results = [...tableData];
+
+      // Apply filters
+      for (const filter of this.filters) {
+        if (filter.op === 'is_not_null') {
+          results = results.filter((item: any) => item[filter.field] !== null && item[filter.field] !== undefined);
+        } else if (filter.value !== undefined) {
+          results = results.filter((item: any) => String(item[filter.field]) === String(filter.value));
+        }
+      }
+
+      // Handle sorting
+      if (this.orderByField) {
+        results.sort((a, b) => {
+          const valA = a[this.orderByField];
+          const valB = b[this.orderByField];
+          if (valA < valB) return this.orderDirection === 'asc' ? -1 : 1;
+          if (valA > valB) return this.orderDirection === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+
+      // Handle pagination
+      if (this.offsetCount > 0) {
+        results = results.slice(this.offsetCount);
+      }
+      if (this.limitCount > 0) {
+        results = results.slice(0, this.limitCount);
+      }
+
+      // Parse fields back (e.g. string to Date)
+      if (this.tableSchema) {
+        results = results.map((item: any) => {
+          const newItem = { ...item };
+          for (const key of Object.keys(this.tableSchema)) {
+            const col = this.tableSchema[key];
+            if (col && col.dataType === 'date' && typeof newItem[key] === 'string') {
+              newItem[key] = new Date(newItem[key]);
+            }
+          }
+          return newItem;
+        });
+      }
+
+      // Handle leftJoin decoration for contacts
+      if (this.tableName === 'contacts') {
+        const accountsData = dbData['accounts'] || [];
+        results = results.map(contact => {
+          const acc = accountsData.find((a: any) => a.id === contact.accountId);
+          if (acc) {
+            return {
+              ...contact,
+              company: acc.name,
+              companyDomain: acc.domain,
+              accountIntentScore: acc.intentScore,
+              accountIndustry: acc.industry,
+              accountRegion: acc.region,
+              accountEmployeeCount: acc.employeeCount,
+              accountTechStack: acc.techStack,
+              accountSecurityStack: acc.securityStack,
+              accountSfdcAccountId: acc.sfdcAccountId,
+              accountBuyingStage: acc.sixsenseBuyingStage,
+            };
+          }
+          return contact;
+        });
+      }
+
+      // Handle count query projection
+      if (this.selectFields && typeof this.selectFields === 'object' && 'count' in this.selectFields) {
+        return [{ count: results.length }];
+      }
+
+      return results;
+    }
+
+    if (this.operation === 'insert') {
+      const records = Array.isArray(this.insertValues) ? this.insertValues : [this.insertValues];
+      const inserted: any[] = [];
+
+      for (const record of records) {
+        const nextId = tableData.length > 0 ? Math.max(...tableData.map((r: any) => r.id || 0)) + 1 : 1;
+        const newRecord: any = {
+          id: nextId,
+          ...record
+        };
+
+        if (this.tableSchema) {
+          for (const key of Object.keys(this.tableSchema)) {
+            const col = this.tableSchema[key];
+            if (!col) continue;
+
+            if (newRecord[key] === undefined) {
+              if (col.hasDefault) {
+                if (col.default !== undefined && !(typeof col.default === 'object' && col.default !== null && 'queryChunks' in col.default)) {
+                  newRecord[key] = col.default;
+                } else if (col.dataType === 'date') {
+                  newRecord[key] = new Date().toISOString();
+                }
+              } else {
+                newRecord[key] = null;
+              }
+            } else if (newRecord[key] instanceof Date) {
+              newRecord[key] = newRecord[key].toISOString();
+            }
+          }
+        }
+
+        if (newRecord.createdAt === undefined) {
+          newRecord.createdAt = new Date().toISOString();
+        }
+        if (newRecord.updatedAt === undefined) {
+          newRecord.updatedAt = new Date().toISOString();
+        }
+
+        // Enforce unique constraints dynamically for demo
+        if (this.tableName === 'users' && record.openId) {
+          const idx = tableData.findIndex((r: any) => r.openId === record.openId);
+          if (idx !== -1) {
+            tableData[idx] = { ...tableData[idx], ...newRecord, updatedAt: new Date().toISOString() };
+            inserted.push(tableData[idx]);
+            continue;
+          }
+        }
+
+        if (this.tableName === 'accounts' && record.sfdcAccountId) {
+          const idx = tableData.findIndex((r: any) => r.sfdcAccountId === record.sfdcAccountId);
+          if (idx !== -1) {
+            tableData[idx] = { ...tableData[idx], ...newRecord, updatedAt: new Date().toISOString() };
+            inserted.push(tableData[idx]);
+            continue;
+          }
+        }
+
+        if (this.tableName === 'contacts' && record.sfdcContactId) {
+          const idx = tableData.findIndex((r: any) => r.sfdcContactId === record.sfdcContactId);
+          if (idx !== -1) {
+            tableData[idx] = { ...tableData[idx], ...newRecord, updatedAt: new Date().toISOString() };
+            inserted.push(tableData[idx]);
+            continue;
+          }
+        }
+
+        tableData.push(newRecord);
+        inserted.push(newRecord);
+      }
+
+      saveDemoDb(dbData);
+      const insertedHeaders = inserted.map(newRec => {
+        const header: any = {
+          insertId: newRec.id,
+          affectedRows: 1,
+          ...newRec
+        };
+        return header;
+      });
+      return insertedHeaders;
+    }
+
+    if (this.operation === 'update') {
+      let updatedCount = 0;
+      const serializedUpdates = { ...this.updateValues };
+      if (this.tableSchema) {
+        for (const key of Object.keys(serializedUpdates)) {
+          if (serializedUpdates[key] instanceof Date) {
+            serializedUpdates[key] = serializedUpdates[key].toISOString();
+          }
+        }
+      }
+
+      for (let i = 0; i < tableData.length; i++) {
+        const item = tableData[i];
+        let matches = true;
+        for (const filter of this.filters) {
+          if (filter.op === 'is_not_null') {
+            if (item[filter.field] === null || item[filter.field] === undefined) {
+              matches = false;
+              break;
+            }
+          } else if (filter.value !== undefined) {
+            if (String(item[filter.field]) !== String(filter.value)) {
+              matches = false;
+              break;
+            }
+          }
+        }
+        if (matches) {
+          tableData[i] = {
+            ...item,
+            ...serializedUpdates,
+            updatedAt: new Date().toISOString()
+          };
+          updatedCount++;
+        }
+      }
+      if (updatedCount > 0) {
+        saveDemoDb(dbData);
+      }
+      return { affectedRows: updatedCount };
+    }
+
+    if (this.operation === 'delete') {
+      const originalLength = tableData.length;
+      const newTableData = tableData.filter((item: any) => {
+        let matches = true;
+        for (const filter of this.filters) {
+          if (filter.op === 'is_not_null') {
+            if (item[filter.field] === null || item[filter.field] === undefined) {
+              matches = false;
+              break;
+            }
+          } else if (filter.value !== undefined) {
+            if (String(item[filter.field]) !== String(filter.value)) {
+              matches = false;
+              break;
+            }
+          }
+        }
+        return !matches;
+      });
+      const deletedCount = originalLength - newTableData.length;
+      if (deletedCount > 0) {
+        dbData[this.tableName] = newTableData;
+        saveDemoDb(dbData);
+      }
+      return { affectedRows: deletedCount };
+    }
+
+    return [];
+  }
+
+  then(resolve: any, reject: any) {
+    return this.execute().then(resolve, reject);
+  }
+}
+
+class MockDrizzle {
+  select(fields?: any) {
+    const builder = new MockDrizzleQueryBuilder('select');
+    builder.selectFields = fields;
+    return builder;
+  }
+  insert(table: any) {
+    const builder = new MockDrizzleQueryBuilder('insert');
+    builder.from(table);
+    return builder;
+  }
+  update(table: any) {
+    const builder = new MockDrizzleQueryBuilder('update');
+    builder.from(table);
+    return builder;
+  }
+  delete(table: any) {
+    const builder = new MockDrizzleQueryBuilder('delete');
+    builder.from(table);
+    return builder;
+  }
+}
+
 // Get raw mysql2 pool for direct queries
 export async function getPool(): Promise<mysql.Pool | null> {
+  if (process.env.DEMO_MODE === "true") {
+    return null;
+  }
   if (!_pool && process.env.DATABASE_URL) {
     try {
       const url = new URL(process.env.DATABASE_URL);
@@ -33,6 +661,13 @@ export async function getPool(): Promise<mysql.Pool | null> {
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
+  if (process.env.DEMO_MODE === "true") {
+    if (!_db) {
+      _db = new MockDrizzle() as any;
+    }
+    return _db;
+  }
+
   if (!_db && process.env.DATABASE_URL) {
     try {
       const pool = await getPool();
@@ -40,9 +675,12 @@ export async function getDb() {
         _db = drizzle(pool) as any;
       }
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
+      console.warn("[Database] Failed to connect, falling back to local JSON database:", error);
+      _db = new MockDrizzle() as any;
     }
+  } else if (!_db) {
+    console.warn("[Database] No DATABASE_URL found, falling back to local JSON database");
+    _db = new MockDrizzle() as any;
   }
   return _db;
 }
@@ -144,9 +782,9 @@ export async function getAllAccounts(isDemoUser: boolean = false) {
   }
 
   const allAccounts = await db.select().from(accounts).orderBy(desc(accounts.createdAt));
-  
+
   // If demo user, only show demo accounts (those with name starting with "Demo_")
-  if (isDemoUser) {
+  if (isDemoUser && allAccounts.some((a: any) => a.name?.startsWith('Demo_'))) {
     return allAccounts.filter((a: any) => a.name?.startsWith('Demo_'));
   }
   
@@ -674,3 +1312,84 @@ export async function getSyncStatus() {
     linkedContacts: linkedCount?.count || 0,
   };
 }
+
+// ============================================
+// OPPORTUNITIES FUNCTIONS
+// ============================================
+
+export async function getAllOpportunities() {
+  const db = await getDb();
+  if (!db) {
+    if (process.env.DEMO_MODE === 'true') {
+      return MOCK_DATA.opportunities;
+    }
+    return [];
+  }
+  return await db.select().from(opportunities).orderBy(desc(opportunities.createdAt));
+}
+
+export async function getOpportunityById(id: number) {
+  const db = await getDb();
+  if (!db) {
+    if (process.env.DEMO_MODE === 'true') {
+      return MOCK_DATA.opportunities.find(o => o.id === id);
+    }
+    return undefined;
+  }
+  const result = await db.select().from(opportunities).where(eq(opportunities.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getOpportunitiesByAccountId(accountId: number) {
+  const db = await getDb();
+  if (!db) {
+    if (process.env.DEMO_MODE === 'true') {
+      return MOCK_DATA.opportunities.filter(o => o.accountId === accountId);
+    }
+    return [];
+  }
+  return await db.select().from(opportunities).where(eq(opportunities.accountId, accountId)).orderBy(desc(opportunities.createdAt));
+}
+
+export async function upsertOpportunity(opportunity: InsertOpportunity) {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.insert(opportunities).values(opportunity).onDuplicateKeyUpdate({
+    set: opportunity,
+  });
+}
+
+// Mock data for high-fidelity demo
+const MOCK_DATA = {
+  opportunities: [
+    {
+      id: 1,
+      accountId: 1, // Tesla
+      name: "Tesla - FSD Enterprise Expansion",
+      amount: "500000.00",
+      stage: "Validation",
+      probability: 60,
+      status: "Open",
+      expectedCloseDate: new Date("2026-06-30"),
+      aiSuccessScore: 85,
+      aiInsights: "Strong alignment with Tesla's move towards localized compute. Champion is highly engaged.",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: 2,
+      accountId: 2, // Snowflake
+      name: "Snowflake - Global Security Upsell",
+      amount: "250000.00",
+      stage: "Negotiation",
+      probability: 80,
+      status: "Open",
+      expectedCloseDate: new Date("2026-05-15"),
+      aiSuccessScore: 92,
+      aiInsights: "Procurement has already approved the vendor. Technical validation passed with flying colors.",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+  ]
+};

@@ -8,7 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { 
   ArrowLeft, ExternalLink, Users, Phone, TrendingUp, MapPin, Building2, 
   Sparkles, Copy, Check, Flame, Target, Mail, Linkedin, Globe, 
-  Loader2, ChevronRight, Shield, AlertTriangle, Zap, RefreshCw
+  Loader2, ChevronRight, Shield, AlertTriangle, Zap, RefreshCw, BrainCircuit
 } from "lucide-react";
 import { Link, useParams } from "wouter";
 import { SafeStreamdown } from "@/components/SafeStreamdown";
@@ -31,6 +31,8 @@ export default function AccountDetailEnhanced() {
     { accountId, forceRefresh: false },
     { enabled: accountId > 0 }
   );
+  const { data: salesforceInstanceUrl } = trpc.salesforce.getInstanceUrl.useQuery();
+  const { data: accountOpportunities } = trpc.opportunities.getByAccountId.useQuery({ accountId }, { enabled: accountId > 0 });
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -175,7 +177,7 @@ export default function AccountDetailEnhanced() {
             )}
             {(account as any).sfdcAccountId && (
               <Button size="sm" variant="outline" className="border-blue-500 text-blue-500" asChild>
-                <a href={`https://company.lightning.force.com/lightning/r/Account/${(account as any).sfdcAccountId}/view`} target="_blank">
+                <a href={`${salesforceInstanceUrl || 'https://login.salesforce.com'}/lightning/r/Account/${(account as any).sfdcAccountId}/view`} target="_blank">
                   <ExternalLink className="mr-1 h-4 w-4" />Salesforce
                 </a>
               </Button>
@@ -217,6 +219,40 @@ export default function AccountDetailEnhanced() {
         <div className="grid md:grid-cols-3 gap-6">
           {/* Left Column - Contacts & Security Intel */}
           <div className="md:col-span-1 space-y-4">
+            {/* Active Deals */}
+            <Card>
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-cyan-500" />
+                    Active Deals
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 space-y-3">
+                {accountOpportunities?.map((opp: any) => (
+                  <div key={opp.id} className="p-3 rounded bg-slate-900 border border-slate-800">
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="text-xs font-bold truncate">{opp.name}</span>
+                      <Badge variant="outline" className="text-[9px] uppercase">
+                        {opp.stage}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="text-xs font-mono text-emerald-400">
+                        ${Number(opp.amount).toLocaleString()}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <BrainCircuit className="h-3 w-3 text-cyan-400" />
+                        <span className="text-[10px] font-bold text-cyan-400">
+                          {opp.aiSuccessScore}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
             {/* Key Contacts */}
             <Card>
               <CardHeader className="py-3 px-4">
@@ -266,6 +302,8 @@ export default function AccountDetailEnhanced() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Security Intelligence */}
 
             {/* Security Intelligence */}
             {(ssoProvider || mfaSolution || securityIncidents || competitorIntent) && (

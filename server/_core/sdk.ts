@@ -257,6 +257,60 @@ class SDKServer {
   }
 
   async authenticateRequest(req: Request): Promise<User> {
+    // If demo mode is enabled, we bypass OAuth/session cookie requirements if missing
+    if (process.env.DEMO_MODE === "true") {
+      const cookies = this.parseCookies(req.headers.cookie);
+      const sessionCookie = cookies.get(COOKIE_NAME);
+      const session = await this.verifySession(sessionCookie);
+
+      if (session) {
+        const signedInAt = new Date();
+        let user = await db.getUserByOpenId(session.openId);
+        if (user) {
+          await db.upsertUser({
+            openId: user.openId,
+            lastSignedIn: signedInAt,
+          });
+          return user;
+        }
+      }
+
+      // Default demo admin user fallback
+      const demoOpenId = "demo-user-id";
+      let user = await db.getUserByOpenId(demoOpenId);
+      if (!user) {
+        try {
+          await db.upsertUser({
+            openId: demoOpenId,
+            name: "Demo Admin",
+            email: "admin@ai-crm.com",
+            loginMethod: "demo",
+            role: "admin",
+            lastSignedIn: new Date(),
+          });
+          user = await db.getUserByOpenId(demoOpenId);
+        } catch (dbError) {
+          console.warn("[Auth] Database not available, using in-memory mock admin user:", dbError);
+          return {
+            id: 1,
+            openId: demoOpenId,
+            name: "Demo Admin",
+            email: "admin@ai-crm.com",
+            passwordHash: null,
+            loginMethod: "demo",
+            isApproved: true,
+            role: "admin",
+            twoFactorEnabled: false,
+            twoFactorSecret: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            lastSignedIn: new Date(),
+          };
+        }
+      }
+      return user!;
+    }
+
     // Regular authentication flow
     const cookies = this.parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(COOKIE_NAME);

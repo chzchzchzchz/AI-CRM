@@ -3,6 +3,7 @@ import { contextStore } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
+import { getCompanyConfig } from "./config";
 
 // Stub for intent spike tracking (removed to fix TS errors)
 async function getRecentIntentSpikes(limit: number = 10): Promise<any[]> { return []; }
@@ -163,13 +164,19 @@ export async function conversationWithMemory(params: {
   }
 
   // Build comprehensive prompt
-  const systemPrompt = withRCP(`You are an AI sales intelligence assistant for {COMPANY_NAME}, a passwordless authentication company.
+  const config = getCompanyConfig();
+  const differentiatorsList = config.keyDifferentiators
+    ? config.keyDifferentiators.map(d => `- ${d.trim()}`).join('\n')
+    : '- Modern B2B features';
+
+  const systemPrompt = withRCP(`You are an AI sales intelligence assistant for ${config.companyName}, a company specializing in ${config.industry}.
 
 COMPANY CONTEXT:
-- Target customers: Enterprise (1000+ employees) in Financial Services, Healthcare, Technology, Government
-- Key pain points: Password security, phishing, compliance (SOC 2, HIPAA, FedRAMP)
-- Decision makers: CISO, VP Security, VP IT, IAM leads
-- Differentiators: Phishing-resistant MFA, device trust, seamless UX
+- Target customers: ${config.targetCustomers}
+- Key pain points: Addressed by ${config.productDescription}
+- Decision makers: Key executive stakeholders (C-level, VP, Director, Leads)
+- Differentiators:
+${differentiatorsList}
 
 ${storedContext}
 
@@ -300,8 +307,9 @@ export async function generateAccountSummary(accountId: number): Promise<string>
   const storedInsights = await getContext('account_insight', `account_${accountId}`);
 
   const contactNames = accountContacts.map((c: any) => `${c.name} - ${c.title || 'No title'}`).join('\n');
+  const config = getCompanyConfig();
 
-  const prompt = `You are a sales intelligence analyst for {COMPANY_NAME}, a passwordless MFA/SSO security company.
+  const prompt = `You are a sales intelligence analyst for ${config.companyName}, a company specializing in ${config.industry}.
 
 Generate an executive summary using this EXACT structure:
 
@@ -322,7 +330,7 @@ Generate an executive summary using this EXACT structure:
 ${accountContacts.slice(0, 5).map((c: any) => `| ${c.name} | ${c.title || 'No title'} | [Analyze role] |`).join('\n')}
 
 ### Strategic Fit & Why Now
-[ONE paragraph: Based on intent score ${account[0].intentScore}, industry ${account[0].industry}, and employee count ${account[0].employeeCount}, explain WHY they need passwordless MFA NOW. Reference their current tech stack if available. Focus on security/compliance opportunity.]
+[ONE paragraph: Based on intent score ${account[0].intentScore}, industry ${account[0].industry}, and employee count ${account[0].employeeCount}, explain WHY they need our solution (${config.productDescription}) NOW. Reference their current tech stack if available. Focus on pain points solved and value drivers.]
 
 ### Engagement Status
 - **Total Contacts:** ${accountContacts.length}

@@ -134,7 +134,7 @@ async function searchSAMGov(apiKey: string, keyword: string, limit: number = 100
     throw new Error(`SAM.gov API error: ${response.status} ${response.statusText}`);
   }
 
-  const data: SAMSearchResponse = await response.json();
+  const data: SAMSearchResponse = await response.json() as any;
   return data.opportunitiesData || [];
 }
 

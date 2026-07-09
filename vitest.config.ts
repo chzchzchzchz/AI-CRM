@@ -15,5 +15,9 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["server/**/*.test.ts", "server/**/*.spec.ts"],
+    // The demo/JSON database is a single shared file on disk (demo-db.json).
+    // Running test files in parallel races on writes to it and causes flaky
+    // failures (e.g. audit-log assertions). Force sequential file execution.
+    fileParallelism: false,
   },
 });

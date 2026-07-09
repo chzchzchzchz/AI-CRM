@@ -6,6 +6,9 @@ export interface AgentInput {
   accountId?: string;
   contactId?: string;
   data?: Record<string, any>;
+  scoutReports?: AgentOutput[];
+  scores?: AgentOutput[];
+  strategies?: AgentOutput[];
 }
 
 export interface AgentOutput {

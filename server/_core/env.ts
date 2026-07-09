@@ -13,6 +13,10 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  // Free, no-key LLM fallback — local Ollama (OpenAI-compatible). Used automatically
+  // when no Forge/cloud key is set, so the AI features work with zero paid keys.
+  localLlmUrl: process.env.LOCAL_LLM_URL ?? "http://localhost:11434/v1",
+  localLlmModel: process.env.LOCAL_LLM_MODEL ?? "phi3:mini",
   sixSenseApiKey: process.env.SIXSENSE_API_KEY ?? process.env['6Sense_API'] ?? "",
   clayWebhookUrl: process.env.CLAY_WEBHOOK_URL ?? "",
   // Salesforce OAuth credentials

@@ -10,6 +10,18 @@ import "./index.css";
 
 const queryClient = new QueryClient();
 
+// Optional self-hosted Umami analytics — only loaded when both env vars are configured,
+// since an unset endpoint can't be turned into a valid script src.
+const analyticsEndpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT;
+const analyticsWebsiteId = import.meta.env.VITE_ANALYTICS_WEBSITE_ID;
+if (analyticsEndpoint && analyticsWebsiteId) {
+  const script = document.createElement("script");
+  script.defer = true;
+  script.src = `${analyticsEndpoint}/umami`;
+  script.dataset.websiteId = analyticsWebsiteId;
+  document.head.appendChild(script);
+}
+
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;

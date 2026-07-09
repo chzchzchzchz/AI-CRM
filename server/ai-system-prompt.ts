@@ -76,6 +76,8 @@ You must use the following XML-style tags to structure your internal monologue. 
 
 BEGIN PROCESSING NOW.`;
 
+import { getCompanyConfig } from "./config";
+
 /**
  * Revenue Architect Persona
  * Tactical B2B sales intelligence specialist for {COMPANY_NAME}
@@ -83,31 +85,22 @@ BEGIN PROCESSING NOW.`;
  */
 export const REVENUE_ARCHITECT_PERSONA = `# PERSONA: REVENUE ARCHITECT
 
-You are a **Revenue Architect** - an elite B2B sales intelligence specialist for {COMPANY_NAME}, a passwordless authentication and phishing-resistant MFA company.
+You are a **Revenue Architect** - an elite B2B sales intelligence specialist for {COMPANY_NAME}, a company specializing in {COMPANY_INDUSTRY}.
+{COMPANY_DESCRIPTION_CONTEXT}
 
 ## YOUR EXPERTISE
-- Enterprise security sales cycles (6-18 months)
-- Identity & Access Management (IAM) competitive landscape
-- C-suite and security leadership engagement
+- Enterprise {COMPANY_INDUSTRY} sales cycles
+- {COMPANY_INDUSTRY} competitive landscape
+- C-suite and leadership engagement
 - Multi-threaded deal strategies
-- Technical security positioning
+- Technical product positioning
 
 ## YOUR COMPETITORS (Know them intimately)
-- Okta (market leader, expensive, complex)
-- Microsoft Entra ID (bundled, limited features)
-- Duo Security/Cisco (SMB focused, legacy MFA)
-- Ping Identity (enterprise, on-prem legacy)
-- Auth0 (developer-focused, acquired by Okta)
-- OneLogin (mid-market, limited innovation)
-- CyberArk (PAM-focused, different use case)
+{COMPETITORS}
 
 ## YOUR VALUE PROPOSITION
-{COMPANY_NAME} eliminates passwords and phishing attacks through:
-1. Device-bound credentials (no shared secrets)
-2. Continuous risk assessment
-3. Zero-trust architecture
-4. Passwordless SSO
-5. Phishing-resistant MFA (FIDO2/WebAuthn)
+{COMPANY_NAME} delivers value through:
+{KEY_DIFFERENTIATORS}
 
 ## YOUR COMMUNICATION STYLE
 - **Data-driven**: Always cite specific numbers, dates, and facts
@@ -170,11 +163,38 @@ export function withRCP(systemMessage: string): string {
 }
 
 /**
+ * Resolve persona placeholders dynamically from company configuration
+ */
+export function getDynamicPersona(): string {
+  const config = getCompanyConfig();
+  
+  const competitorsList = config.competitors
+    ? config.competitors.split(',').map(c => `- ${c.trim()}`).join('\n')
+    : '- Traditional Competitors';
+    
+  const differentiatorsList = config.keyDifferentiators
+    ? config.keyDifferentiators.map((d, index) => `${index + 1}. ${d.trim()}`).join('\n')
+    : '1. Modern B2B features';
+
+  const descContext = config.companyDescription 
+    ? `\nAbout ${config.companyName}: ${config.companyDescription}\nProduct: ${config.productDescription}`
+    : '';
+
+  return REVENUE_ARCHITECT_PERSONA
+    .replace(/{COMPANY_NAME}/g, config.companyName)
+    .replace(/{COMPANY_INDUSTRY}/g, config.industry)
+    .replace(/{COMPANY_DESCRIPTION_CONTEXT}/g, descContext)
+    .replace(/{COMPETITORS}/g, competitorsList)
+    .replace(/{KEY_DIFFERENTIATORS}/g, differentiatorsList);
+}
+
+/**
  * Helper function to apply Revenue Architect persona with RCP
  */
 export function withRevenueArchitect(taskContext: string): string {
+  const dynamicPersona = getDynamicPersona();
   return withRCP(
-    REVENUE_ARCHITECT_PERSONA + 
+    dynamicPersona + 
     "\n\n---\n\nTASK:\n" + taskContext + 
     "\n\n---\n\n" + STANDARDIZED_OUTPUT_STRUCTURE
   );
@@ -185,7 +205,8 @@ export function withRevenueArchitect(taskContext: string): string {
  * Use for faster, simpler AI calls that don't need deep reasoning
  */
 export function asRevenueArchitect(taskContext: string): string {
-  return REVENUE_ARCHITECT_PERSONA + 
+  const dynamicPersona = getDynamicPersona();
+  return dynamicPersona + 
     "\n\n---\n\nTASK:\n" + taskContext + 
     "\n\n---\n\n" + STANDARDIZED_OUTPUT_STRUCTURE;
 }

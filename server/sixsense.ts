@@ -63,7 +63,7 @@ export async function getCompanyByDomain(domain: string): Promise<SixsenseCompan
       return null;
     }
 
-    const data = await response.json();
+    const data = await response.json() as any;
     return data;
   } catch (error) {
     console.error(`[6sense] Failed to fetch company data for ${domain}:`, error);
@@ -105,7 +105,7 @@ export async function getCompanyByIP(ipAddress: string): Promise<SixsenseCompany
       return null;
     }
 
-    const data = await response.json();
+    const data = await response.json() as any;
     return data;
   } catch (error) {
     console.error(`[6sense] Failed to fetch company data for ${ipAddress}:`, error);
