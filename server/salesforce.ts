@@ -94,7 +94,7 @@ export async function getAccessToken(): Promise<{ token: string; instanceUrl: st
     throw new Error(`Salesforce OAuth failed: ${response.status} - ${errorText}`);
   }
 
-  const data: SalesforceTokenResponse = await response.json();
+  const data: SalesforceTokenResponse = await response.json() as any;
   
   // Cache token for 1 hour (Salesforce tokens typically last 2 hours)
   cachedToken = {
@@ -127,7 +127,7 @@ export async function query<T>(soql: string): Promise<SalesforceQueryResponse<T>
     throw new Error(`Salesforce query failed: ${response.status} - ${errorText}`);
   }
 
-  return response.json();
+  return response.json() as any;
 }
 
 /**

@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { APP_LOGO } from "@/const";
-import { Users, Phone, Search, BarChart3, Settings, Send, FileText, Home, UserCircle, Contact, LogOut } from "lucide-react";
+import { Users, Phone, Search, BarChart3, Settings, Send, FileText, Home, UserCircle, Contact, LogOut, TrendingUp } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useQueryClient } from "@tanstack/react-query";
@@ -26,6 +26,7 @@ export function Navigation({ onSearchClick }: NavigationProps) {
     { path: "/", label: "Home", icon: Home },
     { path: "/accounts", label: "Accounts", icon: Users },
     { path: "/contacts", label: "Contacts", icon: Contact },
+    { path: "/opportunities", label: "Pipeline", icon: TrendingUp },
     // { path: "/calls", label: "Calls", icon: Phone }, // Hidden per user request
     { path: "/insights", label: "Insights", icon: BarChart3 },
     { path: "/outreach", label: "Outreach", icon: Send },
@@ -42,7 +43,7 @@ export function Navigation({ onSearchClick }: NavigationProps) {
         <div className="flex items-center gap-8">
           <Link href="/">
             <span className="flex items-center hover:opacity-80 transition-opacity cursor-pointer">
-              <img src={APP_LOGO} alt="{COMPANY_NAME}" className="h-8" />
+              <img src={APP_LOGO} alt="TargetDash" className="h-8" />
             </span>
           </Link>
 

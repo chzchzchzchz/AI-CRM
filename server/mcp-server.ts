@@ -48,7 +48,7 @@ async function callTRPC(procedure: string, input?: any): Promise<any> {
     throw new Error(`tRPC call failed: ${response.status} ${response.statusText}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as any;
   return data.result?.data;
 }
 
@@ -128,22 +128,22 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 // Handle tool calls
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments } = request.params;
+  const { name, arguments: toolArgs } = request.params;
 
   try {
     switch (name) {
       case 'list_accounts': {
-        const accounts = await callTRPC('account.list', arguments);
+        const accounts = await callTRPC('account.list', toolArgs);
         return { content: [{ type: 'text', text: JSON.stringify(accounts, null, 2) }] };
       }
 
       case 'get_account': {
-        const account = await callTRPC(`account.getById', { id: arguments?.accountId });
+        const account = await callTRPC('account.getById', { id: toolArgs?.accountId });
         return { content: [{ type: 'text', text: JSON.stringify(account, null, 2) }] };
       }
 
       case 'search_accounts': {
-        const accounts = await callTRPC('account.search', arguments);
+        const accounts = await callTRPC('account.search', toolArgs);
         return { content: [{ type: 'text', text: JSON.stringify(accounts, null, 2) }] };
       }
 

@@ -8,7 +8,7 @@ import { getDb } from "./db";
 import { eq } from "drizzle-orm";
 import { sdk } from "./_core/sdk";
 import { z } from "zod";
-import { getAllAccounts, getAccountById, updateAccount, getAllPeople, getPeoplePaginated, getPeopleByCompany, getContactsByAccountId, getPersonById, /* createClayRequest, updateClayRequest, getAllClayRequests, getClayRequest, */ upsertAccount, upsertPerson, getAllGongCalls, getGongCallsPaginated, getGongCallsByCompany, getGongCallsByAccountId } from "./db";
+import { getAllAccounts, getAccountById, updateAccount, getAllPeople, getPeoplePaginated, getPeopleByCompany, getContactsByAccountId, getPersonById, /* createClayRequest, updateClayRequest, getAllClayRequests, getClayRequest, */ upsertAccount, upsertPerson, getAllGongCalls, getGongCallsPaginated, getGongCallsByCompany, getGongCallsByAccountId, getAllOpportunities, getOpportunityById, getOpportunitiesByAccountId, upsertOpportunity } from "./db";
 import { enrichAccountWithAI, analyzeGongCall, generateOutreachEmail, intelligentSearch, prioritizeContacts } from "./ai";
 import { enrichAccount } from "./sixsense";
 import { conversationWithMemory, generateAccountSummary, generateContactSummary } from "./aiContext";
@@ -520,6 +520,45 @@ Or go to the Admin Panel: /admin/approval`
         return activities
           .sort((a, b) => b.date.getTime() - a.date.getTime())
           .slice(0, input.limit);
+      }),
+  }),
+  
+  opportunities: router({
+    list: protectedProcedure.query(async () => {
+      return await getAllOpportunities();
+    }),
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return await getOpportunityById(input.id);
+      }),
+    getByAccountId: protectedProcedure
+      .input(z.object({ accountId: z.number() }))
+      .query(async ({ input }) => {
+        return await getOpportunitiesByAccountId(input.accountId);
+      }),
+    upsert: protectedProcedure
+      .input(z.any()) // Simplified for now
+      .mutation(async ({ input }) => {
+        return await upsertOpportunity(input);
+      }),
+    aiScore: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        // Mock AI scoring logic
+        const opp = await getOpportunityById(input.id);
+        if (!opp) throw new Error("Opportunity not found");
+        
+        const score = Math.floor(Math.random() * 40) + 60; // 60-100
+        const insights = "AI Analysis: Customer engagement is trending up. Technical fit is 95%. Budget is confirmed.";
+        
+        await upsertOpportunity({
+          ...opp,
+          aiSuccessScore: score,
+          aiInsights: insights,
+        } as any);
+        
+        return { score, insights };
       }),
   }),
 

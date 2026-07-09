@@ -209,15 +209,30 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-const resolveApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-    : "https://forge.manus.im/v1/chat/completions";
+type LLMProvider = { url: string; apiKey: string; model: string; isForge: boolean };
 
-const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+// Provider resolution with a FREE, no-key fallback so the AI works with zero paid keys:
+//   1. Manus Forge gateway when BUILT_IN_FORGE_API_KEY is set (best quality; hosted deploys).
+//   2. Local Ollama (OpenAI-compatible, no auth) — free automation for anyone running
+//      `ollama serve`. Configurable via LOCAL_LLM_URL / LOCAL_LLM_MODEL.
+const resolveProvider = (): LLMProvider => {
+  if (ENV.forgeApiKey && ENV.forgeApiKey.trim().length > 0) {
+    return {
+      url:
+        ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
+          ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
+          : "https://forge.manus.im/v1/chat/completions",
+      apiKey: ENV.forgeApiKey,
+      model: "gemini-2.5-flash",
+      isForge: true,
+    };
   }
+  return {
+    url: `${ENV.localLlmUrl.replace(/\/$/, "")}/chat/completions`,
+    apiKey: "ollama", // ignored by Ollama; kept non-empty for OpenAI-compatible clients
+    model: ENV.localLlmModel,
+    isForge: false,
+  };
 };
 
 const normalizeResponseFormat = ({
@@ -266,7 +281,7 @@ const normalizeResponseFormat = ({
 };
 
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
-  assertApiKey();
+  const provider = resolveProvider();
 
   const {
     messages,
@@ -280,7 +295,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
+    model: provider.model,
     messages: messages.map(normalizeMessage),
   };
 
@@ -296,9 +311,9 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.tool_choice = normalizedToolChoice;
   }
 
-  payload.max_tokens = 32768
-  payload.thinking = {
-    "budget_tokens": 128
+  payload.max_tokens = provider.isForge ? 32768 : 2048;
+  if (provider.isForge) {
+    payload.thinking = { "budget_tokens": 128 };
   }
 
   const normalizedResponseFormat = normalizeResponseFormat({
@@ -309,24 +324,55 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   });
 
   if (normalizedResponseFormat) {
-    payload.response_format = normalizedResponseFormat;
+    // Local models are unreliable with strict json_schema; ask for json_object instead.
+    payload.response_format =
+      !provider.isForge && normalizedResponseFormat.type === "json_schema"
+        ? { type: "json_object" }
+        : normalizedResponseFormat;
   }
 
-  const response = await fetch(resolveApiUrl(), {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
-    },
-    body: JSON.stringify(payload),
-  });
+  let response: Response;
+  try {
+    response = await fetch(provider.url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${provider.apiKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    // Provider unreachable (e.g. no Ollama running). In keyless/local mode, degrade
+    // gracefully so AI features never crash a brand-new user's app.
+    if (!provider.isForge) return llmUnavailableFallback(normalizedResponseFormat);
+    throw err;
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
+    if (!provider.isForge) return llmUnavailableFallback(normalizedResponseFormat);
     throw new Error(
       `LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`
     );
   }
 
   return (await response.json()) as InvokeResult;
+}
+
+// Returned when no LLM is available at all (no key + no local Ollama). Keeps the AI
+// features functional-but-honest for a zero-install user instead of erroring out.
+function llmUnavailableFallback(
+  responseFormat: { type: string } | undefined
+): InvokeResult {
+  const note =
+    "AI generation is unavailable right now: no API key is set and no local model is reachable. " +
+    "To enable free local AI: install Ollama, run `ollama serve`, then `ollama pull phi3:mini`. " +
+    "Or set BUILT_IN_FORGE_API_KEY for hosted AI.";
+  const isJson =
+    responseFormat?.type === "json_object" ||
+    responseFormat?.type === "json_schema";
+  const content = isJson ? JSON.stringify({ available: false, note }) : note;
+  return {
+    choices: [{ message: { role: "assistant", content } }],
+  } as unknown as InvokeResult;
 }

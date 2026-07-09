@@ -8,24 +8,33 @@ import { generateAccountSummary } from "./account-summary";
 import { generateContactSummary } from "./contact-summary";
 import { getPingEmailSystemPrompt } from "./sequences/ping-context";
 
+import { getCompanyConfig } from "./config";
+
 // Clean email generation prompt - NO tracking, NO scoring, NO internal data mentions
-const CLEAN_EMAIL_SYSTEM_PROMPT = `You are an elite Enterprise Account Executive for {COMPANY_NAME}, a passwordless MFA/Zero Trust security company.
+function getCleanEmailSystemPrompt(): string {
+  const config = getCompanyConfig();
+  const competitorsList = config.competitors
+    ? config.competitors.split(',').slice(0, 2).map(c => c.trim()).join('/')
+    : 'traditional solutions';
+
+  return `You are an elite Enterprise Account Executive for ${config.companyName}, a company specializing in ${config.industry}.
 
 CRITICAL RULES FOR EMAILS:
 1. NEVER mention "intent score", "6sense", "tracking", "we noticed you're researching", or any data that reveals surveillance
 2. NEVER mention internal scoring, buying stages, or analytics
 3. NEVER say things like "your 97 intent score" or "based on our data"
 4. DO reference their tech stack, company size, industry - things that are publicly known
-5. DO reference their likely pain points based on their tech stack (Okta/Duo = phishing risk, etc.)
+5. DO reference their likely pain points based on their tech stack (${competitorsList} = legacy solutions, integration pain, etc.)
 6. BE HUMAN - write like a real person, not a marketing robot
 7. BE SHORT - 3-5 sentences max
 8. ONE CLEAR ASK at the end
 
-GOOD: "Given your Okta deployment, you've likely seen the rise in MFA bypass attacks..."
-BAD: "Your 97 intent score suggests you're actively evaluating identity solutions..."
+GOOD: "Given your current tools, you've likely seen issues with scaling..."
+BAD: "Your 97 intent score suggests you're actively evaluating solutions..."
 
-GOOD: "Companies with your security stack often struggle with..."
+GOOD: "Companies with your infrastructure often struggle with..."
 BAD: "Based on our 6sense data, we can see you're in the purchase stage..."`;
+}
 
 export const outreachRouter = router({
   generateEmail: protectedProcedure
@@ -217,7 +226,7 @@ OUTPUT ONLY THE REVISED EMAIL. Nothing else.`;
 
       const response = await invokeLLM({
         messages: [
-          { role: "system", content: CLEAN_EMAIL_SYSTEM_PROMPT },
+          { role: "system", content: getCleanEmailSystemPrompt() },
           { role: "user", content: refinePrompt },
         ],
       });

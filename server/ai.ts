@@ -1,43 +1,54 @@
 import { invokeLLM } from "./_core/llm";
 import { getAllAccounts, getAllPeople, getAllGongCalls } from "./db";
 import { withRCP, asRevenueArchitect, REVENUE_ARCHITECT_PERSONA } from "./ai-system-prompt";
+import { getCompanyConfig } from "./config";
 
 /**
  * AI Service Layer
  * Handles all intelligent processing, learning, and recommendations
  */
 
-// Company context - {COMPANY_NAME}'s sales methodology and ICP
-const COMPANY_CONTEXT = `
-{COMPANY_NAME} is a passwordless authentication and identity security company.
+// Dynamically build company context based on config
+function getCompanyContext(): string {
+  const config = getCompanyConfig();
+  
+  const competitorsList = config.competitors
+    ? config.competitors.split(',').map(c => `- ${c.trim()}`).join('\n')
+    : '- Traditional Competitors';
+    
+  const differentiatorsList = config.keyDifferentiators
+    ? config.keyDifferentiators.map(d => `- ${d.trim()}`).join('\n')
+    : '- Modern B2B features';
+
+  return `
+COMPANY: ${config.companyName}
+INDUSTRY: ${config.industry}
+DESCRIPTION: ${config.companyDescription}
+PRODUCT: ${config.productDescription}
 
 TARGET CUSTOMER PROFILE:
-- Enterprise companies (1000+ employees)
-- Industries: Financial Services, Healthcare, Technology, Government
-- Key pain points: Password security, phishing attacks, compliance (SOC 2, HIPAA, FedRAMP)
-- Tech stack indicators: Okta, Azure AD, legacy VPN, MFA solutions
-- Buying signals: Recent security incidents, compliance deadlines, digital transformation initiatives
+- ${config.targetCustomers}
+- Key pain points: Addressed by ${config.productDescription}
 
 IDEAL DECISION MAKERS:
-- CISO (Chief Information Security Officer)
-- VP/Director of Security
-- VP/Director of IT
-- Identity & Access Management leads
+- Key executive stakeholders in targeted sectors (C-level, VP, Director, Leads)
 
 SALES METHODOLOGY:
-- Focus on passwordless security and zero trust architecture
-- Emphasize ROI: reduced help desk costs, improved security posture
-- Competitive against: Okta, Ping Identity, Microsoft Azure AD
-- Key differentiators: Phishing-resistant MFA, device trust, seamless UX
+- Focus on value, ROI, and solving the specific customer pain points.
+- Emphasize key benefits of our solution.
+- Competitive against:
+${competitorsList}
+- Key differentiators:
+${differentiatorsList}
 
 BUYING SIGNALS TO WATCH:
-- Security job openings (especially IAM, Zero Trust roles)
-- Recent funding rounds (budget availability)
-- Security incidents or breaches in the news
-- Compliance initiatives (SOC 2, FedRAMP certification)
-- Technology stack changes (moving to cloud, adopting zero trust)
-- Executive changes (new CISO, new CTO)
+- Job openings related to our space
+- Budget signals / funding rounds
+- Technology stack shifts / migration plans
+- Executive changes (new C-level leadership)
+- Operational/compliance/strategic initiatives in target domains
 `;
+}
 
 interface EnrichmentResult {
   summary: string;
@@ -51,7 +62,7 @@ interface EnrichmentResult {
  * Enrich account with AI-powered analysis
  */
 export async function enrichAccountWithAI(accountData: any): Promise<EnrichmentResult> {
-  const prompt = `${COMPANY_CONTEXT}
+  const prompt = `${getCompanyContext()}
 
 Analyze this target account and provide sales intelligence:
 
@@ -107,7 +118,7 @@ Focus on:
  * Analyze Gong call and extract insights
  */
 export async function analyzeGongCall(callData: any): Promise<any> {
-  const prompt = `${COMPANY_CONTEXT}
+  const prompt = `${getCompanyContext()}
 
 Analyze this sales call transcript and extract key insights:
 
@@ -162,7 +173,7 @@ Provide a JSON response with:
  * Generate personalized outreach email
  */
 export async function generateOutreachEmail(accountData: any, contactData: any, context?: string): Promise<string> {
-  const prompt = `${COMPANY_CONTEXT}
+  const prompt = `${getCompanyContext()}
 
 Generate a personalized outreach email for this prospect:
 
@@ -201,7 +212,7 @@ export async function intelligentSearch(query: string): Promise<any> {
   const people = await getAllPeople();
   const calls = await getAllGongCalls();
 
-  const prompt = `${COMPANY_CONTEXT}
+  const prompt = `${getCompanyContext()}
 
 User search query: "${query}"
 
@@ -255,7 +266,7 @@ Examples:
  * Prioritize contacts for outreach
  */
 export async function prioritizeContacts(contacts: any[], accountContext: any): Promise<any[]> {
-  const prompt = `${COMPANY_CONTEXT}
+  const prompt = `${getCompanyContext()}
 
 Given these contacts at the same account, rank them by outreach priority:
 

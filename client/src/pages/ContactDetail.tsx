@@ -28,6 +28,8 @@ export default function ContactDetail() {
     { enabled: !!contact?.accountId }
   );
 
+  const { data: salesforceInstanceUrl } = trpc.salesforce.getInstanceUrl.useQuery();
+
   // AI Summary
   const summaryMutation = trpc.ai.generateContactSummary.useMutation();
   const [aiSummary, setAiSummary] = useState<string | null>(null);
@@ -168,7 +170,7 @@ export default function ContactDetail() {
             )}
             {(contact as any).sfdcContactId && (
               <Button size="sm" variant="outline" className="border-blue-500 text-blue-500" asChild>
-                <a href={`https://company.lightning.force.com/lightning/r/Contact/${(contact as any).sfdcContactId}/view`} target="_blank">
+                <a href={`${salesforceInstanceUrl || 'https://login.salesforce.com'}/lightning/r/Contact/${(contact as any).sfdcContactId}/view`} target="_blank">
                   <ExternalLink className="mr-1 h-4 w-4" />Salesforce
                 </a>
               </Button>

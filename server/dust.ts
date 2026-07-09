@@ -53,14 +53,14 @@ export async function queryDust(
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json() as any;
       if (error.error?.type === "plan_message_limit_exceeded") {
         throw new Error("DUST_RATE_LIMIT");
       }
       throw new Error(`Dust API error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as any;
     const conversationId = data.conversation.sId;
 
     // Poll for response
@@ -101,7 +101,7 @@ async function pollDustResponse(
 
       if (!response.ok) continue;
 
-      const data = await response.json();
+      const data = await response.json() as any;
       const content = data.conversation?.content || [];
 
       if (content.length > 1 && content[1]?.[0]) {

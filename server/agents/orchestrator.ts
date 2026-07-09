@@ -62,7 +62,7 @@ export class AgentOrchestrator {
         strategies,
         actions
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error(`❌ Full cycle failed: ${error.message}`);
       throw error;
     }
@@ -91,7 +91,7 @@ export class AgentOrchestrator {
         );
 
         outputs.push(output);
-      } catch (error) {
+      } catch (error: any) {
         console.error(`   ✗ ${agent.name}: ${error.message}`);
         // Continue with other agents even if one fails
       }
@@ -143,7 +143,7 @@ export class AgentOrchestrator {
       for (const accountId of accountIds) {
         try {
           await this.runFullCycle(accountId);
-        } catch (error) {
+        } catch (error: any) {
           console.error(`Error in continuous cycle for ${accountId}: ${error.message}`);
         }
       }

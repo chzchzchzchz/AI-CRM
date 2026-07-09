@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Linkedin, Phone, TrendingUp, Building2, Users, Flame, Zap, ArrowRight, Sparkles, Target, Calendar, MapPin, UserCircle, FileSpreadsheet } from "lucide-react";
+import { Mail, Linkedin, Phone, TrendingUp, Building2, Users, Flame, Zap, ArrowRight, Sparkles, Target, Calendar, MapPin, UserCircle, FileSpreadsheet, DollarSign } from "lucide-react";
 import { ContextualAI } from "@/components/ContextualAI";
 import { DemoTour } from "@/components/DemoTour";
 import { HotLeadsWidget } from "@/components/HotLeadsWidget";
@@ -32,7 +32,8 @@ export default function Home() {
   const { data: enrichedPriorityActions, isLoading: priorityLoading } = trpc.priorityActions.getEnriched.useQuery({ limit: 3, userEmail }, { enabled: !!user });
   const { data: sixsenseSummary } = trpc.sixsenseAnalytics.getSummary.useQuery(undefined, { enabled: !!user });
   const { data: topKeywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 10 }, { enabled: !!user });
-  
+  const { data: opportunitiesData } = trpc.opportunities.list.useQuery(undefined, { enabled: !!user });
+
   // Show login screen if not authenticated (after all hooks)
   if (!authLoading && !user) {
     return (
@@ -216,6 +217,21 @@ export default function Home() {
               <CardContent>
                 <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{warmLeads}</div>
                 <p className="text-xs text-muted-foreground mt-1">Engagement, intent 70+, or calls</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/opportunities">
+            <Card className="card-elevated border-l-4 border-l-emerald-500 cursor-pointer hover:scale-[1.02] transition-transform">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Pipeline Revenue</CardTitle>
+                <DollarSign className="h-5 w-5 text-emerald-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                  ${(opportunitiesData?.reduce((sum: number, opp: any) => sum + Number(opp.amount), 0) || 0).toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Total open pipeline</p>
               </CardContent>
             </Card>
           </Link>

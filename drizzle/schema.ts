@@ -639,3 +639,23 @@ export const dustCache = mysqlTable('dust_cache', {
 
 export type DustCache = typeof dustCache.$inferSelect;
 export type DustCacheInsert = typeof dustCache.$inferInsert;
+
+// Opportunities table
+export const opportunities = mysqlTable("opportunities", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  amount: decimal("amount", { precision: 15, scale: 2 }),
+  stage: varchar("stage", { length: 50 }).notNull().default("Discovery"),
+  probability: int("probability").default(10),
+  status: varchar("status", { length: 20 }).notNull().default("Open"), // Open, Won, Lost
+  expectedCloseDate: timestamp("expectedCloseDate"),
+  sfdcOpportunityId: varchar("sfdcOpportunityId", { length: 18 }).unique(),
+  aiSuccessScore: int("aiSuccessScore"), // 0-100
+  aiInsights: text("aiInsights"), // AI reasoning for success score
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Opportunity = typeof opportunities.$inferSelect;
+export type InsertOpportunity = typeof opportunities.$inferInsert;

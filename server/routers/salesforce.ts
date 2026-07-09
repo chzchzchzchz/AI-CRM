@@ -7,8 +7,16 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import * as salesforce from "../salesforce";
 import { bulkUpsertAccountsFromSalesforce, bulkUpsertContactsFromSalesforce, getSyncStatus } from "../db";
+import { ENV } from "../_core/env";
 
 export const salesforceRouter = router({
+  /**
+   * Get configured Salesforce instance URL
+   */
+  getInstanceUrl: protectedProcedure.query(async () => {
+    return ENV.salesforceInstanceUrl;
+  }),
+
   /**
    * Test Salesforce connection
    */
