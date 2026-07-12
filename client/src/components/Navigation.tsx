@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { APP_LOGO } from "@/const";
+import { APP_LOGO, APP_TITLE } from "@/const";
 import { Users, Phone, Search, BarChart3, Settings, Send, FileText, Home, UserCircle, Contact, LogOut, TrendingUp } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -43,7 +43,7 @@ export function Navigation({ onSearchClick }: NavigationProps) {
         <div className="flex items-center gap-8">
           <Link href="/">
             <span className="flex items-center hover:opacity-80 transition-opacity cursor-pointer">
-              <img src={APP_LOGO} alt="TargetDash" className="h-8" />
+              <img src={APP_LOGO} alt={APP_TITLE} className="h-8" />
             </span>
           </Link>
 

@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import { send2FASetupEmail } from "./_core/email";
+import { getCompanyConfig } from "./config";
 
 // Use any type for speakeasy since it doesn't have TypeScript definitions
 const speakeasyAny = speakeasy as any;
@@ -17,9 +18,10 @@ export const twoFARouter = router({
    */
   generateSecret: protectedProcedure.query(async ({ ctx }) => {
     try {
+      const productName = getCompanyConfig().productName;
       const secret = speakeasyAny.generateSecret({
-        name: `Target Account Dashboard (${ctx.user.email})`,
-        issuer: "Target Account Dashboard",
+        name: `${productName} (${ctx.user.email})`,
+        issuer: productName,
         length: 32,
       }) as any;
 

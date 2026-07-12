@@ -7,6 +7,13 @@
 import fs from 'fs';
 import path from 'path';
 
+export interface RepConfig {
+  name: string;
+  email: string;
+  region: string;
+  sizeSegment: "commercial" | "enterprise";
+}
+
 interface CompanyConfig {
   companyName: string;
   companyDescription: string;
@@ -15,6 +22,11 @@ interface CompanyConfig {
   keyDifferentiators: string[];
   targetCustomers: string;
   competitors: string;
+  // Branding / white-label
+  productName: string;      // app/dashboard name shown in UI, emails, 2FA issuer
+  supportContact: string;   // what the help bot tells users to do (e.g. "your admin", "#gtm-help on Slack")
+  emailDomain: string;      // default domain for generated rep/demo emails
+  reps: RepConfig[];        // sales reps / AEs for territory assignment (empty = none configured)
   apiKeys: {
     sixsense?: string;
     gong?: string;
@@ -23,6 +35,16 @@ interface CompanyConfig {
   };
   demoMode: boolean;
 }
+
+// Built-in demo roster (100% synthetic). Kept in sync with client RepContext.
+const DEFAULT_DEMO_REPS: RepConfig[] = [
+  { name: "Alex Rivera", email: "alex.rivera@demo.example.com", region: "Central", sizeSegment: "commercial" },
+  { name: "Jordan Bailey", email: "jordan.bailey@demo.example.com", region: "West", sizeSegment: "commercial" },
+  { name: "Sam Okoye", email: "sam.okoye@demo.example.com", region: "East", sizeSegment: "commercial" },
+  { name: "Taylor Brooks", email: "taylor.brooks@demo.example.com", region: "Central", sizeSegment: "enterprise" },
+  { name: "Casey Morgan", email: "casey.morgan@demo.example.com", region: "West", sizeSegment: "enterprise" },
+  { name: "Riley Nguyen", email: "riley.nguyen@demo.example.com", region: "East", sizeSegment: "enterprise" },
+];
 
 let cachedConfig: CompanyConfig | null = null;
 
@@ -45,6 +67,10 @@ export function getCompanyConfig(): CompanyConfig {
         keyDifferentiators: (process.env.COMPANY_DIFFERENTIATORS || 'AI-first architecture,Zero manual entry,Real-time signals').split(','),
         targetCustomers: process.env.COMPANY_TARGET || 'Enterprise 1000+ employees, Financial Services, Healthcare, Tech',
         competitors: process.env.COMPANY_COMPETITORS || 'Salesforce, HubSpot, Traditional CRMs',
+        productName: '',
+        supportContact: '',
+        emailDomain: '',
+        reps: [],
         apiKeys: {
           sixsense: process.env.SIXSENSE_API_KEY,
           gong: process.env.GONG_API_KEY,
@@ -55,7 +81,8 @@ export function getCompanyConfig(): CompanyConfig {
       };
     }
 
-    // Override with environment variables if present
+    // Fill defaults for any fields missing from the config file, then apply
+    // environment overrides. Keeps older config files forward-compatible.
     if (cachedConfig) {
       if (process.env.COMPANY_NAME) cachedConfig.companyName = process.env.COMPANY_NAME;
       if (process.env.COMPANY_DESCRIPTION) cachedConfig.companyDescription = process.env.COMPANY_DESCRIPTION;
@@ -64,6 +91,14 @@ export function getCompanyConfig(): CompanyConfig {
       if (process.env.COMPANY_DIFFERENTIATORS) cachedConfig.keyDifferentiators = process.env.COMPANY_DIFFERENTIATORS.split(',');
       if (process.env.COMPANY_TARGET) cachedConfig.targetCustomers = process.env.COMPANY_TARGET;
       if (process.env.COMPANY_COMPETITORS) cachedConfig.competitors = process.env.COMPANY_COMPETITORS;
+
+      // Branding / support / reps (config file value -> env override -> sensible default)
+      cachedConfig.productName = process.env.PRODUCT_NAME || cachedConfig.productName || 'Target Account Dashboard';
+      cachedConfig.supportContact = process.env.SUPPORT_CONTACT || cachedConfig.supportContact || 'your admin';
+      cachedConfig.emailDomain = process.env.COMPANY_EMAIL_DOMAIN || cachedConfig.emailDomain || 'demo.example.com';
+      if (!Array.isArray(cachedConfig.reps) || cachedConfig.reps.length === 0) {
+        cachedConfig.reps = DEFAULT_DEMO_REPS;
+      }
     }
 
     return cachedConfig!;
@@ -78,6 +113,10 @@ export function getCompanyConfig(): CompanyConfig {
       keyDifferentiators: ['AI-first'],
       targetCustomers: 'Enterprise',
       competitors: 'Traditional CRMs',
+      productName: 'Target Account Dashboard',
+      supportContact: 'your admin',
+      emailDomain: 'demo.example.com',
+      reps: DEFAULT_DEMO_REPS,
       apiKeys: {},
       demoMode: true,
     };

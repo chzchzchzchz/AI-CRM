@@ -47,24 +47,26 @@ git filter-repo --force \
   --path-glob 'presentation-screenshots/*' \
   --path PRESENTATION_COMPLETE.md
 
-# 2) Redact real production numbers from commit MESSAGES.
-#    (These regexes replace the leaked figures with a neutral marker.)
-cat > /tmp/scrub-messages.txt <<'EOF'
-regex:\b3,?999\b==>[redacted]
-regex:\b2,?09[0-9]\b==>[redacted]
-regex:\b75[0-9]\b==>[redacted]
-regex:\b76[0-9]\b==>[redacted]
-regex:\b549\b==>[redacted]
-regex:\b2,?103\b==>[redacted]
-the company==>[previous employer]
-EOF
-git filter-repo --force --replace-message /tmp/scrub-messages.txt
-rm -f /tmp/scrub-messages.txt
+# 2) Redact sensitive strings from commit MESSAGES.
+#    The actual sensitive terms (real employer name, real production counts) live
+#    in a LOCAL, gitignored file so they are never committed to this repo. Copy the
+#    template and fill it in before running:
+#        cp scripts/scrub-replacements.local.txt.example scripts/scrub-replacements.local.txt
+#        # edit scripts/scrub-replacements.local.txt with your real terms
+REPL_FILE="${SCRUB_REPLACEMENTS_FILE:-scripts/scrub-replacements.local.txt}"
+if [ -f "$REPL_FILE" ]; then
+  echo "Applying message redactions from $REPL_FILE ..."
+  git filter-repo --force --replace-message "$REPL_FILE"
+else
+  echo "⚠️  No $REPL_FILE found — skipping commit-MESSAGE redaction."
+  echo "    (Paths were still stripped above. To also scrub leaked names/numbers"
+  echo "     from old commit messages, create that file from the .example template.)"
+fi
 
 echo
-echo "✅ History rewritten. INSPECT before pushing:"
+echo "✅ History rewritten. INSPECT before pushing (use your own terms):"
 echo "   git log --oneline | head"
-echo "   git log --all -p | grep -iE 'the company|3,999|find-people|sfdc-' || echo clean"
+echo "   git log --all -p | grep -iE 'find-people|sfdc-' || echo clean"
 echo
 echo "Then force-push (this overwrites the remote):"
 echo "   git remote add origin https://github.com/chzchzchzchz/AI-CRM.git   # fresh clone already has it"

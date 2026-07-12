@@ -35,8 +35,8 @@ describe("CSV Processor", () => {
       // Check contact owners
       expect(result.contactOwners).toBeDefined();
       expect(Array.isArray(result.contactOwners)).toBe(true);
-      expect(result.contactOwners).toContain("Zane Torres");
-      expect(result.contactOwners).toContain("Morgan Iler");
+      expect(result.contactOwners).toContain("Alex Rivera");
+      expect(result.contactOwners).toContain("Jordan Bailey");
     });
   });
 
@@ -125,7 +125,7 @@ describe("CSV Processor", () => {
         transformations,
         eventName: "2025-01-15-WBN-Test",
         defaultStatus: "Attended webinar",
-        contactOwner: "Zane Torres"
+        contactOwner: "Alex Rivera"
       });
       
       expect(result.success).toBe(true);

@@ -1,0 +1,11 @@
+# git-filter-repo --replace-message rules for scrub-git-history.sh
+#
+# Copy to scrub-replacements.local.txt (gitignored) and fill in YOUR real terms.
+# One rule per line. `literal==>replacement` or `regex:PATTERN==>replacement`.
+# This file's real version is never committed, so the sensitive strings you list
+# here do not leak into the repo.
+#
+# Examples (replace with your actual leaked terms):
+# Your Previous Employer Inc==>[previous employer]
+# regex:\b3,?999\b==>[redacted]
+# regex:\b549\b==>[redacted]

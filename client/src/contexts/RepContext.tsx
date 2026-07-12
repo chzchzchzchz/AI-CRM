@@ -1,13 +1,16 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-// Rep territory definitions
+// Rep territory definitions.
+// This is the SINGLE demo roster used across the app (dropdowns, TopAccounts,
+// territory filtering). Replace these entries with your own reps — the email is
+// just an opaque identifier; filtering is driven by region + sizeFilter.
 export const REP_TERRITORIES = {
-  "zane.torres@{COMPANY_EMAIL_DOMAIN}": { name: "Zane Torres", region: "Central", sizeFilter: "<2000", label: "Central <2K" },
-  "morgan.iler@{COMPANY_EMAIL_DOMAIN}": { name: "Morgan Iler", region: "West", sizeFilter: "<2000", label: "West <2K" },
-  "miranda.thomas@{COMPANY_EMAIL_DOMAIN}": { name: "Miranda Thomas", region: "East", sizeFilter: "<2000", label: "East <2K" },
-  "jeff.klein@{COMPANY_EMAIL_DOMAIN}": { name: "Jeff Klein", region: "Central", sizeFilter: ">=2000", label: "Central 2K+" },
-  "dan.hamilton@{COMPANY_EMAIL_DOMAIN}": { name: "Dan Hamilton", region: "West", sizeFilter: ">=2000", label: "West 2K+" },
-  "kevin.huelster@{COMPANY_EMAIL_DOMAIN}": { name: "Kevin Huelster", region: "East", sizeFilter: ">=2000", label: "East 2K+" },
+  "alex.rivera@demo.example.com": { name: "Alex Rivera", region: "Central", sizeFilter: "<2000", label: "Central <2K" },
+  "jordan.bailey@demo.example.com": { name: "Jordan Bailey", region: "West", sizeFilter: "<2000", label: "West <2K" },
+  "sam.okoye@demo.example.com": { name: "Sam Okoye", region: "East", sizeFilter: "<2000", label: "East <2K" },
+  "taylor.brooks@demo.example.com": { name: "Taylor Brooks", region: "Central", sizeFilter: ">=2000", label: "Central 2K+" },
+  "casey.morgan@demo.example.com": { name: "Casey Morgan", region: "West", sizeFilter: ">=2000", label: "West 2K+" },
+  "riley.nguyen@demo.example.com": { name: "Riley Nguyen", region: "East", sizeFilter: ">=2000", label: "East 2K+" },
 } as const;
 
 export type RepEmail = keyof typeof REP_TERRITORIES | "";
@@ -95,13 +98,12 @@ export function useRep() {
   return context;
 }
 
-// Rep options for dropdown
+// Rep options for dropdown (derived from REP_TERRITORIES so there's one source of truth)
 export const REP_OPTIONS = [
   { value: "all", label: "All Accounts (General View)", email: "" as RepEmail },
-  { value: "zane", label: "Zane Torres (Central <2K)", email: "zane.torres@{COMPANY_EMAIL_DOMAIN}" as RepEmail },
-  { value: "morgan", label: "Morgan Iler (West <2K)", email: "morgan.iler@{COMPANY_EMAIL_DOMAIN}" as RepEmail },
-  { value: "miranda", label: "Miranda Thomas (East <2K)", email: "miranda.thomas@{COMPANY_EMAIL_DOMAIN}" as RepEmail },
-  { value: "jeff", label: "Jeff Klein (Central 2K+)", email: "jeff.klein@{COMPANY_EMAIL_DOMAIN}" as RepEmail },
-  { value: "dan", label: "Dan Hamilton (West 2K+)", email: "dan.hamilton@{COMPANY_EMAIL_DOMAIN}" as RepEmail },
-  { value: "kevin", label: "Kevin Huelster (East 2K+)", email: "kevin.huelster@{COMPANY_EMAIL_DOMAIN}" as RepEmail },
+  ...(Object.entries(REP_TERRITORIES).map(([email, info]) => ({
+    value: info.name.split(" ")[0].toLowerCase(),
+    label: `${info.name} (${info.label})`,
+    email: email as RepEmail,
+  }))),
 ];

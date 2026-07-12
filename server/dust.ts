@@ -1,4 +1,5 @@
 // Dust integration service
+import { getCompanyConfig } from "./config";
 
 // Dust configuration - API key should be in environment variables
 const DUST_WORKSPACE_ID = process.env.DUST_WORKSPACE_ID || "ASiAFMZt5a";
@@ -45,7 +46,7 @@ export async function queryDust(
             timezone: "UTC",
             origin: "api",
             username: "dashboard",
-            fullName: "Target Account Dashboard",
+            fullName: getCompanyConfig().productName,
           },
         },
         blocking: false,

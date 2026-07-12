@@ -6,6 +6,14 @@
   "keyDifferentiators": ["AI-first", "Zero manual entry", "Real-time signals"],
   "targetCustomers": "Enterprise 1000+ employees",
   "competitors": "Salesforce, HubSpot",
+  "productName": "Target Account Dashboard",
+  "supportContact": "your admin",
+  "emailDomain": "yourcompany.com",
+  "reps": [
+    { "name": "Alex Rivera", "email": "alex.rivera@yourcompany.com", "region": "Central", "sizeSegment": "commercial" },
+    { "name": "Jordan Bailey", "email": "jordan.bailey@yourcompany.com", "region": "West", "sizeSegment": "commercial" },
+    { "name": "Taylor Brooks", "email": "taylor.brooks@yourcompany.com", "region": "Central", "sizeSegment": "enterprise" }
+  ],
   "apiKeys": {
     "sixsense": "",
     "gong": "",

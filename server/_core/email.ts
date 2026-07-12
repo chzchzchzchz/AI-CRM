@@ -1,5 +1,6 @@
 import sgMail from "@sendgrid/mail";
 import { ENV } from "./env";
+import { getCompanyConfig } from "../config";
 
 // Initialize SendGrid
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY ?? "";
@@ -58,7 +59,7 @@ export async function sendVerificationEmail(
       <p>This code will expire in 10 minutes.</p>
       <p>If you didn't request this code, please ignore this email.</p>
       <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-      <p style="color: #666; font-size: 12px;">Target Account Dashboard</p>
+      <p style="color: #666; font-size: 12px;">${getCompanyConfig().productName}</p>
     </div>
   `;
 
@@ -93,7 +94,7 @@ export async function sendPasswordResetEmail(
       <p>This link will expire in 1 hour.</p>
       <p>If you didn't request this reset, please ignore this email and your password will remain unchanged.</p>
       <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-      <p style="color: #666; font-size: 12px;">Target Account Dashboard</p>
+      <p style="color: #666; font-size: 12px;">${getCompanyConfig().productName}</p>
     </div>
   `;
 
@@ -122,7 +123,7 @@ export async function send2FASetupEmail(email: string): Promise<boolean> {
       </div>
       <p>If you didn't enable 2FA, please contact support immediately.</p>
       <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-      <p style="color: #666; font-size: 12px;">Target Account Dashboard</p>
+      <p style="color: #666; font-size: 12px;">${getCompanyConfig().productName}</p>
     </div>
   `;
 
@@ -148,7 +149,7 @@ export async function sendAccessApprovalEmail(
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2>Access Request Approved</h2>
       <p>Hi ${name},</p>
-      <p>Your access request to Target Account Dashboard has been approved!</p>
+      <p>Your access request to ${getCompanyConfig().productName} has been approved!</p>
       <div style="background-color: #f0f0f0; padding: 20px; border-radius: 5px; margin: 20px 0;">
         <p style="margin: 0;"><strong>Login Credentials:</strong></p>
         <p style="margin: 10px 0 0 0;">Email: <code>${email}</code></p>
@@ -159,7 +160,7 @@ export async function sendAccessApprovalEmail(
         <a href="https://targetaccountdashboard.com/login" style="background-color: #7c3aed; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Log In Now</a>
       </div>
       <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-      <p style="color: #666; font-size: 12px;">Target Account Dashboard</p>
+      <p style="color: #666; font-size: 12px;">${getCompanyConfig().productName}</p>
     </div>
   `;
 
@@ -167,7 +168,7 @@ export async function sendAccessApprovalEmail(
 
   return sendEmail({
     to: email,
-    subject: "Access Request Approved - Welcome to Target Account Dashboard",
+    subject: `Access Request Approved - Welcome to ${getCompanyConfig().productName}`,
     html,
     text,
   });
@@ -185,15 +186,15 @@ export async function sendAccessDenialEmail(
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2>Access Request Update</h2>
       <p>Hi ${name},</p>
-      <p>Thank you for your interest in Target Account Dashboard. Unfortunately, your access request has been denied at this time.</p>
+      <p>Thank you for your interest in ${getCompanyConfig().productName}. Unfortunately, your access request has been denied at this time.</p>
       ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}
       <p>If you have any questions, please feel free to reach out to our support team.</p>
       <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-      <p style="color: #666; font-size: 12px;">Target Account Dashboard</p>
+      <p style="color: #666; font-size: 12px;">${getCompanyConfig().productName}</p>
     </div>
   `;
 
-  const text = `Thank you for your interest in Target Account Dashboard. Unfortunately, your access request has been denied at this time.${reason ? `\n\nReason: ${reason}` : ""}`;
+  const text = `Thank you for your interest in ${getCompanyConfig().productName}. Unfortunately, your access request has been denied at this time.${reason ? `\n\nReason: ${reason}` : ""}`;
 
   return sendEmail({
     to: email,

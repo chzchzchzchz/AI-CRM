@@ -5,8 +5,13 @@ import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
-import { getLoginUrl } from "./const";
+import { getLoginUrl, APP_TITLE } from "./const";
 import "./index.css";
+
+// Reflect the configured brand name in the browser tab.
+if (typeof document !== "undefined") {
+  document.title = APP_TITLE;
+}
 
 const queryClient = new QueryClient();
 
