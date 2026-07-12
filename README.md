@@ -92,7 +92,8 @@ TargetDash is **generic** — it works for any B2B company once you point it at 
    ```
 
 Integration keys (6sense, Gong, Clay, Salesforce) are all optional and independent — full matrix in
-[SETUP.md](SETUP.md).
+[SETUP.md](SETUP.md). Admins configuring reps, territories, branding, and live integrations:
+see **[ADMIN_SETUP.md](ADMIN_SETUP.md)**.
 
 ---
 
