@@ -113,7 +113,7 @@ git push origin feature/your-feature-name
 ### Reporting Security Issues
 **DO NOT open public issues for security vulnerabilities.**
 
-Email: you@example.com (PGP key available)
+Email: mohssinechazi@gmail.com (PGP key available)
 
 We'll respond within 24 hours and credit you in the security advisory.
 
@@ -134,7 +134,7 @@ Use [GitHub Issues](https://github.com/chzchzchzchz/AI-CRM/issues) for:
 - Technical debt
 
 ### Discord/Slack
-Join our community: [Link TBD - email you@example.com for invite]
+Join our community: [Link TBD - email mohssinechazi@gmail.com for invite]
 
 ---
 
@@ -158,7 +158,7 @@ Contributors will be:
 
 ## Questions?
 
-- 📧 Email: you@example.com
+- 📧 Email: mohssinechazi@gmail.com
 - 💼 LinkedIn: [ryan-chazi](https://linkedin.com/in/ryan-chazi)
 - 🐙 GitHub: [@chzchzchzchz](https://github.com/chzchzchzchz)
 
