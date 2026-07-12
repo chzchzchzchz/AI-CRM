@@ -1,8 +1,8 @@
 // Dust integration service
 import { getCompanyConfig } from "./config";
 
-// Dust configuration - API key should be in environment variables
-const DUST_WORKSPACE_ID = process.env.DUST_WORKSPACE_ID || "ASiAFMZt5a";
+// Dust configuration - set DUST_WORKSPACE_ID and DUST_API_KEY in your environment.
+const DUST_WORKSPACE_ID = process.env.DUST_WORKSPACE_ID || "";
 const DUST_API_KEY = process.env.DUST_API_KEY || "";
 const DUST_BASE_URL = `https://dust.tt/api/v1/w/${DUST_WORKSPACE_ID}`;
 
