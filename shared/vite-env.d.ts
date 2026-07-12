@@ -2,7 +2,8 @@
 // (e.g. getLoginUrl in shared/const.ts). Committed so `tsc --noEmit` types it
 // consistently everywhere, including CI — the server tsconfig has no vite/client types.
 interface ImportMetaEnv {
-  readonly [key: string]: string | boolean | undefined;
+  // Values are strings at runtime; typed loosely to stay compatible with all callers.
+  readonly [key: string]: any;
 }
 
 interface ImportMeta {
