@@ -3,6 +3,9 @@
 Three tiers, each works with **zero paid API keys**. A brand-new user can run the whole thing on
 demo data with free local AI.
 
+> **Admin?** Once it runs, see **[ADMIN_SETUP.md](ADMIN_SETUP.md)** for making it yours —
+> branding, reps, territory assignment, accounts, and live Salesforce/6sense/Clay/Gong integrations.
+
 ## 1. Run it (zero config, demo data)
 ```bash
 pnpm install            # or: npm install
