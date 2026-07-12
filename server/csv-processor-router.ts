@@ -2,12 +2,13 @@ import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
+import { getCompanyConfig } from "./config";
 
 // Target template fields for SFDC/HubSpot webinar import
 const TARGET_FIELDS = [
   { name: "Recent Event", required: true, description: "Salesforce Campaign Name (e.g., 2025-09-14-EVT-PTN-GPS-Ravens-Opener-Baltimore-MD)" },
   { name: "Event/Webinar Campaign Member Status", required: true, description: "Status picklist: Attended (not MQL), Attended keynote, Attended panel session, Attended roundtable, Attended speaking session, Attended webinar, Booth Visit, Contact us request, Downloaded assets, Met with sales, On-Demand, Registered, Requested meeting" },
-  { name: "Contact Owner", required: false, description: "Sales rep name for 'Met with sales' status routing (e.g., Brendan McGrail). Leave blank for SDR routing." },
+  { name: "Contact Owner", required: false, description: "Sales rep name for 'Met with sales' status routing (one of your configured reps). Leave blank for SDR routing." },
   { name: "Type", required: false, description: "Contact type: Influencer, Prospect, Partner, or blank" },
   { name: "First Name", required: true, description: "Contact's first name" },
   { name: "Last Name", required: true, description: "Contact's last name" },
@@ -48,15 +49,8 @@ const STATUS_OPTIONS = [
   "Requested meeting",
 ];
 
-const CONTACT_OWNERS = [
-  "Brendan McGrail",
-  "Zane Torres",
-  "Morgan Iler",
-  "Miranda Thomas",
-  "Dan Hamilton",
-  "Kevin Huelster",
-  "Jeff Klein",
-];
+// Valid contact owners are the configured reps (single source of truth in company config).
+const CONTACT_OWNERS = getCompanyConfig().reps.map(r => r.name);
 
 export const csvProcessorRouter = router({
   // Get target template info

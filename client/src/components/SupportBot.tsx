@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
+import { SUPPORT_CONTACT } from "@/const";
 import { HelpCircle, X, Send, Loader2, ChevronRight, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Message {
@@ -39,7 +40,7 @@ export function SupportBot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hey! 👋 I'm here to help you get the most out of this dashboard. Ask me anything about accounts, intent scores, outreach, or how to use the features. If I can't help, just slack ryan!"
+      content: `Hey! 👋 I'm here to help you get the most out of this dashboard. Ask me anything about accounts, intent scores, outreach, or how to use the features. If I can't help, reach out to ${SUPPORT_CONTACT}!`
     }
   ]);
   const [input, setInput] = useState("");
@@ -74,13 +75,13 @@ export function SupportBot() {
 
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: response.answer || "Hmm, I'm not sure about that. Slack ryan if you need more help!",
+        content: response.answer || `Hmm, I'm not sure about that. Reach out to ${SUPPORT_CONTACT} if you need more help!`,
         reasoning: response.reasoning // Always store reasoning for optional viewing
       }]);
     } catch (error) {
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: "Oops, something went wrong on my end. Try again or slack ryan if it keeps happening!"
+        content: `Oops, something went wrong on my end. Try again or contact ${SUPPORT_CONTACT} if it keeps happening!`
       }]);
     }
 
@@ -222,7 +223,7 @@ export function SupportBot() {
           </Button>
         </div>
         <p className="mt-2 text-center text-xs text-slate-500">
-          Can't find what you need? Just slack ryan!
+          Can't find what you need? Reach out to {SUPPORT_CONTACT}!
         </p>
       </div>
     </Card>

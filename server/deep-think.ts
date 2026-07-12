@@ -3,7 +3,7 @@ import { getDb } from "./db";
 import { aiResponseCache } from "../drizzle/schema";
 import { eq, and, gt } from "drizzle-orm";
 import crypto from "crypto";
-import { getCompanyContext } from "./config";
+import { getCompanyContext, getCompanyConfig } from "./config";
 
 /**
  * DEEP-THINK ARCHITECTURE
@@ -300,6 +300,13 @@ export async function deepThinkHelp(params: {
 }): Promise<DeepThinkResult> {
   const { query, debugMode = false, skipCache = false } = params;
 
+  const cfg = getCompanyConfig();
+  const repsBlock = cfg.reps.length
+    ? "\n\nREPS AND TERRITORIES:\n" + cfg.reps
+        .map(r => `- ${r.name}: ${r.region}, ${r.sizeSegment === "enterprise" ? "2K+" : "<2K"} employees`)
+        .join("\n")
+    : "";
+
   const context = `DASHBOARD FEATURES:
 - Accounts: View and manage target accounts with 6sense intent data
 - Contacts: Browse contacts with title, company, and engagement info
@@ -307,17 +314,9 @@ export async function deepThinkHelp(params: {
 - Priority Actions: AI-recommended accounts to engage
 - CSV Processor: Transform messy CSVs to SFDC/HubSpot format
 - Outreach Generator: AI-powered email drafts
-- Rep Territories: Filter by region (West, Central, East) and company size (<2K, 2K+)
+- Rep Territories: Filter by region (West, Central, East) and company size (<2K, 2K+)${repsBlock}
 
-REPS AND TERRITORIES:
-- Zane Torres: Central, <2K employees
-- Morgan Iler: West, <2K employees
-- Miranda Thomas: East, <2K employees
-- Jeff Klein: Central, 2K+ employees
-- Dan Hamilton: West, 2K+ employees
-- Kevin Huelster: East, 2K+ employees
-
-If you can't answer something, suggest the user "slack ryan" for help.`;
+If you can't answer something, suggest the user reach out to ${cfg.supportContact} for help.`;
 
   return deepThink({ query, context, debugMode, skipCache });
 }

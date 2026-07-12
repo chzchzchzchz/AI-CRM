@@ -116,6 +116,9 @@ presentation-materials.tar.gz
 presentation/
 presentation-screenshots/
 
+# Local-only redaction rules for scrub-git-history.sh (contains real sensitive terms)
+scripts/scrub-replacements.local.txt
+
 # Data files with PII (anonymized before commit)
 *.csv
 *parsed_*.json
