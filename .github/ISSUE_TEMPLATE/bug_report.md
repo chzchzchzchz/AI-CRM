@@ -33,4 +33,4 @@ If applicable, add screenshots to help explain your problem.
 Add any other context about the problem here.
 
 **Security Issue?**
-- [ ] This is a security vulnerability (I will email you@example.com instead of public issue)
+- [ ] This is a security vulnerability (I will email mohssinechazi@gmail.com instead of public issue)
