@@ -5,9 +5,7 @@
 
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { getDb } from "./db";
-import { accounts, contacts } from "../drizzle/schema";
-import { desc, eq, gte, isNotNull, sql } from "drizzle-orm";
+import { getAllAccounts, getAllPeople } from "./db";
 
 export interface HotLead {
   contactId: number;
@@ -122,69 +120,49 @@ export const hotLeadsRouter = router({
       industry: z.string().optional(),
     }))
     .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) return [];
-
       const { limit, minIntentScore, region, industry } = input;
 
-      // Query accounts with high intent scores that have contacts
-      let query = db
-        .select({
-          contactId: contacts.id,
-          contactName: contacts.name,
-          contactTitle: contacts.title,
-          contactEmail: contacts.email,
-          contactPhone: contacts.phone,
-          linkedinUrl: contacts.linkedinUrl,
-          accountId: accounts.id,
-          accountName: accounts.name,
-          accountDomain: accounts.domain,
-          intentScore: accounts.intentScore,
-          buyingStage: accounts.sixsenseBuyingStage,
-          profileFit: accounts.sixsenseProfileFit,
-          industry: accounts.industry,
-          employeeCount: accounts.employeeCount,
-          region: accounts.region,
-        })
-        .from(contacts)
-        .innerJoin(accounts, eq(contacts.accountId, accounts.id))
-        .where(gte(accounts.intentScore, minIntentScore))
-        .orderBy(desc(accounts.intentScore))
-        .limit(limit * 3); // Get more to filter and rank
+      // Fetch via demo-safe helpers and join in JS so this works with both the
+      // real DB and the JSON demo database (which can't execute innerJoin/groupBy).
+      const [accts, people] = await Promise.all([getAllAccounts(), getAllPeople()]);
+      const acctById = new Map<number, any>(accts.map((a: any) => [a.id, a]));
 
-      const results = await query;
+      const hotLeads: HotLead[] = [];
+      for (const p of people as any[]) {
+        const acct = acctById.get(p.accountId);
+        if (!acct) continue;
+        const intentScore = acct.intentScore ?? p.accountIntentScore ?? 0;
+        if (intentScore < minIntentScore) continue;
 
-      // Calculate priority scores and rank
-      const hotLeads: HotLead[] = results.map((row: any) => {
         const { score, reason } = calculatePriorityScore(
-          row.intentScore || 0,
-          row.buyingStage,
-          row.profileFit,
-          row.contactTitle,
-          !!row.linkedinUrl,
-          !!row.contactEmail
+          intentScore,
+          acct.sixsenseBuyingStage,
+          acct.sixsenseProfileFit,
+          p.title,
+          !!p.linkedinUrl,
+          !!p.email
         );
 
-        return {
-          contactId: row.contactId,
-          contactName: row.contactName,
-          contactTitle: row.contactTitle,
-          contactEmail: row.contactEmail,
-          contactPhone: row.contactPhone,
-          linkedinUrl: row.linkedinUrl,
-          accountId: row.accountId,
-          accountName: row.accountName,
-          accountDomain: row.accountDomain,
-          intentScore: row.intentScore || 0,
-          buyingStage: row.buyingStage,
-          profileFit: row.profileFit,
-          industry: row.industry,
-          employeeCount: row.employeeCount,
-          region: row.region,
+        hotLeads.push({
+          contactId: p.id,
+          contactName: p.name,
+          contactTitle: p.title,
+          contactEmail: p.email,
+          contactPhone: p.phone,
+          linkedinUrl: p.linkedinUrl,
+          accountId: acct.id,
+          accountName: acct.name,
+          accountDomain: acct.domain,
+          intentScore,
+          buyingStage: acct.sixsenseBuyingStage,
+          profileFit: acct.sixsenseProfileFit,
+          industry: acct.industry,
+          employeeCount: acct.employeeCount,
+          region: acct.region,
           priorityScore: score,
           priorityReason: reason,
-        };
-      });
+        });
+      }
 
       // Filter by region/industry if specified
       let filtered = hotLeads;
@@ -205,27 +183,15 @@ export const hotLeadsRouter = router({
    * Get summary stats for hot leads
    */
   getSummary: protectedProcedure.query(async () => {
-    const db = await getDb();
-    if (!db) return null;
+    // Fetch via demo-safe helpers and aggregate in JS (the JSON demo DB can't
+    // execute SQL groupBy/COUNT).
+    const [accts, people] = await Promise.all([getAllAccounts(), getAllPeople()]);
 
-    // Get counts by intent tier
-    const results = await db
-      .select({
-        intentTier: sql<string>`
-          CASE 
-            WHEN ${accounts.intentScore} >= 90 THEN 'critical'
-            WHEN ${accounts.intentScore} >= 80 THEN 'high'
-            WHEN ${accounts.intentScore} >= 70 THEN 'medium'
-            ELSE 'low'
-          END
-        `,
-        accountCount: sql<number>`COUNT(DISTINCT ${accounts.id})`,
-        contactCount: sql<number>`COUNT(${contacts.id})`,
-      })
-      .from(accounts)
-      .leftJoin(contacts, eq(contacts.accountId, accounts.id))
-      .where(gte(accounts.intentScore, 70))
-      .groupBy(sql`intentTier`);
+    // Contacts per account id
+    const contactsByAccount = new Map<number, number>();
+    for (const p of people as any[]) {
+      contactsByAccount.set(p.accountId, (contactsByAccount.get(p.accountId) || 0) + 1);
+    }
 
     const summary = {
       critical: { accounts: 0, contacts: 0 },
@@ -234,14 +200,16 @@ export const hotLeadsRouter = router({
       total: { accounts: 0, contacts: 0 },
     };
 
-    for (const row of results) {
-      const tier = row.intentTier as keyof typeof summary;
-      if (tier in summary) {
-        summary[tier].accounts = Number(row.accountCount);
-        summary[tier].contacts = Number(row.contactCount);
-        summary.total.accounts += Number(row.accountCount);
-        summary.total.contacts += Number(row.contactCount);
-      }
+    for (const a of accts as any[]) {
+      const intent = a.intentScore ?? 0;
+      if (intent < 70) continue;
+      const tier: keyof typeof summary =
+        intent >= 90 ? "critical" : intent >= 80 ? "high" : "medium";
+      const contactCount = contactsByAccount.get(a.id) || 0;
+      summary[tier].accounts += 1;
+      summary[tier].contacts += contactCount;
+      summary.total.accounts += 1;
+      summary.total.contacts += contactCount;
     }
 
     return summary;
@@ -256,28 +224,30 @@ export const hotLeadsRouter = router({
       limit: z.number().min(1).max(20).default(5),
     }))
     .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) return [];
-
       const { stage, limit } = input;
 
-      const results = await db
-        .select({
-          contactId: contacts.id,
-          contactName: contacts.name,
-          contactTitle: contacts.title,
-          contactEmail: contacts.email,
-          linkedinUrl: contacts.linkedinUrl,
-          accountId: accounts.id,
-          accountName: accounts.name,
-          intentScore: accounts.intentScore,
-          buyingStage: accounts.sixsenseBuyingStage,
+      const [accts, people] = await Promise.all([getAllAccounts(), getAllPeople()]);
+      const acctById = new Map<number, any>(accts.map((a: any) => [a.id, a]));
+
+      const results = (people as any[])
+        .map((p) => {
+          const acct = acctById.get(p.accountId);
+          if (!acct || acct.sixsenseBuyingStage !== stage) return null;
+          return {
+            contactId: p.id,
+            contactName: p.name,
+            contactTitle: p.title,
+            contactEmail: p.email,
+            linkedinUrl: p.linkedinUrl,
+            accountId: acct.id,
+            accountName: acct.name,
+            intentScore: acct.intentScore ?? 0,
+            buyingStage: acct.sixsenseBuyingStage,
+          };
         })
-        .from(contacts)
-        .innerJoin(accounts, eq(contacts.accountId, accounts.id))
-        .where(eq(accounts.sixsenseBuyingStage, stage))
-        .orderBy(desc(accounts.intentScore))
-        .limit(limit);
+        .filter(Boolean)
+        .sort((a: any, b: any) => (b.intentScore || 0) - (a.intentScore || 0))
+        .slice(0, limit);
 
       return results;
     }),

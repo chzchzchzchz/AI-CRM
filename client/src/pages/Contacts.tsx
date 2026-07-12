@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Navigation } from "@/components/Navigation";
 import { trpc } from "@/lib/trpc";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   User, Mail, Linkedin, MapPin, Building2, Search,
   Filter, ArrowUpDown, ExternalLink, Briefcase, Eye, Users, Sparkles, Phone, TrendingUp
@@ -26,6 +26,7 @@ type SortField = "name" | "title" | "company";
 type SortOrder = "asc" | "desc";
 
 export default function ContactsEnhanced() {
+  const [, navigate] = useLocation();
   const { selectedRep, repInfo, matchesTerritory, isRepMode } = useRep();
   
   const [searchQuery, setSearchQuery] = useState("");
@@ -433,8 +434,10 @@ export default function ContactsEnhanced() {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {paginatedContacts.map((contact: any) => (
-              <Link key={contact.id} href={`/contacts/${contact.id}`}>
-                <Card className="card-elevated hover:scale-[1.02] transition-all cursor-pointer group h-full">
+                <Card
+                  key={contact.id}
+                  onClick={() => navigate(`/contacts/${contact.id}`)}
+                  className="card-elevated hover:scale-[1.02] transition-all cursor-pointer group h-full">
                   <CardHeader>
                     <div className="flex items-start gap-3">
                       <div className="p-3 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl shadow-lg flex-shrink-0">
@@ -534,7 +537,6 @@ export default function ContactsEnhanced() {
                     </Button>
                   </CardContent>
                 </Card>
-              </Link>
             ))}
           </div>
         )}
