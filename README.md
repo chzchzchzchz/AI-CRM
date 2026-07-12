@@ -66,6 +66,10 @@ pnpm install
 cp .env.example .env           # ships with DEMO_MODE=true and PORT=3333
 pnpm dev                       # → http://localhost:3333
 ```
+Prefer Docker? One command, no toolchain needed:
+```bash
+docker compose up              # → http://localhost:3333
+```
 (Or skip the copy and run `DEMO_MODE=true pnpm dev` — it just picks the first free port from 3000.)
 The AI features (account briefs, outreach, chat) work for free too — they fall back to a local
 Ollama model when no cloud key is set. See [SETUP.md](SETUP.md) for the one-time Ollama step.

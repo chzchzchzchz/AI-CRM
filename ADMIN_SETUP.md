@@ -176,6 +176,24 @@ Gong API pull is on the roadmap** (not yet implemented). `GONG_API_KEY` is reser
 
 ---
 
+## 5.5 Deploy — one command (Docker)
+
+Self-host the whole thing in one command (verified: image builds, container serves the demo + Clay webhook):
+```bash
+docker compose up                    # zero-config demo at http://localhost:3333
+docker compose --profile full up     # app + persistent MySQL (set DEMO_MODE=false)
+```
+Or without compose:
+```bash
+docker build -t targetdash .
+docker run -p 3333:3333 targetdash                       # demo
+docker run -p 3333:3333 -e DEMO_MODE=false \
+  -e DATABASE_URL="mysql://user:pass@host/db" targetdash # real data
+```
+Pass any integration env var (§5.1–5.4) with `-e` or in `docker-compose.yml`.
+
+---
+
 ## 6. Auth & multi-user
 
 Demo mode auto-logs-in a demo admin (no login screen). For real multi-user:

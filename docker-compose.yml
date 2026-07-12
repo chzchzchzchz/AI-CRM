@@ -1,0 +1,37 @@
+# One-command self-host.
+#
+#   docker compose up            → zero-config demo at http://localhost:3333
+#   docker compose --profile full up   → app + MySQL (persistent, real data)
+#
+services:
+  app:
+    build: .
+    ports:
+      - "3333:3333"
+    environment:
+      DEMO_MODE: "true"           # flip to "false" and set DATABASE_URL for real data
+      PORT: "3333"
+      # --- Optional integrations (see ADMIN_SETUP.md) ---
+      # OPENAI_API_KEY: ""
+      # SIXSENSE_API_KEY: ""
+      # CLAY_WEBHOOK_SECRET: ""
+      # SALESFORCE_CLIENT_ID: ""
+      # SALESFORCE_CLIENT_SECRET: ""
+      # SALESFORCE_INSTANCE_URL: ""
+    restart: unless-stopped
+
+  # Persistent MySQL — only started with:  docker compose --profile full up
+  db:
+    image: mysql:8
+    profiles: ["full"]
+    environment:
+      MYSQL_ROOT_PASSWORD: targetdash
+      MYSQL_DATABASE: targetdash
+    ports:
+      - "3306:3306"
+    volumes:
+      - targetdash-db:/var/lib/mysql
+    restart: unless-stopped
+
+volumes:
+  targetdash-db:
