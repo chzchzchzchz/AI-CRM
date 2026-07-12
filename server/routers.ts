@@ -210,7 +210,7 @@ export const appRouter = router({
         // Send notification to admin for approval with one-click links
         try {
           // Generate one-click approval links
-          const baseUrl = process.env.VITE_APP_URL || 'https://target-account-dashboard.manus.space';
+          const baseUrl = process.env.VITE_APP_URL || `http://localhost:${process.env.PORT || 3333}`;
           const { approveUrl, denyUrl } = getApprovalLinks(newUserId, baseUrl);
           
           await notifyOwner({
