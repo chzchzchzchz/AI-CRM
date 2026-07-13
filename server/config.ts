@@ -93,7 +93,7 @@ export function getCompanyConfig(): CompanyConfig {
       if (process.env.COMPANY_COMPETITORS) cachedConfig.competitors = process.env.COMPANY_COMPETITORS;
 
       // Branding / support / reps (config file value -> env override -> sensible default)
-      cachedConfig.productName = process.env.PRODUCT_NAME || cachedConfig.productName || 'Target Account Dashboard';
+      cachedConfig.productName = process.env.PRODUCT_NAME || cachedConfig.productName || 'TargetDash';
       cachedConfig.supportContact = process.env.SUPPORT_CONTACT || cachedConfig.supportContact || 'your admin';
       cachedConfig.emailDomain = process.env.COMPANY_EMAIL_DOMAIN || cachedConfig.emailDomain || 'demo.example.com';
       if (!Array.isArray(cachedConfig.reps) || cachedConfig.reps.length === 0) {
@@ -113,7 +113,7 @@ export function getCompanyConfig(): CompanyConfig {
       keyDifferentiators: ['AI-first'],
       targetCustomers: 'Enterprise',
       competitors: 'Traditional CRMs',
-      productName: 'Target Account Dashboard',
+      productName: 'TargetDash',
       supportContact: 'your admin',
       emailDomain: 'demo.example.com',
       reps: DEFAULT_DEMO_REPS,

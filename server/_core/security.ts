@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
 
 /**
- * Security middleware for the Target Account Dashboard
+ * Security middleware for the TargetDash
  * Implements rate limiting, brute force protection, and security headers
  */
 

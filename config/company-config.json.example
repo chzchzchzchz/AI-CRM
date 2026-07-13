@@ -6,7 +6,7 @@
   "keyDifferentiators": ["AI-first", "Zero manual entry", "Real-time signals"],
   "targetCustomers": "Enterprise 1000+ employees",
   "competitors": "Salesforce, HubSpot",
-  "productName": "Target Account Dashboard",
+  "productName": "TargetDash",
   "supportContact": "your admin",
   "emailDomain": "yourcompany.com",
   "reps": [
