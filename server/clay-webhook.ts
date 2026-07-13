@@ -28,9 +28,18 @@ export const clayWebhookRouter = router({
       // Accept any additional payload structure from Clay
     }).passthrough())
     .mutation(async ({ input }) => {
-      // SECURITY: Verify webhook secret if configured
-      if (CLAY_WEBHOOK_SECRET && input.webhook_secret !== CLAY_WEBHOOK_SECRET) {
-        console.error('[Clay Webhook] Invalid or missing webhook secret');
+      // SECURITY: fail CLOSED — outside demo mode an unset secret rejects all requests,
+      // so this write endpoint can never be left unauthenticated by omission.
+      if (!CLAY_WEBHOOK_SECRET) {
+        if (process.env.DEMO_MODE !== 'true') {
+          console.error('[Clay Webhook] CLAY_WEBHOOK_SECRET not configured — rejecting request');
+          throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'Clay webhook is not configured (set CLAY_WEBHOOK_SECRET)'
+          });
+        }
+      } else if (input.webhook_secret !== CLAY_WEBHOOK_SECRET) {
+        console.error('[Clay Webhook] Invalid webhook secret');
         throw new TRPCError({
           code: 'UNAUTHORIZED',
           message: 'Invalid webhook secret'
