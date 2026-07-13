@@ -25,11 +25,12 @@ export default function AccountDetailEnhanced() {
     { enabled: accountId > 0 }
   );
 
-  // AI Intelligence queries
-  const overviewQuery = trpc.ai.compileOverview.useQuery({ accountId }, { enabled: accountId > 0 });
+  // AI Intelligence queries — deferred until the account has loaded so they don't
+  // join the initial request batch and block the core page render on slow LLM calls.
+  const overviewQuery = trpc.ai.compileOverview.useQuery({ accountId }, { enabled: accountId > 0 && !!account });
   const insightsQuery = trpc.ai.generateStrategicInsights.useQuery(
     { accountId, forceRefresh: false },
-    { enabled: accountId > 0 }
+    { enabled: accountId > 0 && !!account }
   );
   const { data: salesforceInstanceUrl } = trpc.salesforce.getInstanceUrl.useQuery();
   const { data: accountOpportunities } = trpc.opportunities.getByAccountId.useQuery({ accountId }, { enabled: accountId > 0 });
@@ -283,10 +284,11 @@ export default function AccountDetailEnhanced() {
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
                           {person.linkedinUrl && (
-                            <a href={person.linkedinUrl} target="_blank" onClick={(e) => e.stopPropagation()}
+                            <button type="button" aria-label="Open LinkedIn profile"
+                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(person.linkedinUrl!, '_blank', 'noopener,noreferrer'); }}
                                className="p-1 hover:bg-blue-500/20 rounded">
                               <Linkedin className="h-3 w-3 text-blue-500" />
-                            </a>
+                            </button>
                           )}
                           {person.email && (
                             <button onClick={(e) => { e.preventDefault(); copyToClipboard(person.email!, 'email'); }}
