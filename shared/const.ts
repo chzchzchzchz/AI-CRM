@@ -4,7 +4,7 @@ export const AXIOS_TIMEOUT_MS = 30000;
 export const UNAUTHED_ERR_MSG = "You must be logged in to access this resource";
 export const NOT_ADMIN_ERR_MSG = "You must be an admin to access this resource";
 
-export const APP_TITLE = "Target Account Dashboard";
+export const APP_TITLE = "TargetDash";
 export const APP_LOGO = "/logo.png";
 
 // Generate login URL at runtime so redirect URI reflects the current origin.

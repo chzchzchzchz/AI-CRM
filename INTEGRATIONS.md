@@ -1,6 +1,6 @@
 # External Service Integrations
 
-This document describes how to integrate external services with the Target Account Dashboard.
+This document describes how to integrate external services with the TargetDash.
 
 ## Clay Integration
 
