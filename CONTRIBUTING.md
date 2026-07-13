@@ -133,9 +133,6 @@ Use [GitHub Issues](https://github.com/chzchzchzchz/AI-CRM/issues) for:
 - Feature requests (use the feature template)
 - Technical debt
 
-### Discord/Slack
-Join our community: [Link TBD - email mohssinechazi@gmail.com for invite]
-
 ---
 
 ## License Agreement
@@ -158,8 +155,7 @@ Contributors will be:
 
 ## Questions?
 
-- 📧 Email: mohssinechazi@gmail.com
-- 💼 LinkedIn: [ryan-chazi](https://linkedin.com/in/ryan-chazi)
-- 🐙 GitHub: [@chzchzchzchz](https://github.com/chzchzchzchz)
+Open a [GitHub issue](https://github.com/chzchzchzchz/AI-CRM/issues) or a
+[discussion](https://github.com/chzchzchzchz/AI-CRM/discussions).
 
-**Thank you for making TargetDash the #1 AI-Native CRM!** ⭐
+**Thanks for contributing to TargetDash!** ⭐
