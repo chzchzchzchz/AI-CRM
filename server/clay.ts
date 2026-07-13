@@ -49,10 +49,20 @@ const clayContactSchema = z.object({
   rawData: z.any().optional(), // Store full Clay payload
 });
 
-// Helper function to verify webhook secret
+// Helper function to verify webhook secret.
+// Fails CLOSED: outside demo mode, an unset CLAY_WEBHOOK_SECRET rejects all requests
+// so a production deploy can never expose an unauthenticated write endpoint by omission.
 function verifyWebhookSecret(providedSecret: string | undefined): void {
-  if (CLAY_WEBHOOK_SECRET && providedSecret !== CLAY_WEBHOOK_SECRET) {
-    console.error('[Clay Webhook] Invalid or missing webhook secret');
+  if (!CLAY_WEBHOOK_SECRET) {
+    if (process.env.DEMO_MODE === 'true') return; // demo: open for local testing only
+    console.error('[Clay Webhook] CLAY_WEBHOOK_SECRET not configured — rejecting request');
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'Clay webhook is not configured (set CLAY_WEBHOOK_SECRET)'
+    });
+  }
+  if (providedSecret !== CLAY_WEBHOOK_SECRET) {
+    console.error('[Clay Webhook] Invalid webhook secret');
     throw new TRPCError({
       code: 'UNAUTHORIZED',
       message: 'Invalid webhook secret'

@@ -97,7 +97,7 @@ export const bulkInsightsRouter = router({
 - **[Risk]:** [How to address]
 
 CRITICAL RULES:
-- Use EXACT contact names and titles from data (e.g., '[redacted] kebbeh - VP Chief Security Officer')
+- Use EXACT contact names and titles from data (e.g., 'Sarah Chen - VP Sales')
 - Use EXACT employee counts, intent scores, and metrics from data
 - Reference REAL call transcripts if provided
 - NEVER use placeholder names like 'Jennifer Smith' or 'John Doe'
