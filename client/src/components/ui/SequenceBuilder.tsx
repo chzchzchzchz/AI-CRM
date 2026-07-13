@@ -32,61 +32,54 @@ interface SequenceTemplate {
   steps: Omit<SequenceStep, 'id'>[];
 }
 
-const MFA_TEMPLATES: SequenceTemplate[] = [
+// Generic, industry-agnostic outreach templates. Placeholders ({{company}},
+// {{firstName}}, {{industry}}, {{competitor}}) are filled per-contact; edit the
+// copy to match what you sell.
+const OUTREACH_TEMPLATES: SequenceTemplate[] = [
   {
-    name: "MFA Quick Strike (7 Days)",
-    description: "Fast-paced sequence for hot leads showing MFA intent",
+    name: "Fast Follow (7 Days)",
+    description: "Fast-paced sequence for hot leads showing buying intent",
     steps: [
-      { type: "email", day: 0, subject: "Quick question about {{company}}'s MFA strategy", content: "Hi {{firstName}},\n\nI noticed {{company}} is evaluating MFA solutions. We're helping companies like {{competitor}} eliminate phishing attacks with passwordless authentication.\n\nWorth a 15-min conversation?" },
+      { type: "email", day: 0, subject: "Quick question about {{company}}", content: "Hi {{firstName}},\n\nI noticed {{company}} might be a fit for what we do. We're helping companies like {{competitor}} get more out of their sales stack.\n\nWorth a 15-min conversation?" },
       { type: "wait", day: 2, notes: "Wait 2 days for response" },
-      { type: "linkedin", day: 2, notes: "Send LinkedIn connection request with note about MFA" },
+      { type: "linkedin", day: 2, notes: "Send a connection request referencing the email" },
       { type: "call", day: 3, notes: "Call attempt - reference email" },
-      { type: "email", day: 5, subject: "Following up - MFA demo for {{company}}", content: "Hi {{firstName}},\n\nWanted to follow up on my previous email. I have a 10-minute demo that shows how {{competitor}} reduced helpdesk tickets by 70% after switching to {COMPANY_NAME}.\n\nAre you available this week?" },
+      { type: "email", day: 5, subject: "Following up - quick demo for {{company}}", content: "Hi {{firstName}},\n\nWanted to follow up on my previous note. I have a 10-minute demo that shows the results {{competitor}} saw after switching to us.\n\nAre you available this week?" },
       { type: "call", day: 7, notes: "Final call attempt before moving to nurture" }
     ]
   },
   {
-    name: "SSO Enterprise (14 Days)",
-    description: "Consultative approach for enterprise SSO deals",
+    name: "Enterprise Consultative (14 Days)",
+    description: "Consultative approach for enterprise deals",
     steps: [
-      { type: "email", day: 0, subject: "SSO modernization at {{company}}", content: "Hi {{firstName}},\n\nI work with {{industry}} companies modernizing their SSO infrastructure. Given {{company}}'s growth, I thought you might be interested in how we're helping similar organizations:\n\n• Reduce SSO deployment time by 60%\n• Support 100+ app integrations out of the box\n• Eliminate password-related helpdesk tickets\n\nWorth exploring?" },
+      { type: "email", day: 0, subject: "A quick idea for {{company}}", content: "Hi {{firstName}},\n\nI work with {{industry}} companies on exactly this. Given {{company}}'s growth, I thought you might be interested in how we're helping similar organizations move faster with less manual work.\n\nWorth exploring?" },
       { type: "wait", day: 3, notes: "Wait for response" },
       { type: "linkedin", day: 3, notes: "Connect on LinkedIn" },
-      { type: "email", day: 5, subject: "Case study: {{competitor}} SSO migration", content: "Hi {{firstName}},\n\nAttaching a case study of how {{competitor}} migrated 5,000 users to our SSO platform in 3 weeks.\n\nKey results:\n• 95% user adoption in first month\n• $200K annual savings on legacy IAM costs\n• Zero security incidents post-migration\n\nHappy to walk through their approach if relevant." },
-      { type: "call", day: 7, notes: "Discovery call - understand current SSO pain points" },
+      { type: "email", day: 5, subject: "Case study: how {{competitor}} did it", content: "Hi {{firstName}},\n\nSharing a short case study of how {{competitor}} rolled us out across their team.\n\nHappy to walk through their approach if it's relevant to {{company}}." },
+      { type: "call", day: 7, notes: "Discovery call - understand current pain points" },
       { type: "wait", day: 3, notes: "Wait after call" },
-      { type: "email", day: 10, subject: "Custom SSO roadmap for {{company}}", content: "Hi {{firstName}},\n\nBased on our conversation, I've outlined a potential SSO modernization roadmap for {{company}}.\n\nCan we schedule 30 minutes to review?" },
-      { type: "call", day: 14, notes: "Follow-up call to discuss roadmap" }
+      { type: "email", day: 10, subject: "A tailored plan for {{company}}", content: "Hi {{firstName}},\n\nBased on our conversation, I've outlined a potential rollout plan for {{company}}.\n\nCan we schedule 30 minutes to review?" },
+      { type: "call", day: 14, notes: "Follow-up call to discuss the plan" }
     ]
   },
   {
-    name: "Zero Trust Nurture (21 Days)",
-    description: "Long-term nurture for zero trust architecture adoption",
+    name: "Long-Term Nurture (21 Days)",
+    description: "Long-term nurture for slower-moving accounts",
     steps: [
-      { type: "email", day: 0, subject: "Zero trust security at {{company}}", content: "Hi {{firstName}},\n\nAs {{company}} scales, traditional perimeter security becomes less effective. We're helping {{industry}} companies implement zero trust architecture.\n\nWould you be interested in a maturity assessment?" },
+      { type: "email", day: 0, subject: "An idea for {{company}}", content: "Hi {{firstName}},\n\nAs {{company}} scales, the manual work adds up. We're helping {{industry}} companies automate the busywork so reps can focus on selling.\n\nWould you be open to a quick assessment?" },
       { type: "wait", day: 5, notes: "Wait for response" },
-      { type: "linkedin", day: 5, notes: "Connect and share zero trust content" },
-      { type: "email", day: 7, subject: "Zero trust maturity assessment", content: "Hi {{firstName}},\n\nI've prepared a zero trust maturity assessment specifically for {{industry}} companies.\n\nIt takes 10 minutes and provides:\n• Current security posture score\n• Gap analysis vs. industry leaders\n• Prioritized roadmap\n\nInterested?" },
+      { type: "linkedin", day: 5, notes: "Connect and share a relevant resource" },
+      { type: "email", day: 7, subject: "A quick assessment for {{company}}", content: "Hi {{firstName}},\n\nI've put together a short assessment tailored to {{industry}} companies.\n\nIt takes 10 minutes and gives you a prioritized roadmap. Interested?" },
       { type: "call", day: 10, notes: "Call to discuss assessment results" },
       { type: "wait", day: 4, notes: "Wait after call" },
-      { type: "email", day: 14, subject: "{{company}}'s zero trust roadmap", content: "Hi {{firstName}},\n\nBased on our assessment, here's a phased zero trust implementation plan for {{company}}.\n\nPhase 1 (Q1): Passwordless MFA\nPhase 2 (Q2): Device trust\nPhase 3 (Q3): Continuous authentication\n\nShall we dive deeper into Phase 1?" },
+      { type: "email", day: 14, subject: "{{company}}'s rollout roadmap", content: "Hi {{firstName}},\n\nBased on our assessment, here's a phased plan for {{company}}.\n\nShall we dig into phase 1?" },
       { type: "call", day: 18, notes: "Technical deep-dive call" },
-      { type: "email", day: 21, subject: "Next steps for {{company}}", content: "Hi {{firstName}},\n\nGreat speaking with your team. Next steps:\n\n1. Technical proof of concept (2 weeks)\n2. Pilot with IT team (4 weeks)\n3. Full rollout\n\nShall I send over the POC agreement?" }
+      { type: "email", day: 21, subject: "Next steps for {{company}}", content: "Hi {{firstName}},\n\nGreat speaking with your team. Suggested next steps:\n\n1. Proof of concept\n2. Pilot with a small team\n3. Full rollout\n\nShall I send over the details?" }
     ]
   }
 ];
 
-const AI_SECURITY_TEMPLATES: SequenceTemplate[] = [
-  {
-    name: "AI Security Discovery (Coming Soon)",
-    description: "Agentic security tool outreach - templates to be added",
-    steps: [
-      { type: "email", day: 0, subject: "[STUB] AI Security intro", content: "Template coming soon for AI Security product line" }
-    ]
-  }
-];
-
-const GONG_TEMPLATES = [...MFA_TEMPLATES, ...AI_SECURITY_TEMPLATES];
+const GONG_TEMPLATES = OUTREACH_TEMPLATES;
 
 const STEP_ICONS: Record<StepType, any> = {
   email: Mail,

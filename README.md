@@ -223,46 +223,11 @@ PRs welcome! Especially:
 
 ## 📫 Contact
 
-**Ryan Chazi**  
-- 📧 mohssinechazi@gmail.com  
-- 💼 [LinkedIn](https://linkedin.com/in/ryan-chazi)  
-- 🐙 [GitHub](https://github.com/chzchzchzchz)  
-
-
-
----
-
-## ⭐ Star History
-
-If this helped you, star it! It helps others find the future of CRM.
-
-[![Star History Chart](https://api.star-history.com/svg?repos=chzchzchzchz/AI-CRM&type=Date)](https://star-history.com/#chzchzchzchz/AI-CRM&Date)
+Questions, bugs, or feature requests? Open a
+[GitHub issue](https://github.com/chzchzchzchz/AI-CRM/issues).
 
 ---
 
 ## 📄 License
 
-MIT License — free for personal & commercial use.
-
----
-
-### 🎤 LinkedIn Post (Copy-Paste This)
-
-> Just open-sourced the AI-powered prospect relationship layer I built for Salesforce reps. 🚀
-> 
-> After seeing the pain of managing enterprise sales data (14K contacts, stale data, reps hating Salesforce), I built **TargetDash**:
-> 
-> ✅ Zero manual entry (AI captures everything from 6sense, Gong, Clay)
-> ✅ MCP server (any AI agent can query your Salesforce data)
-> ✅ Next Best Action (AI tells you what to do today)
-> ✅ Multi-channel signal detection (intent, calls, engagement)
-> 
-> Layer it on top of Salesforce in 5 minutes: https://github.com/chzchzchzchz/AI-CRM
-> 
-> #Salesforce #AI #SalesReps #OpenSource
-> 
-> #Salesforce #AI #SalesReps #OpenSource
-
----
-
-**Now go star it. Fork it. Build the future.** ⭐
+MIT License — free for personal & commercial use. See [LICENSE](LICENSE).
