@@ -115,7 +115,7 @@ For real (persistent, multi-user) data instead of the JSON demo DB:
 ```bash
 DATABASE_URL="mysql://user:pass@host/db"   # MySQL
 DEMO_MODE=false
-pnpm db:push                                # apply the Drizzle schema
+pnpm db:push                                # create/sync tables from the schema (drizzle-kit push)
 ```
 
 ---

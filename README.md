@@ -91,7 +91,7 @@ TargetDash is **generic** — it works for any B2B company once you point it at 
 2. **Point at a real database** (optional — demo mode needs none):
    ```bash
    cp .env.example .env          # set DATABASE_URL and DEMO_MODE=false
-   pnpm db:push                  # run migrations
+   pnpm db:push                  # create the tables from the schema (drizzle-kit push)
    pnpm dev
    ```
 3. **Load your data** (optional):
