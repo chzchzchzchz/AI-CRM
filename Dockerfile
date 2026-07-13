@@ -38,7 +38,10 @@ RUN pnpm install --prod --frozen-lockfile
 COPY --from=build /app/dist ./dist
 COPY demo-db.seed.json ./demo-db.seed.json
 COPY drizzle ./drizzle
+COPY drizzle.config.ts ./drizzle.config.ts
 COPY config ./config
+# For real-DB setups, create the schema in the running container with:
+#   docker compose exec app pnpm db:push
 
 EXPOSE 3333
 CMD ["node", "dist/index.js"]

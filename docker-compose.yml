@@ -1,7 +1,10 @@
 # One-command self-host.
 #
-#   docker compose up            → zero-config demo at http://localhost:3333
-#   docker compose --profile full up   → app + MySQL (persistent, real data)
+#   docker compose up                                   → zero-config demo at :3333
+#   DEMO_MODE=false docker compose --profile full up    → app + persistent MySQL (real data)
+#
+# After the first `--profile full` boot, create the schema once:
+#   docker compose exec app pnpm db:push
 #
 services:
   app:
@@ -9,15 +12,18 @@ services:
     ports:
       - "3333:3333"
     environment:
-      DEMO_MODE: "true"           # flip to "false" and set DATABASE_URL for real data
-      PORT: "3333"
+      # Demo by default; set DEMO_MODE=false (with the 'full' profile) for real data.
+      DEMO_MODE: "${DEMO_MODE:-true}"
+      # Defaults to the bundled MySQL below; demo mode ignores it.
+      DATABASE_URL: "${DATABASE_URL:-mysql://root:targetdash@db:3306/targetdash}"
       # --- Optional integrations (see ADMIN_SETUP.md) ---
-      # OPENAI_API_KEY: ""
-      # SIXSENSE_API_KEY: ""
-      # CLAY_WEBHOOK_SECRET: ""
-      # SALESFORCE_CLIENT_ID: ""
-      # SALESFORCE_CLIENT_SECRET: ""
-      # SALESFORCE_INSTANCE_URL: ""
+      # OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      # SIXSENSE_API_KEY: "${SIXSENSE_API_KEY:-}"
+      # CLAY_WEBHOOK_SECRET: "${CLAY_WEBHOOK_SECRET:-}"
+    depends_on:
+      db:
+        condition: service_healthy
+        required: false          # db only exists in the 'full' profile
     restart: unless-stopped
 
   # Persistent MySQL — only started with:  docker compose --profile full up
@@ -31,6 +37,11 @@ services:
       - "3306:3306"
     volumes:
       - targetdash-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ptargetdash"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
     restart: unless-stopped
 
 volumes:
