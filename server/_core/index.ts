@@ -66,7 +66,13 @@ async function startServer() {
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  // In production (Docker / managed hosts like Render/Railway/Fly) the platform
+  // injects PORT and requires the app to bind to exactly that port, or its health
+  // check fails. Only scan for a free port in development, where port clashes are common.
+  const port =
+    process.env.NODE_ENV === "production"
+      ? preferredPort
+      : await findAvailablePort(preferredPort);
 
   if (port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
