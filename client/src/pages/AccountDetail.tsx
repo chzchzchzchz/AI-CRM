@@ -131,7 +131,7 @@ export default function AccountDetailEnhanced() {
 
       <div className="container py-6 space-y-6 max-w-7xl">
         {/* Compact Header */}
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/accounts"><ArrowLeft className="h-5 w-5" /></Link>
@@ -154,7 +154,7 @@ export default function AccountDetailEnhanced() {
                 <h1 className="text-2xl font-bold truncate">{account.name}</h1>
                 <Badge className={getBuyingStageColor(buyingStage)}>{buyingStage}</Badge>
               </div>
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
                 {account.domain && (
                   <a href={`https://${account.domain}`} target="_blank" rel="noopener noreferrer" 
                      className="flex items-center gap-1 hover:text-primary">
@@ -167,7 +167,7 @@ export default function AccountDetailEnhanced() {
               </div>
             </div>
           </div>
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 flex-shrink-0 flex-wrap">
             <Button size="sm" className="gradient-primary text-white" asChild>
               <Link href="/outreach"><Mail className="mr-1 h-4 w-4" />Outreach</Link>
             </Button>
