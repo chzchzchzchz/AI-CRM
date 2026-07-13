@@ -192,6 +192,11 @@ docker run -p 3333:3333 -e DEMO_MODE=false \
 ```
 Pass any integration env var (§5.1–5.4) with `-e` or in `docker-compose.yml`.
 
+**One-click to a public URL:** the repo ships a `render.yaml` Blueprint. Use the
+"Deploy to Render" button in the README (or point any Render/Railway/Fly project at
+the `Dockerfile`). It deploys the demo on a free public URL; add `DATABASE_URL`,
+`DEMO_MODE=false`, and integration keys in the host's dashboard to go live with real data.
+
 ---
 
 ## 6. Auth & multi-user

@@ -70,6 +70,11 @@ Prefer Docker? One command, no toolchain needed:
 ```bash
 docker compose up              # → http://localhost:3333
 ```
+
+Want it live on a public URL? One click, no local setup (deploys the demo; add your
+keys in the dashboard for real data):
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/chzchzchzchz/AI-CRM)
 (Or skip the copy and run `DEMO_MODE=true pnpm dev` — it just picks the first free port from 3000.)
 The AI features (account briefs, outreach, chat) work for free too — they fall back to a local
 Ollama model when no cloud key is set. See [SETUP.md](SETUP.md) for the one-time Ollama step.
