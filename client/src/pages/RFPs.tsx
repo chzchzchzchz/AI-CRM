@@ -44,11 +44,8 @@ export default function RFPs() {
   });
 
   const handleScrape = () => {
-    if (!apiKey) {
-      toast.error("Please enter your SAM.gov API key");
-      return;
-    }
-    scrapeMutation.mutate({ apiKey });
+    // Key is optional — the server uses SAM_GOV_API_KEY when the field is blank.
+    scrapeMutation.mutate(apiKey ? { apiKey } : {});
   };
 
   const filteredRFPs = rfps.filter((rfp: any) => {

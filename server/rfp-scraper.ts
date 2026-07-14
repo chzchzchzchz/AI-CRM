@@ -226,11 +226,15 @@ export const rfpRouter = router({
    */
   scrape: protectedProcedure
     .input(z.object({
-      apiKey: z.string(),
+      apiKey: z.string().optional(),   // optional override; defaults to server env
     }))
     .mutation(async ({ input }) => {
       try {
-        const opportunities = await scrapeAllRFPs(input.apiKey);
+        const apiKey = input.apiKey || process.env.SAM_GOV_API_KEY;
+        if (!apiKey) {
+          return { success: false, error: "SAM.gov API key not configured (set SAM_GOV_API_KEY)" };
+        }
+        const opportunities = await scrapeAllRFPs(apiKey);
         const inserted = await storeRFPs(opportunities);
 
         return {
