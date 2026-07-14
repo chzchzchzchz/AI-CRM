@@ -1,71 +1,91 @@
 # External Service Integrations
 
-Every endpoint below is a **real tRPC procedure** in this codebase. Base URL in dev is
-`http://localhost:3333`. Endpoints are `POST /api/trpc/<router>.<procedure>` (mutations) or
-`GET` (queries). See also [ADMIN_SETUP.md](ADMIN_SETUP.md).
+How to connect external services to TargetDash. Every endpoint below is a **real,
+implemented tRPC procedure** — verify with `curl` against a running server (default
+port **3333**). All integrations are optional; see [ADMIN_SETUP.md](ADMIN_SETUP.md)
+for keys and the plug-n-play walkthrough.
 
-## Clay — enrichment
+> tRPC calling convention used in the curl examples:
+> `POST /api/trpc/<procedure>?batch=1` with body `{"0":{"json":{ ...input }}}`.
 
-**Inbound (Clay → app), the primary flow.** Configure an HTTP API column in your Clay table to POST
-enriched rows here; secured by `CLAY_WEBHOOK_SECRET` (fails closed outside demo mode):
+## Clay (enrichment)
 
-- `POST /api/trpc/clay.receiveAccount` — enriched accounts
-- `POST /api/trpc/clay.receiveContact` — enriched contacts
+**Inbound (push) — Clay → TargetDash.** Configure an HTTP API column in your Clay
+table to POST enriched rows here. Secured by `CLAY_WEBHOOK_SECRET` (fails closed
+outside demo mode).
+
+- `POST /api/trpc/clay.receiveAccount` — upsert an account (by `clayId`/`domain`)
+- `POST /api/trpc/clay.receiveContact` — upsert a contact (by `clayId`/`email`)
+- `POST /api/trpc/clayWebhook.receive` — flexible passthrough (auto-categorises fields)
 
 ```bash
 curl -X POST 'http://localhost:3333/api/trpc/clay.receiveAccount?batch=1' \
-  -H 'content-type: application/json' \
-  -d '{"0":{"json":{"webhook_secret":"<secret>","clayId":"rec_123","name":"Acme Corp",
-       "domain":"acme.com","industry":"Technology","employees":"500",
-       "stack":"{\"cloud\":[\"AWS\"]}","trigger":"Hired new CISO"}}}'
+  -H 'Content-Type: application/json' \
+  -d '{"0":{"json":{"webhook_secret":"<secret>","name":"Acme Corp","domain":"acme.com",
+       "industry":"Technology","employees":"500","intentScore":"82","clayId":"rec_123"}}}'
+# → {"success":true,"action":"created"}
 ```
 
-**Outbound (app → Clay).** Trigger enrichment by pushing a domain to your Clay table webhook
-(`CLAY_WEBHOOK_URL`): `POST /api/trpc/clayPull.triggerEnrichment` `{ domain, name? }`.
+**Outbound (pull) — TargetDash → Clay.** Trigger enrichment by pushing a row to your
+Clay table's webhook (`CLAY_WEBHOOK_URL`):
 
-## 6sense — intent scores
+- `POST /api/trpc/clayPull.triggerEnrichment` — `{ domain, name? }`
 
-- `POST /api/trpc/intentScores.create` `{ accountId, score (0-100), category?, keywords?[], source? }`
-- `GET  /api/trpc/intentScores.list?input={"accountId":1}`
+## 6sense (intent)
 
-Bulk historical metrics (buying stage, keywords, 6QA) load via
-`npx tsx scripts/import-6sense-data.ts` (edit the arrays with your export).
+Store intent scores per account (from a 6sense export or API):
 
-## Gong — calls
+- `POST /api/trpc/intentScores.create` — `{ accountId, score, category?, keywords?[], source? }`
+- `GET  /api/trpc/intentScores.list` — `{ accountId }`
+- Bulk import buying-stage / keyword / 6QA metrics: `npx tsx scripts/import-6sense-data.ts`
+  (edit the example arrays with your export first)
 
-- `POST /api/trpc/calls.create` `{ title, accountId?, contactId?, duration?, gongCallId?, sentiment?, keyTopics?[], actionItems?[], callDate? }`
-- `GET  /api/trpc/calls.list`
+```bash
+curl -X POST 'http://localhost:3333/api/trpc/intentScores.create?batch=1' \
+  -H 'Content-Type: application/json' \
+  -d '{"0":{"json":{"accountId":1,"score":85,"category":"Security","keywords":["Zero Trust"],"source":"6sense"}}}'
+# → {"success":true}
+```
 
-## SAM.gov — government RFPs
+## Gong (calls)
 
-- `POST /api/trpc/rfps.create` `{ title, agency?, solicitationNumber?, responseDeadline?, awardAmount?, url?, status? }`
-- `POST /api/trpc/rfps.scrape` — scrape SAM.gov for the configured keywords
-- `GET  /api/trpc/rfps.list`
+Store call intelligence:
 
-## Zapier — automation webhook
+- `POST /api/trpc/calls.create` — `{ accountId?, contactId?, title, duration?, gongCallId?,
+  sentiment?, keyTopics?[], actionItems?[], callDate? }`
+- `GET  /api/trpc/calls.list`, `calls.getByAccountId`
 
-- `POST /api/trpc/zapier.webhook` `{ event, data? }` — secured by `ZAPIER_WEBHOOK_SECRET` (fails closed
-  outside demo mode). Use it to fan out CRM events into any Zap.
+## SAM.gov (government RFPs)
 
-## AI (built-in LLM — free via local Ollama, or a cloud key)
+Track open RFPs matching your product's keywords (`RFP_KEYWORDS`, comma-separated):
 
-- `POST /api/trpc/ai.generateAccountResearch` `{ accountId }`
-- `POST /api/trpc/ai.generateOutreachRecommendation` `{ accountId, contactId, recentActivity? }`
-- Also: `ai.generateEmail`, `ai.enrichAccount`, `ai.analyzeCall`, `ai.chat`, `ai.search`.
+- `POST /api/trpc/rfps.create` — manually add an RFP
+- `POST /api/trpc/rfps.scrape` — pull from SAM.gov (`SAM_GOV_API_KEY`)
+- `GET  /api/trpc/rfps.list`, `rfps.stats`
 
-## Salesforce — see [ADMIN_SETUP.md §5.1] (OAuth sync: `salesforce.testConnection` / `fullSync`).
+## Zapier (automation)
+
+Receive automation events (secured by `ZAPIER_WEBHOOK_SECRET`, fails closed outside demo mode):
+
+- `POST /api/trpc/zapier.webhook` — `{ event, data?, webhook_secret? }`
+
+```bash
+curl -X POST 'http://localhost:3333/api/trpc/zapier.webhook?batch=1' \
+  -H 'Content-Type: application/json' \
+  -d '{"0":{"json":{"event":"account.enriched","data":{"accountId":1}}}}'
+# → {"received":true,"event":"account.enriched"}
+```
+
+## AI (research & outreach)
+
+Built-in, powered by the local/cloud LLM helper (see SETUP.md — free via Ollama):
+
+- `POST /api/trpc/ai.generateAccountResearch` — `{ accountId }`
+- `POST /api/trpc/ai.generateOutreachRecommendation` — `{ accountId, contactId, recentActivity? }`
+- Also: `ai.enrichAccount`, `ai.generateEmail`, `ai.analyzeCall`, `ai.chat`, `ai.search`
 
 ## Environment variables
 
-```bash
-CLAY_WEBHOOK_SECRET=...     # verify inbound Clay webhooks (required in prod)
-CLAY_WEBHOOK_URL=...        # outbound enrichment trigger (optional)
-SIXSENSE_API_KEY=...        # 6sense enrichment (optional)
-GONG_API_KEY=...            # reserved for live Gong pull (roadmap)
-SAM_GOV_API_KEY=...         # SAM.gov RFP scraping (optional)
-ZAPIER_WEBHOOK_SECRET=...   # verify inbound Zapier events (required in prod if used)
-OPENAI_API_KEY=...          # optional; AI also runs free on local Ollama
-```
-
-All sources flow into the same `accounts` + `contacts` tables, keyed by cross-platform IDs
-(`sfdcAccountId`, `clayRecordId`, …) for unified tracking.
+See [.env.example](.env.example) for the full list. Relevant here:
+`CLAY_WEBHOOK_SECRET`, `CLAY_WEBHOOK_URL`, `SIXSENSE_API_KEY`, `GONG_API_KEY`,
+`SAM_GOV_API_KEY`, `RFP_KEYWORDS`, `ZAPIER_WEBHOOK_SECRET`.

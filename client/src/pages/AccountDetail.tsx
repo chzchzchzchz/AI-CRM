@@ -34,6 +34,7 @@ export default function AccountDetailEnhanced() {
   );
   const { data: salesforceInstanceUrl } = trpc.salesforce.getInstanceUrl.useQuery();
   const { data: accountOpportunities } = trpc.opportunities.getByAccountId.useQuery({ accountId }, { enabled: accountId > 0 });
+  const { data: intentSignals } = trpc.intentScores.list.useQuery({ accountId }, { enabled: accountId > 0 && !!account });
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -254,6 +255,30 @@ export default function AccountDetailEnhanced() {
                 ))}
               </CardContent>
             </Card>
+            {/* Intent Signals (6sense) */}
+            {intentSignals && intentSignals.length > 0 && (
+              <Card>
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Flame className="h-4 w-4 text-orange-500" />
+                    Intent Signals
+                    <span className="text-xs font-normal text-muted-foreground">({intentSignals[0].source})</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4 space-y-2">
+                  {intentSignals.slice(0, 4).map((s: any) => (
+                    <div key={s.id} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {new Date(s.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        {s.category ? ` · ${s.category}` : ''}
+                      </span>
+                      <span className={`font-semibold ${getIntentColor(s.score)}`}>{s.score}</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Key Contacts */}
             <Card>
               <CardHeader className="py-3 px-4">
