@@ -50,8 +50,8 @@ const LAST=["Chen","Reyes","Novak","Okafor","Patel","Sullivan","Brooks","Mendez"
 const TITLES=[["VP Sales","Sales"],["RevOps Director","Revenue Operations"],["Chief Revenue Officer","Executive"],["Head of Sales Enablement","Sales"],["SDR Manager","Sales Development"],["VP Marketing","Marketing"]];
 const REGION = (loc)=> /CA|WA|OR/.test(loc)?"West": /NY|MA|CT|DC/.test(loc)?"Northeast":"Central";
 
-const accounts=[], contacts=[], calls=[], opportunities=[];
-let cid=1, callId=1, oppId=1;
+const accounts=[], contacts=[], calls=[], opportunities=[], intentScores=[];
+let cid=1, callId=1, oppId=1, isId=1;
 
 COMPANIES.forEach((c,i)=>{
   const [name,domain,industry,emp,rev,loc,intent,tech,sec,trig,stage,fit]=c;
@@ -90,6 +90,16 @@ COMPANIES.forEach((c,i)=>{
     });
     callId++;
   }
+  // 6sense-style intent-score history (4 weekly points trending to current intent)
+  if(intent>=70){
+    for(let w=3; w>=0; w--){
+      intentScores.push({
+        id:isId++, accountId:aid, score: Math.max(30, intent - w*4 - (i%3)),
+        category: sec[0] ? "Security" : industry, keywords:J(trig.slice(0,2)), source:"6sense",
+        createdAt:iso(Date.parse(now)-w*7*86400000), updatedAt:now
+      });
+    }
+  }
   // pipeline for opportunity-grade accounts
   if(intent>=82){
     const amt=(50000+(intent-80)*4000*(1+(i%4))).toFixed(2);
@@ -106,7 +116,7 @@ COMPANIES.forEach((c,i)=>{
   }
 });
 
-db.accounts=accounts; db.contacts=contacts; db.calls=calls; db.opportunities=opportunities;
+db.accounts=accounts; db.contacts=contacts; db.calls=calls; db.opportunities=opportunities; db.intentScores=intentScores;
 const json = JSON.stringify(db, null, 2);
 writeFileSync(SEED, json);   // committed canonical seed
 writeFileSync(DB, json);     // runtime copy (gitignored) so a running dev server refreshes

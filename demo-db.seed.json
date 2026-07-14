@@ -1368,5 +1368,527 @@
   "contextStore": [],
   "auditLogs": [],
   "email_verification_codes": [],
-  "password_reset_codes": []
+  "password_reset_codes": [],
+  "intentScores": [
+    {
+      "id": 1,
+      "accountId": 1,
+      "score": 80,
+      "category": "Security",
+      "keywords": "[\"New VP Sales hire\",\"Series D raise\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-10T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "accountId": 1,
+      "score": 84,
+      "category": "Security",
+      "keywords": "[\"New VP Sales hire\",\"Series D raise\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-17T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 3,
+      "accountId": 1,
+      "score": 88,
+      "category": "Security",
+      "keywords": "[\"New VP Sales hire\",\"Series D raise\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-24T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 4,
+      "accountId": 1,
+      "score": 92,
+      "category": "Security",
+      "keywords": "[\"New VP Sales hire\",\"Series D raise\"]",
+      "source": "6sense",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 5,
+      "accountId": 2,
+      "score": 75,
+      "category": "Security",
+      "keywords": "[\"Expanding sales team\",\"HIPAA audit\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-10T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 6,
+      "accountId": 2,
+      "score": 79,
+      "category": "Security",
+      "keywords": "[\"Expanding sales team\",\"HIPAA audit\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-17T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 7,
+      "accountId": 2,
+      "score": 83,
+      "category": "Security",
+      "keywords": "[\"Expanding sales team\",\"HIPAA audit\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-24T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 8,
+      "accountId": 2,
+      "score": 87,
+      "category": "Security",
+      "keywords": "[\"Expanding sales team\",\"HIPAA audit\"]",
+      "source": "6sense",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 9,
+      "accountId": 3,
+      "score": 81,
+      "category": "Security",
+      "keywords": "[\"CRO transition\",\"Outbound expansion\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-10T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 10,
+      "accountId": 3,
+      "score": 85,
+      "category": "Security",
+      "keywords": "[\"CRO transition\",\"Outbound expansion\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-17T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 11,
+      "accountId": 3,
+      "score": 89,
+      "category": "Security",
+      "keywords": "[\"CRO transition\",\"Outbound expansion\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-24T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 12,
+      "accountId": 3,
+      "score": 93,
+      "category": "Security",
+      "keywords": "[\"CRO transition\",\"Outbound expansion\"]",
+      "source": "6sense",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 13,
+      "accountId": 4,
+      "score": 72,
+      "category": "Security",
+      "keywords": "[\"New funding round\",\"Compliance push\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-10T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 14,
+      "accountId": 4,
+      "score": 76,
+      "category": "Security",
+      "keywords": "[\"New funding round\",\"Compliance push\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-17T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 15,
+      "accountId": 4,
+      "score": 80,
+      "category": "Security",
+      "keywords": "[\"New funding round\",\"Compliance push\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-24T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 16,
+      "accountId": 4,
+      "score": 84,
+      "category": "Security",
+      "keywords": "[\"New funding round\",\"Compliance push\"]",
+      "source": "6sense",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 17,
+      "accountId": 5,
+      "score": 77,
+      "category": "Security",
+      "keywords": "[\"Hiring 10 SDRs\",\"Product launch\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-10T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 18,
+      "accountId": 5,
+      "score": 81,
+      "category": "Security",
+      "keywords": "[\"Hiring 10 SDRs\",\"Product launch\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-17T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 19,
+      "accountId": 5,
+      "score": 85,
+      "category": "Security",
+      "keywords": "[\"Hiring 10 SDRs\",\"Product launch\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-24T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 20,
+      "accountId": 5,
+      "score": 89,
+      "category": "Security",
+      "keywords": "[\"Hiring 10 SDRs\",\"Product launch\"]",
+      "source": "6sense",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 21,
+      "accountId": 6,
+      "score": 57,
+      "category": "Security",
+      "keywords": "[\"Digital transformation\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-10T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 22,
+      "accountId": 6,
+      "score": 61,
+      "category": "Security",
+      "keywords": "[\"Digital transformation\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-17T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 23,
+      "accountId": 6,
+      "score": 65,
+      "category": "Security",
+      "keywords": "[\"Digital transformation\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-24T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 24,
+      "accountId": 6,
+      "score": 69,
+      "category": "Security",
+      "keywords": "[\"Digital transformation\"]",
+      "source": "6sense",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 25,
+      "accountId": 8,
+      "score": 66,
+      "category": "Security",
+      "keywords": "[\"New CMO\",\"Rebrand\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-10T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 26,
+      "accountId": 8,
+      "score": 70,
+      "category": "Security",
+      "keywords": "[\"New CMO\",\"Rebrand\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-17T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 27,
+      "accountId": 8,
+      "score": 74,
+      "category": "Security",
+      "keywords": "[\"New CMO\",\"Rebrand\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-24T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 28,
+      "accountId": 8,
+      "score": 78,
+      "category": "Security",
+      "keywords": "[\"New CMO\",\"Rebrand\"]",
+      "source": "6sense",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 29,
+      "accountId": 9,
+      "score": 68,
+      "category": "Security",
+      "keywords": "[\"Govt contract win\",\"Sales expansion\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-10T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 30,
+      "accountId": 9,
+      "score": 72,
+      "category": "Security",
+      "keywords": "[\"Govt contract win\",\"Sales expansion\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-17T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 31,
+      "accountId": 9,
+      "score": 76,
+      "category": "Security",
+      "keywords": "[\"Govt contract win\",\"Sales expansion\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-24T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 32,
+      "accountId": 9,
+      "score": 80,
+      "category": "Security",
+      "keywords": "[\"Govt contract win\",\"Sales expansion\"]",
+      "source": "6sense",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 33,
+      "accountId": 10,
+      "score": 81,
+      "category": "Security",
+      "keywords": "[\"Series C raise\",\"Hiring AEs\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-10T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 34,
+      "accountId": 10,
+      "score": 85,
+      "category": "Security",
+      "keywords": "[\"Series C raise\",\"Hiring AEs\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-17T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 35,
+      "accountId": 10,
+      "score": 89,
+      "category": "Security",
+      "keywords": "[\"Series C raise\",\"Hiring AEs\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-24T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 36,
+      "accountId": 10,
+      "score": 93,
+      "category": "Security",
+      "keywords": "[\"Series C raise\",\"Hiring AEs\"]",
+      "source": "6sense",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 37,
+      "accountId": 12,
+      "score": 73,
+      "category": "Security",
+      "keywords": "[\"AI product launch\",\"Outbound ramp\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-10T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 38,
+      "accountId": 12,
+      "score": 77,
+      "category": "Security",
+      "keywords": "[\"AI product launch\",\"Outbound ramp\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-17T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 39,
+      "accountId": 12,
+      "score": 81,
+      "category": "Security",
+      "keywords": "[\"AI product launch\",\"Outbound ramp\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-24T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 40,
+      "accountId": 12,
+      "score": 85,
+      "category": "Security",
+      "keywords": "[\"AI product launch\",\"Outbound ramp\"]",
+      "source": "6sense",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 41,
+      "accountId": 14,
+      "score": 61,
+      "category": "Security",
+      "keywords": "[\"Post-pandemic growth\",\"New markets\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-10T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 42,
+      "accountId": 14,
+      "score": 65,
+      "category": "Security",
+      "keywords": "[\"Post-pandemic growth\",\"New markets\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-17T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 43,
+      "accountId": 14,
+      "score": 69,
+      "category": "Security",
+      "keywords": "[\"Post-pandemic growth\",\"New markets\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-24T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 44,
+      "accountId": 14,
+      "score": 73,
+      "category": "Security",
+      "keywords": "[\"Post-pandemic growth\",\"New markets\"]",
+      "source": "6sense",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 45,
+      "accountId": 15,
+      "score": 67,
+      "category": "Security",
+      "keywords": "[\"Funding round\",\"Enterprise push\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-10T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 46,
+      "accountId": 15,
+      "score": 71,
+      "category": "Security",
+      "keywords": "[\"Funding round\",\"Enterprise push\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-17T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 47,
+      "accountId": 15,
+      "score": 75,
+      "category": "Security",
+      "keywords": "[\"Funding round\",\"Enterprise push\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-24T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 48,
+      "accountId": 15,
+      "score": 79,
+      "category": "Security",
+      "keywords": "[\"Funding round\",\"Enterprise push\"]",
+      "source": "6sense",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 49,
+      "accountId": 16,
+      "score": 65,
+      "category": "Security",
+      "keywords": "[\"FDA milestone\",\"Commercial team build\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-10T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 50,
+      "accountId": 16,
+      "score": 69,
+      "category": "Security",
+      "keywords": "[\"FDA milestone\",\"Commercial team build\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-17T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 51,
+      "accountId": 16,
+      "score": 73,
+      "category": "Security",
+      "keywords": "[\"FDA milestone\",\"Commercial team build\"]",
+      "source": "6sense",
+      "createdAt": "2026-06-24T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 52,
+      "accountId": 16,
+      "score": 77,
+      "category": "Security",
+      "keywords": "[\"FDA milestone\",\"Commercial team build\"]",
+      "source": "6sense",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z"
+    }
+  ]
 }
