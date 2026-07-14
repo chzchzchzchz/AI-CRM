@@ -276,4 +276,35 @@ export const rfpRouter = router({
       private: 0, // type column doesn't exist in schema
     };
   }),
+
+  create: protectedProcedure
+    .input(z.object({
+      title: z.string(),
+      description: z.string().optional(),
+      agency: z.string().optional(),
+      solicitationNumber: z.string().optional(),
+      postedDate: z.string().optional(),
+      responseDeadline: z.string().optional(),
+      awardAmount: z.string().optional(),
+      samGovId: z.string().optional(),
+      url: z.string().optional(),
+      status: z.string().default("open"),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      await db.insert(rfps).values({
+        title: input.title,
+        description: input.description ?? null,
+        agency: input.agency ?? null,
+        solicitationNumber: input.solicitationNumber ?? null,
+        postedDate: input.postedDate ? new Date(input.postedDate) : null,
+        responseDeadline: input.responseDeadline ? new Date(input.responseDeadline) : null,
+        awardAmount: input.awardAmount ?? null,
+        samGovId: input.samGovId ?? null,
+        url: input.url ?? null,
+        status: input.status,
+      });
+      return { success: true };
+    }),
 });
