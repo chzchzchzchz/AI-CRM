@@ -71,7 +71,7 @@ export default function RFPs() {
           <div>
             <h1 className="text-4xl font-bold text-white mb-2">RFP Monitor</h1>
             <p className="text-slate-400">
-              Track open RFPs for MFA, SSO, and Zero Trust from SAM.gov
+              Track open government RFPs from SAM.gov
             </p>
           </div>
           <div className="flex items-center gap-3">

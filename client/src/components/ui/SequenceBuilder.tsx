@@ -183,7 +183,7 @@ export default function SequenceBuilder() {
         <Card className="bg-slate-900/50 border-slate-800">
           <CardContent className="p-6">
             <Input
-              placeholder="Enter sequence name (e.g., 'Enterprise MFA Outreach')"
+              placeholder="Enter sequence name (e.g., 'Enterprise Outreach')"
               value={sequenceName}
               onChange={(e) => setSequenceName(e.target.value)}
               className="bg-slate-950 border-slate-700 text-white text-lg"
@@ -197,7 +197,7 @@ export default function SequenceBuilder() {
             <CardHeader>
               <CardTitle className="text-white text-sm">Gong-Style Templates</CardTitle>
               <CardDescription className="text-slate-400 text-xs">
-                Pre-built sequences for MFA/SSO and AI Security
+                Pre-built outreach sequences
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">

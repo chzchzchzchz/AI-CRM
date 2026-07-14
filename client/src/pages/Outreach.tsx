@@ -407,7 +407,7 @@ export default function Outreach() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea
-                  placeholder="e.g., Focus on phishing prevention, mention recent breaches, emphasize passwordless benefits..."
+                  placeholder="e.g., Focus on their pain points, mention recent news, emphasize your key differentiators..."
                   value={context}
                   onChange={(e) => setContext(e.target.value)}
                   className="min-h-[100px] bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"

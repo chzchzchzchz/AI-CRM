@@ -168,7 +168,7 @@ ${accountSummary}
 
 ${contactSummary ? "CONTACT BRIEF:\n" + contactSummary + "\n" : ""}
 
-Additional context from rep: ${input.prompt || "Focus on passwordless MFA and Zero Trust security."}
+Additional context from rep: ${input.prompt || "Focus on the prospect's likely pain points and our key differentiators."}
 
 REQUIREMENTS:
 - Start with "${firstName},"

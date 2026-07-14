@@ -121,7 +121,7 @@ export function GlobalAIChat() {
     "What are the top opportunities?",
     "Which accounts need follow-up?",
     "Summarize this week's activity",
-    "Find accounts with MFA buying signals",
+    "Find accounts with high intent",
     "Generate outreach email for a prospect"
   ];
 
