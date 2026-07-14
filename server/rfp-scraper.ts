@@ -18,7 +18,7 @@ import { eq, desc } from "drizzle-orm";
  * - Pass as query parameter: api_key=YOUR_KEY
  * 
  * Search Parameters:
- * - keyword: Search term (e.g., "MFA", "SSO", "multi-factor authentication")
+ * - keyword: Search term (e.g., "software", "SaaS", "platform")
  * - postedFrom/postedTo: Date range (YYYY-MM-DD)
  * - noticeType: Filter by notice type (o=Solicitation, k=Combined Synopsis, etc.)
  * - active: true/false for active opportunities only
@@ -26,22 +26,11 @@ import { eq, desc } from "drizzle-orm";
 
 const SAM_GOV_API_BASE = "https://api.sam.gov/prod/opportunity/v2";
 
-// Keywords to search for MFA/SSO/Zero Trust opportunities
-const MFA_SSO_KEYWORDS = [
-  "multi-factor authentication",
-  "MFA",
-  "two-factor authentication",
-  "2FA",
-  "single sign-on",
-  "SSO",
-  "identity access management",
-  "IAM",
-  "zero trust",
-  "passwordless",
-  "authentication",
-  "identity management",
-  "access control"
-];
+// Keywords to search RFPs for. Configure for YOUR product via the RFP_KEYWORDS env
+// var (comma-separated); defaults to a generic B2B software set.
+const RFP_KEYWORDS = (process.env.RFP_KEYWORDS
+  ? process.env.RFP_KEYWORDS.split(",").map((k) => k.trim()).filter(Boolean)
+  : ["software", "SaaS", "platform", "cloud services", "professional services", "IT services"]);
 
 interface SAMOpportunity {
   noticeId: string;
@@ -139,13 +128,13 @@ async function searchSAMGov(apiKey: string, keyword: string, limit: number = 100
 }
 
 /**
- * Scrape all MFA/SSO related RFPs from SAM.gov
+ * Scrape RFPs from SAM.gov for the configured keywords
  */
 async function scrapeAllRFPs(apiKey: string): Promise<SAMOpportunity[]> {
   const allOpportunities: SAMOpportunity[] = [];
   const seenIds = new Set<string>();
 
-  for (const keyword of MFA_SSO_KEYWORDS) {
+  for (const keyword of RFP_KEYWORDS) {
     try {
       console.log(`[RFP Scraper] Searching for: ${keyword}`);
       const opportunities = await searchSAMGov(apiKey, keyword, 100);

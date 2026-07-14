@@ -25,7 +25,7 @@ interface AIResponse {
 const contextSuggestions: Record<string, string[]> = {
   accounts: [
     "Which accounts have the highest intent this week?",
-    "Show me accounts with MFA buying signals",
+    "Show me accounts with strong buying signals",
     "Find accounts that need immediate follow-up",
   ],
   contacts: [
