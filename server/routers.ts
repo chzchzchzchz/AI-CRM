@@ -14,6 +14,8 @@ import { enrichAccount } from "./sixsense";
 import { conversationWithMemory, generateAccountSummary, generateContactSummary } from "./aiContext";
 import { clayImportRouter } from "./clay-import";
 import { clayWebhookRouter } from "./clay-webhook";
+import { intentScoresRouter, zapierRouter, clayPullRouter } from "./integrations-router";
+import { calls as callsTable } from "../drizzle/schema";
 import { sequencesRouter } from "./sequences";
 import { rfpRouter } from "./rfp-scraper";
 import { outreachRouter } from "./outreach";
@@ -583,6 +585,34 @@ Or go to the Admin Panel: /admin/approval`
     list: protectedProcedure.query(async () => {
       return await getAllGongCalls();
     }),
+    create: protectedProcedure
+      .input(z.object({
+        accountId: z.number().optional(),
+        contactId: z.number().optional(),
+        title: z.string(),
+        duration: z.number().optional(),
+        gongCallId: z.string().optional(),
+        sentiment: z.string().optional(),
+        keyTopics: z.array(z.string()).optional(),
+        actionItems: z.array(z.string()).optional(),
+        callDate: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.insert(callsTable).values({
+          accountId: input.accountId ?? null,
+          contactId: input.contactId ?? null,
+          title: input.title,
+          duration: input.duration ?? null,
+          gongCallId: input.gongCallId ?? null,
+          sentiment: input.sentiment ?? null,
+          keyTopics: input.keyTopics ? JSON.stringify(input.keyTopics) : null,
+          actionItems: input.actionItems ? JSON.stringify(input.actionItems) : null,
+          callDate: input.callDate ? new Date(input.callDate) : new Date(),
+        });
+        return { success: true };
+      }),
     getByAccountId: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .query(async ({ input }) => {
@@ -708,9 +738,28 @@ Or go to the Admin Panel: /admin/approval`
         return await analyzeGongCall(call);
       }),
 
+    // Documented alias: AI account research (reuses enrichAccountWithAI)
+    generateAccountResearch: protectedProcedure
+      .input(z.object({ accountId: z.number() }))
+      .mutation(async ({ input }) => {
+        const account = await getAccountById(input.accountId);
+        if (!account) throw new Error("Account not found");
+        return await enrichAccountWithAI(account);
+      }),
+    // Documented alias: AI outreach recommendation (reuses generateOutreachEmail)
+    generateOutreachRecommendation: protectedProcedure
+      .input(z.object({ accountId: z.number(), contactId: z.number(), recentActivity: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const account = await getAccountById(input.accountId);
+        if (!account) throw new Error("Account not found");
+        const people = await getAllPeople();
+        const contact = people.find((p: Contact) => p.id === input.contactId);
+        const email = await generateOutreachEmail(account, contact, input.recentActivity);
+        return { recommendation: email };
+      }),
     generateEmail: protectedProcedure
-      .input(z.object({ 
-        accountId: z.number(), 
+      .input(z.object({
+        accountId: z.number(),
         contactId: z.number(),
         context: z.string().optional()
       }))
@@ -1346,6 +1395,9 @@ ${STANDARDIZED_OUTPUT_STRUCTURE}`;
 
   // Clay data import
   clayImport: clayImportRouter,
+  intentScores: intentScoresRouter,
+  zapier: zapierRouter,
+  clayPull: clayPullRouter,
   sequences: sequencesRouter,
   rfps: rfpRouter,
   clayWebhook: clayWebhookRouter,
