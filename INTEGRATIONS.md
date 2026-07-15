@@ -26,6 +26,7 @@ connector is a thin, real HTTP client against the vendor's documented API
 | **Twilio** | `integrations.twilioSendSms` | Send an SMS alert | `TWILIO_ACCOUNT_SID/AUTH_TOKEN/FROM_NUMBER` |
 | **Segment** | `integrations.segmentTrack` | Track an analytics event | `SEGMENT_WRITE_KEY` |
 | **Fan-out** | `integrations.notifyHotLead` | One event → every configured chat tool + webhook | (uses the above) |
+| **Auto-trigger** | (automatic) | When an account crosses `HOT_LEAD_THRESHOLD` (default 80) via Clay ingest, fan out automatically — zero-touch | `HOT_LEAD_THRESHOLD` |
 | **Zapier / Make / n8n** | `integrations.sendWebhook` (out) · `zapier.webhook` (in) | Any HTTP endpoint, both directions | `ZAPIER_WEBHOOK_SECRET` (inbound) |
 | **Clay** | `clay.receiveAccount` / `clay.receiveContact` (in) · `clayPull.triggerEnrichment` (out) | Enrichment in/out | `CLAY_WEBHOOK_SECRET`, `CLAY_WEBHOOK_URL` |
 | **6sense** | `intentScores.create` / `.list` | Store intent scores per account | `SIXSENSE_API_KEY` |
