@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { APP_LOGO, APP_TITLE } from "@/const";
-import { Users, Phone, Search, BarChart3, Settings, Send, FileText, Home, UserCircle, Contact, LogOut, TrendingUp } from "lucide-react";
+import { Users, Phone, Search, BarChart3, Settings, Send, FileText, Home, UserCircle, Contact, LogOut, TrendingUp, Plug } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useQueryClient } from "@tanstack/react-query";
@@ -30,6 +30,8 @@ export function Navigation({ onSearchClick }: NavigationProps) {
     // { path: "/calls", label: "Calls", icon: Phone }, // Hidden per user request
     { path: "/insights", label: "Insights", icon: BarChart3 },
     { path: "/outreach", label: "Outreach", icon: Send },
+
+    { path: "/integrations", label: "Integrations", icon: Plug },
 
     // Admin-only pages
     { path: "/rfps", label: "RFPs", icon: FileText, adminOnly: true },

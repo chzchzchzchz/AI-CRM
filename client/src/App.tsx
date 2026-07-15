@@ -17,6 +17,7 @@ const Calls = lazyLoad(() => import("./pages/Calls"));
 const Insights = lazyLoad(() => import("./pages/Insights"));
 const Outreach = lazyLoad(() => import("./pages/Outreach"));
 const RFPs = lazyLoad(() => import("./pages/RFPs"));
+const Integrations = lazyLoad(() => import("./pages/Integrations"));
 const Admin = lazyLoad(() => import("./pages/Admin"));
 const AdminApproval = lazyLoad(() => import("./pages/AdminApproval"));
 const SmartSearch = lazyLoad(() => import("./pages/SmartSearch"));
@@ -58,6 +59,7 @@ function Router() {
       <Route path="/insights" component={Insights} />
       <Route path="/outreach" component={Outreach} />
       <Route path="/rfps" component={RFPs} />
+      <Route path="/integrations" component={Integrations} />
       <Route path="/admin" component={Admin} />
       <Route path="/admin/approval" component={AdminApproval} />
       <Route path="/search" component={SmartSearch} />
