@@ -4,6 +4,7 @@ import { getDb } from "./db";
 import { contacts, accounts } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { maybeNotifyHotLead } from "./integrations/connectors";
 
 /**
  * Clay webhook router
@@ -129,6 +130,13 @@ export const clayRouter = router({
             })
             .where(eq(accounts.id, existingAccount.id));
 
+          // Auto-notify if this update pushed the account across the hot-lead threshold.
+          maybeNotifyHotLead(
+            input.name,
+            input.intentScore ? parseInt(String(input.intentScore)) : existingAccount.intentScore,
+            existingAccount.intentScore,
+          );
+
           return {
             success: true,
             action: "updated",
@@ -150,6 +158,9 @@ export const clayRouter = router({
             techStack: input.stack || null,
             triggerEvents: input.trigger || null,
           });
+
+          // Auto-notify if the new account arrives already hot.
+          maybeNotifyHotLead(input.name, input.intentScore ? parseInt(String(input.intentScore)) : null, 0);
 
           return {
             success: true,

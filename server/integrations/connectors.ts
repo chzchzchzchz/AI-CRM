@@ -223,4 +223,19 @@ export async function notifyAll(text: string, webhookUrl?: string): Promise<Reco
   return { slack, discord, teams, googleChat: gchat, webhook };
 }
 
+/**
+ * Auto-trigger: when an account's intent score CROSSES the hot threshold
+ * (HOT_LEAD_THRESHOLD, default 80), fan out a notification to every configured tool.
+ * Fire-and-forget so it never blocks the ingest request. Only fires on the crossing
+ * (prev < threshold <= new), so it won't spam on every update.
+ */
+export function maybeNotifyHotLead(name: string, score?: number | null, prevScore?: number | null): void {
+  const threshold = parseInt(process.env.HOT_LEAD_THRESHOLD || "80");
+  const s = Number(score) || 0;
+  const p = Number(prevScore) || 0;
+  if (s >= threshold && p < threshold) {
+    notifyAll(`🔥 Hot lead: ${name} crossed intent ${threshold} (now ${s})`).catch(() => {});
+  }
+}
+
 function msg(e: unknown): string { return e instanceof Error ? e.message : "request failed"; }
