@@ -14,6 +14,7 @@ import {
   slackNotify, discordNotify, teamsNotify, hubspotUpsertContact,
   notionCreatePage, linearCreateIssue, intercomUpsertContact, sendWebhook,
   airtableCreateRecord, pipedriveCreateDeal, apolloEnrichPerson,
+  googleChatNotify, twilioSendSms, segmentTrack, notifyAll,
 } from "./integrations/connectors";
 
 // ---- Native SaaS connectors (Slack, Discord, Teams, HubSpot, Notion, Linear, Intercom, webhooks) ----
@@ -30,7 +31,23 @@ export const integrationsRouter = router({
     airtable: !!(process.env.AIRTABLE_TOKEN && process.env.AIRTABLE_BASE_ID && process.env.AIRTABLE_TABLE),
     pipedrive: !!(process.env.PIPEDRIVE_API_TOKEN && process.env.PIPEDRIVE_DOMAIN),
     apollo: !!process.env.APOLLO_API_KEY,
+    googleChat: !!process.env.GOOGLE_CHAT_WEBHOOK_URL,
+    twilio: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM_NUMBER),
+    segment: !!process.env.SEGMENT_WRITE_KEY,
   })),
+  // One event → every configured chat tool (+ optional webhook). The native automation.
+  notifyHotLead: protectedProcedure
+    .input(z.object({ text: z.string(), webhookUrl: z.string().url().optional() }))
+    .mutation(({ input }) => notifyAll(input.text, input.webhookUrl)),
+  googleChatNotify: protectedProcedure
+    .input(z.object({ text: z.string(), webhookUrl: z.string().url().optional() }))
+    .mutation(({ input }) => googleChatNotify(input.text, input.webhookUrl)),
+  twilioSendSms: protectedProcedure
+    .input(z.object({ to: z.string(), body: z.string() }))
+    .mutation(({ input }) => twilioSendSms(input.to, input.body)),
+  segmentTrack: protectedProcedure
+    .input(z.object({ event: z.string(), userId: z.string(), properties: z.record(z.string(), z.any()).optional() }))
+    .mutation(({ input }) => segmentTrack(input.event, input.userId, input.properties)),
   slackNotify: protectedProcedure
     .input(z.object({ text: z.string(), webhookUrl: z.string().url().optional() }))
     .mutation(({ input }) => slackNotify(input.text, input.webhookUrl)),

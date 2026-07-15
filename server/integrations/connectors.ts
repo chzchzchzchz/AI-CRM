@@ -160,4 +160,67 @@ export async function sendWebhook(url: string, payload: any): Promise<Result> {
   } catch (e) { return { ok: false, error: msg(e) }; }
 }
 
+/** Google Chat — space webhook (JSON {text}). */
+export async function googleChatNotify(text: string, webhookUrl = process.env.GOOGLE_CHAT_WEBHOOK_URL): Promise<Result> {
+  if (!webhookUrl) return { ok: false, skipped: true, error: "GOOGLE_CHAT_WEBHOOK_URL not set" };
+  try {
+    const res = await post(webhookUrl, { text });
+    return { ok: res.ok, status: res.status };
+  } catch (e) { return { ok: false, error: msg(e) }; }
+}
+
+/** Twilio — send an SMS (REST, basic auth, form-encoded). */
+export async function twilioSendSms(
+  to: string, body: string,
+  sid = process.env.TWILIO_ACCOUNT_SID, token = process.env.TWILIO_AUTH_TOKEN, from = process.env.TWILIO_FROM_NUMBER,
+): Promise<Result> {
+  if (!sid || !token || !from) return { ok: false, skipped: true, error: "TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_FROM_NUMBER not set" };
+  try {
+    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+      method: "POST",
+      headers: {
+        Authorization: "Basic " + Buffer.from(`${sid}:${token}`).toString("base64"),
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ To: to, From: from, Body: body }).toString(),
+    });
+    const json: any = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, id: json?.sid, error: res.ok ? undefined : JSON.stringify(json) };
+  } catch (e) { return { ok: false, error: msg(e) }; }
+}
+
+/** Segment — track an analytics event (REST, write key as basic-auth username). */
+export async function segmentTrack(
+  event: string, userId: string, properties: Record<string, any> = {},
+  writeKey = process.env.SEGMENT_WRITE_KEY,
+): Promise<Result> {
+  if (!writeKey) return { ok: false, skipped: true, error: "SEGMENT_WRITE_KEY not set" };
+  try {
+    const res = await fetch("https://api.segment.io/v1/track", {
+      method: "POST",
+      headers: {
+        Authorization: "Basic " + Buffer.from(`${writeKey}:`).toString("base64"),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ event, userId, properties }),
+    });
+    return { ok: res.ok, status: res.status, error: res.ok ? undefined : `HTTP ${res.status}` };
+  } catch (e) { return { ok: false, error: msg(e) }; }
+}
+
+/**
+ * Fan-out: notify every configured chat connector (Slack, Discord, Teams, Google Chat)
+ * plus an optional generic webhook — one event → all your tools.
+ */
+export async function notifyAll(text: string, webhookUrl?: string): Promise<Record<string, Result>> {
+  const [slack, discord, teams, gchat, webhook] = await Promise.all([
+    slackNotify(text),
+    discordNotify(text),
+    teamsNotify(text),
+    googleChatNotify(text),
+    webhookUrl ? sendWebhook(webhookUrl, { text }) : Promise.resolve({ ok: false, skipped: true } as Result),
+  ]);
+  return { slack, discord, teams, googleChat: gchat, webhook };
+}
+
 function msg(e: unknown): string { return e instanceof Error ? e.message : "request failed"; }
