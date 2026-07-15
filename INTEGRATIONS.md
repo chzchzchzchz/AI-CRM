@@ -27,6 +27,12 @@ connector is a thin, real HTTP client against the vendor's documented API
 | **Segment** | `integrations.segmentTrack` | Track an analytics event | `SEGMENT_WRITE_KEY` |
 | **Fan-out** | `integrations.notifyHotLead` | One event → every configured chat tool + webhook | (uses the above) |
 | **Auto-trigger** | (automatic) | When an account crosses `HOT_LEAD_THRESHOLD` (default 80) via Clay ingest, fan out automatically — zero-touch | `HOT_LEAD_THRESHOLD` |
+| **Salesloft** | `integrations.salesloftCreatePerson` | Create a person (sales engagement) | `SALESLOFT_API_KEY` |
+| **Outreach** | `integrations.outreachCreateProspect` | Create a prospect | `OUTREACH_ACCESS_TOKEN` |
+| **Calendly** | `integrations.calendlyGetAccount` | Connect the scheduling account | `CALENDLY_API_KEY` |
+| **Asana** | `integrations.asanaCreateTask` | Create a follow-up task | `ASANA_ACCESS_TOKEN`, `ASANA_WORKSPACE_ID` |
+| **ClickUp** | `integrations.clickupCreateTask` | Create a task in a list | `CLICKUP_API_TOKEN`, `CLICKUP_LIST_ID` |
+| **PagerDuty** | `integrations.pagerdutyTrigger` | Trigger an alert (Events API v2) | `PAGERDUTY_ROUTING_KEY` |
 | **Zapier / Make / n8n** | `integrations.sendWebhook` (out) · `zapier.webhook` (in) | Any HTTP endpoint, both directions | `ZAPIER_WEBHOOK_SECRET` (inbound) |
 | **Clay** | `clay.receiveAccount` / `clay.receiveContact` (in) · `clayPull.triggerEnrichment` (out) | Enrichment in/out | `CLAY_WEBHOOK_SECRET`, `CLAY_WEBHOOK_URL` |
 | **6sense** | `intentScores.create` / `.list` | Store intent scores per account | `SIXSENSE_API_KEY` |
