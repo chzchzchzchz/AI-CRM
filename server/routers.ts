@@ -14,7 +14,7 @@ import { enrichAccount } from "./sixsense";
 import { conversationWithMemory, generateAccountSummary, generateContactSummary } from "./aiContext";
 import { clayImportRouter } from "./clay-import";
 import { clayWebhookRouter } from "./clay-webhook";
-import { intentScoresRouter, zapierRouter, clayPullRouter } from "./integrations-router";
+import { intentScoresRouter, zapierRouter, clayPullRouter, integrationsRouter } from "./integrations-router";
 import { calls as callsTable } from "../drizzle/schema";
 import { sequencesRouter } from "./sequences";
 import { rfpRouter } from "./rfp-scraper";
@@ -1398,6 +1398,7 @@ ${STANDARDIZED_OUTPUT_STRUCTURE}`;
   intentScores: intentScoresRouter,
   zapier: zapierRouter,
   clayPull: clayPullRouter,
+  integrations: integrationsRouter,
   sequences: sequencesRouter,
   rfps: rfpRouter,
   clayWebhook: clayWebhookRouter,
