@@ -209,13 +209,22 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-type LLMProvider = { url: string; apiKey: string; model: string; isForge: boolean };
+type LLMProvider = { url: string; apiKey: string; model: string; isForge: boolean; isOpenRouter?: boolean };
 
 // Provider resolution with a FREE, no-key fallback so the AI works with zero paid keys:
 //   1. Manus Forge gateway when BUILT_IN_FORGE_API_KEY is set (best quality; hosted deploys).
 //   2. Local Ollama (OpenAI-compatible, no auth) — free automation for anyone running
 //      `ollama serve`. Configurable via LOCAL_LLM_URL / LOCAL_LLM_MODEL.
 const resolveProvider = (): LLMProvider => {
+  if (ENV.openrouterApiKey && ENV.openrouterApiKey.trim().length > 0) {
+    return {
+      url: "https://openrouter.ai/api/v1/chat/completions",
+      apiKey: ENV.openrouterApiKey,
+      model: ENV.openrouterModel,
+      isForge: false,
+      isOpenRouter: true,
+    };
+  }
   if (ENV.forgeApiKey && ENV.forgeApiKey.trim().length > 0) {
     return {
       url:
@@ -331,32 +340,50 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
         : normalizedResponseFormat;
   }
 
-  let response: Response;
-  try {
-    response = await fetch(provider.url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${provider.apiKey}`,
-      },
-      body: JSON.stringify(payload),
-    });
-  } catch (err) {
-    // Provider unreachable (e.g. no Ollama running). In keyless/local mode, degrade
-    // gracefully so AI features never crash a brand-new user's app.
-    if (!provider.isForge) return llmUnavailableFallback(normalizedResponseFormat);
-    throw err;
+  const doFetch = (model: string) => fetch(provider.url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${provider.apiKey}`,
+      ...(provider.isOpenRouter
+        ? { "HTTP-Referer": "https://targetdash.app", "X-Title": "TargetDash" }
+        : {}),
+    },
+    body: JSON.stringify({ ...payload, model }),
+  });
+
+  // OpenRouter free models rotate through rate limits, so provider.model may be a
+  // comma-separated fallback list — try each in order and fall through on 429/unavailable.
+  const models = provider.isOpenRouter
+    ? provider.model.split(",").map((m) => m.trim()).filter(Boolean)
+    : [provider.model];
+
+  let response: Response | undefined;
+  let lastError = "";
+  for (const model of models) {
+    try {
+      response = await doFetch(model);
+      // Retry a couple times on 429, respecting Retry-After (capped), before moving on.
+      for (let attempt = 0; provider.isOpenRouter && response.status === 429 && attempt < 2; attempt++) {
+        const retryAfter = Math.min(parseInt(response.headers.get("retry-after") || "5"), 20);
+        await new Promise((r) => setTimeout(r, retryAfter * 1000));
+        response = await doFetch(model);
+      }
+    } catch (err) {
+      // Provider unreachable (e.g. no Ollama running). In keyless/local mode, degrade
+      // gracefully so AI features never crash a brand-new user's app.
+      if (!provider.isForge) return llmUnavailableFallback(normalizedResponseFormat);
+      throw err;
+    }
+
+    if (response.ok) return (await response.json()) as InvokeResult;
+    lastError = `${response.status} ${response.statusText} – ${await response.text()}`;
+    // 429 (rate-limited) / 404 (model gone) → try the next fallback model.
+    if (!provider.isOpenRouter || (response.status !== 429 && response.status !== 404)) break;
   }
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    if (!provider.isForge) return llmUnavailableFallback(normalizedResponseFormat);
-    throw new Error(
-      `LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`
-    );
-  }
-
-  return (await response.json()) as InvokeResult;
+  if (!provider.isForge) return llmUnavailableFallback(normalizedResponseFormat);
+  throw new Error(`LLM invoke failed: ${lastError}`);
 }
 
 // Returned when no LLM is available at all (no key + no local Ollama). Keeps the AI
