@@ -15,6 +15,8 @@ import {
   notionCreatePage, linearCreateIssue, intercomUpsertContact, sendWebhook,
   airtableCreateRecord, pipedriveCreateDeal, apolloEnrichPerson,
   googleChatNotify, twilioSendSms, segmentTrack, notifyAll,
+  salesloftCreatePerson, outreachCreateProspect, calendlyGetAccount,
+  asanaCreateTask, clickupCreateTask, pagerdutyTrigger,
 } from "./integrations/connectors";
 
 // ---- Native SaaS connectors (Slack, Discord, Teams, HubSpot, Notion, Linear, Intercom, webhooks) ----
@@ -34,7 +36,29 @@ export const integrationsRouter = router({
     googleChat: !!process.env.GOOGLE_CHAT_WEBHOOK_URL,
     twilio: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM_NUMBER),
     segment: !!process.env.SEGMENT_WRITE_KEY,
+    salesloft: !!process.env.SALESLOFT_API_KEY,
+    outreach: !!process.env.OUTREACH_ACCESS_TOKEN,
+    calendly: !!process.env.CALENDLY_API_KEY,
+    asana: !!(process.env.ASANA_ACCESS_TOKEN && process.env.ASANA_WORKSPACE_ID),
+    clickup: !!(process.env.CLICKUP_API_TOKEN && process.env.CLICKUP_LIST_ID),
+    pagerduty: !!process.env.PAGERDUTY_ROUTING_KEY,
   })),
+  salesloftCreatePerson: protectedProcedure
+    .input(z.object({ email_address: z.string().email(), first_name: z.string().optional(), last_name: z.string().optional(), title: z.string().optional() }))
+    .mutation(({ input }) => salesloftCreatePerson(input)),
+  outreachCreateProspect: protectedProcedure
+    .input(z.object({ emails: z.array(z.string()), firstName: z.string().optional(), lastName: z.string().optional(), title: z.string().optional() }))
+    .mutation(({ input }) => outreachCreateProspect(input)),
+  calendlyGetAccount: protectedProcedure.mutation(() => calendlyGetAccount()),
+  asanaCreateTask: protectedProcedure
+    .input(z.object({ name: z.string(), notes: z.string().optional() }))
+    .mutation(({ input }) => asanaCreateTask(input.name, input.notes)),
+  clickupCreateTask: protectedProcedure
+    .input(z.object({ name: z.string(), description: z.string().optional() }))
+    .mutation(({ input }) => clickupCreateTask(input.name, input.description)),
+  pagerdutyTrigger: protectedProcedure
+    .input(z.object({ summary: z.string() }))
+    .mutation(({ input }) => pagerdutyTrigger(input.summary)),
   // One event → every configured chat tool (+ optional webhook). The native automation.
   notifyHotLead: protectedProcedure
     .input(z.object({ text: z.string(), webhookUrl: z.string().url().optional() }))

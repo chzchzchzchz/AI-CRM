@@ -9,13 +9,16 @@ import { toast } from "sonner";
 import { Plug, CheckCircle2, Circle, Send } from "lucide-react";
 
 type StatusKey =
-  | "slack" | "discord" | "teams" | "hubspot" | "notion"
-  | "linear" | "intercom" | "airtable" | "pipedrive" | "apollo";
+  | "slack" | "discord" | "teams" | "googleChat" | "hubspot" | "notion"
+  | "linear" | "intercom" | "airtable" | "pipedrive" | "apollo"
+  | "twilio" | "segment" | "salesloft" | "outreach" | "calendly"
+  | "asana" | "clickup" | "pagerduty";
 
 const CONNECTORS: { key: StatusKey; name: string; blurb: string; env: string; webhook?: boolean }[] = [
   { key: "slack", name: "Slack", blurb: "Post hot-lead alerts to a channel", env: "SLACK_WEBHOOK_URL", webhook: true },
   { key: "discord", name: "Discord", blurb: "Post alerts to a channel webhook", env: "DISCORD_WEBHOOK_URL", webhook: true },
   { key: "teams", name: "Microsoft Teams", blurb: "Post a MessageCard to a channel", env: "TEAMS_WEBHOOK_URL", webhook: true },
+  { key: "googleChat", name: "Google Chat", blurb: "Post to a space webhook", env: "GOOGLE_CHAT_WEBHOOK_URL", webhook: true },
   { key: "hubspot", name: "HubSpot", blurb: "Create/update contacts (CRM v3)", env: "HUBSPOT_ACCESS_TOKEN" },
   { key: "notion", name: "Notion", blurb: "Export accounts into a database", env: "NOTION_TOKEN + NOTION_DATABASE_ID" },
   { key: "linear", name: "Linear", blurb: "Create follow-up issues", env: "LINEAR_API_KEY + LINEAR_TEAM_ID" },
@@ -23,6 +26,14 @@ const CONNECTORS: { key: StatusKey; name: string; blurb: string; env: string; we
   { key: "airtable", name: "Airtable", blurb: "Create records in a base", env: "AIRTABLE_TOKEN + BASE + TABLE" },
   { key: "pipedrive", name: "Pipedrive", blurb: "Create deals", env: "PIPEDRIVE_API_TOKEN + DOMAIN" },
   { key: "apollo", name: "Apollo.io", blurb: "Enrich people by email", env: "APOLLO_API_KEY" },
+  { key: "twilio", name: "Twilio", blurb: "Send SMS alerts", env: "TWILIO_ACCOUNT_SID + AUTH_TOKEN + FROM" },
+  { key: "segment", name: "Segment", blurb: "Track analytics events", env: "SEGMENT_WRITE_KEY" },
+  { key: "salesloft", name: "Salesloft", blurb: "Create people (engagement)", env: "SALESLOFT_API_KEY" },
+  { key: "outreach", name: "Outreach", blurb: "Create prospects", env: "OUTREACH_ACCESS_TOKEN" },
+  { key: "calendly", name: "Calendly", blurb: "Connect scheduling account", env: "CALENDLY_API_KEY" },
+  { key: "asana", name: "Asana", blurb: "Create follow-up tasks", env: "ASANA_ACCESS_TOKEN + WORKSPACE_ID" },
+  { key: "clickup", name: "ClickUp", blurb: "Create tasks in a list", env: "CLICKUP_API_TOKEN + LIST_ID" },
+  { key: "pagerduty", name: "PagerDuty", blurb: "Trigger alerts", env: "PAGERDUTY_ROUTING_KEY" },
 ];
 
 export default function Integrations() {

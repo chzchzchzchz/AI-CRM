@@ -223,6 +223,88 @@ export async function notifyAll(text: string, webhookUrl?: string): Promise<Reco
   return { slack, discord, teams, googleChat: gchat, webhook };
 }
 
+/** Salesloft — create a person (sales engagement). */
+export async function salesloftCreatePerson(
+  person: { email_address: string; first_name?: string; last_name?: string; title?: string },
+  token = process.env.SALESLOFT_API_KEY,
+): Promise<Result> {
+  if (!token) return { ok: false, skipped: true, error: "SALESLOFT_API_KEY not set" };
+  try {
+    const res = await post("https://api.salesloft.com/v2/people.json", person, { Authorization: `Bearer ${token}` });
+    const json: any = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, id: json?.data?.id?.toString(), error: res.ok ? undefined : JSON.stringify(json) };
+  } catch (e) { return { ok: false, error: msg(e) }; }
+}
+
+/** Outreach.io — create a prospect (JSON:API). */
+export async function outreachCreateProspect(
+  attributes: { emails: string[]; firstName?: string; lastName?: string; title?: string },
+  token = process.env.OUTREACH_ACCESS_TOKEN,
+): Promise<Result> {
+  if (!token) return { ok: false, skipped: true, error: "OUTREACH_ACCESS_TOKEN not set" };
+  try {
+    const res = await post("https://api.outreach.io/api/v2/prospects",
+      { data: { type: "prospect", attributes } },
+      { Authorization: `Bearer ${token}`, "Content-Type": "application/vnd.api+json" });
+    const json: any = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, id: json?.data?.id?.toString(), error: res.ok ? undefined : JSON.stringify(json) };
+  } catch (e) { return { ok: false, error: msg(e) }; }
+}
+
+/** Calendly — fetch the connected scheduling account (verifies + returns user/link). */
+export async function calendlyGetAccount(token = process.env.CALENDLY_API_KEY): Promise<Result & { data?: any }> {
+  if (!token) return { ok: false, skipped: true, error: "CALENDLY_API_KEY not set" };
+  try {
+    const res = await fetch("https://api.calendly.com/users/me", { headers: { Authorization: `Bearer ${token}` } });
+    const json: any = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, id: json?.resource?.uri, data: json?.resource, error: res.ok ? undefined : JSON.stringify(json) };
+  } catch (e) { return { ok: false, error: msg(e) }; }
+}
+
+/** Asana — create a task. */
+export async function asanaCreateTask(
+  name: string, notes?: string,
+  token = process.env.ASANA_ACCESS_TOKEN, workspace = process.env.ASANA_WORKSPACE_ID,
+): Promise<Result> {
+  if (!token || !workspace) return { ok: false, skipped: true, error: "ASANA_ACCESS_TOKEN / ASANA_WORKSPACE_ID not set" };
+  try {
+    const res = await post("https://app.asana.com/api/1.0/tasks",
+      { data: { name, notes, workspace } }, { Authorization: `Bearer ${token}` });
+    const json: any = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, id: json?.data?.gid, error: res.ok ? undefined : JSON.stringify(json) };
+  } catch (e) { return { ok: false, error: msg(e) }; }
+}
+
+/** ClickUp — create a task in a list. */
+export async function clickupCreateTask(
+  name: string, description?: string,
+  token = process.env.CLICKUP_API_TOKEN, listId = process.env.CLICKUP_LIST_ID,
+): Promise<Result> {
+  if (!token || !listId) return { ok: false, skipped: true, error: "CLICKUP_API_TOKEN / CLICKUP_LIST_ID not set" };
+  try {
+    const res = await post(`https://api.clickup.com/api/v2/list/${listId}/task`,
+      { name, description }, { Authorization: token });
+    const json: any = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, id: json?.id, error: res.ok ? undefined : JSON.stringify(json) };
+  } catch (e) { return { ok: false, error: msg(e) }; }
+}
+
+/** PagerDuty — trigger an alert (Events API v2). */
+export async function pagerdutyTrigger(
+  summary: string, routingKey = process.env.PAGERDUTY_ROUTING_KEY,
+): Promise<Result> {
+  if (!routingKey) return { ok: false, skipped: true, error: "PAGERDUTY_ROUTING_KEY not set" };
+  try {
+    const res = await post("https://events.pagerduty.com/v2/enqueue", {
+      routing_key: routingKey,
+      event_action: "trigger",
+      payload: { summary, source: "TargetDash", severity: "info" },
+    });
+    const json: any = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, id: json?.dedup_key, error: res.ok ? undefined : JSON.stringify(json) };
+  } catch (e) { return { ok: false, error: msg(e) }; }
+}
+
 /**
  * Auto-trigger: when an account's intent score CROSSES the hot threshold
  * (HOT_LEAD_THRESHOLD, default 80), fan out a notification to every configured tool.
