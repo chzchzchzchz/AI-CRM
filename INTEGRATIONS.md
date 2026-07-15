@@ -1,91 +1,55 @@
-# External Service Integrations
+# Native Integrations
 
-How to connect external services to TargetDash. Every endpoint below is a **real,
-implemented tRPC procedure** — verify with `curl` against a running server (default
-port **3333**). All integrations are optional; see [ADMIN_SETUP.md](ADMIN_SETUP.md)
-for keys and the plug-n-play walkthrough.
+TargetDash ships **real, native connectors** to the tools B2B sales teams use. Every
+connector is a thin, real HTTP client against the vendor's documented API
+(`server/integrations/connectors.ts`), exposed over tRPC under `integrations.*`, and
+**feature-flagged by env** — if a key/URL isn't set the connector reports
+`{ ok:false, skipped:true }` instead of throwing, so the app runs without any of them.
 
-> tRPC calling convention used in the curl examples:
-> `POST /api/trpc/<procedure>?batch=1` with body `{"0":{"json":{ ...input }}}`.
+`integrations.status` returns which connectors are configured.
 
-## Clay (enrichment)
+## Connectors
 
-**Inbound (push) — Clay → TargetDash.** Configure an HTTP API column in your Clay
-table to POST enriched rows here. Secured by `CLAY_WEBHOOK_SECRET` (fails closed
-outside demo mode).
+| Tool | tRPC endpoint | What it does | Config (env) |
+|---|---|---|---|
+| **Slack** | `integrations.slackNotify` | Post a message (e.g. "🔥 hot lead") via Incoming Webhook | `SLACK_WEBHOOK_URL` |
+| **Discord** | `integrations.discordNotify` | Post to a channel webhook | `DISCORD_WEBHOOK_URL` |
+| **Microsoft Teams** | `integrations.teamsNotify` | Post a MessageCard via Incoming Webhook | `TEAMS_WEBHOOK_URL` |
+| **HubSpot** | `integrations.hubspotSyncContact` | Create/update a contact (CRM v3) | `HUBSPOT_ACCESS_TOKEN` |
+| **Notion** | `integrations.notionExportAccount` | Add an account as a page in a database | `NOTION_TOKEN`, `NOTION_DATABASE_ID` |
+| **Linear** | `integrations.linearCreateTask` | Create an issue (GraphQL) | `LINEAR_API_KEY`, `LINEAR_TEAM_ID` |
+| **Intercom** | `integrations.intercomSyncContact` | Create/update a lead | `INTERCOM_ACCESS_TOKEN` |
+| **Zapier / Make / n8n** | `integrations.sendWebhook` (out) · `zapier.webhook` (in) | Any HTTP endpoint, both directions | `ZAPIER_WEBHOOK_SECRET` (inbound) |
+| **Clay** | `clay.receiveAccount` / `clay.receiveContact` (in) · `clayPull.triggerEnrichment` (out) | Enrichment in/out | `CLAY_WEBHOOK_SECRET`, `CLAY_WEBHOOK_URL` |
+| **6sense** | `intentScores.create` / `.list` | Store intent scores per account | `SIXSENSE_API_KEY` |
+| **Salesforce** | `salesforce.testConnection` / `.fullSync` | Account/contact OAuth sync | `SALESFORCE_CLIENT_ID/SECRET/INSTANCE_URL` |
+| **Gong** | `calls.create` / `calls.list` | Store & surface call intelligence | `GONG_API_KEY` |
 
-- `POST /api/trpc/clay.receiveAccount` — upsert an account (by `clayId`/`domain`)
-- `POST /api/trpc/clay.receiveContact` — upsert a contact (by `clayId`/`email`)
-- `POST /api/trpc/clayWebhook.receive` — flexible passthrough (auto-categorises fields)
+## Proof (verified live)
 
-```bash
-curl -X POST 'http://localhost:3333/api/trpc/clay.receiveAccount?batch=1' \
-  -H 'Content-Type: application/json' \
-  -d '{"0":{"json":{"webhook_secret":"<secret>","name":"Acme Corp","domain":"acme.com",
-       "industry":"Technology","employees":"500","intentScore":"82","clayId":"rec_123"}}}'
-# → {"success":true,"action":"created"}
-```
-
-**Outbound (pull) — TargetDash → Clay.** Trigger enrichment by pushing a row to your
-Clay table's webhook (`CLAY_WEBHOOK_URL`):
-
-- `POST /api/trpc/clayPull.triggerEnrichment` — `{ domain, name? }`
-
-## 6sense (intent)
-
-Store intent scores per account (from a 6sense export or API):
-
-- `POST /api/trpc/intentScores.create` — `{ accountId, score, category?, keywords?[], source? }`
-- `GET  /api/trpc/intentScores.list` — `{ accountId }`
-- Bulk import buying-stage / keyword / 6QA metrics: `npx tsx scripts/import-6sense-data.ts`
-  (edit the example arrays with your export first)
+The outbound connectors make **real HTTP calls**. Verified end-to-end by pointing
+`integrations.slackNotify` and `integrations.sendWebhook` at a live request-capture
+endpoint and confirming the payloads were delivered:
 
 ```bash
-curl -X POST 'http://localhost:3333/api/trpc/intentScores.create?batch=1' \
-  -H 'Content-Type: application/json' \
-  -d '{"0":{"json":{"accountId":1,"score":85,"category":"Security","keywords":["Zero Trust"],"source":"6sense"}}}'
-# → {"success":true}
+curl -X POST 'http://localhost:3333/api/trpc/integrations.slackNotify?batch=1' \
+  -H 'content-type: application/json' \
+  -d '{"0":{"json":{"text":"🔥 Hot lead: Vertex Cloud Systems (intent 95)","webhookUrl":"https://<your-webhook>"}}}'
+# → {"ok":true,"status":200}   — the message arrives at the endpoint (Slack channel).
+
+curl -X POST 'http://localhost:3333/api/trpc/integrations.sendWebhook?batch=1' \
+  -H 'content-type: application/json' \
+  -d '{"0":{"json":{"url":"https://<your-webhook>","payload":{"event":"account.hot","account":"Vertex Cloud Systems","intentScore":95}}}}'
+# → {"ok":true,"status":200}
 ```
 
-## Gong (calls)
+For Slack/Discord/Teams you paste an Incoming Webhook URL (no OAuth). For
+HubSpot/Notion/Linear/Intercom you paste a private-app token / API key. Set them in
+`.env` (see `.env.example`) or pass a `webhookUrl` per call.
 
-Store call intelligence:
+## Wiring an automation
 
-- `POST /api/trpc/calls.create` — `{ accountId?, contactId?, title, duration?, gongCallId?,
-  sentiment?, keyTopics?[], actionItems?[], callDate? }`
-- `GET  /api/trpc/calls.list`, `calls.getByAccountId`
-
-## SAM.gov (government RFPs)
-
-Track open RFPs matching your product's keywords (`RFP_KEYWORDS`, comma-separated):
-
-- `POST /api/trpc/rfps.create` — manually add an RFP
-- `POST /api/trpc/rfps.scrape` — pull from SAM.gov (`SAM_GOV_API_KEY`)
-- `GET  /api/trpc/rfps.list`, `rfps.stats`
-
-## Zapier (automation)
-
-Receive automation events (secured by `ZAPIER_WEBHOOK_SECRET`, fails closed outside demo mode):
-
-- `POST /api/trpc/zapier.webhook` — `{ event, data?, webhook_secret? }`
-
-```bash
-curl -X POST 'http://localhost:3333/api/trpc/zapier.webhook?batch=1' \
-  -H 'Content-Type: application/json' \
-  -d '{"0":{"json":{"event":"account.enriched","data":{"accountId":1}}}}'
-# → {"received":true,"event":"account.enriched"}
-```
-
-## AI (research & outreach)
-
-Built-in, powered by the local/cloud LLM helper (see SETUP.md — free via Ollama):
-
-- `POST /api/trpc/ai.generateAccountResearch` — `{ accountId }`
-- `POST /api/trpc/ai.generateOutreachRecommendation` — `{ accountId, contactId, recentActivity? }`
-- Also: `ai.enrichAccount`, `ai.generateEmail`, `ai.analyzeCall`, `ai.chat`, `ai.search`
-
-## Environment variables
-
-See [.env.example](.env.example) for the full list. Relevant here:
-`CLAY_WEBHOOK_SECRET`, `CLAY_WEBHOOK_URL`, `SIXSENSE_API_KEY`, `GONG_API_KEY`,
-`SAM_GOV_API_KEY`, `RFP_KEYWORDS`, `ZAPIER_WEBHOOK_SECRET`.
+Typical flow: TargetDash detects a hot lead → `integrations.slackNotify` pings your
+`#sales` channel and `integrations.sendWebhook` fires a Zap that creates a task in your
+PM tool. Inbound: Clay/Zapier POST enrichment back to `clay.receiveAccount` /
+`zapier.webhook` (both secret-verified, fail-closed in production).

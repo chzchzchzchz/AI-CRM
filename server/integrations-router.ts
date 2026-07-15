@@ -10,6 +10,48 @@ import { getDb } from "./db";
 import { intentScores } from "../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import {
+  slackNotify, discordNotify, teamsNotify, hubspotUpsertContact,
+  notionCreatePage, linearCreateIssue, intercomUpsertContact, sendWebhook,
+} from "./integrations/connectors";
+
+// ---- Native SaaS connectors (Slack, Discord, Teams, HubSpot, Notion, Linear, Intercom, webhooks) ----
+export const integrationsRouter = router({
+  // Which connectors are configured (by env) — shown in the app's Integrations settings.
+  status: protectedProcedure.query(() => ({
+    slack: !!process.env.SLACK_WEBHOOK_URL,
+    discord: !!process.env.DISCORD_WEBHOOK_URL,
+    teams: !!process.env.TEAMS_WEBHOOK_URL,
+    hubspot: !!process.env.HUBSPOT_ACCESS_TOKEN,
+    notion: !!(process.env.NOTION_TOKEN && process.env.NOTION_DATABASE_ID),
+    linear: !!(process.env.LINEAR_API_KEY && process.env.LINEAR_TEAM_ID),
+    intercom: !!process.env.INTERCOM_ACCESS_TOKEN,
+  })),
+  slackNotify: protectedProcedure
+    .input(z.object({ text: z.string(), webhookUrl: z.string().url().optional() }))
+    .mutation(({ input }) => slackNotify(input.text, input.webhookUrl)),
+  discordNotify: protectedProcedure
+    .input(z.object({ content: z.string(), webhookUrl: z.string().url().optional() }))
+    .mutation(({ input }) => discordNotify(input.content, input.webhookUrl)),
+  teamsNotify: protectedProcedure
+    .input(z.object({ text: z.string(), webhookUrl: z.string().url().optional() }))
+    .mutation(({ input }) => teamsNotify(input.text, input.webhookUrl)),
+  hubspotSyncContact: protectedProcedure
+    .input(z.object({ email: z.string().email(), firstname: z.string().optional(), lastname: z.string().optional(), company: z.string().optional(), jobtitle: z.string().optional() }))
+    .mutation(({ input }) => hubspotUpsertContact(input)),
+  notionExportAccount: protectedProcedure
+    .input(z.object({ name: z.string(), domain: z.string().optional(), industry: z.string().optional(), intentScore: z.number().optional() }))
+    .mutation(({ input }) => notionCreatePage(input)),
+  linearCreateTask: protectedProcedure
+    .input(z.object({ title: z.string(), description: z.string().optional() }))
+    .mutation(({ input }) => linearCreateIssue(input.title, input.description)),
+  intercomSyncContact: protectedProcedure
+    .input(z.object({ email: z.string().email(), name: z.string().optional() }))
+    .mutation(({ input }) => intercomUpsertContact(input)),
+  sendWebhook: protectedProcedure
+    .input(z.object({ url: z.string().url(), payload: z.record(z.string(), z.any()) }))
+    .mutation(({ input }) => sendWebhook(input.url, input.payload)),
+});
 
 // ---- 6sense intent scores ----
 export const intentScoresRouter = router({
