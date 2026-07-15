@@ -111,6 +111,46 @@ export async function intercomUpsertContact(
   } catch (e) { return { ok: false, error: msg(e) }; }
 }
 
+/** Airtable — create a record in a table (personal access token). */
+export async function airtableCreateRecord(
+  fields: Record<string, any>,
+  token = process.env.AIRTABLE_TOKEN, baseId = process.env.AIRTABLE_BASE_ID, table = process.env.AIRTABLE_TABLE,
+): Promise<Result> {
+  if (!token || !baseId || !table) return { ok: false, skipped: true, error: "AIRTABLE_TOKEN / AIRTABLE_BASE_ID / AIRTABLE_TABLE not set" };
+  try {
+    const res = await post(`https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}`,
+      { fields }, { Authorization: `Bearer ${token}` });
+    const json: any = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, id: json?.id, error: res.ok ? undefined : JSON.stringify(json) };
+  } catch (e) { return { ok: false, error: msg(e) }; }
+}
+
+/** Pipedrive — create a deal (API token). */
+export async function pipedriveCreateDeal(
+  title: string, value?: number,
+  token = process.env.PIPEDRIVE_API_TOKEN, domain = process.env.PIPEDRIVE_DOMAIN,
+): Promise<Result> {
+  if (!token || !domain) return { ok: false, skipped: true, error: "PIPEDRIVE_API_TOKEN / PIPEDRIVE_DOMAIN not set" };
+  try {
+    const res = await post(`https://${domain}.pipedrive.com/api/v1/deals?api_token=${encodeURIComponent(token)}`,
+      { title, value });
+    const json: any = await res.json().catch(() => ({}));
+    return { ok: res.ok && json?.success, status: res.status, id: json?.data?.id?.toString(), error: (res.ok && json?.success) ? undefined : JSON.stringify(json) };
+  } catch (e) { return { ok: false, error: msg(e) }; }
+}
+
+/** Apollo.io — enrich a person by email (API key). */
+export async function apolloEnrichPerson(
+  email: string, apiKey = process.env.APOLLO_API_KEY,
+): Promise<Result & { data?: any }> {
+  if (!apiKey) return { ok: false, skipped: true, error: "APOLLO_API_KEY not set" };
+  try {
+    const res = await post("https://api.apollo.io/v1/people/match", { email }, { "X-Api-Key": apiKey });
+    const json: any = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data: json?.person, error: res.ok ? undefined : JSON.stringify(json) };
+  } catch (e) { return { ok: false, error: msg(e) }; }
+}
+
 /** Generic outbound webhook (Zapier / Make / n8n / any HTTP endpoint). */
 export async function sendWebhook(url: string, payload: any): Promise<Result> {
   if (!url) return { ok: false, skipped: true, error: "no url" };

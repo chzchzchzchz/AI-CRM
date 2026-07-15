@@ -19,6 +19,9 @@ connector is a thin, real HTTP client against the vendor's documented API
 | **Notion** | `integrations.notionExportAccount` | Add an account as a page in a database | `NOTION_TOKEN`, `NOTION_DATABASE_ID` |
 | **Linear** | `integrations.linearCreateTask` | Create an issue (GraphQL) | `LINEAR_API_KEY`, `LINEAR_TEAM_ID` |
 | **Intercom** | `integrations.intercomSyncContact` | Create/update a lead | `INTERCOM_ACCESS_TOKEN` |
+| **Airtable** | `integrations.airtableCreateRecord` | Create a record in a table | `AIRTABLE_TOKEN`, `AIRTABLE_BASE_ID`, `AIRTABLE_TABLE` |
+| **Pipedrive** | `integrations.pipedriveCreateDeal` | Create a deal | `PIPEDRIVE_API_TOKEN`, `PIPEDRIVE_DOMAIN` |
+| **Apollo.io** | `integrations.apolloEnrichPerson` | Enrich a person by email | `APOLLO_API_KEY` |
 | **Zapier / Make / n8n** | `integrations.sendWebhook` (out) · `zapier.webhook` (in) | Any HTTP endpoint, both directions | `ZAPIER_WEBHOOK_SECRET` (inbound) |
 | **Clay** | `clay.receiveAccount` / `clay.receiveContact` (in) · `clayPull.triggerEnrichment` (out) | Enrichment in/out | `CLAY_WEBHOOK_SECRET`, `CLAY_WEBHOOK_URL` |
 | **6sense** | `intentScores.create` / `.list` | Store intent scores per account | `SIXSENSE_API_KEY` |

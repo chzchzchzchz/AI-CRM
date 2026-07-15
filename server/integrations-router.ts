@@ -13,6 +13,7 @@ import { TRPCError } from "@trpc/server";
 import {
   slackNotify, discordNotify, teamsNotify, hubspotUpsertContact,
   notionCreatePage, linearCreateIssue, intercomUpsertContact, sendWebhook,
+  airtableCreateRecord, pipedriveCreateDeal, apolloEnrichPerson,
 } from "./integrations/connectors";
 
 // ---- Native SaaS connectors (Slack, Discord, Teams, HubSpot, Notion, Linear, Intercom, webhooks) ----
@@ -26,6 +27,9 @@ export const integrationsRouter = router({
     notion: !!(process.env.NOTION_TOKEN && process.env.NOTION_DATABASE_ID),
     linear: !!(process.env.LINEAR_API_KEY && process.env.LINEAR_TEAM_ID),
     intercom: !!process.env.INTERCOM_ACCESS_TOKEN,
+    airtable: !!(process.env.AIRTABLE_TOKEN && process.env.AIRTABLE_BASE_ID && process.env.AIRTABLE_TABLE),
+    pipedrive: !!(process.env.PIPEDRIVE_API_TOKEN && process.env.PIPEDRIVE_DOMAIN),
+    apollo: !!process.env.APOLLO_API_KEY,
   })),
   slackNotify: protectedProcedure
     .input(z.object({ text: z.string(), webhookUrl: z.string().url().optional() }))
@@ -48,6 +52,15 @@ export const integrationsRouter = router({
   intercomSyncContact: protectedProcedure
     .input(z.object({ email: z.string().email(), name: z.string().optional() }))
     .mutation(({ input }) => intercomUpsertContact(input)),
+  airtableCreateRecord: protectedProcedure
+    .input(z.object({ fields: z.record(z.string(), z.any()) }))
+    .mutation(({ input }) => airtableCreateRecord(input.fields)),
+  pipedriveCreateDeal: protectedProcedure
+    .input(z.object({ title: z.string(), value: z.number().optional() }))
+    .mutation(({ input }) => pipedriveCreateDeal(input.title, input.value)),
+  apolloEnrichPerson: protectedProcedure
+    .input(z.object({ email: z.string().email() }))
+    .mutation(({ input }) => apolloEnrichPerson(input.email)),
   sendWebhook: protectedProcedure
     .input(z.object({ url: z.string().url(), payload: z.record(z.string(), z.any()) }))
     .mutation(({ input }) => sendWebhook(input.url, input.payload)),
