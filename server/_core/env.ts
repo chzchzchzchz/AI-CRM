@@ -17,6 +17,13 @@ export const ENV = {
   // when no Forge/cloud key is set, so the AI features work with zero paid keys.
   localLlmUrl: process.env.LOCAL_LLM_URL ?? "http://localhost:11434/v1",
   localLlmModel: process.env.LOCAL_LLM_MODEL ?? "phi3:mini",
+  // OpenRouter (openrouter.ai) — fast hosted LLMs, incl. free models. Highest priority
+  // when set. Free models are rate-limited upstream; add your own credits/key for reliability.
+  openrouterApiKey: process.env.OPENROUTER_API_KEY ?? "",
+  // Comma-separated fallback list — free models are rate-limited upstream and rotate,
+  // so we try them in order and fall through on 429/unavailable. Set to a single paid
+  // model (e.g. openai/gpt-4o-mini) for reliable speed on your own key.
+  openrouterModel: process.env.OPENROUTER_MODEL ?? "nvidia/nemotron-nano-12b-v2-vl:free,google/gemma-4-26b-a4b-it:free,meta-llama/llama-3.3-70b-instruct:free",
   sixSenseApiKey: process.env.SIXSENSE_API_KEY ?? process.env['6Sense_API'] ?? "",
   clayWebhookUrl: process.env.CLAY_WEBHOOK_URL ?? "",
   // Salesforce OAuth credentials
