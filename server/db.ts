@@ -11,7 +11,11 @@ import path from 'path';
 let _db: any = null;
 let _pool: mysql.Pool | null = null;
 
-const DEMO_DB_PATH = path.join(process.cwd(), 'demo-db.json');
+// Overridable so tests (and anyone running several instances) get their own store instead
+// of mutating the demo dataset the product ships with.
+const DEMO_DB_PATH = process.env.DEMO_DB_PATH
+  ? path.resolve(process.env.DEMO_DB_PATH)
+  : path.join(process.cwd(), 'demo-db.json');
 // Pristine, version-controlled seed. Copied to DEMO_DB_PATH on first boot so a fresh
 // clone gets the full demo dataset (16 accounts, 40 contacts, etc.) while the working
 // demo-db.json stays gitignored and mutable at runtime.
