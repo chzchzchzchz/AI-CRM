@@ -243,11 +243,24 @@ export default function AccountDetailEnhanced() {
                       <span className="text-xs font-mono text-emerald-400">
                         ${Number(opp.amount).toLocaleString()}
                       </span>
-                      <div className="flex items-center gap-1">
-                        <BrainCircuit className="h-3 w-3 text-cyan-400" />
-                        <span className="text-[10px] font-bold text-cyan-400">
-                          {opp.aiSuccessScore}%
-                        </span>
+                      <div className="flex items-center gap-2">
+                        {/* The CRM's own probability — distinct from the AI prediction beside it. */}
+                        {opp.probability != null && (
+                          <span className="text-[10px] text-slate-400" title="Probability recorded in the CRM">
+                            {opp.probability}% prob
+                          </span>
+                        )}
+                        {opp.aiSuccessScore != null && (
+                          <div
+                            className="flex items-center gap-1"
+                            title="AI-predicted likelihood of winning — not the CRM probability"
+                          >
+                            <BrainCircuit className="h-3 w-3 text-cyan-400" />
+                            <span className="text-[10px] font-bold text-cyan-400">
+                              {opp.aiSuccessScore}% AI
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

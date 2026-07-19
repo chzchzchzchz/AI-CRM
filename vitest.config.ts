@@ -19,5 +19,11 @@ export default defineConfig({
     // Running test files in parallel races on writes to it and causes flaky
     // failures (e.g. audit-log assertions). Force sequential file execution.
     fileParallelism: false,
+    env: {
+      // Tests create accounts, calls and intent scores. Without this they write into the
+      // demo dataset the product ships with — polluting an account's intent history and
+      // call list, which silently corrupts the briefs built from those signals.
+      DEMO_DB_PATH: path.resolve(templateRoot, "demo-db.test.json"),
+    },
   },
 });
