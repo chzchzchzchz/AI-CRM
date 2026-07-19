@@ -70,7 +70,10 @@ export default function ContactDetail() {
       .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
       .replace(/<strategy>[\s\S]*?<\/strategy>/gi, '')
       .replace(/<notes>[\s\S]*?<\/notes>/gi, '')
-      .replace(/---+/g, '')
+      // Only strip standalone horizontal rules. A bare /---+/ also ate the
+      // separator row of every markdown table (|---|---|), which silently
+      // disabled GFM table rendering across the app.
+      .replace(/^\s*-{3,}\s*$/gm, '')
       .trim();
     const outputMatch = clean.match(/OUTPUT[:\s]*([\s\S]*?)(?:$|---)/i);
     if (outputMatch) clean = outputMatch[1].trim();

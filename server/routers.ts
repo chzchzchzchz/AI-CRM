@@ -24,6 +24,7 @@ import { clayRouter } from "./clay";
 import { validationRouter } from "./validation-router";
 import { priorityActionsRouter } from "./priority-actions-router";
 import { bulkInsightsRouter } from "./bulk-insights-router";
+import { intelRouter } from "./intel/router";
 import { sixsenseRouter } from "./sixsense-router";
 import { sixsenseAnalyticsRouter } from "./sixsense-analytics";
 import { csvProcessorRouter } from "./csv-processor-router";
@@ -40,6 +41,7 @@ import { recordFailedLogin, clearLoginAttempts, validatePasswordComplexity, logS
 
 
 export const appRouter = router({
+  intel: intelRouter,
   hotLeads: hotLeadsRouter,
   dust: dustRouter,
   salesforce: salesforceRouter,
@@ -817,221 +819,31 @@ Or go to the Admin Panel: /admin/approval`
         return await generateContactSummary(input.contactId, input.includeLinkedIn ?? false);
       }),
 
+    // Consolidated account brief. The heavy lifting lives in server/intel: facts are
+    // rendered deterministically from every signal we hold, and the model's judgement is
+    // validated against those signals before it ships. Kept on this name/shape so existing
+    // callers keep working.
     compileOverview: protectedProcedure
       .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
       .query(async ({ input }) => {
-        console.log(`[compileOverview] Starting for account ${input.accountId}`);
-        const account = await getAccountById(input.accountId);
-        if (!account) {
-          console.log(`[compileOverview] Account ${input.accountId} not found`);
-          throw new Error('Account not found');
-        }
-        console.log(`[compileOverview] Found account: ${account.name}`);
-
-        // Check cache first (valid for 24 hours)
-        const cacheAge = (account as any).aiCacheUpdatedAt ? Date.now() - new Date((account as any).aiCacheUpdatedAt).getTime() : Infinity;
-        const cacheValid = cacheAge < 24 * 60 * 60 * 1000; // 24 hours
-
-        if (!input.forceRefresh && (account as any).aiOverviewCache && cacheValid) {
-          return { 
-            summary: (account as any).aiOverviewCache,
-            cached: true,
-            cacheAge: Math.floor(cacheAge / (60 * 1000)) // minutes
-          };
-        }
-
-        // If forceRefresh, clear the cache first
-        if (input.forceRefresh) {
-          console.log(`[AI Overview] Force refresh requested for account ${input.accountId}, clearing cache...`);
-          await updateAccount(input.accountId, {
-            aiOverviewCache: null,
-            aiCacheUpdatedAt: null
-          } as any);
-        }
-
-        // Generate new summary
-        console.log(`[compileOverview] Cache miss or force refresh, generating new summary...`);
-        const people = await getContactsByAccountId(input.accountId);
-        console.log(`[compileOverview] Found ${people.length} contacts`);
-        const calls = await getGongCallsByAccountId(input.accountId);
-        console.log(`[compileOverview] Found ${calls.length} calls`);
-
-        // Limit contacts to top 10 prioritized by management level and engagement
-        const prioritizedContacts = people
-          .sort((a: any, b: any) => {
-            // Prioritize by management level (C-Suite > VP > Director > Manager > Individual)
-            const levelOrder: Record<string, number> = { 'C-Suite': 1, 'VP': 2, 'Director': 3, 'Manager': 4, 'Individual': 5 };
-            const aLevel = levelOrder[a.managementLevel] || 6;
-            const bLevel = levelOrder[b.managementLevel] || 6;
-            if (aLevel !== bLevel) return aLevel - bLevel;
-            // Then by engagement activities
-            return (b.engagementActivities || 0) - (a.engagementActivities || 0);
-          })
-          .slice(0, 10)
-          .map((p: any) => ({
-            name: p.name,
-            title: p.title,
-            department: p.department,
-            managementLevel: p.managementLevel,
-            email: p.email
-          }));
-
-        const dataContext = {
-          company: {
-            name: account.name,
-            domain: account.domain,
-            industry: account.industry,
-            employees: account.employeeCount,
-            description: account.description,
-            intentScore: account.intentScore,
-            buyingStage: (account as any).buyingStage || 'Unknown',
-            relationship: account.relationship
-          },
-          keyContacts: prioritizedContacts,
-          totalContacts: people.length,
-          recentCalls: calls.length,
-          techStack: account.techStack ? 'Available' : 'Not available',
-          triggers: account.triggerEvents ? 'Available' : 'None',
-          rawData: account.rawData
-        };
-
         try {
-          console.log(`[compileOverview] Starting LLM call for ${account.name}`);
-          const { invokeLLM } = await import("./_core/llm");
-          const { withRCP } = await import("./ai-system-prompt");
-          // const { searchTool, executeToolCall } = await import("./_core/webSearch");
-          
-          // First call without tool support (webSearch module not available)
-          console.log(`[compileOverview] Calling invokeLLM...`);
-          
-          // Build contacts string
-          const contactsStr = dataContext.keyContacts.length > 0 
-            ? dataContext.keyContacts.map((c: any) => `- ${c.name} (${c.title || 'No title'}${c.email ? ', ' + c.email : ''})`).join('\n')
-            : 'NO CONTACTS IN DATABASE';
-          
-          let response = await invokeLLM({
-            messages: [
-              {
-                role: "system",
-                content: `You are a data reporter. Your job is to summarize ONLY the data provided. 
-
-CRITICAL RULES:
-1. ONLY state facts from the data provided - NEVER make up information
-2. If data is missing or zero, say "No data available" - do NOT guess or suggest
-3. Do NOT give generic sales advice like "reach out" or "engage stakeholders"
-4. Do NOT make up contact names, emails, or titles that aren't in the data
-5. Do NOT speculate about pain points, tech stack, or buying signals unless explicitly in the data
-6. Keep it SHORT - under 300 words
-7. Use markdown formatting
-
-If contacts = 0, say "No contacts in database - add contacts before outreach"
-If calls = 0, say "No call history"
-NEVER suggest "identify key contacts" - either we have them or we don't.`
-              },
-              {
-                role: "user",
-                content: `Report the facts for this account. DO NOT add recommendations or speculation.
-
-## DATABASE FACTS:
-- Company: ${dataContext.company.name}
-- Domain: ${dataContext.company.domain || 'Not set'}
-- Industry: ${dataContext.company.industry || 'Unknown'}
-- Employees: ${dataContext.company.employees || 'Unknown'}
-- Intent Score: ${dataContext.company.intentScore || 'Not set'}
-- Buying Stage: ${dataContext.company.buyingStage}
-- Profile Fit: ${(account as any).profileFit || 'Unknown'}
-- Relationship: ${dataContext.company.relationship || 'Unknown'}
-
-## CONTACTS IN DATABASE (${dataContext.totalContacts} total):
-${contactsStr}
-
-## CALL HISTORY:
-${dataContext.recentCalls} calls recorded
-
-Now write a brief factual summary. Start with "## Account Overview" and list the facts. If we have contacts, list them. If we don't, say so. End with "## Status" indicating if this account is ready for outreach (has contacts) or needs contacts added first.`
-              }
-            ]
+          const { generateAccountBrief } = await import("./intel/brief");
+          const brief = await generateAccountBrief(input.accountId, {
+            forceRefresh: input.forceRefresh,
           });
-
-          console.log(`[compileOverview] LLM response received`);
-          const summary = response.choices[0]?.message?.content;
-          let summaryText = typeof summary === 'string' ? summary : 'Unable to generate summary';
-          console.log(`[compileOverview] Summary length: ${summaryText.length}`);
-          
-          // CRITICAL: Strip any raw reasoning/XML tags that shouldn't be shown to users
-          // Sometimes the LLM includes its internal reasoning process
-          const reasoningPatterns = [
-            /<COGNITION_START>[\s\S]*?<\/COGNITION_END>/gi,
-            /<COGNITION_START>[\s\S]*/gi, // unclosed tag
-            /<DECONSTRUCTION>[\s\S]*?<\/DECONSTRUCTION>/gi,
-            /<BRANCHING>[\s\S]*?<\/BRANCHING>/gi,
-            /<CRITIQUE>[\s\S]*?<\/CRITIQUE>/gi,
-            /<SYNTHESIS>[\s\S]*?<\/SYNTHESIS>/gi,
-            /<FINAL_RESPONSE>/gi,
-            /<\/FINAL_RESPONSE>/gi,
-            /<[A-Z_]+>[\s\S]*?<\/[A-Z_]+>/gi, // any uppercase XML tags
-            /;\s*;/g, // double semicolons from bad formatting
-          ];
-          
-          for (const pattern of reasoningPatterns) {
-            summaryText = summaryText.replace(pattern, '');
-          }
-          
-          // If the summary is still too long or looks like raw reasoning, generate a simpler one
-          if (summaryText.length > 5000 || summaryText.includes('<STEP_')) {
-            console.log(`[compileOverview] Summary looks like raw reasoning, regenerating...`);
-            summaryText = 'Summary generation in progress. Please refresh in a moment.';  
-          }
-          
-          // POST-PROCESS: Remove hallucinated content that doesn't exist in our data
-          // The LLM keeps making up email/activity data we don't track
-          const hallucinations = [
-            // Activity counts
-            /Engagement Activities:\s*\d+/gi,
-            /\d+\s*Activities/gi,
-            /\d+\s*QA/gi,
-            /\d+\s*Qualified Activities/gi,
-            /\d+\s*total engagement/gi,
-            /\d+\s*engagement activities/gi,
-            /\d+\s*sales activities/gi,
-            /\d+\s*recorded activities/gi,
-            // Email mentions
-            /Email Send\s*\([^)]*\)/gi,
-            /Email Send\s*\d+\s*days ago/gi,
-            /Email Open\s*\([^)]*\)/gi,
-            /Last Sales Activity:\s*Email[^.]*\./gi,
-            /Recent Activity:.*?Email[^.]*\./gi,
-            /last activity was only \d+ days ago/gi,
-            // Bombora mentions
-            /Latest Engagement:\s*Bombora[^.]*\./gi,
-            /Bombora\s*\([^)]*\)/gi,
-            /Bombora data[^.]*\./gi,
-            /Bombora\/6sense data[^.]*\./gi,
-            // Generic activity claims
-            /recent engagement activity[^.]*\./gi,
-            /recent sales activity[^.]*\./gi,
-            /significant historical engagement[^.]*\./gi,
-          ];
-          
-          for (const pattern of hallucinations) {
-            summaryText = summaryText.replace(pattern, '[DATA NOT AVAILABLE]');
-          }
-          
-          // Replace entire rows in tables that mention hallucinated data
-          summaryText = summaryText.replace(/\|[^|]*Engagement Activities[^|]*\|[^|]*\d+[^|]*\|[^|]*\|/gi, '| Engagement Activities | [DATA NOT TRACKED] | [NO ENGAGEMENT DATA AVAILABLE] |');
-          summaryText = summaryText.replace(/\|[^|]*Sales Activity[^|]*\|[^|]*\d+[^|]*\|[^|]*\|/gi, '| Sales Activity | [DATA NOT TRACKED] | [NO SALES ACTIVITY DATA AVAILABLE] |');
-          summaryText = summaryText.replace(/\|[^|]*Last Activity[^|]*\|[^|]*Bombora[^|]*\|[^|]*\|/gi, '| Last Activity | [DATA NOT TRACKED] | [NO ACTIVITY TRACKING AVAILABLE] |');
-
-          // Store in cache
-          await updateAccount(input.accountId, {
-            aiOverviewCache: summaryText,
-            aiCacheUpdatedAt: new Date()
-          } as any);
-
-          return { summary: summaryText, cached: false, cacheAge: 0 };
+          const cacheAge = brief.cached
+            ? Math.floor((Date.now() - new Date(brief.generatedAt).getTime()) / 60000)
+            : 0;
+          return {
+            summary: brief.markdown,
+            cached: brief.cached,
+            cacheAge,
+            metrics: brief.metrics,
+            degraded: brief.degraded,
+            droppedClaims: brief.validation.dropped,
+          };
         } catch (error) {
-          console.error('Failed to generate AI overview:', error);
-          // Return null so the UI shows "No summary available"
+          console.error("[compileOverview] brief generation failed:", error);
           return null;
         }
       }),
@@ -1124,207 +936,38 @@ Now write a brief factual summary. Start with "## Account Overview" and list the
         return { ...result, cached: false, cacheAge: 0 };
       }),
 
+    // Strategic insights are the judgement half of the same account brief, so both panels
+    // share one cached generation instead of each firing its own slow LLM call. The old
+    // implementation aggregated contact columns (engagementActivities, salesActivities,
+    // daysSinceLastEngagement) that do not exist in the schema, so it fed the model zeros
+    // and the model invented the numbers back.
     generateStrategicInsights: protectedProcedure
       .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
       .query(async ({ input }) => {
-        const account = await getAccountById(input.accountId);
-        if (!account) throw new Error('Account not found');
-
-        // Check cache first (valid for 24 hours)
-        const cacheAge = (account as any).aiCacheUpdatedAt ? Date.now() - new Date((account as any).aiCacheUpdatedAt).getTime() : Infinity;
-        const cacheValid = cacheAge < 24 * 60 * 60 * 1000;
-
-        if (!input.forceRefresh && (account as any).aiInsightsCache && cacheValid) {
-          return { 
-            recommendations: (account as any).aiInsightsCache,
-            cached: true,
-            cacheAge: Math.floor(cacheAge / (60 * 1000))
-          };
-        }
-
-        // If forceRefresh, clear the cache first to ensure fresh generation
-        if (input.forceRefresh) {
-          console.log(`[AI Insights] Force refresh requested for account ${input.accountId}, clearing cache...`);
-          await updateAccount(input.accountId, {
-            aiInsightsCache: null,
-            aiCacheUpdatedAt: null
-          } as any);
-        }
-
-        const people = await getContactsByAccountId(input.accountId);
-        const calls = await getGongCallsByAccountId(input.accountId);
-
-        // AGGREGATE ENGAGEMENT DATA FROM CONTACTS (this is where the real data lives!)
-        const engagementData = people.reduce((acc: any, p: any) => {
-          acc.totalEngagementActivities += (p.engagementActivities || 0);
-          acc.totalSalesActivities += (p.salesActivities || 0);
-          if (p.daysSinceLastEngagement !== null && p.daysSinceLastEngagement !== undefined) {
-            if (acc.mostRecentEngagementDays === null || p.daysSinceLastEngagement < acc.mostRecentEngagementDays) {
-              acc.mostRecentEngagementDays = p.daysSinceLastEngagement;
-            }
-          }
-          if (p.daysSinceLastSalesActivity !== null && p.daysSinceLastSalesActivity !== undefined) {
-            if (acc.mostRecentSalesActivityDays === null || p.daysSinceLastSalesActivity < acc.mostRecentSalesActivityDays) {
-              acc.mostRecentSalesActivityDays = p.daysSinceLastSalesActivity;
-              acc.lastSalesActivity = p.lastSalesActivity;
-            }
-          }
-          if (p.lastEngagementActivity) {
-            acc.lastEngagementActivity = p.lastEngagementActivity;
-          }
-          return acc;
-        }, {
-          totalEngagementActivities: 0,
-          totalSalesActivities: 0,
-          mostRecentEngagementDays: null as number | null,
-          mostRecentSalesActivityDays: null as number | null,
-          lastSalesActivity: null as string | null,
-          lastEngagementActivity: null as string | null
-        });
-
-        // Prepare contact list with real names and titles (TOP 10 ONLY)
-        const contactList = people.slice(0, 10).map((p: any) => ({
-          name: p.name,
-          title: p.title,
-          email: p.email,
-          department: p.department,
-          managementLevel: p.managementLevel,
-          engagementActivities: p.engagementActivities,
-          salesActivities: p.salesActivities,
-          daysSinceLastEngagement: p.daysSinceLastEngagement,
-          lastSalesActivity: p.lastSalesActivity
-        }));
-
-        // Parse tech stack data
-        let techStackData = null;
-        let securityStackData = null;
         try {
-          if (account.techStack) {
-            techStackData = typeof account.techStack === 'string' ? JSON.parse(account.techStack) : account.techStack;
-          }
-          if ((account as any).securityStack) {
-            securityStackData = typeof (account as any).securityStack === 'string' ? JSON.parse((account as any).securityStack) : (account as any).securityStack;
-          }
-        } catch (e) {
-          // Ignore parse errors
+          const { generateAccountBrief } = await import("./intel/brief");
+          const brief = await generateAccountBrief(input.accountId, {
+            forceRefresh: input.forceRefresh,
+          });
+          // Everything above the facts tables is the interpretation layer.
+          const judgement = brief.markdown.split("## Signal Readout")[0];
+          const recommendations = judgement
+            .replace(/^# Account Brief:.*$/m, "")
+            .replace(/^_Generated .*_$/m, "")
+            .trim();
+          return {
+            recommendations,
+            cached: brief.cached,
+            cacheAge: brief.cached
+              ? Math.floor((Date.now() - new Date(brief.generatedAt).getTime()) / 60000)
+              : 0,
+            degraded: brief.degraded,
+          };
+        } catch (error) {
+          console.error("[generateStrategicInsights] failed:", error);
+          return null;
         }
-
-        // Import VECTOR scoring
-        const { calculateVectorScores, generateDeepAnalysisPrompt } = await import('./vectorScoring');
-        
-        // Prepare account data for VECTOR scoring
-        const accountData = {
-          name: account.name,
-          domain: account.domain || undefined,
-          industry: account.industry || undefined,
-          employeeCount: account.employeeCount || undefined,
-          region: (account as any).region || undefined,
-          relationship: account.relationship || undefined,
-          intentScore: account.intentScore || undefined,
-          buyingStage: (account as any).buyingStage || undefined,
-          temperature: (account as any).temperature || undefined,
-          totalContacts: people.length,
-          totalCalls: calls.length,
-          lastCallDate: calls[0]?.callDate || undefined,
-          // REAL ENGAGEMENT DATA FROM CONTACTS TABLE
-          engagementActivities: engagementData.totalEngagementActivities,
-          salesActivities: engagementData.totalSalesActivities,
-          mostRecentEngagementDays: engagementData.mostRecentEngagementDays,
-          mostRecentSalesActivityDays: engagementData.mostRecentSalesActivityDays,
-          lastSalesActivity: engagementData.lastSalesActivity,
-          lastEngagementActivity: engagementData.lastEngagementActivity,
-          techStack: techStackData,
-          securityStack: securityStackData,
-          contacts: contactList,
-          calls: calls.slice(0, 5).map((c: any) => ({
-            date: c.callDate,
-            duration: c.duration,
-            summary: c.summary
-          }))
-        };
-        
-        // Calculate VECTOR scores
-        const vectorScores = calculateVectorScores(accountData);
-        
-        // Generate deep analysis prompt
-        const analysisPrompt = generateDeepAnalysisPrompt(accountData, vectorScores);
-
-        const { invokeLLM } = await import("./_core/llm");
-        const { getDynamicPersona, STANDARDIZED_OUTPUT_STRUCTURE } = await import("./ai-system-prompt");
-
-        // Resolve {COMPANY_NAME}/{COMPETITORS}/{KEY_DIFFERENTIATORS} etc. from company config.
-        // Use a simpler system prompt WITHOUT RCP to avoid verbose reasoning output.
-        const simpleSystemPrompt = `${getDynamicPersona()}
-
----
-
-IMPORTANT INSTRUCTIONS:
-- Output ONLY the final analysis in clean markdown format
-- Do NOT include any reasoning steps, stages, hypotheses, or internal thinking
-- Do NOT use XML tags like <COGNITION_START>, <PATH_A>, <BRANCHING>, etc.
-- Do NOT include phrases like "The analysis is complete" or "adheres to all constraints"
-- Do NOT include numbered stages like "STAGE 1:", "STAGE 2:", etc.
-- Start directly with the content, no preamble
-
-${STANDARDIZED_OUTPUT_STRUCTURE}`;
-        
-        const response = await invokeLLM({
-          messages: [
-            {
-              role: "system",
-              content: simpleSystemPrompt
-            },
-            {
-              role: "user",
-              content: analysisPrompt
-            }
-          ]
-        });
-
-        const recommendations = response.choices[0]?.message?.content;
-        let recommendationsText = typeof recommendations === 'string' ? recommendations : 'Unable to generate insights';
-        
-        // Strip any XML reasoning tags and RCP artifacts that shouldn't be shown to users
-        const reasoningPatterns = [
-          // XML-style reasoning blocks
-          /<COGNITION_START>[\s\S]*?<\/COGNITION_END>/gi,
-          /<COGNITION_START>[\s\S]*/gi,
-          /<REASONING_LOG>[\s\S]*?<\/REASONING_LOG>/gi,
-          /<FINAL_RESPONSE>/gi,
-          /<\/FINAL_RESPONSE>/gi,
-          /<RAW_ANSWER>[\s\S]*?<\/RAW_ANSWER>/gi,
-          /<[A-Z_]+>[\s\S]*?<\/[A-Z_]+>/gi,
-          // RCP stage headers and content
-          /^\s*STAGE \d+:[^\n]*\n/gim,
-          /^\s*###\s*STAGE \d+:[^\n]*\n/gim,
-          /^\s*\*\*STAGE \d+:[^\n]*\*\*\n/gim,
-          /Hypothesis [A-Z]:[^\n]*\n/gi,
-          /\*\*Hypothesis [A-Z]:[^\n]*\*\*/gi,
-          /Path [A-Z]:[^\n]*\n/gi,
-          // Common boilerplate phrases
-          /The analysis is complete and adheres to all constraints\.?/gi,
-          /The analysis adheres to all constraints\.?/gi,
-          /This analysis is complete\.?/gi,
-          /^\s*BEGIN PROCESSING NOW\.?\s*$/gim,
-          /^\s*CONFIDENCE_SCORE:[^\n]*\n/gim,
-        ];
-        
-        for (const pattern of reasoningPatterns) {
-          recommendationsText = recommendationsText.replace(pattern, '');
-        }
-        
-        // Clean up excessive whitespace
-        recommendationsText = recommendationsText.replace(/\n{3,}/g, '\n\n').trim();
-
-        // Store in cache
-        await updateAccount(input.accountId, {
-          aiInsightsCache: recommendationsText,
-          aiCacheUpdatedAt: new Date()
-        } as any);
-
-        return { recommendations: recommendationsText, cached: false, cacheAge: 0 };
       }),
-
     analyzeTechStack: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .mutation(async ({ input }) => {
