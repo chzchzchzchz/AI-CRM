@@ -14,7 +14,7 @@ async function getRecentIntentSpikes(limit: number = 10): Promise<any[]> { retur
  */
 
 export interface ContextEntry {
-  type: 'account_insight' | 'contact_insight' | 'call_analysis' | 'user_interaction' | 'search_pattern' | 'recommendation' | 'learning';
+  type: 'account_insight' | 'contact_insight' | 'call_analysis' | 'user_interaction' | 'search_pattern' | 'recommendation' | 'learning' | 'account_brief';
   key: string;
   value: string;
   metadata?: any;

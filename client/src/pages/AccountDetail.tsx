@@ -28,10 +28,6 @@ export default function AccountDetailEnhanced() {
   // AI Intelligence queries — deferred until the account has loaded so they don't
   // join the initial request batch and block the core page render on slow LLM calls.
   const overviewQuery = trpc.ai.compileOverview.useQuery({ accountId }, { enabled: accountId > 0 && !!account });
-  const insightsQuery = trpc.ai.generateStrategicInsights.useQuery(
-    { accountId, forceRefresh: false },
-    { enabled: accountId > 0 && !!account }
-  );
   const { data: salesforceInstanceUrl } = trpc.salesforce.getInstanceUrl.useQuery();
   const { data: accountOpportunities } = trpc.opportunities.getByAccountId.useQuery({ accountId }, { enabled: accountId > 0 });
   const { data: intentSignals } = trpc.intentScores.list.useQuery({ accountId }, { enabled: accountId > 0 && !!account });
@@ -117,7 +113,10 @@ export default function AccountDetailEnhanced() {
       .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
       .replace(/<strategy>[\s\S]*?<\/strategy>/gi, '')
       .replace(/<notes>[\s\S]*?<\/notes>/gi, '')
-      .replace(/---+/g, '')
+      // Only strip standalone horizontal rules. A bare /---+/ also ate the
+      // separator row of every markdown table (|---|---|), which silently
+      // disabled GFM table rendering across the app.
+      .replace(/^\s*-{3,}\s*$/gm, '')
       .trim();
     // If there's an OUTPUT section, extract just that
     const outputMatch = clean.match(/OUTPUT[:\s]*([\s\S]*?)(?:$|---)/i);
@@ -387,11 +386,21 @@ export default function AccountDetailEnhanced() {
                     <Sparkles className="h-4 w-4 text-amber-500" />
                     AI Account Brief
                   </span>
-                  {overviewQuery.data?.cached && (
-                    <Badge variant="outline" className="text-xs">
-                      Updated {overviewQuery.data.cacheAge}m ago
-                    </Badge>
-                  )}
+                  <span className="flex items-center gap-2">
+                    {overviewQuery.data?.cached && (
+                      <Badge variant="outline" className="text-xs">
+                        Updated {overviewQuery.data.cacheAge}m ago
+                      </Badge>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => overviewQuery.refetch()}
+                      disabled={overviewQuery.isFetching}
+                    >
+                      <RefreshCw className={`h-4 w-4 ${overviewQuery.isFetching ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4">
@@ -410,39 +419,6 @@ export default function AccountDetailEnhanced() {
               </CardContent>
             </Card>
 
-            {/* Strategic Insights */}
-            <Card>
-              <CardHeader className="py-3 px-4">
-                <CardTitle className="text-sm flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-cyan-500" />
-                    Strategic Insights
-                  </span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => insightsQuery.refetch()}
-                    disabled={insightsQuery.isFetching}
-                  >
-                    <RefreshCw className={`h-4 w-4 ${insightsQuery.isFetching ? 'animate-spin' : ''}`} />
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-4">
-                {insightsQuery.isLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Generating insights...
-                  </div>
-                ) : insightsQuery.data?.recommendations ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <SafeStreamdown>{extractFinalOutput(insightsQuery.data.recommendations)}</SafeStreamdown>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No insights available</p>
-                )}
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
