@@ -45,14 +45,20 @@ export const clayImportRouter = router({
             .where(eq(accounts.domain, account.domain))
             .limit(1);
 
-          const accountData = {
+          // Map onto the real account columns — stack/research/trigger are not columns
+          // (techStack / triggerEvents / aiResearchCache are), so the old shape discarded
+          // every enrichment field it claimed to import.
+          const accountData: Record<string, any> = {
             name: account.name || account.domain,
             domain: account.domain,
-            stack: Object.keys(account.stack || {}).length > 0 ? JSON.stringify(account.stack) : null,
-            research: Object.keys(account.research || {}).length > 0 ? JSON.stringify(account.research) : null,
-            trigger: Object.keys(account.trigger || {}).length > 0 ? JSON.stringify(account.trigger) : null,
-            rawData: Object.keys(account.rawData || {}).length > 0 ? JSON.stringify(account.rawData) : null,
+            techStack: Object.keys(account.stack || {}).length > 0 ? JSON.stringify(account.stack) : null,
+            triggerEvents: Object.keys(account.trigger || {}).length > 0 ? JSON.stringify(account.trigger) : null,
+            aiResearchCache: Object.keys(account.research || {}).length > 0 ? JSON.stringify(account.research) : null,
+            rawData: Object.keys(account.rawData || {}).length > 0 ? account.rawData : null,
           };
+          for (const k of Object.keys(accountData)) {
+            if (accountData[k] === null) delete accountData[k];
+          }
 
           if (existing.length > 0) {
             // Update existing account
@@ -112,14 +118,18 @@ export const clayImportRouter = router({
             .where(eq(accounts.domain, account.domain))
             .limit(1);
 
-          const accountData = {
+          // Real columns — not stack/research/trigger (those aren't on the accounts table).
+          const accountData: Record<string, any> = {
             name: account.name,
             domain: account.domain,
-            stack: account.stack ? JSON.stringify(account.stack) : null,
-            research: account.research ? JSON.stringify(account.research) : null,
-            trigger: account.trigger ? JSON.stringify(account.trigger) : null,
-            rawData: account.rawData ? JSON.stringify(account.rawData) : null,
+            techStack: account.stack ? JSON.stringify(account.stack) : null,
+            triggerEvents: account.trigger ? JSON.stringify(account.trigger) : null,
+            aiResearchCache: account.research ? JSON.stringify(account.research) : null,
+            rawData: account.rawData ? account.rawData : null,
           };
+          for (const k of Object.keys(accountData)) {
+            if (accountData[k] === null) delete accountData[k];
+          }
 
           if (existing.length > 0) {
             // Update existing account
@@ -158,7 +168,7 @@ export const clayImportRouter = router({
     const allAccounts = await db.select().from(accounts);
     
     const withStack = allAccounts.filter((a: any) => a.techStack && a.techStack !== '{}').length;
-    const withResearch = 0; // research field removed from schema
+    const withResearch = allAccounts.filter((a: any) => a.aiResearchCache && a.aiResearchCache !== '{}').length;
     const withTriggers = allAccounts.filter((a: any) => a.triggerEvents && a.triggerEvents !== '{}').length;
 
     return {
