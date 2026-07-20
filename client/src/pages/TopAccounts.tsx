@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,20 +20,30 @@ const AE_LIST = Object.entries(REP_TERRITORIES).map(([email, info]) => ({
   size: info.sizeFilter === "<2000" ? "<2K" : "2K+",
 }));
 
-const REGIONS = ["West", "Central", "East"];
+// Regions configured for the rep roster — a starting set, unioned below with whatever
+// regions actually appear in the data so no account is dropped by a hardcoded list.
+const CONFIGURED_REGIONS = Array.from(new Set(AE_LIST.map((ae) => ae.region))).filter(Boolean);
 
 export default function TopAccounts() {
   const [activeTab, setActiveTab] = useState("regions");
   const [selectedRegion, setSelectedRegion] = useState("all");
   const [selectedAE, setSelectedAE] = useState("all");
-  
+
   const { data: accounts, isLoading } = trpc.accounts.list.useQuery();
-  const { data: repStats } = trpc.priorityActions.getRepStats.useQuery({ 
-    userEmail: selectedAE !== "all" ? selectedAE : "" 
+  const { data: repStats } = trpc.priorityActions.getRepStats.useQuery({
+    userEmail: selectedAE !== "all" ? selectedAE : ""
   });
 
+  // Derive regions from the data (plus configured territories) so every account's region is
+  // represented. The old hardcoded ["West","Central","East"] dropped accounts in any other
+  // region — e.g. the demo's "Northeast" accounts vanished, and "East" matched nothing.
+  const REGIONS = useMemo(() => {
+    const fromData = (accounts || []).map((a: any) => a.region).filter(Boolean);
+    return Array.from(new Set([...CONFIGURED_REGIONS, ...fromData]));
+  }, [accounts]);
+
   // Process accounts by region
-  const accountsByRegion = REGIONS.reduce((acc, region) => {
+  const accountsByRegion = REGIONS.reduce((acc: Record<string, any[]>, region: string) => {
     acc[region] = (accounts || [])
       .filter((a: any) => a.region === region)
       .map((a: any) => ({
