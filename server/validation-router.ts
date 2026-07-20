@@ -181,11 +181,36 @@ export const validationRouter = router({
       newValue: z.string()
     }))
     .mutation(async ({ input }) => {
-      // TODO: Implement field-specific updates
-      // For now, just return success
-      return {
-        success: true,
-        message: `Fixed ${input.field} for ${input.entityType} ${input.entityId}`
+      // Whitelist the fields that may be written — never trust the field name straight from
+      // the client onto a DB column. Previously this did nothing and reported "Fixed X".
+      const EDITABLE: Record<'account' | 'contact', Set<string>> = {
+        account: new Set(['name', 'domain', 'industry', 'employeeCount', 'revenue', 'location', 'region', 'website', 'linkedinUrl', 'phone', 'description']),
+        contact: new Set(['name', 'firstName', 'lastName', 'title', 'email', 'phone', 'linkedinUrl', 'location', 'department']),
       };
+      if (!EDITABLE[input.entityType].has(input.field)) {
+        return { success: false, message: `Field "${input.field}" is not editable` };
+      }
+
+      // employeeCount is the one numeric account field.
+      const value: any = input.field === 'employeeCount' ? Number(input.newValue) || null : input.newValue;
+
+      const { getDb, updateAccount } = await import("./db");
+      const db = await getDb();
+      if (!db) return { success: false, message: "Database not available" };
+
+      try {
+        if (input.entityType === 'account') {
+          await updateAccount(input.entityId, { [input.field]: value } as any);
+        } else {
+          const { contacts } = await import("../drizzle/schema");
+          const { eq } = await import("drizzle-orm");
+          await db.update(contacts).set({ [input.field]: value, updatedAt: new Date() } as any)
+            .where(eq(contacts.id, input.entityId));
+        }
+        return { success: true, message: `Updated ${input.field} on ${input.entityType} ${input.entityId}` };
+      } catch (error) {
+        console.error(`[validation.fixIssue] failed:`, error);
+        return { success: false, message: `Failed to update ${input.field}` };
+      }
     })
 });
