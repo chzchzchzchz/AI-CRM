@@ -72,7 +72,20 @@ export const appRouter = router({
         debugMode: z.boolean().optional()
       }))
       .mutation(async ({ input }) => {
-        return await deepThinkSales(input);
+        // The client (ContextualAI) passes only { id } for the account — never the actual
+        // data — so the model was asked about an account it knew nothing about. Hydrate the
+        // full, real signal pack from the id here so the answer is grounded.
+        let accountData = input.accountData;
+        const accountId = accountData?.id;
+        if (accountId && Object.keys(accountData).length <= 2) {
+          try {
+            const { gatherAccountSignals } = await import("./intel/signals");
+            accountData = await gatherAccountSignals(Number(accountId));
+          } catch (e) {
+            console.error("[deepThink.sales] could not hydrate account signals:", e);
+          }
+        }
+        return await deepThinkSales({ ...input, accountData });
       }),
     help: protectedProcedure
       .input(z.object({
