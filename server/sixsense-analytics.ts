@@ -1,225 +1,342 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
-import { getDb } from "./db";
-import {
-  sixsenseBuyingStageMetrics,
-  sixsenseEngagementMetrics,
-  sixsenseKeywords,
-  sixsense6QAPerformance,
-  type SixsenseBuyingStageMetric,
-  type SixsenseEngagementMetric,
-  type SixsenseKeyword,
-  type Sixsense6QAPerformance,
-} from "../drizzle/schema";
-import { desc } from "drizzle-orm";
+import { getDb, getAllAccounts, getAllOpportunities, getAllPeople, getAllGongCalls } from "./db";
+import { intentScores as intentScoresTable } from "../drizzle/schema";
+
+/**
+ * 6SENSE-STYLE ANALYTICS — derived from real data.
+ *
+ * These procedures used to read four tables (sixsenseBuyingStageMetrics,
+ * sixsenseEngagementMetrics, sixsenseKeywords, sixsense6QAPerformance) that NO code ever
+ * writes to and that aren't in the demo seed — so every dashboard rendered zeros/empty.
+ *
+ * They now compute the same shapes from data the app actually holds: account buying stage,
+ * the intentScores time series (with keywords), opportunities, contacts and calls. The
+ * return shapes are unchanged, so the Insights / SixsenseAnalytics / Home pages keep working.
+ */
+
+// An account counts as a "6sense Qualified Account" at/above this intent score.
+const SIX_QA_THRESHOLD = 70;
+const STAGE_ORDER = ["Target", "Awareness", "Consideration", "Decision", "Purchase"];
+
+function toNum(v: unknown): number {
+  if (v == null || v === "") return 0;
+  const n = typeof v === "number" ? v : Number(String(v).replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function parseKeywords(v: unknown): string[] {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);
+  if (typeof v === "string") {
+    const t = v.trim();
+    if (t.startsWith("[")) {
+      try {
+        const p = JSON.parse(t);
+        if (Array.isArray(p)) return p.map((x) => String(x).trim()).filter(Boolean);
+      } catch { /* fall through */ }
+    }
+    return t.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+type RealData = {
+  accounts: any[];
+  opportunities: any[];
+  contacts: any[];
+  calls: any[];
+  intent: any[];
+  now: Date;
+  // per-account rollups
+  contactsByAccount: Map<number, number>;
+  callsByAccount: Map<number, number>;
+  openOppValueByAccount: Map<number, number>;
+  wonOppValueByAccount: Map<number, number>;
+  hasOpenOpp: Set<number>;
+  hasWonOpp: Set<number>;
+};
+
+async function loadReal(): Promise<RealData> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // The demo query builder is awaitable but has no `.catch`, so read intent scores in its
+  // own guarded step rather than chaining .catch on the builder.
+  const fetchIntent = async () => {
+    try {
+      return (await db.select().from(intentScoresTable)) as any[];
+    } catch {
+      return [] as any[];
+    }
+  };
+  const [accounts, opportunities, contacts, calls, intent] = await Promise.all([
+    getAllAccounts().catch(() => []),
+    getAllOpportunities().catch(() => []),
+    getAllPeople().catch(() => []),
+    getAllGongCalls().catch(() => []),
+    fetchIntent(),
+  ]);
+
+  const contactsByAccount = new Map<number, number>();
+  for (const c of contacts as any[]) {
+    if (c.accountId != null) contactsByAccount.set(c.accountId, (contactsByAccount.get(c.accountId) || 0) + 1);
+  }
+  const callsByAccount = new Map<number, number>();
+  for (const c of calls as any[]) {
+    if (c.accountId != null) callsByAccount.set(c.accountId, (callsByAccount.get(c.accountId) || 0) + 1);
+  }
+  const openOppValueByAccount = new Map<number, number>();
+  const wonOppValueByAccount = new Map<number, number>();
+  const hasOpenOpp = new Set<number>();
+  const hasWonOpp = new Set<number>();
+  for (const o of opportunities as any[]) {
+    const id = o.accountId;
+    if (id == null) continue;
+    const amt = toNum(o.amount);
+    const status = String(o.status || "Open").toLowerCase();
+    if (status === "won") {
+      wonOppValueByAccount.set(id, (wonOppValueByAccount.get(id) || 0) + amt);
+      hasWonOpp.add(id);
+    } else if (status !== "lost") {
+      openOppValueByAccount.set(id, (openOppValueByAccount.get(id) || 0) + amt);
+      hasOpenOpp.add(id);
+    }
+  }
+
+  return {
+    accounts: accounts as any[],
+    opportunities: opportunities as any[],
+    contacts: contacts as any[],
+    calls: calls as any[],
+    intent: (intent as any[]) || [],
+    now: new Date(),
+    contactsByAccount,
+    callsByAccount,
+    openOppValueByAccount,
+    wonOppValueByAccount,
+    hasOpenOpp,
+    hasWonOpp,
+  };
+}
+
+/** Buying-stage funnel: real account counts per stage + pipeline sourced from opportunities. */
+function computeBuyingStages(d: RealData) {
+  const stages = STAGE_ORDER.map((stage) => {
+    const accts = d.accounts.filter((a) => (a.sixsenseBuyingStage || "") === stage);
+    const ids = accts.map((a) => a.id);
+    const newPipeline = ids.reduce((s, id) => s + (d.openOppValueByAccount.get(id) || 0), 0);
+    const totalWon = ids.reduce((s, id) => s + (d.wonOppValueByAccount.get(id) || 0), 0);
+    return {
+      stage,
+      accounts: accts.length,
+      newPipeline: String(newPipeline),
+      totalWon: String(totalWon),
+    };
+  });
+  return {
+    timeframe: "Current",
+    dataAsOf: d.now,
+    stages,
+    totalAccounts: stages.reduce((s, x) => s + x.accounts, 0),
+  };
+}
+
+/** Engagement funnel derived from real signals per account. Each account lands in one state. */
+function computeEngagement(d: RealData) {
+  const states = {
+    "No Engagement": { accounts: 0, amount: 0 },
+    Intent: { accounts: 0, amount: 0 },
+    "Known Engagement": { accounts: 0, amount: 0 },
+    "Opps Created": { accounts: 0, amount: 0 },
+    "Opps Won": { accounts: 0, amount: 0 },
+  } as Record<string, { accounts: number; amount: number }>;
+
+  for (const a of d.accounts) {
+    const id = a.id;
+    const intent = toNum(a.intentScore);
+    const engaged = (d.contactsByAccount.get(id) || 0) > 0 || (d.callsByAccount.get(id) || 0) > 0;
+    if (d.hasWonOpp.has(id)) {
+      states["Opps Won"].accounts++;
+      states["Opps Won"].amount += d.wonOppValueByAccount.get(id) || 0;
+    } else if (d.hasOpenOpp.has(id)) {
+      states["Opps Created"].accounts++;
+      states["Opps Created"].amount += d.openOppValueByAccount.get(id) || 0;
+    } else if (engaged) {
+      states["Known Engagement"].accounts++;
+    } else if (intent >= 40) {
+      states["Intent"].accounts++;
+    } else {
+      states["No Engagement"].accounts++;
+    }
+  }
+
+  return {
+    timeWindow: "Current",
+    dataAsOf: d.now,
+    metrics: Object.entries(states).map(([state, v]) => ({
+      state,
+      accounts: v.accounts,
+      amount: String(v.amount),
+    })),
+  };
+}
+
+/** Keyword performance aggregated from the intentScores time series across accounts. */
+function computeKeywords(d: RealData) {
+  // keyword -> set of accountIds, plus the category it appeared under
+  const byKeyword = new Map<string, { accounts: Set<number>; category: string }>();
+  for (const row of d.intent) {
+    const accountId = row.accountId;
+    const category = row.category || "other";
+    for (const kw of parseKeywords(row.keywords)) {
+      const entry = byKeyword.get(kw) || { accounts: new Set<number>(), category };
+      if (accountId != null) entry.accounts.add(accountId);
+      byKeyword.set(kw, entry);
+    }
+  }
+
+  const dataAsOf = d.now;
+  const keywords = Array.from(byKeyword.entries())
+    .map(([keyword, e]) => {
+      const ids = Array.from(e.accounts);
+      const with6QA = ids.filter((id) => {
+        const a = d.accounts.find((x) => x.id === id);
+        return a && toNum(a.intentScore) >= SIX_QA_THRESHOLD;
+      }).length;
+      const withOpps = ids.filter((id) => d.hasOpenOpp.has(id) || d.hasWonOpp.has(id)).length;
+      return {
+        keyword,
+        totalAccounts: ids.length,
+        accountsWithWebVisits: ids.filter((id) => (d.callsByAccount.get(id) || 0) > 0 || (d.contactsByAccount.get(id) || 0) > 0).length,
+        accountsWith6QA: with6QA,
+        accountsWithOpportunities: withOpps,
+        accountsWithRelevantOpportunities: withOpps,
+        category: e.category,
+        dataAsOf,
+      };
+    })
+    .sort((a, b) => b.totalAccounts - a.totalAccounts);
+
+  return { keywords, dataAsOf };
+}
+
+/** 6QA snapshot + a real trend from the intentScores reading dates. */
+function compute6QA(d: RealData) {
+  const qaAccounts = d.accounts.filter((a) => toNum(a.intentScore) >= SIX_QA_THRESHOLD);
+  const total6QAs = qaAccounts.length;
+  const worked = qaAccounts.filter(
+    (a) => (d.contactsByAccount.get(a.id) || 0) > 0 || (d.callsByAccount.get(a.id) || 0) > 0 || d.hasOpenOpp.has(a.id) || d.hasWonOpp.has(a.id)
+  ).length;
+  const unworked = total6QAs - worked;
+  const totalCalls = qaAccounts.reduce((s, a) => s + (d.callsByAccount.get(a.id) || 0), 0);
+  const totalContacts = qaAccounts.reduce((s, a) => s + (d.contactsByAccount.get(a.id) || 0), 0);
+
+  // Trend: for each distinct intent-reading date, how many accounts were >= threshold.
+  const byDate = new Map<string, Set<number>>();
+  for (const row of d.intent) {
+    if (toNum(row.score) < SIX_QA_THRESHOLD) continue;
+    const day = row.createdAt ? new Date(String(row.createdAt)).toISOString().slice(0, 10) : null;
+    if (!day) continue;
+    if (!byDate.has(day)) byDate.set(day, new Set());
+    if (row.accountId != null) byDate.get(day)!.add(row.accountId);
+  }
+  const trend = Array.from(byDate.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([day, ids]) => ({ day, total6QAs: ids.size, worked: null as number | null, unworked: null as number | null }));
+
+  const latestDay = trend.length ? trend[trend.length - 1].day : d.now.toISOString().slice(0, 10);
+
+  return {
+    total6QAs,
+    worked,
+    unworked,
+    workedPercent: total6QAs ? Math.round((worked / total6QAs) * 100) : 0,
+    avgSalesActivities: total6QAs ? Math.round((totalCalls / total6QAs) * 10) / 10 : 0,
+    avgContactsReached: total6QAs ? Math.round((totalContacts / total6QAs) * 10) / 10 : 0,
+    latestDay,
+    trend,
+  };
+}
 
 export const sixsenseAnalyticsRouter = router({
-  // Get buying stage funnel data
   getBuyingStages: protectedProcedure.query(async () => {
-    const db = await getDb();
-    if (!db) throw new Error("Database not available");
-
-    const data: SixsenseBuyingStageMetric[] = await db
-      .select()
-      .from(sixsenseBuyingStageMetrics)
-      .orderBy(desc(sixsenseBuyingStageMetrics.id));
-
-    // Get the most recent timeframe
-    const latestTimeframe = data[0]?.timeframe;
-    const latestData = data.filter((d: SixsenseBuyingStageMetric) => d.timeframe === latestTimeframe);
-    const dataAsOf = data[0]?.dataAsOf;
-
-    // Order by buying stage progression
-    const stageOrder = ["Target", "Awareness", "Consideration", "Decision", "Purchase"];
-    const orderedData = stageOrder.map((stage) => {
-      const found = latestData.find((d: SixsenseBuyingStageMetric) => d.buyingStage === stage);
-      return {
-        stage,
-        accounts: found?.numberOfAccounts || 0,
-        newPipeline: found?.newPipelineUSD || "0",
-        totalWon: found?.totalWonUSD || "0",
-      };
-    });
-
-    return {
-      timeframe: latestTimeframe,
-      dataAsOf,
-      stages: orderedData,
-      totalAccounts: orderedData.reduce((sum: number, s) => sum + s.accounts, 0),
-    };
+    return computeBuyingStages(await loadReal());
   }),
 
-  // Get engagement metrics
   getEngagement: protectedProcedure.query(async () => {
-    const db = await getDb();
-    if (!db) throw new Error("Database not available");
-
-    const data: SixsenseEngagementMetric[] = await db
-      .select()
-      .from(sixsenseEngagementMetrics)
-      .orderBy(desc(sixsenseEngagementMetrics.id));
-
-    // Get the most recent timeframe
-    const latestTimeWindow = data[0]?.timeWindow;
-    const latestData = data.filter((d: SixsenseEngagementMetric) => d.timeWindow === latestTimeWindow);
-    const dataAsOf = data[0]?.dataAsOf;
-
-    return {
-      timeWindow: latestTimeWindow,
-      dataAsOf,
-      metrics: latestData.map((d: SixsenseEngagementMetric) => ({
-        state: d.engagementState,
-        accounts: d.accounts,
-        amount: d.amountUSD,
-      })),
-    };
+    return computeEngagement(await loadReal());
   }),
 
-  // Get top keywords by category
   getKeywords: protectedProcedure
-    .input(
-      z.object({
-        category: z.string().optional(),
-        limit: z.number().default(20),
-      })
-    )
+    .input(z.object({ category: z.string().optional(), limit: z.number().default(20) }))
     .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
+      const d = await loadReal();
+      const { keywords, dataAsOf } = computeKeywords(d);
+      const limited = keywords.slice(0, input.limit);
+      const filtered = input.category ? limited.filter((k) => k.category === input.category) : limited;
 
-      const data: SixsenseKeyword[] = await db
-        .select()
-        .from(sixsenseKeywords)
-        .orderBy(desc(sixsenseKeywords.totalAccounts))
-        .limit(input.limit);
-
-      const dataAsOf = data[0]?.dataAsOf;
-
-      // Filter by category if specified
-      const filtered = input.category
-        ? data.filter((d: SixsenseKeyword) => d.category === input.category)
-        : data;
-
-      // Group by category for summary
-      const byCategory: Record<string, SixsenseKeyword[]> = {};
-      for (const kw of data) {
+      const byCategory: Record<string, typeof keywords> = {};
+      for (const kw of limited) {
         const cat = kw.category || "other";
-        if (!byCategory[cat]) byCategory[cat] = [];
-        byCategory[cat].push(kw);
+        (byCategory[cat] ||= []).push(kw);
       }
 
-      return {
-        dataAsOf,
-        keywords: filtered,
-        byCategory,
-        categories: Object.keys(byCategory),
-      };
+      return { dataAsOf, keywords: filtered, byCategory, categories: Object.keys(byCategory) };
     }),
 
-  // Get 6QA performance over time
   get6QAPerformance: protectedProcedure.query(async () => {
-    const db = await getDb();
-    if (!db) throw new Error("Database not available");
-
-    const data: Sixsense6QAPerformance[] = await db
-      .select()
-      .from(sixsense6QAPerformance)
-      .orderBy(desc(sixsense6QAPerformance.day))
-      .limit(30);
-
-    const latest = data[0];
-    const dataAsOf = latest?.dataAsOf;
-
+    const d = await loadReal();
+    const q = compute6QA(d);
     return {
-      dataAsOf,
-      latest: latest
-        ? {
-            day: latest.day,
-            total6QAs: latest.total6QAs,
-            new6QAs: latest.new6QAs,
-            worked: latest.worked,
-            unworked: latest.unworked,
-            workedPercent: latest.total6QAs
-              ? Math.round(((latest.worked || 0) / latest.total6QAs) * 100)
-              : 0,
-            avgSalesActivities: latest.avgSalesActivities,
-            avgContactsReached: latest.avgContactsReached,
-            avgDaysToFirstActivity: latest.avgDaysToFirstActivity,
-            avgDaysSinceLastActivity: latest.avgDaysSinceLastActivity,
-          }
-        : null,
-      trend: data.reverse().map((d: Sixsense6QAPerformance) => ({
-        day: d.day,
-        total6QAs: d.total6QAs,
-        worked: d.worked,
-        unworked: d.unworked,
-      })),
+      dataAsOf: d.now,
+      latest: {
+        day: q.latestDay,
+        total6QAs: q.total6QAs,
+        new6QAs: q.trend.length >= 2 ? Math.max(0, q.total6QAs - q.trend[q.trend.length - 2].total6QAs) : q.total6QAs,
+        worked: q.worked,
+        unworked: q.unworked,
+        workedPercent: q.workedPercent,
+        avgSalesActivities: q.avgSalesActivities,
+        avgContactsReached: q.avgContactsReached,
+        avgDaysToFirstActivity: null,
+        avgDaysSinceLastActivity: null,
+      },
+      trend: q.trend,
     };
   }),
 
-  // Get summary stats for dashboard
   getSummary: protectedProcedure.query(async () => {
-    const db = await getDb();
-    if (!db) throw new Error("Database not available");
+    const d = await loadReal();
+    const stages = computeBuyingStages(d);
+    const engagement = computeEngagement(d);
+    const q = compute6QA(d);
+    const { keywords } = computeKeywords(d);
 
-    // Get latest 6QA performance
-    const performanceData: Sixsense6QAPerformance[] = await db
-      .select()
-      .from(sixsense6QAPerformance)
-      .orderBy(desc(sixsense6QAPerformance.day))
-      .limit(1);
-    const performance = performanceData[0];
-
-    // Get latest buying stages
-    const buyingStages: SixsenseBuyingStageMetric[] = await db
-      .select()
-      .from(sixsenseBuyingStageMetrics)
-      .orderBy(desc(sixsenseBuyingStageMetrics.id))
-      .limit(5);
-
-    const latestTimeframe = buyingStages[0]?.timeframe;
-    const latestStages = buyingStages.filter((s: SixsenseBuyingStageMetric) => s.timeframe === latestTimeframe);
-
-    // Get latest engagement
-    const engagement: SixsenseEngagementMetric[] = await db
-      .select()
-      .from(sixsenseEngagementMetrics)
-      .orderBy(desc(sixsenseEngagementMetrics.id))
-      .limit(6);
-
-    const latestTimeWindow = engagement[0]?.timeWindow;
-    const latestEngagement = engagement.filter((e: SixsenseEngagementMetric) => e.timeWindow === latestTimeWindow);
-
-    // Get top keywords count
-    const keywords: SixsenseKeyword[] = await db.select().from(sixsenseKeywords);
-
-    const dataAsOf = performance?.dataAsOf || buyingStages[0]?.dataAsOf;
+    const stageCount = (name: string) => stages.stages.find((s) => s.stage === name)?.accounts || 0;
+    const engCount = (name: string) => Number(engagement.metrics.find((m) => m.state === name)?.accounts || 0);
 
     return {
-      dataAsOf,
-      sixQA: performance
-        ? {
-            total: performance.total6QAs,
-            worked: performance.worked,
-            unworked: performance.unworked,
-            workedPercent: performance.total6QAs
-              ? Math.round(((performance.worked || 0) / performance.total6QAs) * 100)
-              : 0,
-          }
-        : null,
+      dataAsOf: d.now,
+      sixQA: {
+        total: q.total6QAs,
+        worked: q.worked,
+        unworked: q.unworked,
+        workedPercent: q.workedPercent,
+      },
       buyingStages: {
-        decision: latestStages.find((s: SixsenseBuyingStageMetric) => s.buyingStage === "Decision")?.numberOfAccounts || 0,
-        purchase: latestStages.find((s: SixsenseBuyingStageMetric) => s.buyingStage === "Purchase")?.numberOfAccounts || 0,
-        total: latestStages.reduce((sum: number, s: SixsenseBuyingStageMetric) => sum + (s.numberOfAccounts || 0), 0),
+        decision: stageCount("Decision"),
+        purchase: stageCount("Purchase"),
+        total: stages.totalAccounts,
       },
       engagement: {
-        intent: latestEngagement.find((e: SixsenseEngagementMetric) => e.engagementState === "Intent")?.accounts || 0,
-        knownEngagement: latestEngagement.find((e: SixsenseEngagementMetric) => e.engagementState === "Known Engagement")?.accounts || 0,
-        noEngagement: latestEngagement.find((e: SixsenseEngagementMetric) => e.engagementState === "No Engagement")?.accounts || 0,
+        intent: engCount("Intent"),
+        knownEngagement: engCount("Known Engagement"),
+        noEngagement: engCount("No Engagement"),
       },
       keywords: {
         total: keywords.length,
-        topByAccounts: keywords.slice(0, 5).map((k: SixsenseKeyword) => ({
+        topByAccounts: keywords.slice(0, 5).map((k) => ({
           keyword: k.keyword,
           accounts: k.totalAccounts,
           category: k.category,
