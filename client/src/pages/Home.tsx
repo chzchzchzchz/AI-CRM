@@ -312,7 +312,7 @@ export default function Home() {
                   <Flame className="h-6 w-6 text-red-500" />
                   <h2 className="text-2xl font-bold">Priority Actions</h2>
                 </div>
-                <Badge className="badge-danger">3 urgent</Badge>
+                <Badge className="badge-danger">{priorityActions.length} urgent</Badge>
               </div>
 
               <div className="space-y-3">
