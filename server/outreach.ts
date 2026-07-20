@@ -206,15 +206,22 @@ OUTPUT ONLY THE EMAIL BODY. Nothing else.`;
       })
     )
     .mutation(async ({ input }) => {
-      const refinePrompt = `Here is a cold email that needs refinement:
+      // Keep the prospect context in front of the model so a refinement doesn't drift off
+      // the account/contact. These inputs were previously accepted but never used.
+      const contextLine = [
+        input.contactName ? `Recipient: ${input.contactName}` : null,
+        input.accountName ? `Company: ${input.accountName}` : null,
+      ].filter(Boolean).join(" · ");
 
+      const refinePrompt = `Here is a cold email that needs refinement:
+${contextLine ? `\n${contextLine}\n` : ""}
 ---
 ${input.currentEmail}
 ---
 
 User feedback: "${input.feedback}"
 
-Rewrite the email incorporating this feedback. Keep it:
+Rewrite the email incorporating this feedback${input.contactName ? `, keeping it addressed to ${input.contactName}` : ""}. Keep it:
 - 3-5 sentences max
 - Human and direct
 - One clear ask at the end
