@@ -110,10 +110,18 @@ export default function Outreach() {
     setConversationHistory([]);
     setRawReasoning('');
 
-    // Read file contents if attached
+    // Read file contents if attached. Only text-based formats can be read in the browser —
+    // file.text() on a PDF/DOCX/PPTX returns binary/zip bytes, which is noise to the model.
+    // For those we note the filename rather than feeding garbage.
     let fileContext = "";
     if (attachedFiles.length > 0) {
+      const TEXT_EXT = ['txt', 'md', 'csv', 'json', 'html', 'xml', 'log'];
       for (const file of attachedFiles) {
+        const ext = file.name.split('.').pop()?.toLowerCase() || '';
+        if (!TEXT_EXT.includes(ext)) {
+          fileContext += `\n\n--- ${file.name} (attached; text not extractable in-browser) ---`;
+          continue;
+        }
         try {
           const text = await file.text();
           fileContext += `\n\n--- ${file.name} ---\n${text.slice(0, 10000)}`;
