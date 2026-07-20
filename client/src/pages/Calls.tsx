@@ -38,11 +38,26 @@ export default function Calls() {
   const totalPages = Math.ceil(totalCalls / CALLS_PER_PAGE);
 
   // Client-side search filter (on current page only)
+  // keyTopics / actionItems are stored as JSON strings (or arrays). Parse defensively.
+  const parseList = (v: any): string[] => {
+    if (!v) return [];
+    if (Array.isArray(v)) return v.map(String);
+    try { const p = JSON.parse(v); return Array.isArray(p) ? p.map(String) : []; } catch { return [String(v)]; }
+  };
+
   const filteredCalls = useMemo(() => {
     if (!searchQuery) return calls;
+    const q = searchQuery.toLowerCase();
     return calls.filter((call: any) => {
-      return call.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        call.summary?.toLowerCase().includes(searchQuery.toLowerCase());
+      // Search the real columns (title, sentiment, and the topics/action-items that Gong
+      // actually populates) — the old code searched call.summary, which is not a column.
+      const haystack = [
+        call.title,
+        call.sentiment,
+        ...parseList(call.keyTopics),
+        ...parseList(call.actionItems),
+      ].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(q);
     });
   }, [calls, searchQuery]);
 
@@ -229,9 +244,21 @@ export default function Calls() {
                       </div>
                     </div>
 
-                    {call.summary && (
-                      <div className="mt-3 p-3 rounded bg-muted/50 text-sm">
-                        {call.summary.slice(0, 200)}{call.summary.length > 200 ? '...' : ''}
+                    {parseList(call.keyTopics).length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {parseList(call.keyTopics).map((topic: string, i: number) => (
+                          <span key={i} className="px-2 py-0.5 rounded-full bg-muted text-xs">{topic}</span>
+                        ))}
+                      </div>
+                    )}
+                    {parseList(call.actionItems).length > 0 && (
+                      <div className="mt-2 p-3 rounded bg-muted/50 text-sm">
+                        <div className="text-xs text-muted-foreground mb-1">Action items</div>
+                        <ul className="list-disc list-inside space-y-0.5">
+                          {parseList(call.actionItems).map((item: string, i: number) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
                       </div>
                     )}
 
