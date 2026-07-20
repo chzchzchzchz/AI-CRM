@@ -26,22 +26,40 @@ function chunkText(text: string, maxChunkSize: number = 1000): string[] {
   return chunks;
 }
 
-// Generate embedding for text using LLM
-async function generateEmbedding(text: string): Promise<number[]> {
-  // For now, use a simple hash-based pseudo-embedding
-  // In production, use OpenAI embeddings or similar
-  const hash = text.split('').reduce((acc, char) => {
-    return ((acc << 5) - acc) + char.charCodeAt(0);
-  }, 0);
-  
-  // Generate a 384-dimensional pseudo-embedding
-  const embedding: number[] = [];
-  let seed = Math.abs(hash);
-  for (let i = 0; i < 384; i++) {
-    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    embedding.push((seed / 0x7fffffff) * 2 - 1);
+const EMBED_DIM = 384;
+const STOPWORDS = new Set([
+  "the", "a", "an", "and", "or", "but", "of", "to", "in", "on", "for", "with", "at", "by",
+  "is", "are", "was", "were", "be", "been", "as", "it", "this", "that", "these", "those",
+  "from", "our", "your", "their", "we", "you", "they", "i", "he", "she", "has", "have",
+]);
+
+// Stable per-token hash (FNV-1a) so the same word always lands in the same bucket.
+function hashToken(token: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < token.length; i++) {
+    h ^= token.charCodeAt(i);
+    h = Math.imul(h, 16777619);
   }
-  return embedding;
+  return Math.abs(h);
+}
+
+/**
+ * Term-frequency embedding via the hashing trick.
+ *
+ * The previous version hashed the whole string to seed a PRNG, so two documents with nearly
+ * identical content produced unrelated random vectors and cosine similarity was pure noise —
+ * "relevant" retrieval was arbitrary. This maps each meaningful token into a fixed-size
+ * vector and accumulates term frequency, so cosine similarity reflects genuinely shared
+ * vocabulary. It is deterministic and local (no embedding API). Lexical, not neural — but
+ * real: documents about the same thing now actually score higher.
+ */
+async function generateEmbedding(text: string): Promise<number[]> {
+  const vec = new Array(EMBED_DIM).fill(0);
+  const tokens = (text.toLowerCase().match(/[a-z0-9]{2,}/g) || []).filter((t) => !STOPWORDS.has(t));
+  for (const tok of tokens) {
+    vec[hashToken(tok) % EMBED_DIM] += 1;
+  }
+  return vec;
 }
 
 // Calculate cosine similarity between two embeddings
