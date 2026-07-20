@@ -145,16 +145,6 @@ CRITICAL RULES:
         results
       };
     }),
-
-  getProgress: protectedProcedure
-    .query(async () => {
-      // This would track progress in a real implementation
-      // For now, just return a placeholder
-      return {
-        total: 0,
-        processed: 0,
-        failed: 0,
-        inProgress: false
-      };
-    })
+  // (Removed getProgress: it returned hardcoded zeros, tracked no real job, and had no
+  // caller. Bulk generation is synchronous — the generate mutation returns the full result.)
 });
