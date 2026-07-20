@@ -4,9 +4,6 @@ import { invokeLLM } from "./_core/llm";
 import { eq, inArray } from "drizzle-orm";
 import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
-import { generateAccountSummary } from "./account-summary";
-import { generateContactSummary } from "./contact-summary";
-import { getPingEmailSystemPrompt } from "./sequences/ping-context";
 
 import { getCompanyConfig } from "./config";
 
@@ -73,23 +70,10 @@ export const outreachRouter = router({
 
       const contact = contactData[0];
 
-      // MANDATE: Generate account-level AI summary first
-      let accountSummary = "";
-      try {
-        accountSummary = await generateAccountSummary(account.id, "ping");
-      } catch (e) {
-        console.error("Error generating account summary:", e);
-      }
-
-      // MANDATE: Generate contact-level AI summary if contact provided
-      let contactSummary = "";
-      if (contact) {
-        try {
-          contactSummary = await generateContactSummary(contact.id, "ping");
-        } catch (e) {
-          console.error("Error generating contact summary:", e);
-        }
-      }
+      // The email is generated in a SINGLE grounded pass below. We deliberately do NOT
+      // pre-generate separate account/contact "summaries" here: that added two more LLM
+      // round-trips (minutes on a free model) and pulled in the fabricating summary prompts.
+      // Everything the email needs is assembled from real columns in `accountContext` below.
 
       // Build CLEAN context - only publicly known info
       let accountContext = `Company: ${account.name}`;
@@ -157,16 +141,29 @@ Email: ${contact.email || "Unknown"}`;
       // ============================================
       // SINGLE PASS: Generate Clean, Professional Email
       // ============================================
-      const emailSystemPrompt = getPingEmailSystemPrompt();
+      // Built from the deployer's own company config — NOT a hardcoded vendor. The old
+      // path asserted "this prospect uses Ping Identity" in every email regardless of the
+      // prospect's real stack, which was both a fabrication and prior-employer content.
+      const cfg = getCompanyConfig();
+      const diffs = cfg.keyDifferentiators?.length
+        ? cfg.keyDifferentiators.map((d) => `- ${d.trim()}`).join("\n")
+        : "- (configure COMPANY_DIFFERENTIATORS)";
+      const emailSystemPrompt = `You are an elite SDR writing on behalf of ${cfg.companyName} (${cfg.industry}).
+We sell: ${cfg.productDescription}
+Our differentiators:
+${diffs}
+
+Write cold outreach that a busy executive would actually reply to.
+GROUNDING RULES:
+- Use ONLY the prospect facts provided (tech stack, industry, size, signals). Do NOT invent
+  the tools they use, their vendors, or their pain points — if a fact is not provided, do
+  not assert it.
+- Personalize from the real signals given, not from assumptions about their stack.
+- Be specific and concise; no marketing filler, no fabricated statistics.`;
 
       const emailPrompt = `Write a cold email for this prospect.
 
 ${accountContext}${contactContext}
-
-ACCOUNT BRIEF:
-${accountSummary}
-
-${contactSummary ? "CONTACT BRIEF:\n" + contactSummary + "\n" : ""}
 
 Additional context from rep: ${input.prompt || "Focus on the prospect's likely pain points and our key differentiators."}
 

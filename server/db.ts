@@ -275,7 +275,7 @@ class MockDrizzleQueryBuilder {
   private operation: 'select' | 'insert' | 'update' | 'delete';
   private tableName: string = '';
   private tableSchema: any = null;
-  private filters: Array<{ field: string; value: any; op?: string }> = [];
+  private filters: Array<{ field: string; value: any; op?: string; values?: any[] }> = [];
   private limitCount: number = 0;
   private offsetCount: number = 0;
   private insertValues: any = null;
@@ -314,12 +314,28 @@ class MockDrizzleQueryBuilder {
 
       // Simple binary operator condition
       const column = condition.queryChunks.find((chunk: any) => chunk && chunk.table && chunk.name);
-      const param = condition.queryChunks.find((chunk: any) => chunk && !Array.isArray(chunk.value) && 'value' in chunk);
-      
+      // A scalar param is a Param object (has `.value`) that is NOT itself an array and is
+      // NOT a StringChunk (whose `.value` is an array like [""] / [" in "]).
+      const scalarParam = condition.queryChunks.find(
+        (chunk: any) => chunk && !Array.isArray(chunk) && 'value' in chunk && !Array.isArray(chunk.value)
+      );
+      // inArray(col, [...]) renders as: col, " in ", [Param, Param, ...]. The values live in a
+      // nested Array of Param objects. Support it so multi-id fetches (e.g.
+      // outreach.generateEmail) work in demo mode instead of silently matching nothing.
+      const inValues = condition.queryChunks.find((chunk: any) => Array.isArray(chunk));
+
       if (column) {
         const field = column.name;
-        const value = param ? param.value : null;
-        this.filters.push({ field, value });
+        if (inValues) {
+          this.filters.push({
+            field,
+            value: null,
+            op: 'in',
+            values: inValues.map((p: any) => (p && typeof p === 'object' && 'value' in p ? p.value : p)),
+          });
+        } else {
+          this.filters.push({ field, value: scalarParam ? scalarParam.value : null });
+        }
       }
     } else {
       const sqlStr = String(condition);
@@ -384,6 +400,9 @@ class MockDrizzleQueryBuilder {
       for (const filter of this.filters) {
         if (filter.op === 'is_not_null') {
           results = results.filter((item: any) => item[filter.field] !== null && item[filter.field] !== undefined);
+        } else if (filter.op === 'in') {
+          const set = new Set((filter.values || []).map((v: any) => String(v)));
+          results = results.filter((item: any) => set.has(String(item[filter.field])));
         } else if (filter.value !== undefined) {
           results = results.filter((item: any) => String(item[filter.field]) === String(filter.value));
         }
