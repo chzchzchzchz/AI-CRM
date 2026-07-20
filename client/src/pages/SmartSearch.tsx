@@ -68,11 +68,46 @@ export default function SmartSearch() {
                       <span className="ml-2 text-cyan-400">{searchResults.intent}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400">Sort By:</span>
-                      <span className="ml-2 text-cyan-400">{searchResults.sortBy}</span>
+                      <span className="text-slate-400">Matches:</span>
+                      <span className="ml-2 text-cyan-400">{searchResults.resultCount ?? 0}</span>
                     </div>
                   </div>
                 </div>
+              )}
+
+              {searchResults?.results?.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {searchResults.resultType === "contact"
+                    ? searchResults.results.map((p: any) => (
+                        <Link key={p.id} href={`/contacts/${p.id}`}>
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-cyan-500/50 cursor-pointer">
+                            <div>
+                              <div className="text-white font-medium">{p.name}</div>
+                              <div className="text-slate-400 text-xs">{p.title}{p.accountName ? ` · ${p.accountName}` : ""}</div>
+                            </div>
+                          </div>
+                        </Link>
+                      ))
+                    : searchResults.results.map((a: any) => (
+                        <Link key={a.id} href={`/accounts/${a.id}`}>
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-cyan-500/50 cursor-pointer">
+                            <div>
+                              <div className="text-white font-medium">{a.name}</div>
+                              <div className="text-slate-400 text-xs">
+                                {[a.industry, a.region, a.buyingStage].filter(Boolean).join(" · ")}
+                              </div>
+                            </div>
+                            {a.intentScore != null && (
+                              <span className="text-cyan-400 text-sm font-mono">{a.intentScore}</span>
+                            )}
+                          </div>
+                        </Link>
+                      ))}
+                </div>
+              )}
+
+              {searchResults && searchResults.resultCount === 0 && (
+                <p className="mt-4 text-sm text-slate-400">No matching records found for that query.</p>
               )}
             </CardContent>
           </Card>
