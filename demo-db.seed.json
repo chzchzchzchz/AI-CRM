@@ -154,7 +154,7 @@
       "revenue": "$610M",
       "location": "Columbus, OH",
       "region": "Central",
-      "intentScore": 71,
+      "intentScore": 91,
       "relationship": "Target",
       "description": "Retail & eCommerce company; 3,200 employees. Runs Salesforce + 6sense, Shopify Plus.",
       "website": "https://lumenretail.com",
@@ -1889,6 +1889,16 @@
       "source": "6sense",
       "createdAt": "2026-07-01T12:00:00.000Z",
       "updatedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": 53,
+      "accountId": 6,
+      "score": 91,
+      "category": "Retail Tech",
+      "keywords": "[\"CRM migration\",\"real-time analytics\"]",
+      "source": "6sense",
+      "createdAt": "2026-07-08T12:00:00.000Z",
+      "updatedAt": "2026-07-08T12:00:00.000Z"
     }
   ]
 }

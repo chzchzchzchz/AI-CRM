@@ -4,9 +4,13 @@ import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
+// Real intent-spike detection, computed from the intentScores time series — so the AI
+// assistant reports actual spikes instead of always answering "none detected".
+import { detectIntentSpikes } from "./intel/spikes";
 
-// Stub for intent spike tracking (removed to fix TS errors)
-async function getRecentIntentSpikes(limit: number = 10): Promise<any[]> { return []; }
+async function getRecentIntentSpikes(limit: number = 10): Promise<any[]> {
+  return detectIntentSpikes({ limit });
+}
 
 /**
  * Centralized AI Context Management
