@@ -118,7 +118,9 @@ export const priorityActionsRouter = router({
             region: account.region || undefined,
             relationship: account.relationship || undefined,
             intentScore: account.intentScore || undefined,
-            buyingStage: rawData.buyingStage || undefined,
+            // Real 6sense stage lives in sixsenseBuyingStage; rawData.buyingStage is never
+            // populated, so the conversion score's 30-point buying-stage band was always 0.
+            buyingStage: (account as any).sixsenseBuyingStage || rawData.buyingStage || undefined,
             temperature,
             totalContacts: contacts.length,
             totalCalls: calls.length,
