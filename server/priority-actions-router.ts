@@ -1,6 +1,6 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { getAllAccounts, getContactsByAccountId, getGongCallsByAccountId } from "./db";
+import { getAllAccounts, getContactsByAccountId, getGongCallsByAccountId, getAllOpportunities } from "./db";
 import { Account, Contact, Call } from "../drizzle/schema";
 import { calculateVectorScores, type AccountData } from "./vectorScoring";
 
@@ -283,18 +283,23 @@ export const priorityActionsRouter = router({
       }).length;
       const coldLeads = accounts.filter((a: Account) => (a.intentScore || 0) < 40).length;
       
-      // Calculate 6QA opportunity gap (accounts with 6QA but no opportunities)
-      const sixQAGap = accounts.filter((a: Account) => {
-        const rawData = a.rawData as any;
-        return rawData?.sixqa_qualified === true && !rawData?.has_opportunity;
-      }).length;
-      
+      // 6QA opportunity gap: qualified accounts (intent >= 70) with no opportunity yet.
+      // Previously this read rawData.sixqa_qualified / has_opportunity, which nothing
+      // populates, so it was always 0 and fell back to a fabricated 80% of all accounts.
+      const allOpps = await getAllOpportunities().catch(() => []);
+      const accountsWithOpp = new Set(
+        (allOpps as any[]).map((o) => o.accountId).filter((id) => id != null)
+      );
+      const sixQAGap = accounts.filter(
+        (a: Account) => (a.intentScore || 0) >= 70 && !accountsWithOpp.has(a.id)
+      ).length;
+
       return {
         totalAccounts: accounts.length,
         hotLeads,
         warmLeads,
         coldLeads,
-        sixQAGap: sixQAGap || Math.floor(accounts.length * 0.8), // Fallback estimate
+        sixQAGap,
       };
     }),
 });
