@@ -1280,20 +1280,22 @@ export async function bulkUpsertContactsFromSalesforce(contactsData: Array<{
       
       // Check if contact exists by sfdcContactId
       const existing = await db
-        .select({ id: contacts.id })
+        .select({ id: contacts.id, linkedinUrl: contacts.linkedinUrl })
         .from(contacts)
         .where(eq(contacts.sfdcContactId, contact.sfdcContactId))
         .limit(1);
 
       if (existing.length > 0) {
-        // Update existing
+        // Update existing. Salesforce's SOQL does not fetch LinkedIn, so contact.linkedinUrl
+        // is always null here — writing it blindly would wipe a URL enriched from Clay or
+        // entered by hand. Only overwrite when Salesforce actually supplies a value.
         await db.update(contacts)
           .set({
             name: contact.name,
             email: contact.email,
             title: contact.title,
             phone: contact.phone,
-            linkedinUrl: contact.linkedinUrl,
+            linkedinUrl: contact.linkedinUrl ?? (existing[0] as any).linkedinUrl ?? null,
             location: contact.location,
             accountId: accountId || null,
             updatedAt: new Date(),
