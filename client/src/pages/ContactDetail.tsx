@@ -265,7 +265,7 @@ export default function ContactDetail() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Buying Stage</span>
-                    <Badge variant="outline">{(account as any).buyingStage || 'Unknown'}</Badge>
+                    <Badge variant="outline">{(account as any).sixsenseBuyingStage || 'Unknown'}</Badge>
                   </div>
                   {account.industry && (
                     <div className="flex justify-between items-center">

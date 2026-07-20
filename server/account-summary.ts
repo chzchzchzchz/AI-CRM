@@ -49,7 +49,7 @@ export async function generateAccountSummary(
     systemPrompt = getPingAccountSummaryPrompt({
       name: account.name || "Unknown",
       industry: account.industry || undefined,
-      employees: account.employees || undefined,
+      employees: account.employeeCount || undefined,
       techStack: account.techStack ? JSON.parse(account.techStack) : undefined,
     });
   } else {
@@ -61,7 +61,7 @@ Your task is to generate a comprehensive, data-driven account brief for ${accoun
 ACCOUNT DETAILS:
 - Company: ${account.name}
 - Industry: ${account.industry || "Unknown"}
-- Employees: ${account.employees || "Unknown"}
+- Employees: ${account.employeeCount || "Unknown"}
 - Tech Stack: ${account.techStack || "Unknown"}
 
 Generate a structured brief with these sections:

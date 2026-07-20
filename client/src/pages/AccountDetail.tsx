@@ -97,7 +97,11 @@ export default function AccountDetailEnhanced() {
   }
 
   const intentScore = account.intentScore || 0;
-  const buyingStage = (account as any).buyingStage || (
+  // Prefer the real 6sense stage (column: sixsenseBuyingStage); fall back to an intent-band
+  // inference only when it is genuinely absent. Reading `.buyingStage` — which is not a
+  // column — meant the real stage was never shown and every account looked "Inferred".
+  const realBuyingStage = (account as any).sixsenseBuyingStage as string | null | undefined;
+  const buyingStage = realBuyingStage || (
     intentScore >= 86 ? 'Purchase' :
     intentScore >= 70 ? 'Decision' :
     intentScore >= 50 ? 'Consideration' :
@@ -199,7 +203,7 @@ export default function AccountDetailEnhanced() {
             <div className="text-xs text-muted-foreground mb-1">Buying Stage</div>
             <div className="text-xl font-semibold">{buyingStage}</div>
             <div className="text-xs text-muted-foreground">
-              {(account as any).buyingStage ? '6sense' : 'Inferred'}
+              {realBuyingStage ? '6sense' : 'Inferred'}
             </div>
           </Card>
           <Card className="p-4">

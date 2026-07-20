@@ -46,7 +46,7 @@ export const bulkInsightsRouter = router({
               name: account.name,
               domain: account.domain,
               intentScore: account.intentScore,
-              buyingStage: (account as any).buyingStage || 'Unknown',
+              buyingStage: (account as any).sixsenseBuyingStage || 'Unknown',
               relationship: account.relationship,
               industry: account.industry,
               employeeCount: account.employeeCount,
