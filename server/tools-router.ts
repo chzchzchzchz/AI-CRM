@@ -365,8 +365,11 @@ Generate professional, actionable content.`;
         if (fileName.endsWith('.csv')) {
           const parsed = parseCSV(content);
           allData = allData.concat(parsed);
+        } else if (/\.xlsx?$/i.test(fileName)) {
+          // No XLSX parser is bundled. Fail loudly instead of silently dropping the file
+          // and reporting a successful run over zero rows.
+          throw new Error(`"${fileName}" is an Excel file. Export it to CSV and re-upload — XLSX parsing is not available in this build.`);
         }
-        // For XLSX, we'd need a library - for now just handle CSV
       }
       
       // Process the data

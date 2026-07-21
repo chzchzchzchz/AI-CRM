@@ -1129,10 +1129,20 @@ export async function getGongCallsByCompany(companyName: string) {
     console.warn("[Database] Cannot get calls: database not available");
     return [];
   }
-
-  // Company column doesn't exist - this function is deprecated
-  // Use getGongCallsByAccountId instead
-  return [];
+  // Calls have no company column, so resolve the company name to its account(s) and return
+  // their calls. Previously this returned [] unconditionally, so gong.getByCompany was dead.
+  if (!companyName) return [];
+  const matched = await db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(eq(accounts.name, companyName));
+  const ids = (matched as any[]).map((a) => a.id);
+  if (ids.length === 0) return [];
+  const all: any[] = [];
+  for (const id of ids) {
+    all.push(...(await getGongCallsByAccountId(id)));
+  }
+  return all;
 }
 
 export async function getGongCallsByAccountId(accountId: number) {

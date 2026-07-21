@@ -1128,7 +1128,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           { icon: AlertTriangle, title: 'Risk Extraction', desc: 'Identifies top security risks and compliance concerns mentioned by the prospect.', color: 'text-red-400' },
           { icon: MessageSquare, title: 'Feedback Summaries', desc: 'Condenses product feedback and feature requests into actionable bullet points.', color: 'text-cyan-400' },
           { icon: Check, title: 'Fact-Based Only', desc: 'Strictly pulls from the transcript. No hallucinations or assumptions added.', color: 'text-green-400' },
-          { icon: Link2, title: 'Auto-Link Accounts', desc: 'Automatically matches prospects to your 722 accounts for instant context.', color: 'text-purple-400' },
+          { icon: Link2, title: 'Auto-Link Accounts', desc: 'Automatically matches prospects to your accounts for instant context.', color: 'text-purple-400' },
           { icon: Quote, title: 'Key Quotes', desc: 'Extracts the most important quotes for follow-up emails and proposals.', color: 'text-pink-400' },
           { icon: ChevronRight, title: 'Next Steps', desc: 'Clear action items extracted from the conversation for immediate follow-up.', color: 'text-yellow-400' },
         ].map((feature, i) => (

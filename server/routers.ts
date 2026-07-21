@@ -490,7 +490,14 @@ Or go to the Admin Panel: /admin/approval`
             id: `call-${call.id}`,
             type: 'call',
             title: call.title || 'Call',
-            description: (call as any).summary?.slice(0, 150) || undefined,
+            // calls have no summary column; surface the real keyTopics instead.
+            description: (() => {
+              try {
+                const t = (call as any).keyTopics;
+                const arr = Array.isArray(t) ? t : (t ? JSON.parse(t) : []);
+                return Array.isArray(arr) && arr.length ? arr.join(', ').slice(0, 150) : undefined;
+              } catch { return undefined; }
+            })(),
             date: call.callDate ? new Date(call.callDate) : new Date(),
             metadata: {
               duration: call.duration ? `${Math.floor(call.duration / 60)}m` : undefined,

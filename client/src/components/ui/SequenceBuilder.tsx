@@ -142,10 +142,10 @@ export default function SequenceBuilder() {
       return;
     }
     
-    // In a real app, this would save to the database
+    // Persistence isn't wired for this builder yet — don't claim a save that didn't happen.
     const sequenceData = { name: sequenceName, steps };
-    console.log("Saving sequence:", sequenceData);
-    toast.success("Sequence saved successfully");
+    console.log("Sequence draft:", sequenceData);
+    toast("Sequence draft ready (saving to the server isn't enabled yet).");
   };
 
   const totalDays = steps.length > 0 ? Math.max(...steps.map(s => s.day)) : 0;
