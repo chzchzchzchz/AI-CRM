@@ -71,13 +71,13 @@
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.25 0 0); /* Dark gray borders */
   --input: oklch(0.15 0 0);
-  --ring: oklch(0.60 0.24 264); /* Purple ring */
+  --ring: oklch(0.70 0.15 210); /* Signal cyan — DESIGN.md: focus glow is cyan, never grey */
   --sidebar: oklch(0.08 0 0);
   --sidebar-foreground: oklch(0.95 0 0);
   --sidebar-accent: oklch(0.15 0 0);
   --sidebar-accent-foreground: oklch(0.95 0 0);
   --sidebar-border: oklch(0.20 0 0);
-  --sidebar-ring: oklch(0.60 0.24 264);
+  --sidebar-ring: oklch(0.70 0.15 210); /* Signal cyan */
   
   /* Custom colors for dashboard */
   --color-blue: #3B82F6;
@@ -138,6 +138,17 @@
   input[type="radio"]:not(:disabled) {
     @apply cursor-pointer;
   }
+  /* Reduced-motion is not optional: collapse animations/transitions to near-instant. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer components {
@@ -170,13 +181,14 @@
     }
   }
 
-  /* Unified card styles */
+  /* Unified card styles. Tonal-Depth Rule: flat at rest (raised by surface tone + border,
+     not a resting shadow); shadow/lift appear only as a hover response on click targets. */
   .card-elevated {
-    @apply bg-card border border-border/50 rounded-xl shadow-lg;
+    @apply bg-card border border-border/60 rounded-xl;
   }
 
   .card-hover {
-    @apply transition-all duration-200 hover:border-border hover:shadow-xl hover:scale-[1.01];
+    @apply transition-all duration-200 hover:border-cyan-500/40 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(0,0,0,0.4)];
   }
 
   /* Gradient backgrounds */
@@ -215,7 +227,8 @@
     @apply bg-card/50 border border-border/30 rounded-lg p-4;
   }
 
-  /* Badge variants */
+  /* Badge variants. Status is carried by a tinted text color on a low-opacity fill; always
+     pair with a word or glyph in markup so it survives greyscale / color blindness. */
   .badge-hot {
     @apply bg-red-500/20 text-red-400 border-red-500/30;
   }
@@ -226,5 +239,23 @@
 
   .badge-cold {
     @apply bg-blue-500/20 text-blue-400 border-blue-500/30;
+  }
+
+  /* Semantic status badges (referenced across pages; previously undefined). */
+  .badge-danger {
+    @apply bg-red-500/20 text-red-300 border border-red-500/30 rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+
+  .badge-info {
+    @apply bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+
+  /* Signal number — mono, cyan. DESIGN.md Numbers-Are-Mono + Cyan-Is-Signal. */
+  .num-signal {
+    @apply font-mono text-cyan-400 tabular-nums;
   }
 }
