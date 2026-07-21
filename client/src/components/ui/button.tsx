@@ -10,6 +10,9 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        // Signal Room primary action: cyan fill, near-black text, info-blue hover shift
+        // (DESIGN.md Cyan-Is-Signal). Use for the one high-intent action on a view.
+        signal: "bg-cyan-500 text-slate-950 font-semibold hover:bg-blue-500 hover:text-white",
         destructive:
           "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
