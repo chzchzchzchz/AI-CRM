@@ -1240,16 +1240,19 @@ function ContentStudioTool() {
     { id: 'blog_post', name: 'Blog Post Outline', desc: 'Structured outline for thought leadership', icon: FileText },
     { id: 'ad_copy', name: 'Ad Copy Variants', desc: 'Multiple ad variations for campaigns', icon: Target },
     { id: 'campaign_brief', name: 'Campaign Brief', desc: 'Full campaign strategy document', icon: Briefcase },
-    { id: 'case_study', name: 'Case Study Outline', desc: 'Customer success story structure', icon: TrendingUp },
+    { id: 'case_study_outline', name: 'Case Study Outline', desc: 'Customer success story structure', icon: TrendingUp },
     { id: 'event_followup', name: 'Event Follow-up', desc: 'Post-event nurture sequence', icon: MessageSquare },
   ];
 
   const handleGenerate = () => {
     setGenerating(true);
+    // Fold the user's ideas/suggestions into the context — they were collected and dropped.
+    const mergedContext = [context, suggestions.trim() ? `Ideas & suggestions to include: ${suggestions.trim()}` : ""]
+      .filter(Boolean).join("\n\n");
     generateMutation.mutate({
       contentType,
       accountId: selectedAccount ? parseInt(selectedAccount) : undefined,
-      context
+      context: mergedContext
     });
     setGenerating(false);
   };
