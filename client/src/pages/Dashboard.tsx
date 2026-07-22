@@ -1,18 +1,12 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
+import { heatMeta } from "@/lib/signal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { Building2, Phone, TrendingUp, Flame, Activity } from "lucide-react";
 import { Link } from "wouter";
 
 const CARD = "bg-slate-900 border-slate-800 shadow-none";
-
-// Heat is a status read on the near-black canvas: tint + glyph + word, never color alone.
-function heatMeta(score: number) {
-  if (score >= 70) return { label: "Hot", glyph: "▲", text: "text-emerald-400" };
-  if (score >= 40) return { label: "Warm", glyph: "●", text: "text-amber-400" };
-  return { label: "Cold", glyph: "○", text: "text-slate-400" };
-}
 
 export default function Dashboard() {
   const { user } = useAuth();
