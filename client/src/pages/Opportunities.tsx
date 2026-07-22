@@ -97,7 +97,7 @@ export default function Opportunities() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-4 overflow-x-auto pb-4">
           {STAGES.map((stage) => {
             const inStage = allOpps.filter((o: any) => o.stage === stage);
             const stageValue = inStage.reduce((s: number, o: any) => s + (Number(o.amount) || 0), 0);
@@ -105,7 +105,7 @@ export default function Opportunities() {
             const isLost = stage === "Closed Lost";
 
             return (
-              <div key={stage} className="min-w-[280px]">
+              <div key={stage} className="w-[280px] shrink-0">
                 <div className="flex items-baseline justify-between gap-2 mb-3 pb-2 border-b border-slate-800 px-1">
                   <h3 className="text-sm font-semibold flex items-center gap-2 min-w-0">
                     <span className="truncate text-slate-200">{stage}</span>
