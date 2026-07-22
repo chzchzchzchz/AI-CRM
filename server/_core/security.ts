@@ -176,6 +176,28 @@ export function recordFailedLogin(clientIP: string): void {
   }
 }
 
+// Per-key send cooldown (e.g. verification / reset emails) to stop an attacker using a
+// configured mailer to bomb a victim's inbox. In-memory is fine for a single instance.
+const sendCooldownStore = new Map<string, number>();
+const SEND_COOLDOWN_MS = 60 * 1000;
+
+/**
+ * Throws if `key` (e.g. "verify:<email>") was used within the cooldown window; otherwise
+ * records "now" and returns. Call before dispatching a verification/reset email.
+ */
+export function enforceSendCooldown(key: string, cooldownMs = SEND_COOLDOWN_MS): void {
+  const now = Date.now();
+  const last = sendCooldownStore.get(key);
+  if (last && now - last < cooldownMs) {
+    const wait = Math.ceil((cooldownMs - (now - last)) / 1000);
+    throw new Error(`Please wait ${wait}s before requesting another code.`);
+  }
+  sendCooldownStore.set(key, now);
+  if (sendCooldownStore.size > 5000) {
+    for (const [k, t] of sendCooldownStore) if (now - t > cooldownMs) sendCooldownStore.delete(k);
+  }
+}
+
 /**
  * Whether an IP is currently locked out from logging in, with the remaining seconds.
  * The tRPC login path calls this to ENFORCE the lockout — the express loginRateLimiter
