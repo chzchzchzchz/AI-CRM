@@ -1,5 +1,11 @@
 import { router, publicProcedure } from "./_core/trpc";
-import { validatePasswordComplexity, logSecurityEvent } from "./_core/security";
+import { validatePasswordComplexity, logSecurityEvent, enforceSendCooldown } from "./_core/security";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./_core/email";
+
+// The plaintext code is delivered by EMAIL. Only echo it back in the API response in demo
+// mode (so the demo works without a mailer). Returning it in production would let anyone
+// request a reset code for any address and read it straight back — account takeover.
+const isDemo = () => process.env.DEMO_MODE === "true";
 import { z } from "zod";
 import { users, emailVerificationCodes, passwordResetCodes } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -22,6 +28,7 @@ export const emailVerificationRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ input }) => {
+      enforceSendCooldown(`verify:${input.email}`);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -39,7 +46,8 @@ export const emailVerificationRouter = router({
         expiresAt,
       });
 
-      return { success: true, code, expiresAt };
+      await sendVerificationEmail(input.email, code).catch(() => false);
+      return isDemo() ? { success: true, code, expiresAt } : { success: true };
     }),
 
   verifyEmail: publicProcedure
@@ -92,6 +100,7 @@ export const emailVerificationRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ input }) => {
+      enforceSendCooldown(`verify:${input.email}`);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -109,7 +118,8 @@ export const emailVerificationRouter = router({
         expiresAt,
       });
 
-      return { success: true, code, expiresAt };
+      await sendVerificationEmail(input.email, code).catch(() => false);
+      return isDemo() ? { success: true, code, expiresAt } : { success: true };
     }),
 
   sendPasswordResetCode: publicProcedure
@@ -117,6 +127,7 @@ export const emailVerificationRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ input }) => {
+      enforceSendCooldown(`reset:${input.email}`);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -145,7 +156,8 @@ export const emailVerificationRouter = router({
         expiresAt,
       });
 
-      return { success: true, code };
+      await sendPasswordResetEmail(input.email, code).catch(() => false);
+      return isDemo() ? { success: true, code } : { success: true };
     }),
 
   resetPassword: publicProcedure
