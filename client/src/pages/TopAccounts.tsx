@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Navigation } from "@/components/Navigation";
+import { heatMeta } from "@/lib/signal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,13 +24,6 @@ const AE_LIST = Object.entries(REP_TERRITORIES).map(([email, info]) => ({
 const CONFIGURED_REGIONS = Array.from(new Set(AE_LIST.map((ae) => ae.region))).filter(Boolean);
 
 const CARD = "bg-slate-900 border-slate-800 shadow-none";
-
-// Heat is a status read on the near-black canvas: tint + glyph + word, never color alone.
-function heatMeta(score: number) {
-  if (score >= 70) return { label: "Hot", glyph: "▲", text: "text-emerald-400" };
-  if (score >= 40) return { label: "Warm", glyph: "●", text: "text-amber-400" };
-  return { label: "Cold", glyph: "○", text: "text-slate-400" };
-}
 
 // Compact ranked row used inside a card — no border/fill at rest so it never reads as a card-in-card.
 function AccountRow({ account, index }: { account: any; index: number }) {
