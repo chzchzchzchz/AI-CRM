@@ -112,7 +112,7 @@ export default function AdminApproval() {
   // Admin access control
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="min-h-screen bg-slate-950">
         <Navigation />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
@@ -123,7 +123,7 @@ export default function AdminApproval() {
 
   if (!user || user.role !== "admin") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="min-h-screen bg-slate-950">
         <Navigation />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <Card className="bg-slate-900/50 border-slate-800 max-w-md">
@@ -148,7 +148,7 @@ export default function AdminApproval() {
   const totalUserCount = allUsers?.length || 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-slate-950">
       <Navigation />
       <div className="container py-8 space-y-8 max-w-6xl mx-auto">
         <div>
@@ -273,7 +273,7 @@ export default function AdminApproval() {
                                 <span>{u.email}</span>
                               </div>
                             </div>
-                            <p className="text-xs text-slate-500 mt-3">
+                            <p className="text-xs text-slate-400 mt-3">
                               Registered {new Date(u.createdAt).toLocaleDateString()}
                             </p>
                           </div>
@@ -374,7 +374,7 @@ export default function AdminApproval() {
                             )}
                           </div>
 
-                          <p className="text-xs text-slate-500 mt-3">
+                          <p className="text-xs text-slate-400 mt-3">
                             Requested {new Date(request.createdAt).toLocaleDateString()}
                           </p>
                         </div>
@@ -468,7 +468,7 @@ export default function AdminApproval() {
                             )}
                           </div>
                           <p className="text-sm text-slate-400">{u.email}</p>
-                          <p className="text-xs text-slate-500 mt-1">
+                          <p className="text-xs text-slate-400 mt-1">
                             {u.loginMethod} • Last sign in: {u.lastSignedIn ? new Date(u.lastSignedIn).toLocaleDateString() : 'Never'}
                           </p>
                         </div>

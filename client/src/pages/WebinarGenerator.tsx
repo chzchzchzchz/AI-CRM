@@ -99,7 +99,7 @@ export default function WebinarGenerator() {
       {/* Header */}
       <div className="mb-8 text-center">
         <div className="flex items-center justify-center gap-3 mb-2">
-          <div className="p-2 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-xl">
+          <div className="p-2 bg-slate-800 border border-slate-700 rounded-xl">
             <Video className="h-6 w-6 text-white" />
           </div>
           <h1 className="text-3xl font-bold">Webinar Content Generator</h1>
@@ -221,7 +221,7 @@ export default function WebinarGenerator() {
           <Button
             onClick={handleGenerate}
             disabled={!contentAssets.trim() || isGenerating}
-            className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 py-6 text-lg"
+            className="w-full bg-cyan-500 text-slate-950 hover:bg-blue-500 py-6 text-lg"
           >
             {isGenerating ? (
               <>

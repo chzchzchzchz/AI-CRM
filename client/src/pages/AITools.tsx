@@ -692,7 +692,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               <CardContent>
                 <div className="space-y-3">
                   {result.topQuotes.map((quote, i) => (
-                    <p key={i} className="text-sm text-white italic border-l-2 border-pink-500/50 pl-3">
+                    <p key={i} className="text-sm text-white italic border-l border-slate-600 pl-3">
                       "{quote}"
                     </p>
                   ))}

@@ -520,7 +520,7 @@ export default function Home() {
                     return (
                       <Link key={account.id} href={`/accounts/${account.id}`}>
                         <div className="flex items-center gap-4 p-4 rounded-xl border border-border/50 hover:border-primary/50 hover:bg-accent/50 transition-all cursor-pointer group">
-                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 text-white font-bold shadow-lg">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 font-bold">
                             {index + 1}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -584,7 +584,7 @@ export default function Home() {
             </Card>
 
             {/* Trending Intent Keywords */}
-            <Card className="card-elevated border-l-4 border-l-cyan-500">
+            <Card className="card-elevated border border-cyan-500/30">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <TrendingUp className="h-5 w-5 text-cyan-500" />

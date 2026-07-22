@@ -61,7 +61,7 @@ export default function Admin() {
   // Admin access control
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="min-h-screen bg-slate-950">
         <Navigation />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
@@ -72,7 +72,7 @@ export default function Admin() {
 
   if (!user || user.role !== 'admin') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="min-h-screen bg-slate-950">
         <Navigation />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <Card className="bg-slate-900/50 border-slate-800 max-w-md">
@@ -90,7 +90,7 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-slate-950">
       <Navigation />
       <div className="container py-8 space-y-8 max-w-6xl mx-auto">
         <div>
