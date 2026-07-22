@@ -1,10 +1,18 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
-import { StatCard } from "@/components/StatCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { Building2, Users, Phone, FileText, TrendingUp, Flame, Calendar } from "lucide-react";
+import { Building2, Phone, TrendingUp, Flame, Activity } from "lucide-react";
 import { Link } from "wouter";
+
+const CARD = "bg-slate-900 border-slate-800 shadow-none";
+
+// Heat is a status read on the near-black canvas: tint + glyph + word, never color alone.
+function heatMeta(score: number) {
+  if (score >= 70) return { label: "Hot", glyph: "▲", text: "text-emerald-400" };
+  if (score >= 40) return { label: "Warm", glyph: "●", text: "text-amber-400" };
+  return { label: "Cold", glyph: "○", text: "text-slate-400" };
+}
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -12,7 +20,6 @@ export default function Dashboard() {
   const { data: accounts, isLoading: accountsLoading } = trpc.accounts.list.useQuery();
   const { data: calls, isLoading: callsLoading } = trpc.calls.list.useQuery();
 
-  // Get greeting based on time of day
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";
@@ -20,139 +27,173 @@ export default function Dashboard() {
     return "Good evening";
   };
 
-  const highIntentAccounts = accounts?.slice(0, 5) || [];
+  // Rank by intent so the "high intent" label is true, not just the first five rows.
+  const highIntentAccounts = [...(accounts || [])]
+    .sort((a: any, b: any) => (Number(b.intentScore) || 0) - (Number(a.intentScore) || 0))
+    .slice(0, 5);
   const recentCalls = calls?.slice(0, 5) || [];
+
+  const num = (v: number | undefined) => (statsLoading ? "—" : (v ?? 0).toLocaleString());
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        {/* Header with personalized greeting */}
+        {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {getGreeting()}, {user?.name || 'there'} 👋
+          <h1 className="text-3xl font-bold tracking-tight text-slate-50">
+            {getGreeting()}, {user?.name || "there"}
           </h1>
-          <p className="text-muted-foreground mt-2">
-            Here's your sales intelligence for today
+          <p className="mt-1 text-sm text-slate-400">
+            Your sales intelligence for today — every figure computed from live account data.
           </p>
         </div>
 
-        {/* Stats Cards with colored borders */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Total Accounts"
-            value={statsLoading ? "..." : stats?.totalAccounts || 0}
-            subtitle="Across all territories"
-            icon={Building2}
-            borderColor="blue"
-          />
-          <StatCard
-            title="Hot Leads"
-            value={statsLoading ? "..." : stats?.hotLeads || 0}
-            subtitle="Intent score 70+"
-            icon={Flame}
-            borderColor="red"
-          />
-          <StatCard
-            title="Warm Leads"
-            value={statsLoading ? "..." : stats?.warmLeads || 0}
-            subtitle="Intent score 40-69"
-            icon={TrendingUp}
-            borderColor="orange"
-          />
-          <StatCard
-            title="Total Calls"
-            value={statsLoading ? "..." : stats?.totalCalls || 0}
-            subtitle="Gong call recordings"
-            icon={Phone}
-            borderColor="cyan"
-          />
-        </div>
+        {/* Portfolio pulse — one lead read (hot leads) with supporting stats, not a grid of identical cards */}
+        <Card className={CARD}>
+          <CardContent className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
+            <div className="lg:w-72 lg:pr-6 lg:border-r lg:border-slate-800">
+              <div className="flex items-center gap-2 text-xs font-semibold tracking-wide text-slate-400">
+                <Flame className="h-4 w-4 text-emerald-400" />
+                Hot leads right now
+              </div>
+              <div className="mt-3 flex items-baseline gap-3">
+                <span className="font-mono tabular-nums text-5xl font-semibold text-cyan-400 leading-none">
+                  {num(stats?.hotLeads)}
+                </span>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-400">
+                  <span aria-hidden>▲</span> Hot
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-slate-400">
+                Accounts at intent <span className="font-mono">70+</span> — work these before a competitor does.
+              </p>
+            </div>
 
-        {/* Priority Actions Section - Placeholder */}
+            <div className="flex-1 grid grid-cols-3 divide-x divide-slate-800">
+              <div className="pr-4">
+                <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-slate-400">
+                  <Building2 className="h-3.5 w-3.5" /> Accounts
+                </div>
+                <div className="mt-2 font-mono tabular-nums text-2xl text-slate-100">
+                  {num(stats?.totalAccounts)}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">across all territories</div>
+              </div>
+              <div className="px-4">
+                <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-slate-400">
+                  <TrendingUp className="h-3.5 w-3.5" /> Warm leads
+                </div>
+                <div className="mt-2 font-mono tabular-nums text-2xl text-amber-400">
+                  {num(stats?.warmLeads)}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">intent 40–69</div>
+              </div>
+              <div className="pl-4">
+                <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-slate-400">
+                  <Phone className="h-3.5 w-3.5" /> Calls logged
+                </div>
+                <div className="mt-2 font-mono tabular-nums text-2xl text-slate-100">
+                  {num(stats?.totalCalls)}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">Gong recordings</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Priority Actions — state the gap plainly instead of faking an urgent count */}
         <div>
-          <div className="flex items-center gap-3 mb-4">
-            <Flame className="h-5 w-5 text-[#EF4444]" />
-            <h2 className="text-xl font-bold">Priority Actions</h2>
-            <span className="px-2 py-1 bg-[#8B5CF6] text-white text-xs font-medium rounded-full">
-              3 urgent
-            </span>
+          <div className="mb-3 flex items-center gap-2">
+            <Flame className="h-4 w-4 text-slate-400" />
+            <h2 className="text-lg font-semibold text-slate-100">Priority actions</h2>
           </div>
-          <div className="text-muted-foreground text-sm">
-            Priority action cards coming soon...
+          <div className="rounded-lg border border-dashed border-slate-800 px-4 py-6 text-sm text-slate-400">
+            Grounded next-actions aren't wired up yet — this surface will list them once the
+            recommendation engine is connected.
           </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card>
+          {/* High Intent Accounts */}
+          <Card className={CARD}>
             <CardHeader>
-              <div className="flex items-center gap-2">
-                <Flame className="h-5 w-5 text-red-500" />
-                <CardTitle>High Intent Accounts</CardTitle>
-              </div>
-              <CardDescription>Accounts showing strong buying signals</CardDescription>
+              <CardTitle className="text-base flex items-center gap-2 text-slate-100">
+                <Activity className="h-4 w-4 text-cyan-400" />
+                High-intent accounts
+              </CardTitle>
+              <CardDescription className="text-slate-400">Top accounts by intent score</CardDescription>
             </CardHeader>
             <CardContent>
               {accountsLoading ? (
                 <div className="space-y-3">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-16 skeleton rounded-lg" />
+                    <div key={i} className="h-14 rounded-lg bg-slate-800/60 animate-pulse" />
                   ))}
                 </div>
               ) : highIntentAccounts.length > 0 ? (
-                <div className="space-y-3">
-                  {highIntentAccounts.map((account: any) => (
-                    <Link key={account.id} href={`/accounts/${account.id}`}>
-                      <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors">
-                        <div>
-                          <p className="font-medium">{account.name}</p>
-                          <p className="text-sm text-muted-foreground">{account.industry || 'Unknown industry'}</p>
+                <div className="space-y-2">
+                  {highIntentAccounts.map((account: any) => {
+                    const score = Number(account.intentScore) || 0;
+                    const meta = heatMeta(score);
+                    return (
+                      <Link key={account.id} href={`/accounts/${account.id}`}>
+                        <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 px-3 py-2.5 transition-colors hover:bg-slate-800/40 hover:border-cyan-500/40 cursor-pointer">
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-100 truncate">{account.name}</p>
+                            <p className="text-xs text-slate-400 truncate">{account.industry || "Unknown industry"}</p>
+                          </div>
+                          <span className={`inline-flex items-center gap-1.5 font-mono tabular-nums text-sm shrink-0 ${meta.text}`}>
+                            <span aria-hidden>{meta.glyph}</span>
+                            {score}
+                            <span className="text-xs font-sans font-medium">{meta.label}</span>
+                          </span>
                         </div>
-                        <TrendingUp className="h-5 w-5 text-green-600" />
-                      </div>
-                    </Link>
-                  ))}
+                      </Link>
+                    );
+                  })}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No accounts yet</p>
+                <p className="text-sm text-slate-400">No accounts yet</p>
               )}
             </CardContent>
           </Card>
 
-          <Card>
+          {/* Recent Calls */}
+          <Card className={CARD}>
             <CardHeader>
-              <div className="flex items-center gap-2">
-                <Phone className="h-5 w-5 text-blue-500" />
-                <CardTitle>Recent Calls</CardTitle>
-              </div>
-              <CardDescription>Latest sales conversations</CardDescription>
+              <CardTitle className="text-base flex items-center gap-2 text-slate-100">
+                <Phone className="h-4 w-4 text-cyan-400" />
+                Recent calls
+              </CardTitle>
+              <CardDescription className="text-slate-400">Latest sales conversations</CardDescription>
             </CardHeader>
             <CardContent>
               {callsLoading ? (
                 <div className="space-y-3">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-16 skeleton rounded-lg" />
+                    <div key={i} className="h-14 rounded-lg bg-slate-800/60 animate-pulse" />
                   ))}
                 </div>
               ) : recentCalls.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {recentCalls.map((call: any) => (
                     <Link key={call.id} href={`/calls/${call.id}`}>
-                      <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors">
-                        <div>
-                          <p className="font-medium">{call.title || 'Untitled Call'}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {call.callDate ? new Date(call.callDate).toLocaleDateString() : 'No date'}
+                      <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 px-3 py-2.5 transition-colors hover:bg-slate-800/40 hover:border-cyan-500/40 cursor-pointer">
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-100 truncate">{call.title || "Untitled call"}</p>
+                          <p className="text-xs text-slate-400">
+                            {call.callDate ? new Date(call.callDate).toLocaleDateString() : "No date"}
                           </p>
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {call.duration ? `${Math.floor(call.duration / 60)}m` : '-'}
-                        </div>
+                        <span className="font-mono tabular-nums text-sm text-slate-300 shrink-0">
+                          {call.duration ? `${Math.floor(call.duration / 60)}m` : "—"}
+                        </span>
                       </div>
                     </Link>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No calls yet</p>
+                <p className="text-sm text-slate-400">No calls yet</p>
               )}
             </CardContent>
           </Card>
