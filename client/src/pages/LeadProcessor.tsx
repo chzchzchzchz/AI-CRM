@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -127,12 +128,14 @@ export default function LeadProcessor() {
   };
 
   return (
+    <div className="min-h-screen bg-slate-950 text-slate-50">
+      <Navigation />
     <div className="container py-8 max-w-4xl">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl">
-            <Zap className="h-6 w-6 text-white" />
+          <div className="p-2 bg-slate-800 border border-slate-700 rounded-xl">
+            <Zap className="h-6 w-6 text-cyan-400" />
           </div>
           <h1 className="text-3xl font-bold">Intelligent Lead Processor</h1>
         </div>
@@ -163,7 +166,7 @@ export default function LeadProcessor() {
               onChange={handleFileSelect}
               className="hidden"
             />
-            <Upload className="h-12 w-12 mx-auto mb-4 text-slate-500" />
+            <Upload className="h-12 w-12 mx-auto mb-4 text-slate-400" />
             <p className="font-semibold text-lg mb-1">Drag & Drop Your Lead Files Here</p>
             <p className="text-sm text-muted-foreground">
               Accepts <span className="text-green-500 font-medium">.xlsx</span> or{' '}
@@ -236,7 +239,7 @@ export default function LeadProcessor() {
       <Button
         onClick={processFiles}
         disabled={files.length === 0 || isProcessing}
-        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 py-6 text-lg"
+        className="w-full bg-cyan-500 text-slate-950 hover:bg-blue-500 py-6 text-lg"
       >
         {isProcessing ? (
           <>
@@ -319,6 +322,7 @@ export default function LeadProcessor() {
       <p className="text-xs text-center text-muted-foreground mt-6">
         All processing uses AI to intelligently clean and standardize your data.
       </p>
+    </div>
     </div>
   );
 }

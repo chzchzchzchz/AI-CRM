@@ -60,7 +60,7 @@ export default function RFPs() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-slate-950">
       <Navigation />
 
       <div className="container py-8 space-y-6">
@@ -76,11 +76,11 @@ export default function RFPs() {
               <div className="flex items-center gap-4 px-4 py-2 bg-slate-900/50 border border-slate-800 rounded-lg">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-cyan-400">{stats.total}</div>
-                  <div className="text-xs text-slate-500">Total</div>
+                  <div className="text-xs text-slate-400">Total</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-green-400">{stats.open}</div>
-                  <div className="text-xs text-slate-500">Open</div>
+                  <div className="text-xs text-slate-400">Open</div>
                 </div>
               </div>
             )}
@@ -112,7 +112,7 @@ export default function RFPs() {
                   <label className="text-sm text-slate-400 mb-2 block">
                     SAM.gov API Key
                   </label>
-                  <p className="text-xs text-slate-500 mb-3">
+                  <p className="text-xs text-slate-400 mb-3">
                     Get your API key from{" "}
                     <a
                       href="https://sam.gov/content/system-accounts"
@@ -147,7 +147,7 @@ export default function RFPs() {
 
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               placeholder="Search RFPs by title, agency, or keywords..."
               value={searchQuery}
@@ -176,7 +176,7 @@ export default function RFPs() {
             <CardContent className="p-12 text-center">
               <FileText className="h-12 w-12 text-slate-600 mx-auto mb-4" />
               <p className="text-slate-400 mb-2">No RFPs found</p>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-slate-400">
                 {rfps.length === 0 
                   ? "Click 'Scrape SAM.gov' to fetch the latest opportunities"
                   : "Try adjusting your search or filters"}
