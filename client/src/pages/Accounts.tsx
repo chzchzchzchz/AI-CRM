@@ -1,14 +1,13 @@
 import { memo, useMemo, useState, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Navigation } from "@/components/Navigation";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import {
-  Building2, Users, MapPin, TrendingUp, ExternalLink, Search,
-  Filter, ArrowUpDown, Target, Zap, Eye, Flame, Mail, Sparkles
+  Building2, Users, MapPin, TrendingUp, Search, ArrowUpDown, Flame,
+  Mail, Snowflake, Clock, Activity, ChevronRight
 } from "lucide-react";
 import { ContextualAI } from "@/components/ContextualAI";
 import {
@@ -33,7 +32,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   const [techFilter, setTechFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("intentScore");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
-  
+
   // Get rep context for territory filtering
   const { matchesTerritory, repInfo, isRepMode } = useRep();
 
@@ -70,7 +69,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   const mfaProviders = useMemo(() => {
     if (!accounts) return [];
     const foundProviders = new Set<string>();
-    
+
     accounts.forEach((account: any) => {
       if (account.techStack) {
         const techLower = String(account.techStack).toLowerCase();
@@ -84,32 +83,32 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
         });
       }
     });
-    
+
     // Return sorted list of found providers
     return Array.from(foundProviders).sort((a, b) => a.localeCompare(b));
   }, [accounts]);
 
   const industries = ["AI", "Software", "Finance", "Manufacturing", "Other"];
-  
+
   const normalizeIndustry = (industry: string | null | undefined): string => {
     if (!industry) return "Other";
     const lower = industry.toLowerCase().trim();
-    
-    if (lower === "ai" || lower === "artificial intelligence" || lower === "machine learning" || 
+
+    if (lower === "ai" || lower === "artificial intelligence" || lower === "machine learning" ||
         lower === "ai/ml" || lower.startsWith("ai ") || lower.endsWith(" ai")) return "AI";
-    
-    if (lower === "software" || lower === "saas" || lower === "technology" || 
-        lower === "software development" || lower === "enterprise software" || 
+
+    if (lower === "software" || lower === "saas" || lower === "technology" ||
+        lower === "software development" || lower === "enterprise software" ||
         lower.includes("software") && !lower.includes("services")) return "Software";
-    
-    if (lower === "finance" || lower === "banking" || lower === "fintech" || 
-        lower === "financial services" || lower.includes("bank") || 
+
+    if (lower === "finance" || lower === "banking" || lower === "fintech" ||
+        lower === "financial services" || lower.includes("bank") ||
         lower.includes("financial")) return "Finance";
-    
-    if (lower === "manufacturing" || lower === "industrial" || 
-        lower.includes("manufacturing") || lower.includes("production") || 
+
+    if (lower === "manufacturing" || lower === "industrial" ||
+        lower.includes("manufacturing") || lower.includes("production") ||
         lower.includes("factory")) return "Manufacturing";
-    
+
     return "Other";
   };
 
@@ -122,8 +121,8 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
       const employeeCount = parseInt(String(account.employeeCount || '0').replace(/[^0-9]/g, '') || '0');
       const matchesRepTerritory = matchesTerritory(account.region || '', employeeCount);
       if (!matchesRepTerritory) return false;
-      
-      const matchesSearch = !searchQuery || 
+
+      const matchesSearch = !searchQuery ||
         account.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         account.domain?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         account.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -187,26 +186,11 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     return filtered;
   }, [accounts, searchQuery, regionFilter, industryFilter, relationshipFilter, intentFilter, techFilter, sortField, sortOrder]);
 
-  const getIntentBadge = (score: string) => {
-    const numScore = parseInt(score);
-    if (numScore >= 70) return { 
-      color: "badge-danger", 
-      label: "Hot", 
-      icon: Flame,
-      gradient: "from-red-600 to-orange-600"
-    };
-    if (numScore >= 40) return { 
-      color: "badge-warning", 
-      label: "Warm", 
-      icon: TrendingUp,
-      gradient: "from-orange-600 to-amber-600"
-    };
-    return { 
-      color: "badge-primary", 
-      label: "Cold", 
-      icon: Target,
-      gradient: "from-blue-600 to-cyan-600"
-    };
+  // Intent heat: tinted text + glyph + word, never color alone.
+  const getHeat = (score: number) => {
+    if (score >= 70) return { label: "Hot", Icon: Flame, text: "text-red-400" };
+    if (score >= 40) return { label: "Warm", Icon: TrendingUp, text: "text-amber-400" };
+    return { label: "Cold", Icon: Snowflake, text: "text-sky-400" };
   };
 
   const handleToggleSort = useCallback((field: SortField) => {
@@ -221,17 +205,18 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="min-h-screen bg-background">
         <Navigation />
-        <div className="container py-12 space-y-8 max-w-7xl">
-          <div className="space-y-4">
-            <div className="h-12 w-96 skeleton" />
-            <div className="h-6 w-64 skeleton" />
+        <div className="container py-10 space-y-6 max-w-7xl">
+          <div className="space-y-3">
+            <div className="h-9 w-80 skeleton" />
+            <div className="h-5 w-56 skeleton" />
           </div>
-          <div className="h-32 skeleton rounded-xl" />
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-64 skeleton rounded-xl" />
+          <div className="h-20 skeleton rounded-xl" />
+          <div className="h-16 skeleton rounded-xl" />
+          <div className="rounded-xl border border-border/60 divide-y divide-border/50 overflow-hidden">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="h-16 skeleton rounded-none" />
             ))}
           </div>
         </div>
@@ -245,31 +230,31 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     return score >= 40 && score < 70;
   }).length;
 
+  const stats: { key: string; label: string; value: number; Icon: any; text: string; hint: string; filter: string }[] = [
+    { key: "hot", label: "Hot leads", value: hotCount, Icon: Flame, text: "text-red-400", hint: "Intent 70+", filter: "hot" },
+    { key: "warm", label: "Warm leads", value: warmCount, Icon: TrendingUp, text: "text-amber-400", hint: "Intent 40–69", filter: "warm" },
+    { key: "all", label: "Total pipeline", value: filteredAccounts.length, Icon: Building2, text: "text-foreground", hint: "Reset intent filter", filter: "all" },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+    <div className="min-h-screen bg-background">
       <Navigation />
 
-      <div className="container py-12 space-y-8 max-w-7xl">
+      <div className="container py-10 space-y-6 max-w-7xl">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl shadow-lg">
-                <Building2 className="h-8 w-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-5xl font-bold tracking-tight">Target Accounts</h1>
-                <p className="text-muted-foreground text-lg mt-1">
-                  {filteredAccounts.length} accounts{isRepMode && ` • ${repInfo?.region} territory`}
-                </p>
-              </div>
-            </div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Target Accounts</h1>
+            <p className="mt-1 text-sm text-slate-400">
+              <span className="font-mono text-slate-300">{filteredAccounts.length}</span> accounts
+              {isRepMode && <> · {repInfo?.region} territory</>}
+            </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <RepSwitcher />
-            <Button asChild className="gradient-primary text-white shadow-lg hover:shadow-xl">
+            <Button asChild className="bg-cyan-500 text-slate-950 hover:bg-blue-500 font-medium">
               <Link href="/outreach">
-                <Mail className="mr-2 h-5 w-5" />
+                <Mail className="mr-2 h-4 w-4" />
                 Generate Outreach
               </Link>
             </Button>
@@ -279,65 +264,37 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
         {/* AI Assistant Bar */}
         <ContextualAI context="accounts" placeholder="Ask AI: Which accounts have the highest intent?" />
 
-        {/* Quick Stats - All Clickable */}
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card 
-            className="card-elevated border-l-4 border-l-red-500 cursor-pointer hover:scale-[1.02] transition-transform"
-            onClick={() => setIntentFilter("hot")}
-          >
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Flame className="h-4 w-4 text-red-500" />
-                Hot Leads
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-600 dark:text-red-400">{hotCount}</div>
-              <p className="text-xs text-muted-foreground mt-1">Intent score 70+ • Click to filter</p>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="card-elevated border-l-4 border-l-orange-500 cursor-pointer hover:scale-[1.02] transition-transform"
-            onClick={() => setIntentFilter("warm")}
-          >
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-orange-500" />
-                Warm Leads
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{warmCount}</div>
-              <p className="text-xs text-muted-foreground mt-1">Intent score 40-69 • Click to filter</p>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="card-elevated border-l-4 border-l-indigo-500 cursor-pointer hover:scale-[1.02] transition-transform"
-            onClick={() => setIntentFilter("all")}
-          >
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Target className="h-4 w-4 text-indigo-500" />
-                Total Pipeline
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{filteredAccounts.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">Active accounts • Click to reset filters</p>
-            </CardContent>
-          </Card>
+        {/* Quick Stats - segmented, clickable intent filters */}
+        <div className="grid grid-cols-3 rounded-xl border border-border/60 bg-card divide-x divide-border/50 overflow-hidden">
+          {stats.map((s) => {
+            const active = intentFilter === s.filter;
+            return (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => setIntentFilter(s.filter)}
+                aria-pressed={active}
+                className={`text-left px-4 py-4 sm:px-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-500/50 ${active ? "bg-white/[0.04]" : "hover:bg-white/[0.025]"}`}
+              >
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
+                  <s.Icon className={`h-3.5 w-3.5 ${s.text}`} />
+                  {s.label}
+                </div>
+                <div className={`mt-1.5 font-mono text-2xl font-semibold tabular-nums ${s.text}`}>{s.value}</div>
+                <div className="mt-0.5 text-[11px] text-slate-500">{s.hint}{active ? " · active" : ""}</div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Filters */}
-        <Card className="card-elevated">
-          <CardContent className="p-6">
-            <div className="grid md:grid-cols-7 gap-4">
+        <div className="rounded-xl border border-border/60 bg-card">
+          <div className="p-4 sm:p-5">
+            <div className="grid md:grid-cols-7 gap-3">
               {/* Search */}
               <div className="md:col-span-2">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
                     placeholder="Search accounts..."
                     value={searchQuery}
@@ -410,8 +367,8 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
             </div>
 
             {/* Sort Controls */}
-            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border/50">
-              <span className="text-sm text-muted-foreground">Sort by:</span>
+            <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border/50">
+              <span className="text-xs font-medium text-slate-400">Sort by</span>
               <Button
                 variant={sortField === "intentScore" ? "default" : "outline"}
                 size="sm"
@@ -443,144 +400,116 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                 )}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Accounts Grid */}
+        {/* Accounts List */}
         {filteredAccounts.length === 0 ? (
           <Card className="card-elevated">
             <CardContent className="py-16 text-center">
               <Building2 className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
               <h3 className="text-xl font-semibold mb-2">No accounts found</h3>
-              <p className="text-muted-foreground">Try adjusting your filters</p>
+              <p className="text-slate-400">Try adjusting your filters</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded-xl border border-border/60 bg-card divide-y divide-border/50 overflow-hidden">
             {filteredAccounts.map((account: any) => {
-              const intentBadge = getIntentBadge(String(account.intentScore || "0"));
-              const IntentIcon = intentBadge.icon;
+              const numScore = parseInt(String(account.intentScore || "0"));
+              const hasScore = !!account.intentScore && numScore > 0;
+              const heat = getHeat(numScore);
+              const HeatIcon = heat.Icon;
+
+              const rawData = (account.rawData as Record<string, any>) || {};
+              const daysSinceActivity = rawData.daysSinceLastEngagement ?? rawData.lastSalesActivityDays;
+              const salesActivities = rawData.salesActivities || 0;
+
+              const freshText =
+                daysSinceActivity == null ? "" :
+                daysSinceActivity <= 7 ? "text-emerald-400" :
+                daysSinceActivity <= 30 ? "text-amber-400" : "text-red-400";
 
               return (
                 <Link key={account.id} href={`/accounts/${account.id}`}>
-                  <Card className="card-elevated hover:scale-[1.02] transition-all cursor-pointer group h-full">
-                    <CardHeader>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          {/* Company Logo */}
-                          <div className="w-10 h-10 rounded-lg bg-card border border-border flex-shrink-0 overflow-hidden">
-                            <img
-                              src={`https://logo.clearbit.com/${account.domain}`}
-                              alt={`${account.name} logo`}
-                              className="w-full h-full object-contain"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold text-lg">${account.name.charAt(0)}</div>`;
-                              }}
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <CardTitle className="text-xl group-hover:text-primary transition-colors line-clamp-1">
-                              {account.name}
-                            </CardTitle>
-                            <CardDescription className="mt-1 line-clamp-1">
-                              {account.domain}
-                            </CardDescription>
-                          </div>
-                        </div>
-                        <div className={`p-2 bg-gradient-to-br ${intentBadge.gradient} rounded-lg shadow-lg flex-shrink-0`}>
-                          <IntentIcon className="h-5 w-5 text-white" />
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Intent Score */}
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Intent Score</span>
-                        <Badge className={intentBadge.color}>
-                          {account.intentScore} {intentBadge.label}
-                        </Badge>
-                      </div>
+                  <div className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-500/40">
+                    {/* Company Logo */}
+                    <div className="w-9 h-9 rounded-lg bg-slate-800 border border-border/60 flex-shrink-0 overflow-hidden">
+                      <img
+                        src={`https://logo.clearbit.com/${account.domain}`}
+                        alt={`${account.name} logo`}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-slate-800 text-cyan-300 font-semibold text-sm">${account.name.charAt(0)}</div>`;
+                        }}
+                      />
+                    </div>
 
-                      {/* Details */}
-                      <div className="space-y-2 text-sm">
+                    {/* Identity + meta */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-[15px] text-foreground truncate group-hover:text-cyan-300 transition-colors">
+                          {account.name}
+                        </span>
+                        {account.relationship && (
+                          <span className="hidden sm:inline text-[10px] font-medium uppercase tracking-wide text-slate-400 bg-slate-800 rounded px-1.5 py-0.5 flex-shrink-0">
+                            {account.relationship}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-400">
+                        <span className="truncate">{account.domain}</span>
                         {account.industry && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Building2 className="h-4 w-4 flex-shrink-0" />
-                            <span className="line-clamp-1">{account.industry}</span>
-                          </div>
+                          <span className="flex items-center gap-1 before:content-['·'] before:text-slate-600">
+                            <Building2 className="h-3 w-3" />{account.industry}
+                          </span>
                         )}
                         {account.employeeCount && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Users className="h-4 w-4 flex-shrink-0" />
-                            <span>{account.employeeCount} employees</span>
-                          </div>
+                          <span className="flex items-center gap-1 before:content-['·'] before:text-slate-600">
+                            <Users className="h-3 w-3" />{account.employeeCount}
+                          </span>
                         )}
                         {account.region && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <MapPin className="h-4 w-4 flex-shrink-0" />
-                            <span>{account.region}</span>
+                          <span className="flex items-center gap-1 before:content-['·'] before:text-slate-600">
+                            <MapPin className="h-3 w-3" />{account.region}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Freshness signals */}
+                    <div className="hidden lg:flex items-center gap-4 flex-shrink-0 text-xs">
+                      {daysSinceActivity != null && (
+                        <span className={`flex items-center gap-1 ${freshText}`}>
+                          <Clock className="h-3.5 w-3.5" />
+                          <span className="font-mono tabular-nums">{daysSinceActivity}d</span>
+                        </span>
+                      )}
+                      {salesActivities > 0 && (
+                        <span className="flex items-center gap-1 text-slate-400">
+                          <Activity className="h-3.5 w-3.5" />
+                          <span className="font-mono tabular-nums">{salesActivities}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Intent score + heat */}
+                    <div className="flex items-center gap-3 flex-shrink-0 pl-1">
+                      <div className="text-right w-16">
+                        <div className="font-mono text-lg leading-none tabular-nums text-cyan-400">
+                          {hasScore ? numScore : <span className="text-slate-600">—</span>}
+                        </div>
+                        {hasScore && (
+                          <div className={`mt-1 flex items-center justify-end gap-1 text-[11px] font-medium ${heat.text}`}>
+                            <HeatIcon className="h-3 w-3" />
+                            {heat.label}
                           </div>
                         )}
                       </div>
-
-                      {/* Temperature & Activity from rawData */}
-                      {(() => {
-                        const rawData = (account.rawData as Record<string, any>) || {};
-                        const temperature = rawData.temperature;
-                        const daysSinceActivity = rawData.daysSinceLastEngagement || rawData.lastSalesActivityDays;
-                        const salesActivities = rawData.salesActivities || 0;
-                        const accountOwner = rawData.accountOwner || rawData.owner;
-                        
-                        return (
-                          <div className="flex flex-wrap gap-1.5">
-                            {temperature && (
-                              <Badge className={`text-xs ${
-                                temperature === 'Hot' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                                temperature === 'Warm' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
-                                'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                              }`}>
-                                {temperature === 'Hot' ? '🔥' : temperature === 'Warm' ? '🌡️' : '❄️'} {temperature}
-                              </Badge>
-                            )}
-                            {daysSinceActivity !== null && daysSinceActivity !== undefined && (
-                              <Badge variant="outline" className={`text-xs ${
-                                daysSinceActivity <= 7 ? 'border-green-500/50 text-green-400' :
-                                daysSinceActivity <= 30 ? 'border-yellow-500/50 text-yellow-400' :
-                                'border-red-500/50 text-red-400'
-                              }`}>
-                                {daysSinceActivity}d ago
-                              </Badge>
-                            )}
-                            {salesActivities > 0 && (
-                              <Badge variant="outline" className="text-xs border-purple-500/30 text-purple-400">
-                                {salesActivities} activities
-                              </Badge>
-                            )}
-                            {account.relationship && (
-                              <Badge variant="outline" className="text-xs">
-                                {account.relationship}
-                              </Badge>
-                            )}
-                          </div>
-                        );
-                      })()}
-
-                      {/* Action Button */}
-                      <Button 
-                        variant="outline" 
-                        className="w-full group-hover:border-primary group-hover:text-primary"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          window.location.href = `/accounts/${account.id}`;
-                        }}
-                      >
-                        View Details
-                        <Eye className="ml-2 h-4 w-4" />
-                      </Button>
-                    </CardContent>
-                  </Card>
+                      <ChevronRight className="h-4 w-4 text-slate-600 group-hover:text-slate-300 transition-colors" />
+                    </div>
+                  </div>
                 </Link>
               );
             })}

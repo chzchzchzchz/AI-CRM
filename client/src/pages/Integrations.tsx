@@ -62,8 +62,8 @@ export default function Integrations() {
       <Navigation />
       <div className="container py-6 space-y-6 max-w-6xl">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-gradient-to-br from-purple-600 to-pink-600">
-            <Plug className="h-5 w-5 text-white" />
+          <div className="p-2 rounded-lg bg-slate-800 border border-slate-700">
+            <Plug className="h-5 w-5 text-purple-400" />
           </div>
           <div>
             <h1 className="text-2xl font-bold">Integrations</h1>
