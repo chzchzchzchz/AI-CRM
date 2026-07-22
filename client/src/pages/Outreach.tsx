@@ -258,22 +258,26 @@ export default function Outreach() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-background">
       <Navigation />
-      <div className="container py-8 max-w-7xl">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3">
-            <Sparkles className="h-10 w-10 text-cyan-400" />
-            AI-Powered Outreach
-          </h1>
-          <p className="text-slate-400">Generate personalized emails using account intelligence</p>
+      <div className="container py-6 space-y-6 max-w-7xl">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-slate-800 border border-slate-700">
+            <Sparkles className="h-5 w-5 text-purple-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">AI-Powered Outreach</h1>
+            <p className="text-sm text-muted-foreground">
+              Generate personalized emails grounded in account intelligence.
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -283,7 +287,7 @@ export default function Outreach() {
             <Card className="card-elevated">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-cyan-400" />
+                  <Building2 className="h-5 w-5 text-muted-foreground" />
                   1. Select Target Account
                 </CardTitle>
                 <CardDescription>Choose ONE account (sorted by intent score)</CardDescription>
@@ -296,7 +300,7 @@ export default function Outreach() {
                       placeholder="Search accounts..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                      className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-400"
                     />
                   </div>
                 </div>
@@ -318,13 +322,19 @@ export default function Outreach() {
                           <div className="font-medium text-white truncate">{account.name}</div>
                           <div className="text-sm text-slate-400">{account.industry || "Unknown"}</div>
                         </div>
-                        <Badge className={`${
-                          intentScore >= 70 ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                          intentScore >= 40 ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
-                          'bg-slate-500/20 text-slate-400 border-slate-500/30'
-                        }`}>
-                          {intentScore}
-                        </Badge>
+                        {(() => {
+                          const heat = intentScore >= 70
+                            ? { glyph: "🔥", tone: "text-red-400" }
+                            : intentScore >= 40
+                            ? { glyph: "▲", tone: "text-amber-400" }
+                            : { glyph: "▽", tone: "text-slate-400" };
+                          return (
+                            <span className={`inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-2.5 py-1 text-xs font-medium ${heat.tone}`}>
+                              <span aria-hidden="true">{heat.glyph}</span>
+                              <span className="font-mono">{intentScore}</span>
+                            </span>
+                          );
+                        })()}
                       </div>
                     );
                   })}
@@ -360,13 +370,13 @@ export default function Outreach() {
                           placeholder="Search contacts..."
                           value={contactSearchQuery}
                           onChange={(e) => setContactSearchQuery(e.target.value)}
-                          className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                          className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-400"
                         />
                       </div>
                     </div>
                     <div className="space-y-2 max-h-[250px] overflow-y-auto">
                       {filteredContacts.length === 0 ? (
-                        <div className="text-center py-8 text-slate-500">
+                        <div className="text-center py-8 text-slate-400">
                           No contacts found for this account
                         </div>
                       ) : (
@@ -386,7 +396,7 @@ export default function Outreach() {
                                 <div className="font-medium text-white truncate">{contact.name}</div>
                                 <div className="text-sm text-slate-400 truncate">{contact.title || "No title"}</div>
                                 {contact.email && (
-                                  <div className="text-xs text-slate-500 truncate">{contact.email}</div>
+                                  <div className="text-xs text-slate-400 truncate">{contact.email}</div>
                                 )}
                               </div>
                             </div>
@@ -418,7 +428,7 @@ export default function Outreach() {
                   placeholder="e.g., Focus on their pain points, mention recent news, emphasize your key differentiators..."
                   value={context}
                   onChange={(e) => setContext(e.target.value)}
-                  className="min-h-[100px] bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                  className="min-h-[100px] bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-400"
                 />
                 
                 {/* File Attachments */}
@@ -454,21 +464,23 @@ export default function Outreach() {
                       ))}
                     </div>
                   )}
-                  <p className="text-xs text-slate-500">Attach case studies, product docs, or competitor info to enhance the email</p>
+                  <p className="text-xs text-slate-400">Attach case studies, product docs, or competitor info to enhance the email</p>
                 </div>
               </CardContent>
             </Card>
 
             {/* Generate Button */}
             <Button
+              variant="signal"
+              size="lg"
               onClick={handleGenerate}
               disabled={generateMutation.isPending || !selectedAccountId}
-              className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white py-6 text-lg"
+              className="w-full"
             >
               {generateMutation.isPending ? (
                 <>
                   <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  Generating Strategy & Email...
+                  Generating email…
                 </>
               ) : (
                 <>
@@ -558,12 +570,12 @@ export default function Outreach() {
                           value={refinementInput}
                           onChange={(e) => setRefinementInput(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleRefine()}
-                          className="flex-1 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                          className="flex-1 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-400"
                         />
                         <Button
+                          variant="outline"
                           onClick={handleRefine}
                           disabled={refineMutation.isPending || !refinementInput.trim()}
-                          className="bg-purple-600 hover:bg-purple-700"
                         >
                           {refineMutation.isPending ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -575,19 +587,19 @@ export default function Outreach() {
                           )}
                         </Button>
                       </div>
-                      <p className="text-xs text-slate-500">Press Enter or click Refine to adjust the email</p>
+                      <p className="text-xs text-slate-400">Press Enter or click Refine to adjust the email</p>
                     </div>
                     
                     {/* View Reasoning (Optional) */}
                     {rawReasoning && (
                       <Collapsible open={isReasoningOpen} onOpenChange={setIsReasoningOpen}>
-                        <CollapsibleTrigger className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-400">
+                        <CollapsibleTrigger className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-400">
                           {isReasoningOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                           {isReasoningOpen ? 'Hide' : 'View'} AI reasoning
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <div className="mt-2 p-3 bg-slate-900 rounded border border-slate-800 max-h-[200px] overflow-y-auto">
-                            <code className="text-xs text-slate-500 whitespace-pre-wrap break-all">
+                            <code className="text-xs text-slate-400 whitespace-pre-wrap break-all">
                               {rawReasoning}
                             </code>
                           </div>
@@ -597,10 +609,7 @@ export default function Outreach() {
                     
                     {/* Send Buttons */}
                     <div className="flex gap-3">
-                      <Button
-                        asChild
-                        className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                      >
+                      <Button asChild variant="outline" className="flex-1">
                         <a
                           href={getGmailUrl()}
                           target="_blank"
@@ -611,10 +620,7 @@ export default function Outreach() {
                           <ExternalLink className="h-3 w-3 ml-2" />
                         </a>
                       </Button>
-                      <Button
-                        asChild
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                      >
+                      <Button asChild variant="outline" className="flex-1">
                         <a
                           href={getOutlookUrl()}
                           target="_blank"
@@ -630,7 +636,7 @@ export default function Outreach() {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <Sparkles className="h-12 w-12 text-slate-600 mb-4" />
-                    <p className="text-slate-500">
+                    <p className="text-slate-400">
                       Select an account and click Generate to create a personalized email
                     </p>
                   </div>

@@ -1,16 +1,15 @@
 import { useState } from "react";
+import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { 
-  Sparkles, Loader2, Copy, CheckCircle2, 
-  FileText, Mail, Share2, Video, Mic, BookOpen,
+import {
+  Sparkles, Loader2, Copy, CheckCircle2,
+  FileText, Mail, Video, Mic, BookOpen,
   Upload, Brain, Zap, MessageSquare, Target
 } from "lucide-react";
 
@@ -107,23 +106,23 @@ export default function ContentStudio() {
   };
 
   return (
-    <div className="container py-8 max-w-6xl">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-xl">
-            <Sparkles className="h-6 w-6 text-white" />
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      <div className="container py-6 space-y-6 max-w-6xl">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-slate-800 border border-slate-700">
+            <Sparkles className="h-5 w-5 text-purple-400" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold">Content Studio</h1>
-            <p className="text-muted-foreground">
-              AI-powered content generation with knowledge base context
+            <h1 className="text-2xl font-bold">Content Studio</h1>
+            <p className="text-sm text-muted-foreground">
+              AI-powered content generation grounded in your knowledge base.
             </p>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Input Section */}
         <div className="lg:col-span-2 space-y-6">
           {/* Content Type Selection */}
@@ -139,9 +138,9 @@ export default function ContentStudio() {
                     onClick={() => setContentType(type.value as ContentType)}
                     className={`
                       p-3 rounded-lg border text-center transition-all
-                      ${contentType === type.value 
-                        ? 'border-teal-500 bg-teal-500/10 text-teal-400' 
-                        : 'border-border hover:border-teal-500/30 hover:bg-teal-500/5'}
+                      ${contentType === type.value
+                        ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
+                        : 'border-slate-700 text-muted-foreground hover:border-cyan-500/40 hover:bg-slate-800'}
                     `}
                   >
                     <div className="flex justify-center mb-1">{type.icon}</div>
@@ -156,7 +155,7 @@ export default function ContentStudio() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-teal-500" />
+                <FileText className="h-5 w-5 text-muted-foreground" />
                 Context & Instructions
               </CardTitle>
               <CardDescription>
@@ -214,14 +213,16 @@ export default function ContentStudio() {
           </Card>
 
           <Button
+            variant="signal"
+            size="lg"
             onClick={handleGenerate}
             disabled={!context.trim() || isGenerating}
-            className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 py-6 text-lg"
+            className="w-full"
           >
             {isGenerating ? (
               <>
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                Generating...
+                Generating…
               </>
             ) : (
               <>
@@ -283,7 +284,7 @@ export default function ContentStudio() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Brain className="h-4 w-4 text-violet-500" />
+                <Brain className="h-4 w-4 text-purple-400" />
                 Knowledge Base
               </CardTitle>
               <CardDescription>
@@ -309,7 +310,7 @@ export default function ContentStudio() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Zap className="h-4 w-4 text-amber-500" />
+                <Zap className="h-4 w-4 text-muted-foreground" />
                 AI Capabilities
               </CardTitle>
             </CardHeader>
@@ -332,7 +333,7 @@ export default function ContentStudio() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Target className="h-4 w-4 text-red-500" />
+                <Target className="h-4 w-4 text-muted-foreground" />
                 Quick Templates
               </CardTitle>
             </CardHeader>
@@ -358,6 +359,7 @@ export default function ContentStudio() {
               ))}
             </CardContent>
           </Card>
+        </div>
         </div>
       </div>
     </div>
