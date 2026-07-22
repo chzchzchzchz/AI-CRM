@@ -3,6 +3,7 @@ import { trpc } from "../lib/trpc";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Progress } from "../components/ui/progress";
+import { Navigation } from "../components/Navigation";
 import { Loader2, Sparkles, CheckCircle2, XCircle } from "lucide-react";
 
 export default function BulkInsights() {
@@ -27,6 +28,8 @@ export default function BulkInsights() {
   };
 
   return (
+    <div className="min-h-screen bg-slate-950 text-slate-50">
+      <Navigation />
     <div className="container mx-auto py-8">
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2">Bulk AI Insights Generation</h1>
@@ -183,6 +186,7 @@ export default function BulkInsights() {
           </Card>
         )}
       </div>
+    </div>
     </div>
   );
 }

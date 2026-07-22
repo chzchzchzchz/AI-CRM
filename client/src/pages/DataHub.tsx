@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Navigation } from "@/components/Navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -183,12 +184,14 @@ export default function DataHub() {
   };
 
   return (
+    <div className="min-h-screen bg-slate-950 text-slate-50">
+      <Navigation />
     <div className="container py-8 max-w-6xl">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-gradient-to-br from-violet-600 to-purple-600 rounded-xl">
-            <Brain className="h-6 w-6 text-white" />
+          <div className="p-2 bg-slate-800 border border-slate-700 rounded-xl">
+            <Brain className="h-6 w-6 text-cyan-400" />
           </div>
           <div>
             <h1 className="text-3xl font-bold">AI Data Hub</h1>
@@ -283,7 +286,7 @@ export default function DataHub() {
                 <Button
                   onClick={processFiles}
                   disabled={files.length === 0 || status === 'processing' || status === 'analyzing'}
-                  className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+                  className="flex-1 bg-cyan-500 text-slate-950 hover:bg-blue-500"
                 >
                   {status === 'processing' || status === 'analyzing' ? (
                     <>
@@ -429,6 +432,7 @@ export default function DataHub() {
           </Card>
         </div>
       </div>
+    </div>
     </div>
   );
 }
