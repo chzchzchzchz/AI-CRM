@@ -51,7 +51,7 @@ export default function SignUp() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center gap-4 text-center">
@@ -69,7 +69,7 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Logo and Title */}
         <div className="flex flex-col items-center gap-4">
