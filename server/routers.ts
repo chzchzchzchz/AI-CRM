@@ -37,7 +37,7 @@ import { salesforceRouter } from "./routers/salesforce";
 import { notifyOwner } from "./_core/notification";
 import { getApprovalLinks } from "./admin-approval-api";
 import { hotLeadsRouter } from "./hot-leads-router";
-import { recordFailedLogin, clearLoginAttempts, validatePasswordComplexity, logSecurityEvent } from "./_core/security";
+import { recordFailedLogin, clearLoginAttempts, getLoginLockout, validatePasswordComplexity, logSecurityEvent } from "./_core/security";
 
 
 export const appRouter = router({
@@ -270,11 +270,19 @@ Or go to the Admin Panel: /admin/approval`
         if (!db) throw new Error("Database not available");
         
         // Get client IP for brute force protection
-        const clientIP = ctx.req.headers["x-forwarded-for"]?.toString().split(",")[0].trim() || 
-                         ctx.req.ip || 
-                         ctx.req.socket.remoteAddress || 
+        const clientIP = ctx.req.headers["x-forwarded-for"]?.toString().split(",")[0].trim() ||
+                         ctx.req.ip ||
+                         ctx.req.socket.remoteAddress ||
                          "unknown";
-        
+
+        // Enforce the brute-force lockout on the tRPC path (the express loginRateLimiter
+        // doesn't cover /api/trpc). Without this the 5-attempt lockout was never applied.
+        const lockout = getLoginLockout(clientIP);
+        if (lockout.locked) {
+          logSecurityEvent("LOGIN_LOCKED", { email: input.email, ip: clientIP }, "warn");
+          throw new Error(`Too many login attempts. Try again in ${Math.ceil(lockout.retryAfterSeconds / 60)} minute(s).`);
+        }
+
         // Find user by email
         const userResults = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
         const user = userResults[0];

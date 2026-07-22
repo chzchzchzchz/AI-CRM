@@ -156,7 +156,27 @@ class SDKServer {
 
   private getSessionSecret() {
     const secret = ENV.cookieSecret;
+    // An empty or default JWT_SECRET means sessions are trivially forgeable. Refuse to sign
+    // with it in production so a deployer can't accidentally ship insecure auth. Demo/dev
+    // fall back to a random per-process secret (sessions just don't survive a restart).
+    const isWeak = !secret || secret.length < 16 || secret === "change-this-to-a-long-random-string";
+    if (isWeak) {
+      if (ENV.isProduction && ENV.demoMode !== true) {
+        throw new Error(
+          "JWT_SECRET is missing or too weak. Set JWT_SECRET to a long random string (>=32 chars) before running in production."
+        );
+      }
+      return new TextEncoder().encode(this.getEphemeralSecret());
+    }
     return new TextEncoder().encode(secret);
+  }
+
+  private _ephemeralSecret?: string;
+  private getEphemeralSecret(): string {
+    if (!this._ephemeralSecret) {
+      this._ephemeralSecret = "dev-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    }
+    return this._ephemeralSecret;
   }
 
   /**
