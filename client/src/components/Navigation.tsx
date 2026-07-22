@@ -49,7 +49,7 @@ export function Navigation({ onSearchClick }: NavigationProps) {
             </span>
           </Link>
 
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-0.5">
             {navItems.filter(item => {
               // Hide admin-only pages from non-admins
               if ((item as any).adminOnly && user?.role !== "admin") return false;
@@ -57,18 +57,21 @@ export function Navigation({ onSearchClick }: NavigationProps) {
             }).map((item) => {
               const Icon = item.icon;
               const isActive = location === item.path || location.startsWith(item.path + "/");
-              
+
               return (
                 <Link key={item.path} href={item.path}>
                   <span
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+                    title={item.label}
+                    className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
                       isActive
                         ? "bg-cyan-500/10 text-cyan-400"
                         : "text-slate-400 hover:text-white hover:bg-slate-800/50"
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {/* Primary items show labels once there's room; secondary admin items stay
+                        icon-only (title tooltip) so the bar doesn't overflow for admins. */}
+                    {!(item as any).adminOnly && <span className="hidden xl:inline">{item.label}</span>}
                   </span>
                 </Link>
               );
@@ -84,18 +87,18 @@ export function Navigation({ onSearchClick }: NavigationProps) {
             onClick={onSearchClick}
           >
             <Search className="h-4 w-4" />
-            <span className="hidden sm:inline">Search</span>
-            <span className="hidden sm:inline text-xs text-slate-500 ml-1">⌘K</span>
+            <span className="hidden 2xl:inline">Search</span>
+            <span className="hidden 2xl:inline text-xs text-slate-500 ml-1">⌘K</span>
           </Button>
           
           {user && (
             <div className="flex items-center gap-2 pl-3 border-l border-slate-700">
               {user.email?.includes('demo') && (
-                <Badge variant="secondary" className="bg-purple-600/20 text-purple-300 border-purple-600/30">
-                  🎭 Demo Mode
+                <Badge variant="secondary" className="bg-purple-600/20 text-purple-300 border-purple-600/30 whitespace-nowrap">
+                  🎭 <span className="hidden lg:inline ml-1">Demo</span>
                 </Badge>
               )}
-              <span className="text-sm text-slate-400">{user.email}</span>
+              <span className="hidden xl:inline text-sm text-slate-400 max-w-[180px] truncate">{user.email}</span>
               <Button
                 variant="ghost"
                 size="sm"
