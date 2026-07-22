@@ -37,19 +37,19 @@ export default function Home() {
   // Show login screen if not authenticated (after all hooks)
   if (!authLoading && !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
           <div className="flex flex-col items-center gap-6">
             <div className="relative">
               <img
                 src={APP_LOGO}
                 alt={APP_TITLE}
-                className="h-20 w-20 rounded-xl object-cover shadow"
+                className="h-20 w-20 rounded-xl object-cover"
               />
             </div>
             <div className="text-center space-y-2">
               <h1 className="text-2xl font-bold tracking-tight">{APP_TITLE}</h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-slate-300">
                 Your AI-powered sales intelligence command center
               </p>
             </div>
@@ -81,7 +81,7 @@ export default function Home() {
   // Beautiful loading state
   if (accountsLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="min-h-screen bg-background">
         <div className="container py-12 space-y-8 max-w-7xl">
           {/* Hero skeleton */}
           <div className="space-y-4">
@@ -146,157 +146,137 @@ export default function Home() {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+    <div className="min-h-screen bg-background">
       <DemoTour />
-      <div className="container py-12 space-y-8 max-w-7xl">
-        {/* Hero Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl shadow-lg">
-                <Target className="h-8 w-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-5xl font-bold tracking-tight">
-                  Good morning{repName ? `, ${repName}` : ''} 👋
-                </h1>
-                <p className="text-muted-foreground text-lg mt-1">
-                  {isKnownRep ? (
-                    <span className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      {repTerritory} Territory &bull; {repSize}
-                    </span>
-                  ) : (
-                    "Here's your sales intelligence for today"
-                  )}
-                </p>
+      <div className="container py-10 space-y-8 max-w-7xl">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-slate-900 border border-slate-800 flex-shrink-0">
+              <Target className="h-6 w-6 text-purple-400" />
+            </div>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">
+                Good morning{repName ? `, ${repName}` : ''}
+              </h1>
+              <div className="mt-1 text-sm text-slate-300">
+                {isKnownRep ? (
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4 text-slate-400" />
+                    {repTerritory} Territory
+                    <span className="text-slate-600">•</span>
+                    {repSize}
+                  </span>
+                ) : (
+                  "Here's your sales intelligence for today"
+                )}
               </div>
             </div>
-            {/* Rep View Switcher */}
-            <RepSwitcher />
           </div>
+          {/* Rep View Switcher */}
+          <RepSwitcher />
         </div>
 
         {/* AI Assistant Bar */}
         <ContextualAI context="home" placeholder="Ask AI: What should I prioritize today?" />
 
-        {/* Key Stats - Beautiful Cards - All Clickable */}
-        <div className="grid gap-6 md:grid-cols-4">
+        {/* Key Stats — tonal cards, mono numbers, status paired with a word */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <Link href="/accounts">
-            <Card className="card-elevated border-l-4 border-l-indigo-500 cursor-pointer hover:scale-[1.02] transition-transform">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Accounts</CardTitle>
-                <Building2 className="h-5 w-5 text-indigo-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{totalAccounts}</div>
-                <p className="text-xs text-muted-foreground mt-1">{isKnownRep ? `${repTerritory} territory` : 'Across all territories'}</p>
-              </CardContent>
+            <Card className="h-full p-5 transition-colors hover:border-cyan-500/40">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-400">Total Accounts</span>
+                <Building2 className="h-4 w-4 text-slate-500" />
+              </div>
+              <div className="mt-3 text-3xl font-bold font-mono tabular-nums text-foreground">{totalAccounts}</div>
+              <p className="mt-1 text-xs text-slate-400">{isKnownRep ? `${repTerritory} territory` : 'Across all territories'}</p>
             </Card>
           </Link>
 
           <Link href="/accounts?filter=hot">
-            <Card className="card-elevated border-l-4 border-l-red-500 cursor-pointer hover:scale-[1.02] transition-transform">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Hot Leads</CardTitle>
-                <Flame className="h-5 w-5 text-red-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-red-600 dark:text-red-400">{hotLeads}</div>
-                <p className="text-xs text-muted-foreground mt-1">Intent score 70+</p>
-              </CardContent>
+            <Card className="h-full p-5 transition-colors hover:border-cyan-500/40">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-400">Hot Leads</span>
+                <Flame className="h-4 w-4 text-red-400" />
+              </div>
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-3xl font-bold font-mono tabular-nums text-red-400">{hotLeads}</span>
+                <span className="text-xs font-semibold text-red-400">🔥 Hot</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-400">Intent score 70+</p>
             </Card>
           </Link>
 
           <Link href="/accounts?filter=warm">
-            <Card className="card-elevated border-l-4 border-l-orange-500 cursor-pointer hover:scale-[1.02] transition-transform">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Warm Leads</CardTitle>
-                <TrendingUp className="h-5 w-5 text-orange-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{warmLeads}</div>
-                <p className="text-xs text-muted-foreground mt-1">Engagement, intent 70+, or calls</p>
-              </CardContent>
+            <Card className="h-full p-5 transition-colors hover:border-cyan-500/40">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-400">Warm Leads</span>
+                <TrendingUp className="h-4 w-4 text-amber-400" />
+              </div>
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-3xl font-bold font-mono tabular-nums text-amber-400">{warmLeads}</span>
+                <span className="text-xs font-semibold text-amber-400">🌡️ Warm</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-400">Engagement, intent 70+, or calls</p>
             </Card>
           </Link>
 
           <Link href="/opportunities">
-            <Card className="card-elevated border-l-4 border-l-emerald-500 cursor-pointer hover:scale-[1.02] transition-transform">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Pipeline Revenue</CardTitle>
-                <DollarSign className="h-5 w-5 text-emerald-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                  ${(opportunitiesData
-                    ?.filter((opp: any) => String(opp.status ?? "Open").toLowerCase() === "open")
-                    .reduce((sum: number, opp: any) => sum + (Number(opp.amount) || 0), 0) || 0).toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Total open pipeline</p>
-              </CardContent>
+            <Card className="h-full p-5 transition-colors hover:border-cyan-500/40">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-400">Pipeline Revenue</span>
+                <DollarSign className="h-4 w-4 text-emerald-400" />
+              </div>
+              <div className="mt-3 text-3xl font-bold font-mono tabular-nums text-emerald-400">
+                ${(opportunitiesData
+                  ?.filter((opp: any) => String(opp.status ?? "Open").toLowerCase() === "open")
+                  .reduce((sum: number, opp: any) => sum + (Number(opp.amount) || 0), 0) || 0).toLocaleString()}
+              </div>
+              <p className="mt-1 text-xs text-slate-400">Total open pipeline</p>
             </Card>
           </Link>
 
           <Link href="/accounts?filter=unworked">
-            <Card className="card-elevated border-l-4 border-l-cyan-500 cursor-pointer hover:scale-[1.02] transition-transform">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">6QA Opportunity Gap</CardTitle>
-                <Target className="h-5 w-5 text-cyan-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-red-500">{sixsenseSummary?.sixQA?.unworked || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {sixsenseSummary?.sixQA?.total ? `${Math.round(((sixsenseSummary.sixQA.unworked || 0) / sixsenseSummary.sixQA.total) * 100)}%` : '0%'} unworked 6QAs
-                </p>
-              </CardContent>
+            <Card className="h-full p-5 transition-colors hover:border-cyan-500/40">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-400">6QA Opportunity Gap</span>
+                <Target className="h-4 w-4 text-slate-500" />
+              </div>
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-3xl font-bold font-mono tabular-nums text-amber-400">{sixsenseSummary?.sixQA?.unworked || 0}</span>
+                <span className="text-xs font-semibold text-amber-400">⚠ Unworked</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-400">
+                <span className="font-mono">{sixsenseSummary?.sixQA?.total ? `${Math.round(((sixsenseSummary.sixQA.unworked || 0) / sixsenseSummary.sixQA.total) * 100)}%` : '0%'}</span> of 6QAs unworked
+              </p>
             </Card>
           </Link>
         </div>
 
-        {/* Quick Actions Bar - Horizontal at top */}
-        <div className="grid gap-4 md:grid-cols-4">
+        {/* Quick Actions */}
+        <div className="grid gap-4 sm:grid-cols-2">
           <Link href="/outreach">
-            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg">
-                  <Mail className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <div className="font-semibold text-sm">Generate Outreach</div>
-                  <div className="text-xs text-muted-foreground">AI-powered emails</div>
-                </div>
-              </CardContent>
+            <Card className="h-full p-4 flex items-center gap-3 transition-colors hover:border-cyan-500/40">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex-shrink-0">
+                <Mail className="h-5 w-5 text-cyan-400" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-semibold text-sm text-foreground">Generate Outreach</div>
+                <div className="text-xs text-slate-400">AI-powered emails</div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-slate-500 ml-auto flex-shrink-0" />
             </Card>
           </Link>
-          {/* HIDDEN - Gong Calls removed per user request
-          {!isDemoUser && (
-            <Link href="/calls">
-              <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg">
-                    <Phone className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm">Review Gong Calls</div>
-                    <div className="text-xs text-muted-foreground">Latest conversations</div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          )}
-          */}
           <Link href="/top-accounts">
-            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full border-indigo-500/30">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg">
-                  <Target className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <div className="font-semibold text-sm">Top 15 Accounts</div>
-                  <div className="text-xs text-muted-foreground">By Region & AE</div>
-                </div>
-              </CardContent>
+            <Card className="h-full p-4 flex items-center gap-3 transition-colors hover:border-cyan-500/40">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10 border border-purple-500/20 flex-shrink-0">
+                <Target className="h-5 w-5 text-purple-400" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-semibold text-sm text-foreground">Top 15 Accounts</div>
+                <div className="text-xs text-slate-400">By region &amp; AE</div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-slate-500 ml-auto flex-shrink-0" />
             </Card>
           </Link>
         </div>
@@ -309,10 +289,12 @@ export default function Home() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Flame className="h-6 w-6 text-red-500" />
-                  <h2 className="text-2xl font-bold">Priority Actions</h2>
+                  <Flame className="h-5 w-5 text-red-400" />
+                  <h2 className="text-xl font-bold text-foreground">Priority Actions</h2>
                 </div>
-                <Badge className="badge-danger">{priorityActions.length} urgent</Badge>
+                <Badge className="bg-red-500/15 text-red-400 border-red-500/30">
+                  <span className="font-mono">{priorityActions.length}</span>&nbsp;urgent
+                </Badge>
               </div>
 
               <div className="space-y-3">
@@ -339,11 +321,11 @@ export default function Home() {
                                    vectorScores?.tier === 4 ? 'text-orange-500' : 'text-red-500';
                   
                   return (
-                    <Card key={action.id} className="card-elevated hover:scale-[1.01] transition-transform cursor-pointer group">
+                    <Card key={action.id} className="transition-colors hover:border-cyan-500/40 cursor-pointer group">
                       <CardContent className="p-6">
                         <div className="flex items-start gap-4">
                           {/* Company Logo */}
-                          <div className="w-12 h-12 rounded-lg bg-card border border-border flex-shrink-0 overflow-hidden">
+                          <div className="w-12 h-12 rounded-lg bg-slate-900 border border-slate-800 flex-shrink-0 overflow-hidden">
                             <img
                               src={`https://logo.clearbit.com/${action.domain}`}
                               alt={`${action.name} logo`}
@@ -351,7 +333,7 @@ export default function Home() {
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
-                                target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br ${action.gradient} rounded-lg"><svg class="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>`;
+                                target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-slate-800 text-slate-300 font-bold text-lg">${action.name.charAt(0)}</div>`;
                               }}
                             />
                           </div>
@@ -360,21 +342,24 @@ export default function Home() {
                             <div className="flex items-start justify-between">
                               <div>
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                  <h3 className="font-semibold text-lg">ENGAGE {action.name}</h3>
+                                  <h3 className="font-semibold text-lg text-foreground">{action.name}</h3>
                                   {vectorScores && (
-                                    <Badge variant="outline" className={`${tierColor} border-current font-bold`}>
-                                      VECTOR {vectorScores.composite}/100
+                                    <Badge variant="outline" className={`${tierColor} border-current font-semibold`}>
+                                      VECTOR <span className="font-mono ml-1">{vectorScores.composite}/100</span>
                                     </Badge>
                                   )}
                                   {isLostOpp && (
-                                    <Badge variant="destructive" className="bg-orange-600 hover:bg-orange-700">
-                                      ⚠️ LOST OPP
+                                    <Badge className="bg-red-500/15 text-red-400 border-red-500/30">
+                                      ⚠️ Lost opp
                                     </Badge>
                                   )}
                                 </div>
-                                <p className="text-sm text-muted-foreground">
-                                  Intent: {action.intentScore} | {action.industry} | {action.employeeCount?.toLocaleString() || ''} employees | {action.region}
-                                  {accountOwner && <span> | Owner: {accountOwner}</span>}
+                                <p className="text-sm text-slate-400">
+                                  Intent <span className="font-mono text-cyan-400">{action.intentScore}</span>
+                                  {' · '}{action.industry}
+                                  {' · '}<span className="font-mono">{action.employeeCount?.toLocaleString() || ''}</span> employees
+                                  {' · '}{action.region}
+                                  {accountOwner && <span> · Owner: {accountOwner}</span>}
                                 </p>
                                 {/* Temperature & Activity Badges */}
                                 <div className="flex flex-wrap gap-2 mt-1">
@@ -389,28 +374,28 @@ export default function Home() {
                                   )}
                                   {daysSinceLastEngagement !== null && daysSinceLastEngagement !== undefined && (
                                     <Badge variant="outline" className={`text-xs ${
-                                      daysSinceLastEngagement <= 7 ? 'border-green-500 text-green-400' :
-                                      daysSinceLastEngagement <= 30 ? 'border-yellow-500 text-yellow-400' :
-                                      'border-red-500 text-red-400'
+                                      daysSinceLastEngagement <= 7 ? 'border-emerald-500/40 text-emerald-400' :
+                                      daysSinceLastEngagement <= 30 ? 'border-amber-500/40 text-amber-400' :
+                                      'border-red-500/40 text-red-400'
                                     }`}>
-                                      {daysSinceLastEngagement}d since activity
+                                      <span className="font-mono">{daysSinceLastEngagement}d</span>&nbsp;since activity
                                     </Badge>
                                   )}
                                   {salesActivities > 0 && (
-                                    <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
-                                      {salesActivities} activities
+                                    <Badge variant="outline" className="text-xs border-slate-700 text-slate-300">
+                                      <span className="font-mono">{salesActivities}</span>&nbsp;activities
                                     </Badge>
                                   )}
                                   {opportunityStatus && (
-                                    <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-400">
+                                    <Badge variant="outline" className="text-xs border-slate-700 text-slate-300">
                                       Opp: {opportunityStatus}
                                     </Badge>
                                   )}
                                 </div>
                               </div>
                               {vectorScores && (
-                                <div className="text-right text-xs text-muted-foreground">
-                                  <span className={tierColor}>Tier {vectorScores.tier}</span>
+                                <div className="text-right text-xs">
+                                  <span className={tierColor}>Tier <span className="font-mono">{vectorScores.tier}</span></span>
                                 </div>
                               )}
                             </div>
@@ -418,7 +403,7 @@ export default function Home() {
                             {/* Primary Contact Highlight */}
                             {primaryContact && (
                               <div className="p-2 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                                <p className="text-sm">
+                                <p className="text-sm text-slate-200">
                                   <span className="font-semibold text-purple-400">Contact:</span>{' '}
                                   <span className="font-medium">{primaryContact}</span>
                                 </p>
@@ -428,72 +413,72 @@ export default function Home() {
                             {/* Top Contacts */}
                             {action.topContacts && action.topContacts.length > 0 && (
                               <div className="space-y-1">
-                                <p className="text-xs font-semibold text-muted-foreground uppercase">
-                                  Top Contacts ({action.contactCount}){keyContactsCount > 0 && ` • ${keyContactsCount} executives`}:
+                                <p className="text-xs font-semibold text-slate-400">
+                                  Top Contacts (<span className="font-mono">{action.contactCount}</span>){keyContactsCount > 0 && <> · <span className="font-mono">{keyContactsCount}</span> executives</>}
                                 </p>
                                 {action.topContacts.slice(0, 3).map((contact: any, idx: number) => (
-                                  <p key={idx} className="text-sm">
+                                  <p key={idx} className="text-sm text-slate-200">
                                     • <span className={`font-medium ${contact.isKeyTitle ? 'text-purple-400' : ''}`}>{contact.name}</span>
-                                    {contact.title && <span className="text-muted-foreground"> - {contact.title}</span>}
+                                    {contact.title && <span className="text-slate-400"> — {contact.title}</span>}
                                   </p>
                                 ))}
                               </div>
                             )}
 
-                            {/* Why Now with VECTOR context */}
+                            {/* Why Now — the evidence behind the action */}
                             <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                              <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">Why Now:</p>
-                              <p className="text-sm text-foreground">{action.whyNow}</p>
+                              <p className="text-xs font-semibold text-amber-400 mb-1">Why now</p>
+                              <p className="text-sm text-slate-100">{action.whyNow}</p>
                             </div>
 
-                            {/* Next Best Action */}
-                            <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-                              <p className="text-xs font-semibold text-primary mb-1">Next Best Action:</p>
-                              <p className="text-sm text-foreground">{action.nextBestAction}</p>
+                            {/* Next Best Action — the AI recommendation (cyan = signal) */}
+                            <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+                              <p className="text-xs font-semibold text-cyan-400 mb-1">Next best action</p>
+                              <p className="text-sm text-slate-100">{action.nextBestAction}</p>
                             </div>
 
                             {/* Engagement Metrics */}
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
                                 Last: {engagementMetrics?.lastCallFormatted || 'Never'}
                               </span>
                               {engagementMetrics?.daysSinceLastCall !== null && engagementMetrics?.daysSinceLastCall !== undefined && (
                                 <Badge variant="outline" className={`text-xs ${
-                                  engagementMetrics.daysSinceLastCall <= 7 ? 'border-green-500 text-green-500' :
-                                  engagementMetrics.daysSinceLastCall <= 30 ? 'border-yellow-500 text-yellow-500' :
-                                  'border-red-500 text-red-500'
+                                  engagementMetrics.daysSinceLastCall <= 7 ? 'border-emerald-500/40 text-emerald-400' :
+                                  engagementMetrics.daysSinceLastCall <= 30 ? 'border-amber-500/40 text-amber-400' :
+                                  'border-red-500/40 text-red-400'
                                 }`}>
-                                  {engagementMetrics.daysSinceLastCall}d ago
+                                  <span className="font-mono">{engagementMetrics.daysSinceLastCall}d</span>&nbsp;ago
                                 </Badge>
                               )}
-                              <span>•</span>
-                              <span>{engagementMetrics?.totalCalls || 0} calls</span>
-                              <span>•</span>
-                              <span>{action.contactCount} contacts</span>
+                              <span className="text-slate-600">•</span>
+                              <span><span className="font-mono text-slate-300">{engagementMetrics?.totalCalls || 0}</span> calls</span>
+                              <span className="text-slate-600">•</span>
+                              <span><span className="font-mono text-slate-300">{action.contactCount}</span> contacts</span>
                             </div>
 
                             {/* VECTOR Score Breakdown (compact) */}
                             {vectorScores && (
                               <div className="flex gap-2 text-xs">
-                                <span className="px-2 py-0.5 bg-blue-500/20 rounded" title="Engagement">
-                                  E:{vectorScores.engagement}
+                                <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300" title="Engagement">
+                                  E:<span className="font-mono">{vectorScores.engagement}</span>
                                 </span>
-                                <span className="px-2 py-0.5 bg-green-500/20 rounded" title="Conversion">
-                                  C:{vectorScores.conversion}
+                                <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300" title="Conversion">
+                                  C:<span className="font-mono">{vectorScores.conversion}</span>
                                 </span>
-                                <span className="px-2 py-0.5 bg-purple-500/20 rounded" title="Strategic">
-                                  S:{vectorScores.strategic}
+                                <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300" title="Strategic">
+                                  S:<span className="font-mono">{vectorScores.strategic}</span>
                                 </span>
-                                <span className="px-2 py-0.5 bg-orange-500/20 rounded" title="Timing">
-                                  T:{vectorScores.timing}
+                                <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300" title="Timing">
+                                  T:<span className="font-mono">{vectorScores.timing}</span>
                                 </span>
                               </div>
                             )}
 
                             {/* Action Button */}
                             <div>
-                              <Button asChild variant="outline" size="sm" className="group-hover:border-primary group-hover:text-primary">
+                              <Button asChild variant="outline" size="sm" className="group-hover:border-cyan-500/50 group-hover:text-cyan-400">
                                 <Link href={`/accounts/${action.id}`}>
                                   View Full Account
                                   <ArrowRight className="ml-2 h-4 w-4" />

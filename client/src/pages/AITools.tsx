@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -100,8 +100,8 @@ export default function AITools() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-            <Brain className="w-6 h-6 text-white" />
+          <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">
+            <Brain className="w-6 h-6 text-purple-400" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white">AI Tools</h1>
@@ -114,7 +114,7 @@ export default function AITools() {
           <Button
             variant={activeTool === 'analyzer' ? 'default' : 'ghost'}
             onClick={() => setActiveTool('analyzer')}
-            className={activeTool === 'analyzer' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+            className={activeTool === 'analyzer' ? 'bg-cyan-500 text-slate-950 hover:bg-blue-500' : ''}
           >
             <Mic className="w-4 h-4 mr-2" />
             Call Analyzer
@@ -122,7 +122,7 @@ export default function AITools() {
           <Button
             variant={activeTool === 'processor' ? 'default' : 'ghost'}
             onClick={() => setActiveTool('processor')}
-            className={activeTool === 'processor' ? 'bg-cyan-600 hover:bg-cyan-700' : ''}
+            className={activeTool === 'processor' ? 'bg-cyan-500 text-slate-950 hover:bg-blue-500' : ''}
           >
             <BarChart3 className="w-4 h-4 mr-2" />
             Data Processor
@@ -130,7 +130,7 @@ export default function AITools() {
           <Button
             variant={activeTool === 'content' ? 'default' : 'ghost'}
             onClick={() => setActiveTool('content')}
-            className={activeTool === 'content' ? 'bg-green-600 hover:bg-green-700' : ''}
+            className={activeTool === 'content' ? 'bg-cyan-500 text-slate-950 hover:bg-blue-500' : ''}
           >
             <PenTool className="w-4 h-4 mr-2" />
             Content Studio
@@ -166,7 +166,29 @@ function CallAnalyzerTool({ sharedReportId }: { sharedReportId: string | null })
   const [showSavedReports, setShowSavedReports] = useState(false);
   const [viewingReport, setViewingReport] = useState<SavedReport | null>(null);
   const [copied, setCopied] = useState(false);
-  
+  const transcriptFileRef = useRef<HTMLInputElement>(null);
+
+  const handleTranscriptFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!['txt', 'vtt', 'srt'].includes(ext || '')) {
+      toast.error('Unsupported file. Use .txt, .vtt, or .srt');
+      if (transcriptFileRef.current) transcriptFileRef.current.value = '';
+      return;
+    }
+    try {
+      const text = await file.text();
+      setTranscript(text);
+      setViewingReport(null);
+      setResult(null);
+      toast.success(`Loaded ${file.name}`);
+    } catch {
+      toast.error('Could not read that file');
+    }
+    if (transcriptFileRef.current) transcriptFileRef.current.value = '';
+  };
+
   const analyzeMutation = trpc.tools.analyzeTranscript.useMutation({
     onSuccess: (data) => {
       setResult(data);
@@ -360,7 +382,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
 
         {savedReportsQuery.isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+            <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
           </div>
         ) : savedReportsQuery.data?.length === 0 ? (
           <Card className="bg-card/50 border-dashed">
@@ -412,8 +434,8 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-              <Brain className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
+              <Brain className="w-5 h-5 text-cyan-400" />
             </div>
             <div>
               <h2 className="text-xl font-semibold text-white">
@@ -628,15 +650,23 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-xs text-muted-foreground">Interest Level</p>
-                  <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                    result.betaInterest.interestLevel.toLowerCase().includes('high') 
-                      ? 'bg-green-500/20 text-green-400'
-                      : result.betaInterest.interestLevel.toLowerCase().includes('medium')
-                      ? 'bg-yellow-500/20 text-yellow-400'
-                      : 'bg-gray-500/20 text-gray-400'
-                  }`}>
-                    {result.betaInterest.interestLevel}
-                  </span>
+                  {(() => {
+                    const level = result.betaInterest.interestLevel.toLowerCase();
+                    const isHigh = level.includes('high');
+                    const isMed = level.includes('medium');
+                    const glyph = isHigh ? '▲' : isMed ? '●' : '▽';
+                    const tone = isHigh
+                      ? 'bg-slate-800 text-emerald-400'
+                      : isMed
+                      ? 'bg-slate-800 text-amber-400'
+                      : 'bg-slate-800 text-slate-400';
+                    return (
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${tone}`}>
+                        <span aria-hidden="true">{glyph}</span>
+                        {result.betaInterest.interestLevel}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Apprehensions</p>
@@ -845,8 +875,8 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
     <div className="space-y-8">
       {/* Hero Section */}
       <div className="text-center space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto">
-          <Brain className="w-8 h-8 text-white" />
+        <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center mx-auto">
+          <Brain className="w-8 h-8 text-cyan-400" />
         </div>
         <h2 className="text-3xl font-bold text-white">
           {analyzerMode === 'single' && 'Turn Transcripts into Actionable Insights'}
@@ -866,7 +896,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           variant={analyzerMode === 'single' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setAnalyzerMode('single')}
-          className={analyzerMode === 'single' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+          className={analyzerMode === 'single' ? 'bg-cyan-500 text-slate-950 hover:bg-blue-500' : ''}
         >
           <FileText className="w-4 h-4 mr-2" />
           Single Analysis
@@ -875,7 +905,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           variant={analyzerMode === 'compare' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setAnalyzerMode('compare')}
-          className={analyzerMode === 'compare' ? 'bg-cyan-600 hover:bg-cyan-700' : ''}
+          className={analyzerMode === 'compare' ? 'bg-cyan-500 text-slate-950 hover:bg-blue-500' : ''}
         >
           <Layers className="w-4 h-4 mr-2" />
           Compare
@@ -884,7 +914,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           variant={analyzerMode === 'bulk' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setAnalyzerMode('bulk')}
-          className={analyzerMode === 'bulk' ? 'bg-green-600 hover:bg-green-700' : ''}
+          className={analyzerMode === 'bulk' ? 'bg-cyan-500 text-slate-950 hover:bg-blue-500' : ''}
         >
           <Users className="w-4 h-4 mr-2" />
           Bulk
@@ -914,10 +944,21 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         </CardHeader>
         <CardContent className="space-y-4">
           {/* File Upload */}
-          <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-purple-500/50 transition-colors cursor-pointer">
-            <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+          <input
+            type="file"
+            ref={transcriptFileRef}
+            onChange={handleTranscriptFile}
+            accept=".txt,.vtt,.srt"
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => transcriptFileRef.current?.click()}
+            className="w-full border-2 border-dashed border-slate-700 rounded-lg p-6 text-center hover:border-cyan-500/60 transition-colors cursor-pointer"
+          >
+            <Upload className="w-8 h-8 text-cyan-400 mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">Drop a file or click to upload (.txt, .vtt, .srt)</p>
-          </div>
+          </button>
 
           <div className="text-center text-sm text-muted-foreground">— or paste directly —</div>
 
@@ -930,8 +971,8 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           />
 
           {/* Analyze Button */}
-          <Button 
-            className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+          <Button
+            className="w-full bg-cyan-500 text-slate-950 hover:bg-blue-500"
             size="lg"
             onClick={handleAnalyze}
             disabled={analyzeMutation.isPending || transcript.length < 100}
@@ -989,7 +1030,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           </Card>
           <div className="lg:col-span-2">
             <Button
-              className="w-full bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-700 hover:to-purple-700"
+              className="w-full bg-cyan-500 text-slate-950 hover:bg-blue-500"
               size="lg"
               onClick={handleCompareAnalyze}
               disabled={analyzeMutation.isPending}
@@ -1071,7 +1112,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           )}
 
           <Button
-            className="w-full bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-700 hover:to-cyan-700"
+            className="w-full bg-cyan-500 text-slate-950 hover:bg-blue-500"
             size="lg"
             onClick={handleBulkAnalyze}
             disabled={bulkProcessing || bulkTranscripts.length === 0}
@@ -1090,20 +1131,20 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-3 bg-red-500/10 rounded-lg">
-                    <p className="text-2xl font-bold text-red-400">{bulkResults.reduce((acc, r) => acc + r.topRisks.length, 0)}</p>
+                  <div className="text-center p-3 bg-slate-800/60 rounded-lg">
+                    <p className="text-2xl font-mono font-semibold text-red-400">{bulkResults.reduce((acc, r) => acc + r.topRisks.length, 0)}</p>
                     <p className="text-xs text-muted-foreground">Total Risks</p>
                   </div>
-                  <div className="text-center p-3 bg-yellow-500/10 rounded-lg">
-                    <p className="text-2xl font-bold text-yellow-400">{bulkResults.reduce((acc, r) => acc + r.topChallenges.length, 0)}</p>
+                  <div className="text-center p-3 bg-slate-800/60 rounded-lg">
+                    <p className="text-2xl font-mono font-semibold text-yellow-400">{bulkResults.reduce((acc, r) => acc + r.topChallenges.length, 0)}</p>
                     <p className="text-xs text-muted-foreground">Total Challenges</p>
                   </div>
-                  <div className="text-center p-3 bg-cyan-500/10 rounded-lg">
-                    <p className="text-2xl font-bold text-cyan-400">{bulkResults.reduce((acc, r) => acc + r.nextSteps.length, 0)}</p>
+                  <div className="text-center p-3 bg-slate-800/60 rounded-lg">
+                    <p className="text-2xl font-mono font-semibold text-cyan-400">{bulkResults.reduce((acc, r) => acc + r.nextSteps.length, 0)}</p>
                     <p className="text-xs text-muted-foreground">Action Items</p>
                   </div>
-                  <div className="text-center p-3 bg-purple-500/10 rounded-lg">
-                    <p className="text-2xl font-bold text-purple-400">{bulkResults.filter(r => r.betaInterest.interestLevel.toLowerCase().includes('high')).length}</p>
+                  <div className="text-center p-3 bg-slate-800/60 rounded-lg">
+                    <p className="text-2xl font-mono font-semibold text-emerald-400">{bulkResults.filter(r => r.betaInterest.interestLevel.toLowerCase().includes('high')).length}</p>
                     <p className="text-xs text-muted-foreground">High Interest</p>
                   </div>
                 </div>
@@ -1147,18 +1188,51 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
 // ============ DATA PROCESSOR TOOL ============
 function DataProcessorTool() {
   const [file, setFile] = useState<File | null>(null);
-  const [processing, setProcessing] = useState(false);
+  const [rowCount, setRowCount] = useState<number | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const ext = f.name.split('.').pop()?.toLowerCase();
+    if (ext !== 'csv') {
+      toast.error('Please choose a .csv file');
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+    if (f.size > 10 * 1024 * 1024) {
+      toast.error('File exceeds the 10MB limit');
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+    setFile(f);
+    try {
+      const text = await f.text();
+      // Count non-empty lines minus the header row.
+      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+      setRowCount(Math.max(0, lines.length - 1));
+    } catch {
+      setRowCount(null);
+    }
+    toast.success(`Selected ${f.name}`);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const clearFile = () => {
+    setFile(null);
+    setRowCount(null);
+  };
 
   return (
     <div className="space-y-8">
       {/* Hero Section */}
       <div className="text-center space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center mx-auto">
-          <BarChart3 className="w-8 h-8 text-white" />
+        <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center mx-auto">
+          <BarChart3 className="w-8 h-8 text-cyan-400" />
         </div>
         <h2 className="text-3xl font-bold text-white">Process & Enrich Your Data</h2>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Upload CSV files to clean, deduplicate, and enrich your account and contact data with AI-powered insights.
+          Upload a CSV to clean, deduplicate, and enrich your account and contact data. The full mapping pipeline runs in the CSV Processor.
         </p>
       </div>
 
@@ -1171,11 +1245,45 @@ function DataProcessorTool() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:border-cyan-500/50 transition-colors cursor-pointer">
-            <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-lg font-medium text-white mb-2">Drop your CSV file here</p>
-            <p className="text-sm text-muted-foreground">or click to browse (max 10MB)</p>
-          </div>
+          <input
+            type="file"
+            ref={fileRef}
+            onChange={handleFile}
+            accept=".csv"
+            className="hidden"
+          />
+          {file ? (
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-700 bg-slate-800/60 p-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <File className="w-8 h-8 text-cyan-400 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-medium text-white truncate">{file.name}</p>
+                  <p className="text-xs text-muted-foreground font-mono">
+                    {(file.size / 1024).toFixed(1)} KB
+                    {rowCount !== null && ` · ${rowCount} rows`}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <Button variant="ghost" size="sm" onClick={() => fileRef.current?.click()}>
+                  Replace
+                </Button>
+                <Button variant="ghost" size="sm" onClick={clearFile}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="w-full border-2 border-dashed border-slate-700 rounded-lg p-12 text-center hover:border-cyan-500/60 transition-colors cursor-pointer"
+            >
+              <Upload className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
+              <p className="text-lg font-medium text-white mb-2">Drop your CSV file here</p>
+              <p className="text-sm text-muted-foreground">or click to browse (max 10MB)</p>
+            </button>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
@@ -1183,7 +1291,7 @@ function DataProcessorTool() {
               { title: 'Enrich Data', desc: 'Add missing company info and contact details', icon: Sparkles },
               { title: 'Validate', desc: 'Verify emails, domains, and company info', icon: Check },
             ].map((feature, i) => (
-              <div key={i} className="p-4 bg-card rounded-lg border border-border">
+              <div key={i} className="p-4 bg-slate-800/40 rounded-lg border border-slate-700">
                 <feature.icon className="w-6 h-6 text-cyan-400 mb-2" />
                 <h3 className="font-medium text-white text-sm">{feature.title}</h3>
                 <p className="text-xs text-muted-foreground">{feature.desc}</p>
@@ -1191,23 +1299,24 @@ function DataProcessorTool() {
             ))}
           </div>
 
-          <Button 
-            className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+          {/* The multi-step mapping/transform pipeline lives on the dedicated
+              CSV Processor page — hand off there rather than faking processing here. */}
+          <Button
+            asChild
+            className="w-full bg-cyan-500 text-slate-950 hover:bg-blue-500"
             size="lg"
-            disabled={!file || processing}
           >
-            {processing ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-5 h-5 mr-2" />
-                Process Data
-              </>
-            )}
+            <Link href="/csv-processor">
+              <Sparkles className="w-5 h-5 mr-2" />
+              Continue in CSV Processor
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Link>
           </Button>
+          <p className="text-xs text-muted-foreground text-center">
+            {file
+              ? 'Re-select your file in the CSV Processor to map fields and run clean, dedupe, and enrich.'
+              : 'Field mapping, clean, dedupe, and enrich run in the full CSV Processor.'}
+          </p>
         </CardContent>
       </Card>
     </div>
@@ -1261,8 +1370,8 @@ function ContentStudioTool() {
     <div className="space-y-8">
       {/* Hero Section */}
       <div className="text-center space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center mx-auto">
-          <PenTool className="w-8 h-8 text-white" />
+        <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center mx-auto">
+          <PenTool className="w-8 h-8 text-cyan-400" />
         </div>
         <h2 className="text-3xl font-bold text-white">AI Content Studio</h2>
         <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -1286,11 +1395,11 @@ function ContentStudioTool() {
                     onClick={() => setContentType(type.id as typeof contentType)}
                     className={`p-4 rounded-lg border text-left transition-all ${
                       contentType === type.id
-                        ? 'border-green-500 bg-green-500/10'
-                        : 'border-border hover:border-green-500/50'
+                        ? 'border-cyan-500 bg-cyan-500/10'
+                        : 'border-slate-700 hover:border-cyan-500/50'
                     }`}
                   >
-                    <type.icon className={`w-5 h-5 mb-2 ${contentType === type.id ? 'text-green-400' : 'text-muted-foreground'}`} />
+                    <type.icon className={`w-5 h-5 mb-2 ${contentType === type.id ? 'text-cyan-400' : 'text-muted-foreground'}`} />
                     <h3 className="font-medium text-white text-sm">{type.name}</h3>
                     <p className="text-xs text-muted-foreground">{type.desc}</p>
                   </button>
@@ -1313,7 +1422,7 @@ function ContentStudioTool() {
                 <option value="">No account selected</option>
                 {accountsQuery.data?.map((account: any) => (
                   <option key={account.id} value={account.id}>
-                    {account.name} (Intent: {account.intentScore || 0})
+                    {account.name} — Intent {account.intentScore || 0}
                   </option>
                 ))}
               </select>
@@ -1350,8 +1459,8 @@ function ContentStudioTool() {
             </CardContent>
           </Card>
 
-          <Button 
-            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+          <Button
+            className="w-full bg-cyan-500 text-slate-950 hover:bg-blue-500"
             size="lg"
             onClick={handleGenerate}
             disabled={generating || generateMutation.isPending}
