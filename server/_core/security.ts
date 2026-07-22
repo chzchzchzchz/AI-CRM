@@ -159,22 +159,35 @@ export function loginRateLimiter(req: Request, res: Response, next: NextFunction
 export function recordFailedLogin(clientIP: string): void {
   const now = Date.now();
   const record = loginAttemptStore.get(clientIP);
-  
-  if (!record || record.lockUntil < now) {
-    // Start fresh count
-    loginAttemptStore.set(clientIP, {
-      count: 1,
-      lockUntil: 0,
-    });
+
+  // Start fresh only when there is no record, or a PRIOR lockout has since expired.
+  // (The old check `record.lockUntil < now` was always true while lockUntil was 0, so the
+  // counter reset to 1 on every failure and the lockout never triggered.)
+  if (!record || (record.lockUntil > 0 && record.lockUntil <= now)) {
+    loginAttemptStore.set(clientIP, { count: 1, lockUntil: 0 });
     return;
   }
-  
+
   record.count++;
-  
+
   if (record.count >= LOGIN_MAX_ATTEMPTS) {
     record.lockUntil = now + LOGIN_LOCKOUT_MS;
     console.warn(`[Security] IP ${clientIP} locked out after ${record.count} failed login attempts`);
   }
+}
+
+/**
+ * Whether an IP is currently locked out from logging in, with the remaining seconds.
+ * The tRPC login path calls this to ENFORCE the lockout — the express loginRateLimiter
+ * only guards express routes, not the tRPC endpoint.
+ */
+export function getLoginLockout(clientIP: string): { locked: boolean; retryAfterSeconds: number } {
+  const record = loginAttemptStore.get(clientIP);
+  const now = Date.now();
+  if (record && record.lockUntil > now) {
+    return { locked: true, retryAfterSeconds: Math.ceil((record.lockUntil - now) / 1000) };
+  }
+  return { locked: false, retryAfterSeconds: 0 };
 }
 
 /**
