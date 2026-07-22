@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
 import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
-import { getPingContactSummaryPrompt } from "./sequences/ping-context";
 import { invokeLLM } from "./_core/llm";
 
 /**
@@ -16,12 +15,12 @@ import { invokeLLM } from "./_core/llm";
  * - Personalized talking points
  * 
  * This summary is combined with account-level summary for deeply personalized email outreach.
- * Supports multiple sequences (Ping, Silverfort, AI, SDO, etc.)
+ * The prompt is generic and config-driven (no vendor/prior-employer specifics).
  */
 
 export async function generateContactSummary(
   contactId: number,
-  sequence: "ping" | "silverfort" | "ai" | "sdo" | "default" = "default"
+  _sequence: "default" = "default"
 ): Promise<string> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -50,18 +49,8 @@ export async function generateContactSummary(
     }
   }
 
-  // Get sequence-specific system prompt
-  let systemPrompt: string;
-
-  if (sequence === "ping") {
-    systemPrompt = getPingContactSummaryPrompt({
-      name: contact.name || "Unknown",
-      title: contact.title || undefined,
-      company: accountName,
-    });
-  } else {
-    // Default prompt for other sequences (to be implemented)
-    systemPrompt = `You are an elite Enterprise Account Executive and strategic advisor for the company.
+  // Generic, config-driven system prompt (no vendor/prior-employer specifics).
+  const systemPrompt = `You are an elite Enterprise Account Executive and strategic advisor for the company.
 
 Your task is to generate a personalized contact brief for ${contact.name || "this person"}.
 
@@ -79,7 +68,6 @@ Generate a structured brief with these sections:
 - BEST ANGLE
 - PERSONALIZED TALKING POINTS
 - COMMUNICATION STYLE`;
-  }
 
   // Prepare context for LLM
   const userMessage = `Generate a contact brief for ${contact.name} at ${accountName}. Include information about their role, influence, and the best way to approach them.`;
