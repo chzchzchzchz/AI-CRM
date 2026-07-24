@@ -254,17 +254,36 @@ function loadDemoDb(): any {
     return initial;
   }
   try {
-    const data = fs.readFileSync(DEMO_DB_PATH, 'utf-8');
-    return JSON.parse(data);
+    // mtime-validated in-memory cache: a dashboard page fires many batched queries, and
+    // re-reading + re-parsing the whole JSON store for each one dominated request time.
+    // The mtime check keeps the cache correct when another process (tests, scripts)
+    // rewrites the file.
+    const mtime = fs.statSync(DEMO_DB_PATH).mtimeMs;
+    if (demoDbCache && demoDbCacheMtime === mtime && demoDbCachePath === DEMO_DB_PATH) {
+      return demoDbCache;
+    }
+    const data = JSON.parse(fs.readFileSync(DEMO_DB_PATH, 'utf-8'));
+    demoDbCache = data;
+    demoDbCacheMtime = mtime;
+    demoDbCachePath = DEMO_DB_PATH;
+    return data;
   } catch (e) {
     console.error("[Database] Error reading demo-db.json", e);
     return getInitialDemoData();
   }
 }
 
+let demoDbCache: any = null;
+let demoDbCacheMtime = 0;
+let demoDbCachePath = "";
+
 function saveDemoDb(data: any): void {
   try {
     fs.writeFileSync(DEMO_DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    // Keep the read cache coherent with what we just wrote.
+    demoDbCache = data;
+    demoDbCacheMtime = fs.statSync(DEMO_DB_PATH).mtimeMs;
+    demoDbCachePath = DEMO_DB_PATH;
   } catch (e) {
     console.error("[Database] Error saving demo-db.json", e);
   }
