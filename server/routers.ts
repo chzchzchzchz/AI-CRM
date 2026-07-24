@@ -710,9 +710,26 @@ Or go to the Admin Panel: /admin/approval`
       .query(async ({ input }) => {
         return await getPersonById(input.id);
       }),
-    list: protectedProcedure.query(async () => {
-      return await getAllPeople();
-    }),
+    // Bounded by default so the Contacts page doesn't ship all 10k rows (~8MB) on load.
+    // A search term filters server-side across the FULL set, so no contact is unreachable
+    // even though only a page is returned. Rich client-side filters run over what's returned.
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().optional(), search: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        const all = await getAllPeople();
+        const q = input?.search?.trim().toLowerCase();
+        const cap = input?.limit ?? 1500;
+        if (q) {
+          const hits = all.filter((c: any) =>
+            (c.name || "").toLowerCase().includes(q) ||
+            (c.title || "").toLowerCase().includes(q) ||
+            (c.company || "").toLowerCase().includes(q) ||
+            (c.email || "").toLowerCase().includes(q)
+          );
+          return hits.slice(0, Math.max(cap, 500));
+        }
+        return all.slice(0, cap);
+      }),
     listPaginated: protectedProcedure
       .input(z.object({ limit: z.number().default(100), offset: z.number().default(0) }))
       .query(async ({ input }) => {
@@ -731,9 +748,17 @@ Or go to the Admin Panel: /admin/approval`
     prioritize: protectedProcedure
       .input(z.object({ accountId: z.number().optional() }))
       .query(async ({ input }) => {
-        const contacts = input.accountId
+        let contacts = input.accountId
           ? await getPeopleByCompany(String(input.accountId))
           : await getAllPeople();
+        // Never feed thousands of contacts into a single LLM prompt. Without an account,
+        // rank the most senior contacts (a real signal) and cap the set the model scores.
+        if (!input.accountId && contacts.length > 60) {
+          const rank: Record<string, number> = { "C-Suite": 0, VP: 1, Director: 2, Manager: 3, Individual: 4 };
+          contacts = [...contacts]
+            .sort((a: any, b: any) => (rank[a.seniority] ?? 5) - (rank[b.seniority] ?? 5))
+            .slice(0, 50);
+        }
         const account = input.accountId ? await getAccountById(input.accountId) : null;
         return await prioritizeContacts(contacts, account || {});
       }),
