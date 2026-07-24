@@ -62,6 +62,7 @@ export default function Insights() {
   const { data: engagement } = trpc.sixsenseAnalytics.getEngagement.useQuery();
   const { data: buyingStages } = trpc.sixsenseAnalytics.getBuyingStages.useQuery();
   const { data: sixQAPerformance } = trpc.sixsenseAnalytics.get6QAPerformance.useQuery();
+  const { data: brain } = trpc.intel.brain.useQuery();
 
   const [activeFilter, setActiveFilter] = useState<ActiveFilter | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
@@ -232,6 +233,40 @@ export default function Insights() {
     <div className="min-h-screen bg-background">
       <Navigation />
       <div className="container py-8">
+        {/* Workspace Brain — what this tool knows that no single silo does. Verified
+            figures computed by code; lessons accumulated by the AI across learning cycles,
+            each citing the evidence it saw. */}
+        {brain && (
+          <div className="mb-6 rounded-lg border border-cyan-500/25 bg-slate-900 p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
+              <h2 className="text-sm font-semibold text-cyan-300">
+                Workspace Brain
+                <span className="ml-2 font-mono text-xs text-slate-400">
+                  cycle {brain.cycles}{brain.learning ? " · learning…" : ""}
+                </span>
+              </h2>
+              <span className="font-mono text-xs text-slate-400">
+                {brain.snapshot.totals.accounts} accts · ${brain.snapshot.totals.openPipeline.toLocaleString()} open · {brain.snapshot.totals.hotAccounts} hot
+              </span>
+            </div>
+            {brain.snapshot.risks.length > 0 && (
+              <p className="text-xs text-amber-300 mb-2">⚠ {brain.snapshot.risks[0]}</p>
+            )}
+            {brain.lessons.length > 0 ? (
+              <ul className="space-y-1.5">
+                {brain.lessons.slice(0, 4).map((l: any, i: number) => (
+                  <li key={i} className="text-sm text-slate-200 leading-snug">
+                    • {l.lesson}
+                    {l.evidence && <span className="text-xs text-slate-400"> — {l.evidence}</span>}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-slate-400">No accumulated lessons yet — the brain learns in the background as data changes.</p>
+            )}
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
