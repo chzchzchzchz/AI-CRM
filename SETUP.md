@@ -8,8 +8,8 @@ demo data with free local AI.
 
 ## 1. Run it (zero config, demo data)
 ```bash
-pnpm install            # or: npm install
-DEMO_MODE=true npm run dev
+pnpm install
+DEMO_MODE=true pnpm dev
 ```
 Open http://localhost:3333 — boots with 16 demo accounts, 40 contacts, a $1.02M pipeline. No
 database, no Salesforce, no keys required (DEMO_MODE reads `demo-db.json`).

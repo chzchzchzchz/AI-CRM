@@ -217,7 +217,7 @@ New signups land in an admin approval queue (`admin-approval-api.ts`).
 |---|---|---|
 | App boots | `pnpm dev` | UI at :3333, 16 demo accounts |
 | Types clean | `npx tsc --noEmit` | 0 errors |
-| Tests green | `npm test` | 76 passed, 1 skipped |
+| Tests green | `pnpm test` | 88 passed, 1 skipped |
 | Clay ingest | curl in §5.3 | `success: true, action: created` |
 | Clay idempotent | re-POST same `clayId` | `action: updated`, no duplicate row |
 | Salesforce path | `salesforce.testConnection` | clear connected/not-configured result |
