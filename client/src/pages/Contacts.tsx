@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,9 +37,18 @@ export default function ContactsEnhanced() {
   const [currentPage, setCurrentPage] = useState(1);
   const CONTACTS_PER_PAGE = 50;
 
-  const { data: contacts, isLoading } = trpc.people.list.useQuery(undefined, {
-    staleTime: 3 * 60 * 1000
-  });
+  // Debounce the search so typing queries the server across ALL contacts (not just the
+  // bounded first page), without a request per keystroke.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const { data: contacts, isLoading } = trpc.people.list.useQuery(
+    { search: debouncedSearch || undefined },
+    { staleTime: 3 * 60 * 1000 }
+  );
 
   // Get accounts for territory filtering
   const { data: accounts } = trpc.accounts.list.useQuery(undefined, {
