@@ -409,9 +409,14 @@ Or go to the Admin Panel: /admin/approval`
             isApproved: true,
             role: "user",
           });
-          
-          // TODO: Send email with temporary password
-          return { success: true, tempPassword };
+
+          // Deliver the temp password by email. Only echo it in the API response in demo
+          // mode — returning credentials to the caller in production is a leak.
+          const { sendAccessApprovalEmail } = await import("./_core/email");
+          await sendAccessApprovalEmail(req.email, req.name, tempPassword).catch(() => false);
+          return process.env.DEMO_MODE === "true"
+            ? { success: true, tempPassword }
+            : { success: true };
         }
         
         return { success: true };
@@ -461,9 +466,33 @@ Or go to the Admin Panel: /admin/approval`
         if (!account?.domain) {
           throw new Error('Account not found or missing domain');
         }
-        
-        // AI-powered enrichment will be implemented
-        return { message: 'AI enrichment coming soon', accountId: input.id };
+
+        const { enrichAccount } = await import("./sixsense");
+        const data = await enrichAccount(account.domain);
+        if (!data) {
+          return {
+            success: false,
+            accountId: input.id,
+            message: process.env.SIXSENSE_API_KEY
+              ? `No 6sense match for ${account.domain}.`
+              : "6sense is not configured (set SIXSENSE_API_KEY).",
+          };
+        }
+
+        // Persist the enrichment onto the account (only fields 6sense actually returned).
+        const updates: Record<string, any> = { lastSixsenseSync: new Date() };
+        if (data.industry) updates.industry = data.industry;
+        if (data.employeeCount) updates.employeeCount = data.employeeCount;
+        if (data.annualRevenue) updates.revenue = String(data.annualRevenue);
+        if (data.region) updates.region = data.region;
+        if (typeof data.intentScore === "number") updates.intentScore = data.intentScore;
+        if (data.buyingStage) updates.sixsenseBuyingStage = data.buyingStage;
+        if (data.profileFit) updates.sixsenseProfileFit = data.profileFit;
+        if (data.sixsenseId) updates.sixsenseId = data.sixsenseId;
+        if (data.segments?.length) updates.sixsenseSegments = JSON.stringify(data.segments);
+        await updateAccount(input.id, updates as any);
+
+        return { success: true, accountId: input.id, enrichment: data, message: "Account enriched from 6sense." };
       }),
     getTimeline: protectedProcedure
       .input(z.object({ accountId: z.number(), limit: z.number().default(50) }))
@@ -570,9 +599,26 @@ Or go to the Admin Panel: /admin/approval`
         return await getOpportunitiesByAccountId(input.accountId);
       }),
     upsert: protectedProcedure
-      .input(z.any()) // Simplified for now
+      .input(z.object({
+        id: z.number().optional(),
+        accountId: z.number(),
+        name: z.string().min(1),
+        amount: z.union([z.number(), z.string()]).optional(),
+        stage: z.string().optional(),
+        status: z.enum(["Open", "Won", "Lost"]).optional(),
+        probability: z.number().min(0).max(100).optional(),
+        expectedCloseDate: z.union([z.string(), z.date()]).optional(),
+        aiSuccessScore: z.number().min(0).max(100).optional(),
+        aiInsights: z.string().optional(),
+        sfdcOpportunityId: z.string().optional(),
+      }))
       .mutation(async ({ input }) => {
-        return await upsertOpportunity(input);
+        const payload: any = { ...input };
+        if (typeof payload.amount === "string") payload.amount = payload.amount.replace(/[^0-9.-]/g, "");
+        if (typeof payload.expectedCloseDate === "string" && payload.expectedCloseDate) {
+          payload.expectedCloseDate = new Date(payload.expectedCloseDate);
+        }
+        return await upsertOpportunity(payload);
       }),
     aiScore: protectedProcedure
       .input(z.object({ id: z.number() }))

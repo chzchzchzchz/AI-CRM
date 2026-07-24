@@ -155,17 +155,38 @@ export const validationRouter = router({
     }),
 
   /**
-   * Get all validation issues (from memory, not cached yet)
+   * Get all validation issues — computed deterministically from the current data (no LLM /
+   * web search, so it's instant). Surfaces missing/malformed fields on accounts and
+   * contacts. The heavier evidence-backed checks live in validateAllAccounts/Contacts.
    */
   getAllIssues: protectedProcedure.query(async () => {
-    // For now, return empty array since we don't have cache table yet
-    // This will be populated after running validation
+    const accounts = await getAllAccounts();
+    const contacts = await getAllPeople();
+    const issues: ValidationIssue[] = [];
+    const now = new Date();
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    for (const a of accounts as any[]) {
+      const base = { type: "account" as const, entityId: a.id, entityName: a.name || `Account ${a.id}`, confidence: 1, lastChecked: now };
+      if (!a.domain) issues.push({ ...base, id: `acc-${a.id}-domain`, severity: "warning", field: "domain", issue: "Missing domain", suggestion: "Add the company website domain." });
+      if (!a.industry) issues.push({ ...base, id: `acc-${a.id}-industry`, severity: "info", field: "industry", issue: "Missing industry", suggestion: "Set the industry for better segmentation." });
+      if (!a.employeeCount) issues.push({ ...base, id: `acc-${a.id}-emp`, severity: "info", field: "employeeCount", issue: "Missing employee count", suggestion: "Add headcount for sizing." });
+      if (a.intentScore != null && (a.intentScore < 0 || a.intentScore > 100)) issues.push({ ...base, id: `acc-${a.id}-intent`, severity: "critical", field: "intentScore", issue: `Intent score out of range (${a.intentScore})`, suggestion: "Intent score must be 0–100." });
+    }
+    for (const c of contacts as any[]) {
+      const base = { type: "contact" as const, entityId: c.id, entityName: c.name || `Contact ${c.id}`, confidence: 1, lastChecked: now };
+      if (!c.email) issues.push({ ...base, id: `con-${c.id}-email`, severity: "warning", field: "email", issue: "Missing email", suggestion: "Add an email to enable outreach." });
+      else if (!emailRe.test(c.email)) issues.push({ ...base, id: `con-${c.id}-email-bad`, severity: "critical", field: "email", issue: `Malformed email (${c.email})`, suggestion: "Fix the email format." });
+      if (!c.title) issues.push({ ...base, id: `con-${c.id}-title`, severity: "info", field: "title", issue: "Missing title", suggestion: "Add a job title." });
+      if (!c.accountId) issues.push({ ...base, id: `con-${c.id}-acct`, severity: "warning", field: "accountId", issue: "Not linked to an account", suggestion: "Associate this contact with an account." });
+    }
+
     return {
-      issues: [] as ValidationIssue[],
-      totalIssues: 0,
-      criticalIssues: 0,
-      warningIssues: 0,
-      infoIssues: 0
+      issues,
+      totalIssues: issues.length,
+      criticalIssues: issues.filter((i) => i.severity === "critical").length,
+      warningIssues: issues.filter((i) => i.severity === "warning").length,
+      infoIssues: issues.filter((i) => i.severity === "info").length,
     };
   }),
 
