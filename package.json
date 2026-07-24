@@ -97,7 +97,7 @@
     "@types/qrcode": "^1.5.5",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
-    "esbuild": "^0.25.10",
+    "esbuild": "^0.28.1",
     "prettier": "^3.6.2",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
