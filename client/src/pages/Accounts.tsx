@@ -233,7 +233,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   const stats: { key: string; label: string; value: number; Icon: any; text: string; hint: string; filter: string }[] = [
     { key: "hot", label: "Hot leads", value: hotCount, Icon: Flame, text: "text-red-400", hint: "Intent 70+", filter: "hot" },
     { key: "warm", label: "Warm leads", value: warmCount, Icon: TrendingUp, text: "text-amber-400", hint: "Intent 40–69", filter: "warm" },
-    { key: "all", label: "Total pipeline", value: filteredAccounts.length, Icon: Building2, text: "text-foreground", hint: "Reset intent filter", filter: "all" },
+    { key: "all", label: "Total accounts", value: filteredAccounts.length, Icon: Building2, text: "text-foreground", hint: "Reset intent filter", filter: "all" },
   ];
 
   return (
