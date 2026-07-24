@@ -85,7 +85,15 @@ export const appRouter = router({
             console.error("[deepThink.sales] could not hydrate account signals:", e);
           }
         }
-        return await deepThinkSales({ ...input, accountData });
+        // Feed the continuously-learning workspace brain into every sales-AI answer, so the
+        // model reasons with accumulated portfolio knowledge, not just this one record.
+        let additionalContext = input.additionalContext;
+        try {
+          const { getBrainDigest, brainContextBlock } = await import("./intel/brain");
+          const digest = await getBrainDigest();
+          additionalContext = [brainContextBlock(digest), additionalContext].filter(Boolean).join("\n\n");
+        } catch { /* brain unavailable → proceed without it */ }
+        return await deepThinkSales({ ...input, accountData, additionalContext });
       }),
     help: protectedProcedure
       .input(z.object({

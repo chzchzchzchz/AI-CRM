@@ -18,7 +18,7 @@ async function getRecentIntentSpikes(limit: number = 10): Promise<any[]> {
  */
 
 export interface ContextEntry {
-  type: 'account_insight' | 'contact_insight' | 'call_analysis' | 'user_interaction' | 'search_pattern' | 'recommendation' | 'learning' | 'account_brief';
+  type: 'account_insight' | 'contact_insight' | 'call_analysis' | 'user_interaction' | 'search_pattern' | 'recommendation' | 'learning' | 'account_brief' | 'company_brain';
   key: string;
   value: string;
   metadata?: any;
@@ -123,7 +123,14 @@ export async function conversationWithMemory(params: {
   const { query, accountId, contactId, userId, conversationHistory = [] } = params;
 
   // Build context from storage
-  const storedContext = await buildAIContext({ accountId, contactId, includeHistory: true });
+  let storedContext = await buildAIContext({ accountId, contactId, includeHistory: true });
+
+  // Prepend the continuously-learning workspace brain (verified snapshot + accumulated
+  // lessons) so chat answers draw on the whole portfolio's knowledge.
+  try {
+    const { getBrainDigest, brainContextBlock } = await import("./intel/brain");
+    storedContext = `${brainContextBlock(await getBrainDigest())}\n${storedContext}`;
+  } catch { /* brain unavailable → chat still works */ }
 
   // Check for intent spike queries
   let intentSpikeContext = '';
