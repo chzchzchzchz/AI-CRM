@@ -89,9 +89,16 @@ export async function uploadDocument(
   
   // Generate unique file key
   const fileKey = `knowledge-base/${userId}/${Date.now()}-${fileName}`;
-  
-  // Upload to S3
-  const { url: fileUrl } = await storagePut(fileKey, content, mimeType);
+
+  // Best-effort archive of the original file to object storage. RAG retrieval only needs the
+  // indexed chunks below, so a missing/unconfigured store must not block the upload — we just
+  // skip keeping a downloadable copy of the original.
+  let fileUrl = "";
+  try {
+    ({ url: fileUrl } = await storagePut(fileKey, content, mimeType));
+  } catch (err) {
+    console.warn(`[RAG] Object storage unavailable; indexing "${fileName}" without archiving the original.`);
+  }
   
   // Create document record
   const [docResult] = await db.insert(knowledgeBase).values({

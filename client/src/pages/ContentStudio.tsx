@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,23 @@ export default function ContentStudio() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const kbInputRef = useRef<HTMLInputElement>(null);
+  const uploadDocMutation = trpc.tools.uploadDocument.useMutation({
+    onSuccess: (_r, vars) => toast.success(`Added "${vars.fileName}" to the knowledge base`),
+    onError: (e) => toast.error(e.message || "Upload failed"),
+  });
+  const handleKbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
+    if (!file) return;
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    if (!["txt", "md", "csv", "json", "html"].includes(ext)) {
+      toast.error("Text documents only (.txt, .md, .csv, .json, .html).");
+      return;
+    }
+    const content = await file.text();
+    uploadDocMutation.mutate({ fileName: file.name, content, mimeType: file.type || "text/plain", category: "general" });
+  };
   const [ragSources, setRagSources] = useState<string[]>([]);
 
   const generateMutation = trpc.tools.generateWebinarContent.useMutation();
@@ -292,9 +309,10 @@ export default function ContentStudio() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full" onClick={() => toast.info('Knowledge base upload coming soon!')}>
+              <input ref={kbInputRef} type="file" accept=".txt,.md,.csv,.json,.html" className="hidden" onChange={handleKbUpload} />
+              <Button variant="outline" className="w-full" disabled={uploadDocMutation.isPending} onClick={() => kbInputRef.current?.click()}>
                 <Upload className="h-4 w-4 mr-2" />
-                Upload Documents
+                {uploadDocMutation.isPending ? "Uploading…" : "Upload Documents"}
               </Button>
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>Supported formats:</p>
