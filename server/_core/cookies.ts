@@ -39,10 +39,22 @@ export function getSessionCookieOptions(
   //       ? hostname
   //       : undefined;
 
+  const secure = isSecureRequest(req);
+
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "none",
-    secure: isSecureRequest(req),
+    // `SameSite=None` is only legal alongside `Secure`; browsers silently drop
+    // a cookie that sets one without the other. Because `secure` is derived
+    // from the request, hardcoding "none" meant every plain-HTTP origin — a
+    // local `pnpm dev`, an internal deployment behind a non-TLS proxy — issued
+    // a cookie the browser threw away. Login appeared to succeed and the next
+    // request was already unauthenticated.
+    //
+    // "none" is still used over HTTPS, where the app may be framed or called
+    // cross-site. Otherwise "lax" keeps the session working for top-level
+    // navigation and same-origin XHR, which is all this app needs.
+    sameSite: secure ? "none" : "lax",
+    secure,
   };
 }
