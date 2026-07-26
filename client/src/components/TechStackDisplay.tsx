@@ -19,7 +19,7 @@ export function TechStackDisplay({ techStack, securityStack }: TechStackDisplayP
     <Card className="card-elevated border-l-4 border-l-cyan-500">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <BarChart3 className="h-5 w-5 text-cyan-500" />
+          <BarChart3 className="h-5 w-5 text-accent" />
           Technology Stack
         </CardTitle>
         <CardDescription>
@@ -31,7 +31,7 @@ export function TechStackDisplay({ techStack, securityStack }: TechStackDisplayP
         {hasTechStack && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Server className="h-4 w-4 text-cyan-500" />
+              <Server className="h-4 w-4 text-accent" />
               <h4 className="font-semibold text-sm">Technology Stack</h4>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -39,7 +39,7 @@ export function TechStackDisplay({ techStack, securityStack }: TechStackDisplayP
                 <Badge 
                   key={idx} 
                   variant="secondary" 
-                  className="bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/20"
+                  className="bg-accent-subtle text-accent dark:text-accent border-accent/30"
                 >
                   {tech}
                 </Badge>
@@ -52,7 +52,7 @@ export function TechStackDisplay({ techStack, securityStack }: TechStackDisplayP
         {hasSecurityStack && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-red-500" />
+              <Shield className="h-4 w-4 text-critical" />
               <h4 className="font-semibold text-sm">Security Stack</h4>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -60,7 +60,7 @@ export function TechStackDisplay({ techStack, securityStack }: TechStackDisplayP
                 <Badge 
                   key={idx} 
                   variant="secondary" 
-                  className="bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/20"
+                  className="bg-critical-subtle text-critical dark:text-critical border-critical/30"
                 >
                   {tool}
                 </Badge>

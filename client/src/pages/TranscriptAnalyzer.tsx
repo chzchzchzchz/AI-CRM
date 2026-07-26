@@ -189,15 +189,15 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container py-8 max-w-6xl">
+    <div>
+      <div className="container py-1 max-w-6xl">
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
-          <div className="bg-purple-600 p-3 rounded-xl">
-            <FileText className="w-6 h-6 text-white" />
+          <div className="bg-accent p-3 rounded-md">
+            <FileText className="w-6 h-6 text-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Transcript Analyzer</h1>
+            <h1 className="text-2xl font-semibold">Transcript Analyzer</h1>
             <p className="text-muted-foreground">Turn call transcripts into actionable sales insights</p>
           </div>
         </div>
@@ -226,7 +226,7 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
                 <CardContent className="space-y-4">
                   {/* File Upload Zone */}
                   <div 
-                    className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-purple-500 transition-colors cursor-pointer"
+                    className="border-2 border-dashed border-border rounded-sm p-6 text-center hover:border-accent/30 transition-colors cursor-pointer"
                     onClick={() => document.getElementById('transcript-file-input')?.click()}
                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     onDrop={(e) => {
@@ -284,7 +284,7 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
                     <Button 
                       onClick={handleAnalyze} 
                       disabled={!transcript.trim() || analyzeMutation.isPending}
-                      className="bg-purple-600 hover:bg-purple-700"
+                      className="bg-accent hover:bg-accent"
                     >
                       {analyzeMutation.isPending ? (
                         <>
@@ -307,7 +307,7 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
             {result && (
               <div className="space-y-6">
                 {/* Action Bar */}
-                <div className="flex items-center justify-between bg-card p-4 rounded-lg border">
+                <div className="flex items-center justify-between bg-card p-4 rounded-sm border">
                   <div className="flex items-center gap-4">
                     <Input
                       placeholder="Report name..."
@@ -345,7 +345,7 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <pre className="whitespace-pre-wrap text-sm font-mono bg-muted p-4 rounded-lg max-h-64 overflow-y-auto">
+                      <pre className="whitespace-pre-wrap text-sm font-mono bg-muted p-4 rounded-sm max-h-64 overflow-y-auto">
                         {transcript}
                       </pre>
                     </CardContent>
@@ -353,7 +353,7 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
                 )}
 
                 {/* About the Prospect */}
-                <SectionCard title="About the Prospect" icon={<User className="w-5 h-5 text-purple-500" />}>
+                <SectionCard title="About the Prospect" icon={<User className="w-5 h-5 text-accent" />}>
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Job Title</span>
@@ -369,7 +369,7 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
                     </div>
                     <div>
                       <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">AI Tools (Enterprise)</span>
-                      <p className="font-medium text-purple-400">{result.aboutProspect.aiToolsUsed.enterprise.join(', ') || 'None'}</p>
+                      <p className="font-medium text-accent">{result.aboutProspect.aiToolsUsed.enterprise.join(', ') || 'None'}</p>
                     </div>
                     <div>
                       <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">AI Tools (Other)</span>
@@ -384,17 +384,17 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
 
                 {/* Risks and Challenges */}
                 <div className="grid grid-cols-2 gap-6">
-                  <SectionCard title="Top 3 Risks" icon={<AlertTriangle className="w-5 h-5 text-red-500" />}>
+                  <SectionCard title="Top 3 Risks" icon={<AlertTriangle className="w-5 h-5 text-critical" />}>
                     <ListItems items={result.topRisks} />
                   </SectionCard>
-                  <SectionCard title="Top 3 Challenges" icon={<Activity className="w-5 h-5 text-orange-500" />}>
+                  <SectionCard title="Top 3 Challenges" icon={<Activity className="w-5 h-5 text-caution" />}>
                     <ListItems items={result.topChallenges} />
                   </SectionCard>
                 </div>
 
                 {/* Security Stack and Urgency */}
                 <div className="grid grid-cols-2 gap-6">
-                  <SectionCard title="Current Security Stack" icon={<Shield className="w-5 h-5 text-cyan-500" />}>
+                  <SectionCard title="Current Security Stack" icon={<Shield className="w-5 h-5 text-accent" />}>
                     <div className="space-y-4">
                       <div>
                         <span className="text-xs font-bold text-muted-foreground uppercase">Tools Used Today</span>
@@ -406,32 +406,32 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
                       </div>
                     </div>
                   </SectionCard>
-                  <SectionCard title="Drivers of Urgency" icon={<Activity className="w-5 h-5 text-yellow-500" />}>
+                  <SectionCard title="Drivers of Urgency" icon={<Activity className="w-5 h-5 text-caution" />}>
                     <p>{result.urgencyDrivers}</p>
                   </SectionCard>
                 </div>
 
                 {/* Budget and Feedback */}
-                <SectionCard title="Budget, Timeline & Priority" icon={<DollarSign className="w-5 h-5 text-green-500" />}>
+                <SectionCard title="Budget, Timeline & Priority" icon={<DollarSign className="w-5 h-5 text-positive" />}>
                   <p>{result.budgetTimelinePriority}</p>
                 </SectionCard>
 
                 <div className="grid grid-cols-2 gap-6">
-                  <SectionCard title="Pitch & Demo Feedback" icon={<MessageSquare className="w-5 h-5 text-blue-500" />}>
+                  <SectionCard title="Pitch & Demo Feedback" icon={<MessageSquare className="w-5 h-5 text-accent" />}>
                     <ListItems items={result.feedbackPoints} />
                   </SectionCard>
-                  <SectionCard title="Beta Interest" icon={<Star className="w-5 h-5 text-yellow-500" />}>
+                  <SectionCard title="Beta Interest" icon={<Star className="w-5 h-5 text-caution" />}>
                     <div className="space-y-3">
                       <div>
                         <span className="text-xs font-bold text-muted-foreground uppercase">Interest Level</span>
-                        <p className="font-medium text-lg text-purple-400">{result.betaInterest.interestLevel}</p>
+                        <p className="font-medium text-lg text-accent">{result.betaInterest.interestLevel}</p>
                       </div>
                       <div>
                         <span className="text-xs font-bold text-muted-foreground uppercase">Apprehensions</span>
                         <p>{result.betaInterest.apprehensions || 'None mentioned'}</p>
                       </div>
                       {result.betaInterest.interestQuote && (
-                        <div className="bg-muted border-l-2 border-purple-500 pl-3 py-2 italic">
+                        <div className="bg-muted border-l-2 border-accent/30 pl-3 py-2 italic">
                           "{result.betaInterest.interestQuote}"
                         </div>
                       )}
@@ -440,10 +440,10 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
                 </div>
 
                 {/* Top Quotes */}
-                <SectionCard title="Top Quotes" icon={<Quote className="w-5 h-5 text-purple-500" />}>
+                <SectionCard title="Top Quotes" icon={<Quote className="w-5 h-5 text-accent" />}>
                   <div className="space-y-4">
                     {result.topQuotes.map((quote, idx) => (
-                      <div key={idx} className="bg-muted border-l-2 border-purple-500 pl-4 py-3 italic">
+                      <div key={idx} className="bg-muted border-l-2 border-accent/30 pl-4 py-3 italic">
                         "{quote}"
                       </div>
                     ))}
@@ -452,14 +452,14 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
 
                 {/* Additional Insights */}
                 {result.additionalInsights && result.additionalInsights.length > 0 && (
-                  <SectionCard title="Additional Insights" icon={<Sparkles className="w-5 h-5 text-purple-500" />}>
+                  <SectionCard title="Additional Insights" icon={<Sparkles className="w-5 h-5 text-accent" />}>
                     <ListItems items={result.additionalInsights} />
                   </SectionCard>
                 )}
 
                 {/* Next Steps */}
                 {result.nextSteps && result.nextSteps.length > 0 && (
-                  <SectionCard title="Recommended Next Steps" icon={<Activity className="w-5 h-5 text-green-500" />}>
+                  <SectionCard title="Recommended Next Steps" icon={<Activity className="w-5 h-5 text-positive" />}>
                     <ListItems items={result.nextSteps} />
                   </SectionCard>
                 )}
@@ -470,7 +470,7 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
           <TabsContent value="saved" className="space-y-4">
             {reports && reports.length > 0 ? (
               reports.map((report: any) => (
-                <Card key={report.id} className="cursor-pointer hover:border-purple-500 transition-colors">
+                <Card key={report.id} className="cursor-pointer hover:border-accent/30 transition-colors">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>

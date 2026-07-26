@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Navigation } from "@/components/Navigation";
 import { AIAssistant } from "@/components/AIAssistant";
 import { trpc } from "@/lib/trpc";
 import { 
@@ -78,17 +77,16 @@ export default function ContactDetail() {
   };
 
   const getIntentColor = (score: number) => {
-    if (score >= 80) return 'text-red-500';
-    if (score >= 60) return 'text-orange-500';
-    if (score >= 40) return 'text-yellow-500';
-    return 'text-gray-500';
+    if (score >= 80) return 'text-critical';
+    if (score >= 60) return 'text-caution';
+    if (score >= 40) return 'text-caution';
+    return 'text-ink-subtle';
   };
 
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
+      <div>
         <div className="container py-6 max-w-5xl">
           <div className="animate-pulse space-y-4">
             <div className="h-8 w-64 bg-muted rounded" />
@@ -104,9 +102,8 @@ export default function ContactDetail() {
   // Not found state
   if (!contact) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <div className="container py-12 max-w-2xl text-center">
+      <div>
+        <div className="container py-1 max-w-2xl text-center">
           <User className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
           <h3 className="text-2xl font-semibold mb-2">Contact not found</h3>
           <Button asChild><Link href="/contacts"><ArrowLeft className="mr-2 h-4 w-4" />Back</Link></Button>
@@ -118,11 +115,10 @@ export default function ContactDetail() {
   const intentScore = account?.intentScore || 0;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+    <div>
       <AIAssistant context={{ type: "contact", id: personId, name: contact.name || undefined }} />
 
-      <div className="container py-6 space-y-6 max-w-5xl">
+      <div className="container py-1 space-y-5 max-w-5xl">
         {/* Compact Header */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
@@ -131,7 +127,7 @@ export default function ContactDetail() {
             </Button>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold truncate">{contact.name}</h1>
+                <h1 className="text-2xl font-semibold truncate">{contact.name}</h1>
                 {contact.title && (
                   <Badge variant="outline" className="hidden sm:inline-flex">{contact.title}</Badge>
                 )}
@@ -154,12 +150,12 @@ export default function ContactDetail() {
           </div>
           <div className="flex gap-2 flex-shrink-0">
             {contact.phone && (
-              <Button size="sm" variant="outline" className="border-green-500 text-green-500" asChild>
+              <Button size="sm" variant="outline" className="border-positive/30 text-positive" asChild>
                 <a href={`tel:${contact.phone}`}><Phone className="mr-1 h-4 w-4" />Call</a>
               </Button>
             )}
             {contact.email && (
-              <Button size="sm" className="gradient-primary text-white" asChild>
+              <Button size="sm" className="text-foreground" asChild>
                 <a href={`mailto:${contact.email}`}><Mail className="mr-1 h-4 w-4" />Email</a>
               </Button>
             )}
@@ -169,7 +165,7 @@ export default function ContactDetail() {
               </Button>
             )}
             {(contact as any).sfdcContactId && (
-              <Button size="sm" variant="outline" className="border-blue-500 text-blue-500" asChild>
+              <Button size="sm" variant="outline" className="border-accent/30 text-accent" asChild>
                 <a href={`${salesforceInstanceUrl || 'https://login.salesforce.com'}/lightning/r/Contact/${(contact as any).sfdcContactId}/view`} target="_blank">
                   <ExternalLink className="mr-1 h-4 w-4" />Salesforce
                 </a>
@@ -184,7 +180,7 @@ export default function ContactDetail() {
           <Card>
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-sm flex items-center gap-2">
-                <User className="h-4 w-4 text-purple-500" />
+                <User className="h-4 w-4 text-accent" />
                 Contact Details
               </CardTitle>
             </CardHeader>
@@ -201,7 +197,7 @@ export default function ContactDetail() {
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-sm">{contact.email}</span>
                     <button onClick={() => copyToClipboard(contact.email!, 'email')} className="p-1 hover:bg-muted rounded">
-                      {copiedField === 'email' ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                      {copiedField === 'email' ? <Check className="h-3 w-3 text-positive" /> : <Copy className="h-3 w-3" />}
                     </button>
                   </div>
                 </div>
@@ -212,7 +208,7 @@ export default function ContactDetail() {
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{contact.phone}</span>
                     <button onClick={() => copyToClipboard(contact.phone!, 'phone')} className="p-1 hover:bg-muted rounded">
-                      {copiedField === 'phone' ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                      {copiedField === 'phone' ? <Check className="h-3 w-3 text-positive" /> : <Copy className="h-3 w-3" />}
                     </button>
                   </div>
                 </div>
@@ -221,7 +217,7 @@ export default function ContactDetail() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">LinkedIn</span>
                   <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer"
-                     className="flex items-center gap-1 text-blue-500 hover:underline text-sm">
+                     className="flex items-center gap-1 text-accent hover:underline text-sm">
                     View Profile <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
@@ -234,7 +230,7 @@ export default function ContactDetail() {
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-sm flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-indigo-500" />
+                  <Building2 className="h-4 w-4 text-accent" />
                   Account Context
                 </span>
                 {account && (
@@ -283,7 +279,7 @@ export default function ContactDetail() {
           <CardHeader className="py-3 px-4">
             <CardTitle className="text-sm flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-amber-500" />
+                <Sparkles className="h-4 w-4 text-caution" />
                 AI Contact Brief
                 {contact.linkedinUrl && (
                   <Badge variant="outline" className="text-xs gap-1">

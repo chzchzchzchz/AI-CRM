@@ -69,17 +69,17 @@ export default function TopAccounts() {
   const renderAccountCard = (account: any, index: number) => {
     const intentScore = account.intentScoreNum;
     const intentLevel = intentScore >= 70 ? "hot" : intentScore >= 40 ? "warm" : "cold";
-    const badgeClass = intentScore >= 70 ? "bg-red-500/20 text-red-400 border-red-500/30" : 
-                       intentScore >= 40 ? "bg-orange-500/20 text-orange-400 border-orange-500/30" : 
-                       "bg-blue-500/20 text-blue-400 border-blue-500/30";
-    const iconColor = intentScore >= 70 ? "from-red-600 to-orange-600" : 
-                      intentScore >= 40 ? "from-orange-600 to-yellow-600" : 
-                      "from-blue-600 to-cyan-600";
+    const badgeClass = intentScore >= 70 ? "bg-critical-subtle text-critical border-critical/30" : 
+                       intentScore >= 40 ? "bg-caution-subtle text-caution border-caution/30" : 
+                       "bg-accent-subtle text-accent border-accent/30";
+    const iconColor = intentScore >= 70 ? " " : 
+                      intentScore >= 40 ? " " : 
+                      " ";
 
     return (
       <Link key={account.id} href={`/accounts/${account.id}`}>
-        <div className="flex items-center gap-4 p-4 rounded-xl border border-border/50 hover:border-primary/50 hover:bg-accent/50 transition-all cursor-pointer group">
-          <div className={`flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br ${iconColor} text-white font-bold shadow-lg`}>
+        <div className="flex items-center gap-4 p-4 rounded-md border border-border/50 hover:border-primary/50 hover:bg-accent/50 transition-all cursor-pointer group">
+          <div className={`flex items-center justify-center w-10 h-10 rounded-sm bg-accent ${iconColor} text-accent-foreground font-bold shadow-lg`}>
             {index + 1}
           </div>
           <div className="flex-1 min-w-0">
@@ -101,12 +101,12 @@ export default function TopAccounts() {
 
   if (isLoading) {
     return (
-      <div className="container py-8 max-w-7xl">
+      <div className="container py-1 max-w-7xl">
         <div className="space-y-6">
-          <div className="h-12 w-64 skeleton rounded-lg" />
+          <div className="h-12 w-64 skeleton rounded-sm" />
           <div className="grid gap-4">
             {[...Array(10)].map((_, i) => (
-              <div key={i} className="h-20 skeleton rounded-xl" />
+              <div key={i} className="h-20 skeleton rounded-md" />
             ))}
           </div>
         </div>
@@ -115,15 +115,13 @@ export default function TopAccounts() {
   }
 
   return (
-    <div className="container py-8 max-w-7xl">
+    <div className="container py-1 max-w-7xl">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl shadow-lg">
-            <Target className="h-8 w-8 text-white" />
-          </div>
+          <Target className="size-5 shrink-0 text-ink-faint" />
           <div>
-            <h1 className="text-4xl font-bold tracking-tight">Top Accounts</h1>
+            <h1 className="text-xl font-semibold tracking-tight">Top Accounts</h1>
             <p className="text-muted-foreground text-lg">Prioritized accounts by region and AE territory</p>
           </div>
         </div>
@@ -179,19 +177,15 @@ export default function TopAccounts() {
                   <CardContent className="space-y-2">
                     {accountsByRegion[region]?.slice(0, 5).map((account: any, index: number) => (
                       <Link key={account.id} href={`/accounts/${account.id}`}>
-                        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer group">
-                          <span className="w-6 h-6 flex items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold">
+                        <div className="flex items-center gap-3 p-2 rounded-sm hover:bg-accent/50 transition-colors cursor-pointer group">
+                          <span className="w-6 h-6 flex items-center justify-center rounded-sm bg-primary/20 text-primary text-xs font-bold">
                             {index + 1}
                           </span>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{account.name}</p>
                             <p className="text-xs text-muted-foreground">{account.industry || "Unknown"}</p>
                           </div>
-                          <Badge className={`text-xs ${
-                            account.intentScoreNum >= 70 ? "bg-red-500/20 text-red-400" :
-                            account.intentScoreNum >= 40 ? "bg-orange-500/20 text-orange-400" :
-                            "bg-blue-500/20 text-blue-400"
-                          }`}>
+                          <Badge className={`text-xs ${ account.intentScoreNum >= 70 ? "bg-critical-subtle text-critical" : account.intentScoreNum >= 40 ? "bg-caution-subtle text-caution" : "bg-accent-subtle text-accent" }`}>
                             {account.intentScoreNum}
                           </Badge>
                         </div>
@@ -275,19 +269,15 @@ export default function TopAccounts() {
                     <CardContent className="space-y-2">
                       {aeAccounts.slice(0, 5).map((account: any, index: number) => (
                         <Link key={account.id} href={`/accounts/${account.id}`}>
-                          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer group">
-                            <span className="w-6 h-6 flex items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold">
+                          <div className="flex items-center gap-3 p-2 rounded-sm hover:bg-accent/50 transition-colors cursor-pointer group">
+                            <span className="w-6 h-6 flex items-center justify-center rounded-sm bg-primary/20 text-primary text-xs font-bold">
                               {index + 1}
                             </span>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{account.name}</p>
                               <p className="text-xs text-muted-foreground">{account.industry || "Unknown"}</p>
                             </div>
-                            <Badge className={`text-xs ${
-                              account.intentScoreNum >= 70 ? "bg-red-500/20 text-red-400" :
-                              account.intentScoreNum >= 40 ? "bg-orange-500/20 text-orange-400" :
-                              "bg-blue-500/20 text-blue-400"
-                            }`}>
+                            <Badge className={`text-xs ${ account.intentScoreNum >= 70 ? "bg-critical-subtle text-critical" : account.intentScoreNum >= 40 ? "bg-caution-subtle text-caution" : "bg-accent-subtle text-accent" }`}>
                               {account.intentScoreNum}
                             </Badge>
                           </div>
@@ -328,10 +318,10 @@ export default function TopAccounts() {
                     </Badge>
                     {repStats && (
                       <div className="flex gap-2 mt-2">
-                        <Badge className="bg-red-500/20 text-red-400 text-xs">
+                        <Badge className="bg-critical-subtle text-critical text-xs">
                           {repStats.hotLeads} hot
                         </Badge>
-                        <Badge className="bg-orange-500/20 text-orange-400 text-xs">
+                        <Badge className="bg-caution-subtle text-caution text-xs">
                           {repStats.warmLeads} warm
                         </Badge>
                       </div>

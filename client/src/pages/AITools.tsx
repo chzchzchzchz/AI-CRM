@@ -96,15 +96,15 @@ export default function AITools() {
   const sharedReportId = urlParams.get('report');
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-            <Brain className="w-6 h-6 text-white" />
+          <div className="w-12 h-12 rounded-md bg-accent flex items-center justify-center">
+            <Brain className="w-6 h-6 text-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">AI Tools</h1>
+            <h1 className="text-2xl font-semibold text-foreground">AI Tools</h1>
             <p className="text-muted-foreground">Analyze transcripts, process data, and generate content</p>
           </div>
         </div>
@@ -114,7 +114,7 @@ export default function AITools() {
           <Button
             variant={activeTool === 'analyzer' ? 'default' : 'ghost'}
             onClick={() => setActiveTool('analyzer')}
-            className={activeTool === 'analyzer' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+            className={activeTool === 'analyzer' ? 'bg-accent hover:bg-accent' : ''}
           >
             <Mic className="w-4 h-4 mr-2" />
             Call Analyzer
@@ -122,7 +122,7 @@ export default function AITools() {
           <Button
             variant={activeTool === 'processor' ? 'default' : 'ghost'}
             onClick={() => setActiveTool('processor')}
-            className={activeTool === 'processor' ? 'bg-cyan-600 hover:bg-cyan-700' : ''}
+            className={activeTool === 'processor' ? 'bg-accent hover:bg-accent' : ''}
           >
             <BarChart3 className="w-4 h-4 mr-2" />
             Data Processor
@@ -130,7 +130,7 @@ export default function AITools() {
           <Button
             variant={activeTool === 'content' ? 'default' : 'ghost'}
             onClick={() => setActiveTool('content')}
-            className={activeTool === 'content' ? 'bg-green-600 hover:bg-green-700' : ''}
+            className={activeTool === 'content' ? 'bg-positive hover:bg-positive' : ''}
           >
             <PenTool className="w-4 h-4 mr-2" />
             Content Studio
@@ -354,13 +354,13 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
-            <h2 className="text-xl font-semibold text-white">Saved Reports</h2>
+            <h2 className="text-xl font-semibold text-foreground">Saved Reports</h2>
           </div>
         </div>
 
         {savedReportsQuery.isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+            <Loader2 className="w-8 h-8 animate-spin text-accent" />
           </div>
         ) : savedReportsQuery.data?.length === 0 ? (
           <Card className="bg-card/50 border-dashed">
@@ -379,7 +379,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex-1" onClick={() => loadReport(report)}>
-                      <h3 className="font-medium text-white">{report.name}</h3>
+                      <h3 className="font-medium text-foreground">{report.name}</h3>
                       <p className="text-sm text-muted-foreground">
                         {report.analysis.aboutProspect.companyName || 'Unknown Company'} • {report.analysis.aboutProspect.jobTitle || 'Unknown Role'}
                       </p>
@@ -412,11 +412,11 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-              <Brain className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-sm bg-accent flex items-center justify-center">
+              <Brain className="w-5 h-5 text-foreground" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-white">
+              <h2 className="text-xl font-semibold text-foreground">
                 {viewingReport ? viewingReport.name : 'Analysis Report'}
               </h2>
               <p className="text-sm text-muted-foreground">Extracted insights from your transcript</p>
@@ -435,12 +435,12 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
 
         {/* Linked Account Banner */}
         {result.linkedAccount && (
-          <Card className="bg-purple-500/10 border-purple-500/30">
+          <Card className="bg-accent-subtle border-accent/30">
             <CardContent className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Link2 className="w-5 h-5 text-purple-400" />
+                <Link2 className="w-5 h-5 text-accent" />
                 <div>
-                  <p className="text-sm font-medium text-white">Linked to Account: {result.linkedAccount.name}</p>
+                  <p className="text-sm font-medium text-foreground">Linked to Account: {result.linkedAccount.name}</p>
                   <p className="text-xs text-muted-foreground">{result.linkedAccount.industry} • Intent Score: {result.linkedAccount.intentScore}</p>
                 </div>
               </div>
@@ -461,22 +461,22 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <User className="w-4 h-4 text-purple-400" />
+                  <User className="w-4 h-4 text-accent" />
                   About the Prospect
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-xs text-muted-foreground">Job Title</p>
-                  <p className="font-medium text-white">{result.aboutProspect.jobTitle || 'Not mentioned'}</p>
+                  <p className="font-medium text-foreground">{result.aboutProspect.jobTitle || 'Not mentioned'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Industry</p>
-                  <p className="font-medium text-white">{result.aboutProspect.industry || 'Not mentioned'}</p>
+                  <p className="font-medium text-foreground">{result.aboutProspect.industry || 'Not mentioned'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Company</p>
-                  <p className="font-medium text-white">{result.aboutProspect.companyName || 'Not mentioned in transcript'}</p>
+                  <p className="font-medium text-foreground">{result.aboutProspect.companyName || 'Not mentioned in transcript'}</p>
                 </div>
               </CardContent>
             </Card>
@@ -485,22 +485,22 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-cyan-400" />
+                  <Sparkles className="w-4 h-4 text-accent" />
                   AI Tools Used
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-xs text-muted-foreground">Enterprise Accounts</p>
-                  <p className="text-sm text-white">{result.aboutProspect.aiToolsUsed.enterprise.join(', ') || 'None mentioned'}</p>
+                  <p className="text-sm text-foreground">{result.aboutProspect.aiToolsUsed.enterprise.join(', ') || 'None mentioned'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Other / Individual</p>
-                  <p className="text-sm text-white">{result.aboutProspect.aiToolsUsed.other.join(', ') || 'None mentioned'}</p>
+                  <p className="text-sm text-foreground">{result.aboutProspect.aiToolsUsed.other.join(', ') || 'None mentioned'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">How AI is being used</p>
-                  <p className="text-sm text-white">{result.aboutProspect.aiUsageContext || 'Not mentioned'}</p>
+                  <p className="text-sm text-foreground">{result.aboutProspect.aiUsageContext || 'Not mentioned'}</p>
                 </div>
               </CardContent>
             </Card>
@@ -509,18 +509,18 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-blue-400" />
+                  <Shield className="w-4 h-4 text-accent" />
                   Current Security Stack
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-xs text-muted-foreground">Tools Used Today</p>
-                  <p className="text-sm text-white">{result.currentSecurityStack.toolsUsed.join(', ') || 'None mentioned'}</p>
+                  <p className="text-sm text-foreground">{result.currentSecurityStack.toolsUsed.join(', ') || 'None mentioned'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Tools Considered</p>
-                  <p className="text-sm text-white">{result.currentSecurityStack.toolsConsidered.join(', ') || 'None mentioned'}</p>
+                  <p className="text-sm text-foreground">{result.currentSecurityStack.toolsConsidered.join(', ') || 'None mentioned'}</p>
                 </div>
               </CardContent>
             </Card>
@@ -532,7 +532,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-red-400" />
+                  <AlertTriangle className="w-4 h-4 text-critical" />
                   Top Risks
                 </CardTitle>
               </CardHeader>
@@ -540,8 +540,8 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
                 <ul className="space-y-2">
                   {result.topRisks.map((risk, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-400 mt-2 flex-shrink-0" />
-                      <span className="text-white">{risk}</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-critical mt-2 flex-shrink-0" />
+                      <span className="text-foreground">{risk}</span>
                     </li>
                   ))}
                 </ul>
@@ -552,7 +552,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-orange-400" />
+                  <AlertCircle className="w-4 h-4 text-caution" />
                   Top Challenges
                 </CardTitle>
               </CardHeader>
@@ -560,8 +560,8 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
                 <ul className="space-y-2">
                   {result.topChallenges.map((challenge, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="w-1.5 h-1.5 rounded-full bg-orange-400 mt-2 flex-shrink-0" />
-                      <span className="text-white">{challenge}</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-caution mt-2 flex-shrink-0" />
+                      <span className="text-foreground">{challenge}</span>
                     </li>
                   ))}
                 </ul>
@@ -572,12 +572,12 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-yellow-400" />
+                  <Zap className="w-4 h-4 text-caution" />
                   Drivers of Urgency
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-white">{result.urgencyDrivers || 'No urgency drivers identified'}</p>
+                <p className="text-sm text-foreground">{result.urgencyDrivers || 'No urgency drivers identified'}</p>
               </CardContent>
             </Card>
 
@@ -585,12 +585,12 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-green-400" />
+                  <DollarSign className="w-4 h-4 text-positive" />
                   Budget, Timeline & Priority
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-white">{result.budgetTimelinePriority || 'Not discussed'}</p>
+                <p className="text-sm text-foreground">{result.budgetTimelinePriority || 'Not discussed'}</p>
               </CardContent>
             </Card>
           </div>
@@ -601,7 +601,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Target className="w-4 h-4 text-green-400" />
+                  <Target className="w-4 h-4 text-positive" />
                   Pitch & Demo Feedback
                 </CardTitle>
               </CardHeader>
@@ -609,8 +609,8 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
                 <ul className="space-y-2">
                   {result.feedbackPoints.map((point, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 mt-2 flex-shrink-0" />
-                      <span className="text-white">{point}</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-positive mt-2 flex-shrink-0" />
+                      <span className="text-foreground">{point}</span>
                     </li>
                   ))}
                 </ul>
@@ -621,31 +621,25 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-purple-400" />
+                  <TrendingUp className="w-4 h-4 text-accent" />
                   Beta Interest
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-xs text-muted-foreground">Interest Level</p>
-                  <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                    result.betaInterest.interestLevel.toLowerCase().includes('high') 
-                      ? 'bg-green-500/20 text-green-400'
-                      : result.betaInterest.interestLevel.toLowerCase().includes('medium')
-                      ? 'bg-yellow-500/20 text-yellow-400'
-                      : 'bg-gray-500/20 text-gray-400'
-                  }`}>
+                  <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${ result.betaInterest.interestLevel.toLowerCase().includes('high') ? 'bg-positive-subtle text-positive' : result.betaInterest.interestLevel.toLowerCase().includes('medium') ? 'bg-caution-subtle text-caution' : 'bg-muted text-ink-muted' }`}>
                     {result.betaInterest.interestLevel}
                   </span>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Apprehensions</p>
-                  <p className="text-sm text-white">{result.betaInterest.apprehensions || 'None mentioned'}</p>
+                  <p className="text-sm text-foreground">{result.betaInterest.apprehensions || 'None mentioned'}</p>
                 </div>
                 {result.betaInterest.interestQuote && (
                   <div>
                     <p className="text-xs text-muted-foreground">Direct Quote</p>
-                    <p className="text-sm text-white italic">"{result.betaInterest.interestQuote}"</p>
+                    <p className="text-sm text-foreground italic">"{result.betaInterest.interestQuote}"</p>
                   </div>
                 )}
               </CardContent>
@@ -655,14 +649,14 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Quote className="w-4 h-4 text-pink-400" />
+                  <Quote className="w-4 h-4 text-critical" />
                   Top Quotes
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   {result.topQuotes.map((quote, i) => (
-                    <p key={i} className="text-sm text-white italic border-l-2 border-pink-500/50 pl-3">
+                    <p key={i} className="text-sm text-foreground italic border-l-2 border-critical/30 pl-3">
                       "{quote}"
                     </p>
                   ))}
@@ -676,7 +670,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         <Card className="bg-card/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Lightbulb className="w-4 h-4 text-yellow-400" />
+              <Lightbulb className="w-4 h-4 text-caution" />
               Additional Key Insights
             </CardTitle>
           </CardHeader>
@@ -684,8 +678,8 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {result.additionalInsights.map((insight, i) => (
                 <div key={i} className="flex items-start gap-2 text-sm">
-                  <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 mt-2 flex-shrink-0" />
-                  <span className="text-white">{insight}</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-caution mt-2 flex-shrink-0" />
+                  <span className="text-foreground">{insight}</span>
                 </div>
               ))}
             </div>
@@ -696,7 +690,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         <Card className="bg-card/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <ChevronRight className="w-4 h-4 text-cyan-400" />
+              <ChevronRight className="w-4 h-4 text-accent" />
               Next Steps
             </CardTitle>
           </CardHeader>
@@ -704,10 +698,10 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             <ol className="space-y-2">
               {result.nextSteps.map((step, i) => (
                 <li key={i} className="flex items-start gap-3 text-sm">
-                  <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center flex-shrink-0 text-xs font-medium">
+                  <span className="w-6 h-6 rounded-sm bg-accent-subtle text-accent flex items-center justify-center flex-shrink-0 text-xs font-medium">
                     {i + 1}
                   </span>
-                  <span className="text-white pt-0.5">{step}</span>
+                  <span className="text-foreground pt-0.5">{step}</span>
                 </li>
               ))}
             </ol>
@@ -718,7 +712,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         <Card className="bg-card/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-purple-400" />
+              <MessageSquare className="w-4 h-4 text-accent" />
               Ask About This Meeting
             </CardTitle>
           </CardHeader>
@@ -737,8 +731,8 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               </Button>
             </div>
             {followUpAnswer && (
-              <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                <p className="text-sm text-white">{followUpAnswer}</p>
+              <div className="p-4 bg-accent-subtle border border-accent/30 rounded-sm">
+                <p className="text-sm text-foreground">{followUpAnswer}</p>
               </div>
             )}
           </CardContent>
@@ -766,11 +760,11 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         )}
 
         {viewingReport && (
-          <Card className="bg-blue-500/10 border-blue-500/30">
+          <Card className="bg-accent-subtle border-accent/30">
             <CardContent className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Eye className="w-5 h-5 text-blue-400" />
-                <p className="text-sm text-white">Viewing saved report: <span className="font-medium">{viewingReport.name}</span></p>
+                <Eye className="w-5 h-5 text-accent" />
+                <p className="text-sm text-foreground">Viewing saved report: <span className="font-medium">{viewingReport.name}</span></p>
               </div>
               <Button variant="outline" size="sm" onClick={() => copyShareLink(viewingReport.shareId)}>
                 <Link2 className="w-4 h-4 mr-2" />
@@ -845,10 +839,10 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
     <div className="space-y-8">
       {/* Hero Section */}
       <div className="text-center space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto">
-          <Brain className="w-8 h-8 text-white" />
+        <div className="w-16 h-16 rounded-md bg-accent flex items-center justify-center mx-auto">
+          <Brain className="w-8 h-8 text-foreground" />
         </div>
-        <h2 className="text-3xl font-bold text-white">
+        <h2 className="text-xl font-semibold text-foreground">
           {analyzerMode === 'single' && 'Turn Transcripts into Actionable Insights'}
           {analyzerMode === 'compare' && 'Compare Two Conversations'}
           {analyzerMode === 'bulk' && 'Bulk Transcript Analysis'}
@@ -866,7 +860,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           variant={analyzerMode === 'single' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setAnalyzerMode('single')}
-          className={analyzerMode === 'single' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+          className={analyzerMode === 'single' ? 'bg-accent hover:bg-accent' : ''}
         >
           <FileText className="w-4 h-4 mr-2" />
           Single Analysis
@@ -875,7 +869,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           variant={analyzerMode === 'compare' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setAnalyzerMode('compare')}
-          className={analyzerMode === 'compare' ? 'bg-cyan-600 hover:bg-cyan-700' : ''}
+          className={analyzerMode === 'compare' ? 'bg-accent hover:bg-accent' : ''}
         >
           <Layers className="w-4 h-4 mr-2" />
           Compare
@@ -884,7 +878,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           variant={analyzerMode === 'bulk' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setAnalyzerMode('bulk')}
-          className={analyzerMode === 'bulk' ? 'bg-green-600 hover:bg-green-700' : ''}
+          className={analyzerMode === 'bulk' ? 'bg-positive hover:bg-positive' : ''}
         >
           <Users className="w-4 h-4 mr-2" />
           Bulk
@@ -897,7 +891,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Mic className="w-5 h-5 text-purple-400" />
+              <Mic className="w-5 h-5 text-accent" />
               Meeting Transcript
             </CardTitle>
             <div className="flex gap-2">
@@ -914,7 +908,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         </CardHeader>
         <CardContent className="space-y-4">
           {/* File Upload */}
-          <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-purple-500/50 transition-colors cursor-pointer">
+          <div className="border-2 border-dashed border-border rounded-sm p-6 text-center hover:border-accent/30 transition-colors cursor-pointer">
             <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">Drop a file or click to upload (.txt, .vtt, .srt)</p>
           </div>
@@ -931,7 +925,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
 
           {/* Analyze Button */}
           <Button 
-            className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+            className="w-full bg-accent"
             size="lg"
             onClick={handleAnalyze}
             disabled={analyzeMutation.isPending || transcript.length < 100}
@@ -957,7 +951,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
           <Card className="bg-card/50">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-cyan-400">
+              <CardTitle className="flex items-center gap-2 text-accent">
                 <FileText className="w-5 h-5" />
                 First Meeting
               </CardTitle>
@@ -973,7 +967,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           </Card>
           <Card className="bg-card/50">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-purple-400">
+              <CardTitle className="flex items-center gap-2 text-accent">
                 <FileText className="w-5 h-5" />
                 Second Meeting
               </CardTitle>
@@ -989,7 +983,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           </Card>
           <div className="lg:col-span-2">
             <Button
-              className="w-full bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-700 hover:to-purple-700"
+              className="w-full bg-accent"
               size="lg"
               onClick={handleCompareAnalyze}
               disabled={analyzeMutation.isPending}
@@ -1010,7 +1004,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           <Card className="bg-card/50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-green-400" />
+                <Users className="w-5 h-5 text-positive" />
                 Add Transcripts to Batch ({bulkTranscripts.length} added)
               </CardTitle>
             </CardHeader>
@@ -1055,14 +1049,14 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           )}
 
           {bulkProcessing && (
-            <Card className="bg-green-500/10 border-green-500/30">
+            <Card className="bg-positive-subtle border-positive/30">
               <CardContent className="p-4">
                 <div className="flex items-center gap-4">
-                  <Loader2 className="w-5 h-5 animate-spin text-green-400" />
+                  <Loader2 className="w-5 h-5 animate-spin text-positive" />
                   <div className="flex-1">
-                    <p className="text-sm text-white">Processing {bulkTranscripts.length} transcripts...</p>
+                    <p className="text-sm text-foreground">Processing {bulkTranscripts.length} transcripts...</p>
                     <div className="w-full bg-background/50 rounded-full h-2 mt-2">
-                      <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${bulkProgress}%` }} />
+                      <div className="bg-positive h-2 rounded-full transition-all" style={{ width: `${bulkProgress}%` }} />
                     </div>
                   </div>
                 </div>
@@ -1071,7 +1065,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           )}
 
           <Button
-            className="w-full bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-700 hover:to-cyan-700"
+            className="w-full bg-positive"
             size="lg"
             onClick={handleBulkAnalyze}
             disabled={bulkProcessing || bulkTranscripts.length === 0}
@@ -1084,34 +1078,34 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             <Card className="bg-card/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-green-400" />
+                  <TrendingUp className="w-5 h-5 text-positive" />
                   Bulk Analysis Summary ({bulkResults.length} transcripts)
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-3 bg-red-500/10 rounded-lg">
-                    <p className="text-2xl font-bold text-red-400">{bulkResults.reduce((acc, r) => acc + r.topRisks.length, 0)}</p>
+                  <div className="text-center p-3 bg-critical-subtle rounded-sm">
+                    <p className="text-2xl font-bold text-critical">{bulkResults.reduce((acc, r) => acc + r.topRisks.length, 0)}</p>
                     <p className="text-xs text-muted-foreground">Total Risks</p>
                   </div>
-                  <div className="text-center p-3 bg-yellow-500/10 rounded-lg">
-                    <p className="text-2xl font-bold text-yellow-400">{bulkResults.reduce((acc, r) => acc + r.topChallenges.length, 0)}</p>
+                  <div className="text-center p-3 bg-caution-subtle rounded-sm">
+                    <p className="text-2xl font-bold text-caution">{bulkResults.reduce((acc, r) => acc + r.topChallenges.length, 0)}</p>
                     <p className="text-xs text-muted-foreground">Total Challenges</p>
                   </div>
-                  <div className="text-center p-3 bg-cyan-500/10 rounded-lg">
-                    <p className="text-2xl font-bold text-cyan-400">{bulkResults.reduce((acc, r) => acc + r.nextSteps.length, 0)}</p>
+                  <div className="text-center p-3 bg-accent-subtle rounded-sm">
+                    <p className="text-2xl font-bold text-accent">{bulkResults.reduce((acc, r) => acc + r.nextSteps.length, 0)}</p>
                     <p className="text-xs text-muted-foreground">Action Items</p>
                   </div>
-                  <div className="text-center p-3 bg-purple-500/10 rounded-lg">
-                    <p className="text-2xl font-bold text-purple-400">{bulkResults.filter(r => r.betaInterest.interestLevel.toLowerCase().includes('high')).length}</p>
+                  <div className="text-center p-3 bg-accent-subtle rounded-sm">
+                    <p className="text-2xl font-bold text-accent">{bulkResults.filter(r => r.betaInterest.interestLevel.toLowerCase().includes('high')).length}</p>
                     <p className="text-xs text-muted-foreground">High Interest</p>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-white">Common Risks Across Calls:</h4>
+                  <h4 className="text-sm font-medium text-foreground">Common Risks Across Calls:</h4>
                   <div className="flex flex-wrap gap-2">
                     {Array.from(new Set(bulkResults.flatMap(r => r.topRisks))).slice(0, 5).map((risk, i) => (
-                      <span key={i} className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs">{risk.slice(0, 50)}...</span>
+                      <span key={i} className="px-2 py-1 bg-critical-subtle text-critical rounded text-xs">{risk.slice(0, 50)}...</span>
                     ))}
                   </div>
                 </div>
@@ -1125,16 +1119,16 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
       {analyzerMode === 'single' && (
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-6xl mx-auto">
         {[
-          { icon: AlertTriangle, title: 'Risk Extraction', desc: 'Identifies top security risks and compliance concerns mentioned by the prospect.', color: 'text-red-400' },
-          { icon: MessageSquare, title: 'Feedback Summaries', desc: 'Condenses product feedback and feature requests into actionable bullet points.', color: 'text-cyan-400' },
-          { icon: Check, title: 'Fact-Based Only', desc: 'Strictly pulls from the transcript. No hallucinations or assumptions added.', color: 'text-green-400' },
-          { icon: Link2, title: 'Auto-Link Accounts', desc: 'Automatically matches prospects to your 722 accounts for instant context.', color: 'text-purple-400' },
-          { icon: Quote, title: 'Key Quotes', desc: 'Extracts the most important quotes for follow-up emails and proposals.', color: 'text-pink-400' },
-          { icon: ChevronRight, title: 'Next Steps', desc: 'Clear action items extracted from the conversation for immediate follow-up.', color: 'text-yellow-400' },
+          { icon: AlertTriangle, title: 'Risk Extraction', desc: 'Identifies top security risks and compliance concerns mentioned by the prospect.', color: 'text-critical' },
+          { icon: MessageSquare, title: 'Feedback Summaries', desc: 'Condenses product feedback and feature requests into actionable bullet points.', color: 'text-accent' },
+          { icon: Check, title: 'Fact-Based Only', desc: 'Strictly pulls from the transcript. No hallucinations or assumptions added.', color: 'text-positive' },
+          { icon: Link2, title: 'Auto-Link Accounts', desc: 'Automatically matches prospects to your 722 accounts for instant context.', color: 'text-accent' },
+          { icon: Quote, title: 'Key Quotes', desc: 'Extracts the most important quotes for follow-up emails and proposals.', color: 'text-critical' },
+          { icon: ChevronRight, title: 'Next Steps', desc: 'Clear action items extracted from the conversation for immediate follow-up.', color: 'text-caution' },
         ].map((feature, i) => (
           <div key={i} className="text-center space-y-2">
             <feature.icon className={`w-6 h-6 ${feature.color} mx-auto`} />
-            <h3 className="font-medium text-white text-sm">{feature.title}</h3>
+            <h3 className="font-medium text-foreground text-sm">{feature.title}</h3>
             <p className="text-xs text-muted-foreground">{feature.desc}</p>
           </div>
         ))}
@@ -1153,10 +1147,10 @@ function DataProcessorTool() {
     <div className="space-y-8">
       {/* Hero Section */}
       <div className="text-center space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center mx-auto">
-          <BarChart3 className="w-8 h-8 text-white" />
+        <div className="w-16 h-16 rounded-md bg-accent flex items-center justify-center mx-auto">
+          <BarChart3 className="w-8 h-8 text-foreground" />
         </div>
-        <h2 className="text-3xl font-bold text-white">Process & Enrich Your Data</h2>
+        <h2 className="text-xl font-semibold text-foreground">Process & Enrich Your Data</h2>
         <p className="text-muted-foreground max-w-2xl mx-auto">
           Upload CSV files to clean, deduplicate, and enrich your account and contact data with AI-powered insights.
         </p>
@@ -1166,14 +1160,14 @@ function DataProcessorTool() {
       <Card className="bg-card/50 max-w-4xl mx-auto">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5 text-cyan-400" />
+            <Upload className="w-5 h-5 text-accent" />
             Upload Data File
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:border-cyan-500/50 transition-colors cursor-pointer">
+          <div className="border-2 border-dashed border-border rounded-sm p-12 text-center hover:border-accent/30 transition-colors cursor-pointer">
             <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-lg font-medium text-white mb-2">Drop your CSV file here</p>
+            <p className="text-lg font-medium text-foreground mb-2">Drop your CSV file here</p>
             <p className="text-sm text-muted-foreground">or click to browse (max 10MB)</p>
           </div>
 
@@ -1183,16 +1177,16 @@ function DataProcessorTool() {
               { title: 'Enrich Data', desc: 'Add missing company info and contact details', icon: Sparkles },
               { title: 'Validate', desc: 'Verify emails, domains, and company info', icon: Check },
             ].map((feature, i) => (
-              <div key={i} className="p-4 bg-card rounded-lg border border-border">
-                <feature.icon className="w-6 h-6 text-cyan-400 mb-2" />
-                <h3 className="font-medium text-white text-sm">{feature.title}</h3>
+              <div key={i} className="p-4 bg-card rounded-sm border border-border">
+                <feature.icon className="w-6 h-6 text-accent mb-2" />
+                <h3 className="font-medium text-foreground text-sm">{feature.title}</h3>
                 <p className="text-xs text-muted-foreground">{feature.desc}</p>
               </div>
             ))}
           </div>
 
           <Button 
-            className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+            className="w-full bg-accent"
             size="lg"
             disabled={!file || processing}
           >
@@ -1258,10 +1252,10 @@ function ContentStudioTool() {
     <div className="space-y-8">
       {/* Hero Section */}
       <div className="text-center space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center mx-auto">
-          <PenTool className="w-8 h-8 text-white" />
+        <div className="w-16 h-16 rounded-md bg-positive flex items-center justify-center mx-auto">
+          <PenTool className="w-8 h-8 text-foreground" />
         </div>
-        <h2 className="text-3xl font-bold text-white">AI Content Studio</h2>
+        <h2 className="text-xl font-semibold text-foreground">AI Content Studio</h2>
         <p className="text-muted-foreground max-w-2xl mx-auto">
           Generate personalized marketing content using your account data and AI. Select a content type and let AI do the heavy lifting.
         </p>
@@ -1281,14 +1275,10 @@ function ContentStudioTool() {
                   <button
                     key={type.id}
                     onClick={() => setContentType(type.id as typeof contentType)}
-                    className={`p-4 rounded-lg border text-left transition-all ${
-                      contentType === type.id
-                        ? 'border-green-500 bg-green-500/10'
-                        : 'border-border hover:border-green-500/50'
-                    }`}
+                    className={`p-4 rounded-sm border text-left transition-all ${ contentType === type.id ? 'border-positive/30 bg-positive-subtle' : 'border-border hover:border-positive/30' }`}
                   >
-                    <type.icon className={`w-5 h-5 mb-2 ${contentType === type.id ? 'text-green-400' : 'text-muted-foreground'}`} />
-                    <h3 className="font-medium text-white text-sm">{type.name}</h3>
+                    <type.icon className={`w-5 h-5 mb-2 ${contentType === type.id ? 'text-positive' : 'text-muted-foreground'}`} />
+                    <h3 className="font-medium text-foreground text-sm">{type.name}</h3>
                     <p className="text-xs text-muted-foreground">{type.desc}</p>
                   </button>
                 ))}
@@ -1305,7 +1295,7 @@ function ContentStudioTool() {
               <select
                 value={selectedAccount}
                 onChange={(e) => setSelectedAccount(e.target.value)}
-                className="w-full p-3 bg-background border border-border rounded-lg text-white"
+                className="w-full p-3 bg-background border border-border rounded-sm text-foreground"
               >
                 <option value="">No account selected</option>
                 {accountsQuery.data?.map((account: any) => (
@@ -1348,7 +1338,7 @@ function ContentStudioTool() {
           </Card>
 
           <Button 
-            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+            className="w-full bg-positive"
             size="lg"
             onClick={handleGenerate}
             disabled={generating || generateMutation.isPending}
@@ -1371,14 +1361,14 @@ function ContentStudioTool() {
         <Card className="bg-card/50 h-fit">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-green-400" />
+              <FileText className="w-5 h-5 text-positive" />
               Generated Content
             </CardTitle>
           </CardHeader>
           <CardContent>
             {generatedContent ? (
               <div className="space-y-4">
-                <div className="p-4 bg-background rounded-lg border border-border whitespace-pre-wrap text-sm text-white">
+                <div className="p-4 bg-background rounded-sm border border-border whitespace-pre-wrap text-sm text-foreground">
                   {generatedContent}
                 </div>
                 <div className="flex gap-2">

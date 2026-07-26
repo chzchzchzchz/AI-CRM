@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Navigation } from "@/components/Navigation";
 import { AIAssistant } from "@/components/AIAssistant";
 import { trpc } from "@/lib/trpc";
 import { 
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import { Link, useParams } from "wouter";
 import { SafeStreamdown } from "@/components/SafeStreamdown";
+import { CompanyLogo } from "@/components/ui/company-logo";
 import { toast } from "sonner";
 
 export default function AccountDetailEnhanced() {
@@ -52,27 +52,26 @@ export default function AccountDetailEnhanced() {
   const competitorIntent = rawData['Competitor MFA Intent'];
 
   const getIntentColor = (score: number) => {
-    if (score >= 80) return 'text-red-500';
-    if (score >= 60) return 'text-orange-500';
-    if (score >= 40) return 'text-yellow-500';
-    return 'text-gray-500';
+    if (score >= 80) return 'text-critical';
+    if (score >= 60) return 'text-caution';
+    if (score >= 40) return 'text-caution';
+    return 'text-ink-subtle';
   };
 
   const getBuyingStageColor = (stage: string) => {
     switch (stage) {
-      case 'Purchase': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'Decision': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
-      case 'Consideration': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case 'Awareness': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      case 'Purchase': return 'bg-positive-subtle text-positive border-positive/30';
+      case 'Decision': return 'bg-accent-subtle text-accent border-accent/30';
+      case 'Consideration': return 'bg-caution-subtle text-caution border-caution/30';
+      case 'Awareness': return 'bg-caution-subtle text-caution border-caution/30';
+      default: return 'bg-muted text-ink-muted border-border';
     }
   };
 
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
+      <div>
         <div className="container py-6 max-w-7xl">
           <div className="animate-pulse space-y-4">
             <div className="h-8 w-64 bg-muted rounded" />
@@ -89,9 +88,8 @@ export default function AccountDetailEnhanced() {
   // Not found state
   if (!account) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <div className="container py-12 max-w-2xl text-center">
+      <div>
+        <div className="container py-1 max-w-2xl text-center">
           <Building2 className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
           <h3 className="text-2xl font-semibold mb-2">Account not found</h3>
           <Button asChild><Link href="/accounts"><ArrowLeft className="mr-2 h-4 w-4" />Back</Link></Button>
@@ -126,33 +124,20 @@ export default function AccountDetailEnhanced() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+    <div>
       <AIAssistant context={{ type: 'account', id: accountId, name: account.name }} />
 
-      <div className="container py-6 space-y-6 max-w-7xl">
+      <div className="container py-1 space-y-5 max-w-7xl">
         {/* Compact Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/accounts"><ArrowLeft className="h-5 w-5" /></Link>
             </Button>
-            {/* Company Logo */}
-            <div className="w-12 h-12 rounded-lg bg-card border border-border flex-shrink-0 overflow-hidden">
-              <img
-                src={`https://logo.clearbit.com/${account.domain}`}
-                alt={`${account.name} logo`}
-                className="w-full h-full object-contain"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold text-xl">${account.name.charAt(0)}</div>`;
-                }}
-              />
-            </div>
+            <CompanyLogo name={account.name} website={account.domain} size="xl" />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold truncate">{account.name}</h1>
+                <h1 className="text-2xl font-semibold truncate">{account.name}</h1>
                 <Badge className={getBuyingStageColor(buyingStage)}>{buyingStage}</Badge>
               </div>
               <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
@@ -169,7 +154,7 @@ export default function AccountDetailEnhanced() {
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0 flex-wrap">
-            <Button size="sm" className="gradient-primary text-white" asChild>
+            <Button size="sm" className="text-foreground" asChild>
               <Link href="/outreach"><Mail className="mr-1 h-4 w-4" />Outreach</Link>
             </Button>
             {account.linkedinUrl && (
@@ -178,7 +163,7 @@ export default function AccountDetailEnhanced() {
               </Button>
             )}
             {(account as any).sfdcAccountId && (
-              <Button size="sm" variant="outline" className="border-blue-500 text-blue-500" asChild>
+              <Button size="sm" variant="outline" className="border-accent/30 text-accent" asChild>
                 <a href={`${salesforceInstanceUrl || 'https://login.salesforce.com'}/lightning/r/Account/${(account as any).sfdcAccountId}/view`} target="_blank">
                   <ExternalLink className="mr-1 h-4 w-4" />Salesforce
                 </a>
@@ -209,7 +194,7 @@ export default function AccountDetailEnhanced() {
           </Card>
           <Card className="p-4">
             <div className="text-xs text-muted-foreground mb-1">Contacts</div>
-            <div className="text-3xl font-bold text-purple-500">{people?.length || 0}</div>
+            <div className="text-2xl font-semibold text-accent">{people?.length || 0}</div>
           </Card>
           <Card className="p-4">
             <div className="text-xs text-muted-foreground mb-1">Relationship</div>
@@ -226,14 +211,14 @@ export default function AccountDetailEnhanced() {
               <CardHeader className="py-3 px-4">
                 <CardTitle className="text-sm flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-cyan-500" />
+                    <TrendingUp className="h-4 w-4 text-accent" />
                     Active Deals
                   </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4 space-y-3">
                 {accountOpportunities?.map((opp: any) => (
-                  <div key={opp.id} className="p-3 rounded bg-slate-900 border border-slate-800">
+                  <div key={opp.id} className="p-3 rounded bg-card border border-border">
                     <div className="flex justify-between items-start mb-1">
                       <span className="text-xs font-bold truncate">{opp.name}</span>
                       <Badge variant="outline" className="text-[9px] uppercase">
@@ -241,12 +226,12 @@ export default function AccountDetailEnhanced() {
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center mt-2">
-                      <span className="text-xs font-mono text-emerald-400">
+                      <span className="text-xs font-mono text-positive">
                         ${Number(opp.amount).toLocaleString()}
                       </span>
                       <div className="flex items-center gap-1">
-                        <BrainCircuit className="h-3 w-3 text-cyan-400" />
-                        <span className="text-[10px] font-bold text-cyan-400">
+                        <BrainCircuit className="h-3 w-3 text-accent" />
+                        <span className="text-[10px] font-bold text-accent">
                           {opp.aiSuccessScore}%
                         </span>
                       </div>
@@ -260,7 +245,7 @@ export default function AccountDetailEnhanced() {
               <Card>
                 <CardHeader className="py-3 px-4">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <Flame className="h-4 w-4 text-orange-500" />
+                    <Flame className="h-4 w-4 text-caution" />
                     Intent Signals
                     <span className="text-xs font-normal text-muted-foreground">({intentSignals[0].source})</span>
                   </CardTitle>
@@ -284,7 +269,7 @@ export default function AccountDetailEnhanced() {
               <CardHeader className="py-3 px-4">
                 <CardTitle className="text-sm flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-purple-500" />
+                    <Users className="h-4 w-4 text-accent" />
                     Key Contacts ({people?.length || 0})
                   </span>
                   <Link href={`/contacts?account=${accountId}`} className="text-xs text-primary hover:underline">
@@ -311,14 +296,14 @@ export default function AccountDetailEnhanced() {
                           {person.linkedinUrl && (
                             <button type="button" aria-label="Open LinkedIn profile"
                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(person.linkedinUrl!, '_blank', 'noopener,noreferrer'); }}
-                               className="p-1 hover:bg-blue-500/20 rounded">
-                              <Linkedin className="h-3 w-3 text-blue-500" />
+                               className="p-1 hover:bg-accent-subtle rounded">
+                              <Linkedin className="h-3 w-3 text-accent" />
                             </button>
                           )}
                           {person.email && (
                             <button onClick={(e) => { e.preventDefault(); copyToClipboard(person.email!, 'email'); }}
                                     className="p-1 hover:bg-muted rounded">
-                              {copiedField === 'email' ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                              {copiedField === 'email' ? <Check className="h-3 w-3 text-positive" /> : <Copy className="h-3 w-3" />}
                             </button>
                           )}
                           <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -337,7 +322,7 @@ export default function AccountDetailEnhanced() {
               <Card>
                 <CardHeader className="py-3 px-4">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-blue-500" />
+                    <Shield className="h-4 w-4 text-accent" />
                     Security Intel
                   </CardTitle>
                 </CardHeader>
@@ -355,8 +340,8 @@ export default function AccountDetailEnhanced() {
                     </div>
                   )}
                   {competitorIntent && (
-                    <div className="p-2 rounded bg-yellow-500/10 border border-yellow-500/30">
-                      <div className="flex items-center gap-1 text-xs text-yellow-500 mb-1">
+                    <div className="p-2 rounded bg-caution-subtle border border-caution/30">
+                      <div className="flex items-center gap-1 text-xs text-caution mb-1">
                         <AlertTriangle className="h-3 w-3" />
                         Competitor Intent
                       </div>
@@ -364,8 +349,8 @@ export default function AccountDetailEnhanced() {
                     </div>
                   )}
                   {securityIncidents && (
-                    <div className="p-2 rounded bg-red-500/10 border border-red-500/30">
-                      <div className="flex items-center gap-1 text-xs text-red-500 mb-1">
+                    <div className="p-2 rounded bg-critical-subtle border border-critical/30">
+                      <div className="flex items-center gap-1 text-xs text-critical mb-1">
                         <AlertTriangle className="h-3 w-3" />
                         Security Incidents
                       </div>
@@ -384,7 +369,7 @@ export default function AccountDetailEnhanced() {
               <CardHeader className="py-3 px-4">
                 <CardTitle className="text-sm flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-amber-500" />
+                    <Sparkles className="h-4 w-4 text-caution" />
                     AI Account Brief
                   </span>
                   {overviewQuery.data?.cached && (
@@ -415,7 +400,7 @@ export default function AccountDetailEnhanced() {
               <CardHeader className="py-3 px-4">
                 <CardTitle className="text-sm flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-cyan-500" />
+                    <Zap className="h-4 w-4 text-accent" />
                     Strategic Insights
                   </span>
                   <Button 

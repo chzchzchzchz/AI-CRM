@@ -36,8 +36,13 @@ async function startServer() {
   // Security middleware - apply first
   app.use(corsMiddleware);
   app.use(securityHeaders);
-  app.use(rateLimiter);
-  
+  // Scoped to /api on purpose. Mounted globally it also counted static assets,
+  // and a single page load pulls hundreds of them (bundled chunks and KaTeX
+  // fonts in production, every unbundled ES module in dev), so a few refreshes
+  // could lock a legitimate user out of their own workspace. Auth endpoints
+  // keep their stricter per-account brute-force protection either way.
+  app.use("/api", rateLimiter);
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));

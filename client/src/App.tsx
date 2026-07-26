@@ -36,9 +36,12 @@ const Login = lazyLoad(() => import("./pages/Login"));
 const SignUp = lazyLoad(() => import("./pages/SignUp"));
 const RequestAccess = lazyLoad(() => import("./pages/RequestAccess"));
 const ForgotPassword = lazyLoad(() => import("./pages/ForgotPassword"));
+const LeadProcessor = lazyLoad(() => import("./pages/LeadProcessor"));
+const WebinarGenerator = lazyLoad(() => import("./pages/WebinarGenerator"));
 import { GlobalSearch } from "./components/GlobalSearch";
 import { GlobalAIChat } from "./components/GlobalAIChat";
 import { SupportBot } from "./components/SupportBot";
+import { AppShell } from "./components/app-shell/AppShell";
 import { RepProvider } from "./contexts/RepContext";
 import { useState, useEffect } from "react";
 
@@ -74,42 +77,41 @@ function Router() {
       <Route path="/transcript-analyzer" component={TranscriptAnalyzer} />
       <Route path="/tools" component={AITools} />
       <Route path="/top-accounts" component={TopAccounts} />
+      <Route path="/lead-processor" component={LeadProcessor} />
+      <Route path="/webinar-generator" component={WebinarGenerator} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
-
 function App() {
   const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setSearchOpen(true);
+        setSearchOpen(open => !open);
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="dark"
-      >
+      {/* `switchable` persists the choice and exposes useTheme().toggleTheme,
+          which the sidebar account menu drives. */}
+      <ThemeProvider defaultTheme="dark" switchable>
         <RepProvider>
-          <TooltipProvider>
+          <TooltipProvider delayDuration={300}>
             <Toaster />
             <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
-            <Router />
+            <AppShell onOpenSearch={() => setSearchOpen(true)}>
+              <Router />
+            </AppShell>
             <GlobalAIChat />
             <SupportBot />
           </TooltipProvider>

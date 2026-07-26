@@ -40,17 +40,17 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center p-4">
+    <div className="grid min-h-screen place-items-center bg-canvas p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Logo and Title */}
         <div className="flex flex-col items-center gap-4">
           <img
             src={APP_LOGO}
             alt={APP_TITLE}
-            className="h-16 w-16 rounded-xl object-cover shadow"
+            className="h-16 w-16 rounded-md object-cover shadow"
           />
           <div className="text-center space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight">{APP_TITLE}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{APP_TITLE}</h1>
             <p className="text-sm text-muted-foreground">
               Your AI-powered sales intelligence command center
             </p>
@@ -68,7 +68,7 @@ export default function Login() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                <div className="flex items-center gap-2 p-3 rounded-sm bg-destructive/10 text-destructive text-sm">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   {error}
                 </div>

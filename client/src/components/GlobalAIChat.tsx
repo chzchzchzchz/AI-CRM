@@ -134,13 +134,13 @@ export function GlobalAIChat() {
     return (
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 z-50 group"
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-sm shadow-lg bg-accent z-50 group"
         aria-label="Toggle AI Assistant"
       >
         <MessageSquare className="h-6 w-6" />
         <span className="absolute -top-1 -right-1 flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
         </span>
       </Button>
     );
@@ -149,26 +149,26 @@ export function GlobalAIChat() {
   // Full-screen mode
   if (isFullScreen) {
     return (
-      <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="fixed inset-0 z-50 bg-canvas backdrop-blur-sm animate-in fade-in duration-300">
         <div className="h-full flex flex-col">
           {/* Header */}
-          <div className="flex-shrink-0 border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm">
+          <div className="flex-shrink-0 border-b border-border bg-card backdrop-blur-sm">
             <div className="container mx-auto px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${isWarRoomMode ? 'from-orange-500 to-red-600' : 'from-purple-600 to-pink-600'} shadow-lg`}>
-                    {isWarRoomMode ? <Zap className="h-6 w-6 text-white" /> : <Bot className="h-6 w-6 text-white" />}
+                  <div className={`p-3 rounded-md bg-accent ${isWarRoomMode ? ' ' : ' '} shadow-lg`}>
+                    {isWarRoomMode ? <Zap className="h-6 w-6 text-foreground" /> : <Bot className="h-6 w-6 text-foreground" />}
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold text-white">
+                    <h1 className="text-2xl font-semibold text-foreground">
                       {isWarRoomMode ? "War Room AI Command Center" : "AI Sales Assistant"}
                     </h1>
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-ink-muted">
                       {isWarRoomMode ? "Strategic intelligence and priority actions" : "Ask me anything about your accounts, contacts, and opportunities"}
                     </p>
                   </div>
                   {isWarRoomMode && (
-                    <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 px-3 py-1">
+                    <Badge className="bg-caution-subtle text-caution border-caution/30 px-3 py-1">
                       <Sparkles className="h-3 w-3 mr-1" />
                       War Room Mode
                     </Badge>
@@ -179,7 +179,7 @@ export function GlobalAIChat() {
                     variant="ghost"
                     size="sm"
                     onClick={toggleWarRoomMode}
-                    className={`text-slate-400 hover:text-white ${isWarRoomMode ? 'bg-orange-500/10 text-orange-400' : ''}`}
+                    className={`text-ink-muted hover:text-foreground ${isWarRoomMode ? 'bg-caution-subtle text-caution' : ''}`}
                   >
                     <Zap className="h-4 w-4 mr-2" />
                     {isWarRoomMode ? "Exit War Room" : "War Room Mode"}
@@ -188,7 +188,7 @@ export function GlobalAIChat() {
                     variant="ghost"
                     size="sm"
                     onClick={toggleFullScreen}
-                    className="text-slate-400 hover:text-white"
+                    className="text-ink-muted hover:text-foreground"
                   >
                     <Minimize2 className="h-4 w-4 mr-2" />
                     Minimize
@@ -201,7 +201,7 @@ export function GlobalAIChat() {
                       setIsFullScreen(false);
                       setIsWarRoomMode(false);
                     }}
-                    className="text-slate-400 hover:text-white"
+                    className="text-ink-muted hover:text-foreground"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -216,12 +216,12 @@ export function GlobalAIChat() {
               {messages.length === 0 ? (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <div className="text-center space-y-3">
-                    <p className="text-slate-300 text-lg">
+                    <p className="text-ink-muted text-lg">
                       {isWarRoomMode 
                         ? "Welcome to War Room mode. I'll help you prioritize and execute on your highest-value opportunities."
                         : "Hi! I'm your AI sales assistant. I have access to all your accounts, contacts, calls, and intelligence data."}
                     </p>
-                    <p className="text-slate-500 text-sm">
+                    <p className="text-ink-subtle text-sm">
                       {isWarRoomMode
                         ? "Ask strategic questions to identify priorities, generate action plans, and get real-time intelligence."
                         : "Ask me anything about your pipeline, or try one of these suggestions:"}
@@ -233,13 +233,9 @@ export function GlobalAIChat() {
                       <button
                         key={i}
                         onClick={() => setInput(q)}
-                        className={`text-left p-4 rounded-lg border transition-all hover:scale-[1.02] ${
-                          isWarRoomMode
-                            ? 'bg-orange-500/5 border-orange-500/20 hover:border-orange-500/40 hover:bg-orange-500/10'
-                            : 'bg-purple-500/5 border-purple-500/20 hover:border-purple-500/40 hover:bg-purple-500/10'
-                        }`}
+                        className={`text-left p-4 rounded-sm border transition-all hover:scale-[1.02] ${ isWarRoomMode ? 'bg-caution-subtle border-caution/30 hover:border-caution/30 hover:bg-caution-subtle' : 'bg-accent-subtle border-accent/30 hover:border-accent/30 hover:bg-accent-subtle' }`}
                       >
-                        <p className={`text-sm font-medium ${isWarRoomMode ? 'text-orange-300' : 'text-purple-300'}`}>
+                        <p className={`text-sm font-medium ${isWarRoomMode ? 'text-caution' : 'text-accent'}`}>
                           {q}
                         </p>
                       </button>
@@ -250,13 +246,7 @@ export function GlobalAIChat() {
                 <div className="space-y-6">
                   {messages.map((msg, i) => (
                     <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-                      <div className={`max-w-[80%] rounded-xl p-4 ${
-                        msg.role === "user" 
-                          ? isWarRoomMode
-                            ? "bg-gradient-to-br from-orange-600 to-red-600 text-white shadow-lg"
-                            : "bg-gradient-to-br from-purple-600 to-pink-600 text-white shadow-lg"
-                          : "bg-slate-900 border border-slate-800 text-slate-300"
-                      }`}>
+                      <div className={`max-w-[80%] rounded-md p-4 ${ msg.role === "user" ? isWarRoomMode ? "bg-caution text-accent-foreground shadow-lg" : "bg-accent shadow-lg" : "bg-card border border-border text-ink-muted" }`}>
                         {msg.role === "assistant" ? (
                           <SafeStreamdown className="text-sm leading-relaxed">{msg.content}</SafeStreamdown>
                         ) : (
@@ -267,8 +257,8 @@ export function GlobalAIChat() {
                   ))}
                   {isLoading && (
                     <div className="flex justify-start animate-in fade-in duration-300">
-                      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                        <Loader2 className={`h-5 w-5 animate-spin ${isWarRoomMode ? 'text-orange-500' : 'text-purple-500'}`} />
+                      <div className="bg-card border border-border rounded-md p-4">
+                        <Loader2 className={`h-5 w-5 animate-spin ${isWarRoomMode ? 'text-caution' : 'text-accent'}`} />
                       </div>
                     </div>
                   )}
@@ -278,7 +268,7 @@ export function GlobalAIChat() {
           </div>
 
           {/* Input Area */}
-          <div className="flex-shrink-0 border-t border-slate-800 bg-slate-900/50 backdrop-blur-sm">
+          <div className="flex-shrink-0 border-t border-border bg-card backdrop-blur-sm">
             <div className="container mx-auto px-6 py-4 max-w-4xl">
               <div className="flex gap-3">
                 <Input
@@ -286,19 +276,19 @@ export function GlobalAIChat() {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyPress}
                   placeholder={isWarRoomMode ? "Ask for strategic intelligence..." : "Ask me anything..."}
-                  className="bg-slate-950 border-slate-700 text-white placeholder:text-slate-500 h-12 text-base"
+                  className="bg-canvas border-border-strong text-foreground placeholder:text-ink-subtle h-12 text-base"
                   disabled={isLoading}
                   autoFocus
                 />
                 <Button
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading}
-                  className={`h-12 px-6 ${isWarRoomMode ? 'bg-orange-600 hover:bg-orange-700' : 'bg-purple-600 hover:bg-purple-700'}`}
+                  className={`h-12 px-6 ${isWarRoomMode ? 'bg-caution hover:bg-caution' : 'bg-accent hover:bg-accent'}`}
                 >
                   <Send className="h-5 w-5" />
                 </Button>
               </div>
-              <p className="text-xs text-slate-500 mt-2 text-center">
+              <p className="text-xs text-ink-subtle mt-2 text-center">
                 Press Enter to send • Shift+Enter for new line • ESC to minimize
               </p>
             </div>
@@ -311,16 +301,14 @@ export function GlobalAIChat() {
   // Normal floating panel mode
   return (
     <div className="fixed bottom-24 right-6 z-50 w-96 max-w-[calc(100vw-3rem)] animate-in slide-in-from-bottom-4 duration-300">
-      <Card className="bg-slate-900 border-slate-700 shadow-2xl h-[600px] flex flex-col">
-        <CardHeader className="flex-shrink-0 border-b border-slate-800 p-4">
+      <Card className="bg-card border-border-strong shadow-2xl h-[600px] flex flex-col">
+        <CardHeader className="flex-shrink-0 border-b border-border p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg">
-                <Bot className="h-4 w-4 text-white" />
-              </div>
+              <Bot className="size-5 shrink-0 text-ink-faint" />
               <div>
-                <CardTitle className="text-white text-sm">AI Assistant</CardTitle>
-                <p className="text-xs text-slate-400">Ask me anything</p>
+                <CardTitle className="text-foreground text-sm">AI Assistant</CardTitle>
+                <p className="text-xs text-ink-muted">Ask me anything</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -328,7 +316,7 @@ export function GlobalAIChat() {
                 variant="ghost"
                 size="sm"
                 onClick={toggleWarRoomMode}
-                className="h-8 px-2 text-slate-400 hover:text-orange-400"
+                className="h-8 px-2 text-ink-muted hover:text-caution"
                 title="War Room Mode"
               >
                 <Zap className="h-4 w-4" />
@@ -337,7 +325,7 @@ export function GlobalAIChat() {
                 variant="ghost"
                 size="sm"
                 onClick={toggleFullScreen}
-                className="h-8 w-8 p-0 text-slate-400 hover:text-white"
+                className="h-8 w-8 p-0 text-ink-muted hover:text-foreground"
                 title="Full Screen"
               >
                 <Maximize2 className="h-4 w-4" />
@@ -346,7 +334,7 @@ export function GlobalAIChat() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsOpen(false)}
-                className="h-8 w-8 p-0 text-slate-400 hover:text-white"
+                className="h-8 w-8 p-0 text-ink-muted hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -357,10 +345,10 @@ export function GlobalAIChat() {
         <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 ? (
             <div className="space-y-4">
-              <p className="text-slate-400 text-sm">
+              <p className="text-ink-muted text-sm">
                 Hi! I'm your AI sales assistant. I can help you with:
               </p>
-              <ul className="text-slate-400 text-sm space-y-2 list-disc list-inside">
+              <ul className="text-ink-muted text-sm space-y-2 list-disc list-inside">
                 <li>Finding accounts and contacts</li>
                 <li>Analyzing call transcripts</li>
                 <li>Identifying buying signals</li>
@@ -368,12 +356,12 @@ export function GlobalAIChat() {
                 <li>Summarizing account activity</li>
               </ul>
               <div className="space-y-2">
-                <p className="text-slate-500 text-xs font-semibold">Try asking:</p>
+                <p className="text-ink-subtle text-xs font-semibold">Try asking:</p>
                 {suggestedQuestions.slice(0, 4).map((q, i) => (
                   <button
                     key={i}
                     onClick={() => setInput(q)}
-                    className="block w-full text-left text-xs text-purple-400 hover:text-purple-300 bg-slate-950/50 hover:bg-slate-950 p-2 rounded border border-slate-800 hover:border-purple-500/30 transition-all"
+                    className="block w-full text-left text-xs text-accent hover:text-accent bg-canvas hover:bg-canvas p-2 rounded border border-border hover:border-accent/30 transition-all"
                   >
                     {q}
                   </button>
@@ -383,11 +371,7 @@ export function GlobalAIChat() {
           ) : (
             messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] rounded-lg p-3 ${
-                  msg.role === "user" 
-                    ? "bg-purple-600 text-white" 
-                    : "bg-slate-950 border border-slate-800 text-slate-300"
-                }`}>
+                <div className={`max-w-[85%] rounded-sm p-3 ${ msg.role === "user" ? "bg-accent text-accent-foreground" : "bg-canvas border border-border text-ink-muted" }`}>
                   {msg.role === "assistant" ? (
                     <SafeStreamdown className="text-sm">{msg.content}</SafeStreamdown>
                   ) : (
@@ -399,27 +383,27 @@ export function GlobalAIChat() {
           )}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-slate-950 border border-slate-800 rounded-lg p-3">
-                <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+              <div className="bg-canvas border border-border rounded-sm p-3">
+                <Loader2 className="h-4 w-4 animate-spin text-accent" />
               </div>
             </div>
           )}
         </CardContent>
 
-        <div className="flex-shrink-0 border-t border-slate-800 p-4">
+        <div className="flex-shrink-0 border-t border-border p-4">
           <div className="flex gap-2">
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder="Ask me anything..."
-              className="bg-slate-950 border-slate-700 text-white placeholder:text-slate-500"
+              className="bg-canvas border-border-strong text-foreground placeholder:text-ink-subtle"
               disabled={isLoading}
             />
             <Button
               onClick={handleSend}
               disabled={!input.trim() || isLoading}
-              className="bg-purple-600 hover:bg-purple-700 shrink-0"
+              className="bg-accent hover:bg-accent shrink-0"
             >
               <Send className="h-4 w-4" />
             </Button>

@@ -174,24 +174,22 @@ export default function DataHub() {
 
   const getDataTypeColor = (type: DataType) => {
     switch (type) {
-      case 'leads': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
-      case 'accounts': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'contacts': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'enrichment': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      case 'leads': return 'bg-accent-subtle text-accent border-accent/30';
+      case 'accounts': return 'bg-accent-subtle text-accent border-accent/30';
+      case 'contacts': return 'bg-positive-subtle text-positive border-positive/30';
+      case 'enrichment': return 'bg-caution-subtle text-caution border-caution/30';
+      default: return 'bg-muted text-ink-muted border-border';
     }
   };
 
   return (
-    <div className="container py-8 max-w-6xl">
+    <div className="container py-1 max-w-6xl">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-gradient-to-br from-violet-600 to-purple-600 rounded-xl">
-            <Brain className="h-6 w-6 text-white" />
-          </div>
+          <Brain className="size-5 shrink-0 text-ink-faint" />
           <div>
-            <h1 className="text-3xl font-bold">AI Data Hub</h1>
+            <h1 className="text-xl font-semibold">AI Data Hub</h1>
             <p className="text-muted-foreground">
               Intelligent data processing that learns from your corrections
             </p>
@@ -205,7 +203,7 @@ export default function DataHub() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5 text-violet-500" />
+                <Upload className="h-5 w-5 text-accent" />
                 Upload Data
               </CardTitle>
               <CardDescription>
@@ -217,12 +215,7 @@ export default function DataHub() {
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
                 onClick={() => fileInputRef.current?.click()}
-                className={`
-                  border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all
-                  ${files.length > 0 
-                    ? 'border-violet-500/50 bg-violet-500/5' 
-                    : 'border-border hover:border-violet-500/30 hover:bg-violet-500/5'}
-                `}
+                className={`border-2 border-dashed rounded-md p-8 text-center cursor-pointer transition-all ${files.length > 0 ? 'border-accent/30 bg-accent-subtle' : 'border-border hover:border-accent/30 hover:bg-accent-subtle'}`}
               >
                 <input
                   ref={fileInputRef}
@@ -235,7 +228,7 @@ export default function DataHub() {
                 
                 {files.length > 0 ? (
                   <div className="space-y-3">
-                    <FileSpreadsheet className="h-12 w-12 mx-auto text-violet-500" />
+                    <FileSpreadsheet className="h-12 w-12 mx-auto text-accent" />
                     <div>
                       <p className="font-medium">{files.length} file(s) selected</p>
                       <p className="text-sm text-muted-foreground">
@@ -283,7 +276,7 @@ export default function DataHub() {
                 <Button
                   onClick={processFiles}
                   disabled={files.length === 0 || status === 'processing' || status === 'analyzing'}
-                  className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+                  className="flex-1 bg-accent"
                 >
                   {status === 'processing' || status === 'analyzing' ? (
                     <>
@@ -313,22 +306,22 @@ export default function DataHub() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  <CheckCircle2 className="h-5 w-5 text-positive" />
                   Processing Complete
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="text-center p-4 bg-muted/50 rounded-lg">
-                    <p className="text-3xl font-bold text-violet-500">{result.originalCount}</p>
+                  <div className="text-center p-4 bg-muted/50 rounded-sm">
+                    <p className="text-2xl font-semibold text-accent">{result.originalCount}</p>
                     <p className="text-sm text-muted-foreground">Total Records</p>
                   </div>
-                  <div className="text-center p-4 bg-green-500/10 rounded-lg">
-                    <p className="text-3xl font-bold text-green-500">{result.cleanedCount}</p>
+                  <div className="text-center p-4 bg-positive-subtle rounded-sm">
+                    <p className="text-2xl font-semibold text-positive">{result.cleanedCount}</p>
                     <p className="text-sm text-muted-foreground">Cleaned</p>
                   </div>
-                  <div className="text-center p-4 bg-red-500/10 rounded-lg">
-                    <p className="text-3xl font-bold text-red-500">{result.removedCount}</p>
+                  <div className="text-center p-4 bg-critical-subtle rounded-sm">
+                    <p className="text-2xl font-semibold text-critical">{result.removedCount}</p>
                     <p className="text-sm text-muted-foreground">Removed</p>
                   </div>
                 </div>
@@ -336,7 +329,7 @@ export default function DataHub() {
                 {result.issues.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-sm font-medium flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      <AlertTriangle className="h-4 w-4 text-caution" />
                       Issues Found ({result.issues.length})
                     </p>
                     <div className="max-h-40 overflow-y-auto space-y-1">
@@ -363,7 +356,7 @@ export default function DataHub() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Zap className="h-4 w-4 text-amber-500" />
+                <Zap className="h-4 w-4 text-caution" />
                 AI Processing Rules
               </CardTitle>
             </CardHeader>
@@ -377,7 +370,7 @@ export default function DataHub() {
                 { icon: <XCircle className="h-4 w-4" />, label: 'Personal email filtering' },
               ].map((rule, i) => (
                 <div key={i} className="flex items-center gap-2 text-sm">
-                  <div className="text-green-500">{rule.icon}</div>
+                  <div className="text-positive">{rule.icon}</div>
                   <span>{rule.label}</span>
                 </div>
               ))}
@@ -387,7 +380,7 @@ export default function DataHub() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Brain className="h-4 w-4 text-violet-500" />
+                <Brain className="h-4 w-4 text-accent" />
                 Learning from You
               </CardTitle>
               <CardDescription>
@@ -410,7 +403,7 @@ export default function DataHub() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4 text-blue-500" />
+                <FileText className="h-4 w-4 text-accent" />
                 Knowledge Base
               </CardTitle>
               <CardDescription>

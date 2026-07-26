@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Navigation } from "@/components/Navigation";
 import { trpc } from "@/lib/trpc";
 import { Link, useLocation } from "wouter";
 import {
@@ -222,17 +221,16 @@ export default function ContactsEnhanced() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-        <Navigation />
-        <div className="container py-12 space-y-8 max-w-7xl">
+      <div>
+        <div className="container py-1 space-y-5 max-w-7xl">
           <div className="space-y-4">
             <div className="h-12 w-96 skeleton" />
             <div className="h-6 w-64 skeleton" />
           </div>
-          <div className="h-32 skeleton rounded-xl" />
+          <div className="h-32 skeleton rounded-md" />
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-48 skeleton rounded-xl" />
+              <div key={i} className="h-48 skeleton rounded-md" />
             ))}
           </div>
         </div>
@@ -241,20 +239,17 @@ export default function ContactsEnhanced() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <Navigation />
+    <div>
 
-      <div className="container py-12 space-y-8 max-w-7xl">
+      <div className="container py-1 space-y-5 max-w-7xl">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl shadow-lg">
-                <Users className="h-8 w-8 text-white" />
-              </div>
+              <Users className="size-5 shrink-0 text-ink-faint" />
               <div>
-                <h1 className="text-5xl font-bold tracking-tight">Contacts</h1>
-                <p className="text-muted-foreground text-lg mt-1">
+                <h1 className="text-xl font-semibold tracking-tight">Contacts</h1>
+                <p className="text-ink-muted text-sm mt-0.5">
                   {filteredContacts.length} of {contacts?.length || 0} contacts
                   {repInfo && <span className="ml-2 text-sm">• {repInfo.label} territory</span>}
                 </p>
@@ -266,12 +261,12 @@ export default function ContactsEnhanced() {
             <Button
               onClick={() => setShowAIPriority(!showAIPriority)}
               variant={showAIPriority ? "default" : "outline"}
-              className={showAIPriority ? "gradient-primary text-white" : ""}
+              className={showAIPriority ? "text-foreground" : ""}
             >
               <Sparkles className="mr-2 h-4 w-4" />
               {showAIPriority ? "AI Priority On" : "AI Priority Off"}
             </Button>
-            <Button asChild className="gradient-primary text-white shadow-lg hover:shadow-xl">
+            <Button asChild className="text-foreground shadow-lg hover:shadow-xl">
               <Link href="/outreach">
                 <Mail className="mr-2 h-5 w-5" />
                 Generate Outreach
@@ -288,12 +283,12 @@ export default function ContactsEnhanced() {
           <Card className="card-elevated border-l-4 border-l-purple-500">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Users className="h-4 w-4 text-purple-500" />
+                <Users className="h-4 w-4 text-accent" />
                 Total Contacts
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{filteredContacts.length}</div>
+              <div className="text-2xl font-semibold">{filteredContacts.length}</div>
               <p className="text-xs text-muted-foreground mt-1">Active contacts</p>
             </CardContent>
           </Card>
@@ -301,12 +296,12 @@ export default function ContactsEnhanced() {
           <Card className="card-elevated border-l-4 border-l-indigo-500">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-indigo-500" />
+                <Building2 className="h-4 w-4 text-accent" />
                 Companies
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{companies.length}</div>
+              <div className="text-2xl font-semibold">{companies.length}</div>
               <p className="text-xs text-muted-foreground mt-1">Unique companies</p>
             </CardContent>
           </Card>
@@ -314,12 +309,12 @@ export default function ContactsEnhanced() {
           <Card className="card-elevated border-l-4 border-l-cyan-500">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Briefcase className="h-4 w-4 text-cyan-500" />
+                <Briefcase className="h-4 w-4 text-accent" />
                 Decision Makers
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">
+              <div className="text-2xl font-semibold">
                 {filteredContacts.filter((c: any) => 
                   c.title?.toLowerCase().match(/\b(ceo|cto|cfo|cio|vp|svp|evp|director|head)\b/)
                 ).length}
@@ -440,9 +435,7 @@ export default function ContactsEnhanced() {
                   className="card-elevated hover:scale-[1.02] transition-all cursor-pointer group h-full">
                   <CardHeader>
                     <div className="flex items-start gap-3">
-                      <div className="p-3 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl shadow-lg flex-shrink-0">
-                        <User className="h-6 w-6 text-white" />
-                      </div>
+                      <User className="size-5 shrink-0 text-ink-faint" />
                       <div className="flex-1 min-w-0">
                         <CardTitle className="text-xl group-hover:text-primary transition-colors line-clamp-1">
                           {contact.name}
@@ -461,7 +454,7 @@ export default function ContactsEnhanced() {
                         <span className="line-clamp-1 font-medium">{contact.company}</span>
                       </div>
                       {(contact as any).accountIntentScore && (
-                        <Badge variant={Number((contact as any).accountIntentScore) >= 70 ? "default" : Number((contact as any).accountIntentScore) >= 40 ? "secondary" : "outline"} className={Number((contact as any).accountIntentScore) >= 70 ? "bg-red-500" : Number((contact as any).accountIntentScore) >= 40 ? "bg-amber-500" : ""}>
+                        <Badge variant={Number((contact as any).accountIntentScore) >= 70 ? "default" : Number((contact as any).accountIntentScore) >= 40 ? "secondary" : "outline"} className={Number((contact as any).accountIntentScore) >= 70 ? "bg-critical" : Number((contact as any).accountIntentScore) >= 40 ? "bg-caution" : ""}>
                           {(contact as any).accountIntentScore}%
                         </Badge>
                       )}

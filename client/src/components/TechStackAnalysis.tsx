@@ -13,15 +13,15 @@ interface TechStackAnalysisProps {
 }
 
 const categoryConfig = {
-  mfa: { label: "MFA Providers", icon: Lock, color: "text-red-500" },
-  sso: { label: "SSO Providers", icon: Shield, color: "text-orange-500" },
-  edr: { label: "EDR/Security", icon: AlertTriangle, color: "text-yellow-500" },
-  crm: { label: "CRM Systems", icon: BarChart3, color: "text-blue-500" },
-  communication: { label: "Communication Tools", icon: MessageSquare, color: "text-green-500" },
-  development: { label: "Development Tools", icon: Code, color: "text-purple-500" },
-  cloud: { label: "Cloud Infrastructure", icon: Cloud, color: "text-cyan-500" },
-  security: { label: "Security Tools", icon: Shield, color: "text-indigo-500" },
-  other: { label: "Other Technologies", icon: Server, color: "text-gray-500" }
+  mfa: { label: "MFA Providers", icon: Lock, color: "text-critical" },
+  sso: { label: "SSO Providers", icon: Shield, color: "text-caution" },
+  edr: { label: "EDR/Security", icon: AlertTriangle, color: "text-caution" },
+  crm: { label: "CRM Systems", icon: BarChart3, color: "text-accent" },
+  communication: { label: "Communication Tools", icon: MessageSquare, color: "text-positive" },
+  development: { label: "Development Tools", icon: Code, color: "text-accent" },
+  cloud: { label: "Cloud Infrastructure", icon: Cloud, color: "text-accent" },
+  security: { label: "Security Tools", icon: Shield, color: "text-accent" },
+  other: { label: "Other Technologies", icon: Server, color: "text-ink-subtle" }
 };
 
 export function TechStackAnalysis({ accountId }: TechStackAnalysisProps) {
@@ -53,7 +53,7 @@ export function TechStackAnalysis({ accountId }: TechStackAnalysisProps) {
           <Button 
             onClick={handleAnalyze}
             disabled={analyzeMutation.isPending}
-            className="gradient-primary text-white"
+            className="text-foreground"
           >
             {analyzeMutation.isPending ? (
               <>
@@ -101,7 +101,7 @@ export function TechStackAnalysis({ accountId }: TechStackAnalysisProps) {
         )}
 
         {analyzeMutation.isError && (
-          <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+          <div className="p-4 rounded-sm bg-destructive/10 border border-destructive/20">
             <p className="text-sm text-destructive">
               Failed to analyze technology stack. Please try again.
             </p>

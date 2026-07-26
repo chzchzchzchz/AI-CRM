@@ -26,7 +26,7 @@ export function AIEnrichButton({ accountId, onEnriched }: AIEnrichButtonProps) {
       <Button
         onClick={handleEnrich}
         disabled={enrichMutation.isPending}
-        className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+        className="bg-accent"
       >
         {enrichMutation.isPending ? (
           <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Analyzing...</>
@@ -36,10 +36,10 @@ export function AIEnrichButton({ accountId, onEnriched }: AIEnrichButtonProps) {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-2xl">
+        <DialogContent className="bg-card border-border text-foreground max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-cyan-500" />
+              <Sparkles className="h-5 w-5 text-accent" />
               AI Account Intelligence
             </DialogTitle>
           </DialogHeader>
@@ -47,40 +47,40 @@ export function AIEnrichButton({ accountId, onEnriched }: AIEnrichButtonProps) {
           {insights && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-sm font-semibold text-slate-400 mb-2">Executive Summary</h3>
-                <p className="text-white">{insights.summary}</p>
+                <h3 className="text-sm font-semibold text-ink-muted mb-2">Executive Summary</h3>
+                <p className="text-foreground">{insights.summary}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-                  <p className="text-sm text-slate-400 mb-1">Account Score</p>
-                  <p className="text-3xl font-bold text-cyan-500">{insights.score}/100</p>
+                <div className="p-4 bg-muted rounded-sm border border-border-strong">
+                  <p className="text-sm text-ink-muted mb-1">Account Score</p>
+                  <p className="text-2xl font-semibold text-accent">{insights.score}/100</p>
                 </div>
-                <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-                  <p className="text-sm text-slate-400 mb-1">Confidence</p>
-                  <p className="text-3xl font-bold text-purple-500">{insights.confidence}%</p>
+                <div className="p-4 bg-muted rounded-sm border border-border-strong">
+                  <p className="text-sm text-ink-muted mb-1">Confidence</p>
+                  <p className="text-2xl font-semibold text-accent">{insights.confidence}%</p>
                 </div>
               </div>
 
               <div>
-                <h3 className="text-sm font-semibold text-slate-400 mb-2">Key Insights</h3>
+                <h3 className="text-sm font-semibold text-ink-muted mb-2">Key Insights</h3>
                 <ul className="space-y-2">
                   {insights.insights.map((insight: string, i: number) => (
                     <li key={i} className="flex items-start gap-2">
-                      <span className="text-cyan-500 mt-1">•</span>
-                      <span className="text-slate-300">{insight}</span>
+                      <span className="text-accent mt-1">•</span>
+                      <span className="text-ink-muted">{insight}</span>
                     </li>
                   ))}
                 </ul>
               </div>
 
               <div>
-                <h3 className="text-sm font-semibold text-slate-400 mb-2">Recommended Actions</h3>
+                <h3 className="text-sm font-semibold text-ink-muted mb-2">Recommended Actions</h3>
                 <ul className="space-y-2">
                   {insights.recommendations.map((rec: string, i: number) => (
                     <li key={i} className="flex items-start gap-2">
-                      <span className="text-purple-500 mt-1">→</span>
-                      <span className="text-slate-300">{rec}</span>
+                      <span className="text-accent mt-1">→</span>
+                      <span className="text-ink-muted">{rec}</span>
                     </li>
                   ))}
                 </ul>

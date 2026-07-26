@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Navigation } from "@/components/Navigation";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import {
@@ -61,15 +60,14 @@ export default function Calls() {
   // Loading state
   if (isLoading && !data) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <div className="container py-8 space-y-6 max-w-6xl">
+      <div>
+        <div className="container py-1 space-y-5 max-w-6xl">
           <div className="h-10 w-48 skeleton rounded" />
           <div className="grid gap-4 md:grid-cols-3">
-            {[1, 2, 3].map(i => <div key={i} className="h-24 skeleton rounded-lg" />)}
+            {[1, 2, 3].map(i => <div key={i} className="h-24 skeleton rounded-sm" />)}
           </div>
           <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-32 skeleton rounded-lg" />)}
+            {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-32 skeleton rounded-sm" />)}
           </div>
         </div>
       </div>
@@ -77,14 +75,13 @@ export default function Calls() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+    <div>
 
-      <div className="container py-8 space-y-6 max-w-6xl">
+      <div className="container py-1 space-y-5 max-w-6xl">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Gong Calls</h1>
+            <h1 className="text-xl font-semibold">Gong Calls</h1>
             <p className="text-muted-foreground">
               {totalCalls.toLocaleString()} total calls
             </p>
@@ -96,7 +93,7 @@ export default function Calls() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <Phone className="h-8 w-8 text-cyan-500" />
+                <Phone className="h-8 w-8 text-accent" />
                 <div>
                   <p className="text-2xl font-bold">{totalCalls.toLocaleString()}</p>
                   <p className="text-sm text-muted-foreground">Total Calls</p>
@@ -107,7 +104,7 @@ export default function Calls() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <Calendar className="h-8 w-8 text-indigo-500" />
+                <Calendar className="h-8 w-8 text-accent" />
                 <div>
                   <p className="text-2xl font-bold">Page {currentPage}</p>
                   <p className="text-sm text-muted-foreground">of {totalPages} pages</p>
@@ -118,7 +115,7 @@ export default function Calls() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <Clock className="h-8 w-8 text-purple-500" />
+                <Clock className="h-8 w-8 text-accent" />
                 <div>
                   <p className="text-2xl font-bold">{CALLS_PER_PAGE}</p>
                   <p className="text-sm text-muted-foreground">Per page</p>
@@ -188,9 +185,7 @@ export default function Calls() {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <div className="p-2 bg-cyan-500/10 rounded-lg">
-                          <Phone className="h-4 w-4 text-cyan-500" />
-                        </div>
+                        <Phone className="size-5 shrink-0 text-ink-faint" />
                         <div className="flex-1 min-w-0">
                           <h3 className="font-medium line-clamp-1">
                             {call.title || "Untitled Call"}

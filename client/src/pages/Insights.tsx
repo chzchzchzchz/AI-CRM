@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +9,7 @@ import { Link } from "wouter";
 import { ContextualAI } from "@/components/ContextualAI";
 import { useRep } from "@/contexts/RepContext";
 import { RepSwitcher } from "@/components/RepSwitcher";
+import { CompanyLogo } from "@/components/ui/company-logo";
 
 type FilterType = "intent" | "industry" | "region" | "buyingStage" | "keyword" | null;
 
@@ -187,28 +187,27 @@ export default function Insights() {
   const clearFilter = () => setActiveFilter(null);
 
   const getIntentColor = (score: number) => {
-    if (score >= 70) return "text-green-400";
-    if (score >= 40) return "text-yellow-400";
-    return "text-orange-400";
+    if (score >= 70) return "text-positive";
+    if (score >= 40) return "text-caution";
+    return "text-caution";
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      <Navigation />
-      <div className="container py-8">
+    <div className="min-h-screen bg-surface">
+      <div className="container py-1">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Data Analytics Studio</h1>
-            <p className="text-slate-400">
+            <h1 className="text-xl font-semibold text-foreground mb-2">Data Analytics Studio</h1>
+            <p className="text-ink-muted">
               {isRepMode ? `${repInfo?.region} territory • ` : ''}Click any chart segment to filter and explore accounts
             </p>
           </div>
@@ -218,7 +217,7 @@ export default function Insights() {
               <Button 
                 variant="outline" 
                 onClick={clearFilter}
-                className="gap-2 border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+                className="gap-2 border-accent/30 text-accent hover:bg-accent-subtle"
               >
                 <X className="h-4 w-4" />
                 Clear Filter
@@ -235,18 +234,18 @@ export default function Insights() {
 
         {/* Active Filter Banner */}
         {activeFilter && (
-          <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/30">
+          <div className="mb-6 p-4 rounded-md bg-accent border border-accent/30">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Filter className="h-5 w-5 text-cyan-400" />
-                <span className="text-white font-medium">
-                  Filtering by {activeFilter.type}: <span className="text-cyan-400">{activeFilter.label}</span>
+                <Filter className="h-5 w-5 text-accent" />
+                <span className="text-foreground font-medium">
+                  Filtering by {activeFilter.type}: <span className="text-accent">{activeFilter.label}</span>
                 </span>
-                <Badge variant="outline" className="border-cyan-500/50 text-cyan-400">
+                <Badge variant="outline" className="border-accent/30 text-accent">
                   {filteredAccounts.length} accounts
                 </Badge>
               </div>
-              <Button variant="ghost" size="sm" onClick={clearFilter} className="text-slate-400 hover:text-white">
+              <Button variant="ghost" size="sm" onClick={clearFilter} className="text-ink-muted hover:text-foreground">
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -255,20 +254,20 @@ export default function Insights() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
-          <TabsList className="bg-slate-900/50 border border-slate-800">
-            <TabsTrigger value="overview" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
+          <TabsList className="bg-card border border-border">
+            <TabsTrigger value="overview" className="data-[state=active]:bg-accent-subtle data-[state=active]:text-accent">
               <BarChart3 className="h-4 w-4 mr-2" />
               Overview
             </TabsTrigger>
-            <TabsTrigger value="keywords" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
+            <TabsTrigger value="keywords" className="data-[state=active]:bg-accent-subtle data-[state=active]:text-accent">
               <Hash className="h-4 w-4 mr-2" />
               Keywords ({keywords?.keywords?.length || 0})
             </TabsTrigger>
-            <TabsTrigger value="engagement" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400">
+            <TabsTrigger value="engagement" className="data-[state=active]:bg-positive-subtle data-[state=active]:text-positive">
               <Activity className="h-4 w-4 mr-2" />
               Engagement
             </TabsTrigger>
-            <TabsTrigger value="6qa" className="data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-400">
+            <TabsTrigger value="6qa" className="data-[state=active]:bg-caution-subtle data-[state=active]:text-caution">
               <Target className="h-4 w-4 mr-2" />
               6QA Performance
             </TabsTrigger>
@@ -280,14 +279,14 @@ export default function Insights() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
               <Card className="card-elevated border-l-4 border-l-cyan-500">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-cyan-400 flex items-center gap-2">
+                  <CardTitle className="text-sm font-medium text-accent flex items-center gap-2">
                     <Building2 className="h-4 w-4" />
                     Total Accounts
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-white">{activeFilter ? filteredAccounts.length : totalAccounts}</div>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <div className="text-2xl font-semibold text-foreground">{activeFilter ? filteredAccounts.length : totalAccounts}</div>
+                  <p className="text-xs text-ink-muted mt-1">
                     {activeFilter ? `Filtered from ${totalAccounts}` : "Across all segments"}
                   </p>
                 </CardContent>
@@ -295,50 +294,50 @@ export default function Insights() {
 
               <Card className="card-elevated border-l-4 border-l-green-500">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-green-400 flex items-center gap-2">
+                  <CardTitle className="text-sm font-medium text-positive flex items-center gap-2">
                     <Users className="h-4 w-4" />
                     Key Contacts
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-white">{totalContacts.toLocaleString()}</div>
-                  <p className="text-xs text-slate-400 mt-1">Decision makers</p>
+                  <div className="text-2xl font-semibold text-foreground">{totalContacts.toLocaleString()}</div>
+                  <p className="text-xs text-ink-muted mt-1">Decision makers</p>
                 </CardContent>
               </Card>
 
               <Card className="card-elevated border-l-4 border-l-purple-500">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-purple-400 flex items-center gap-2">
+                  <CardTitle className="text-sm font-medium text-accent flex items-center gap-2">
                     <Flame className="h-4 w-4" />
                     Hot Leads
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-white">{intentBuckets.hot}</div>
-                  <p className="text-xs text-slate-400 mt-1">Intent score 70+</p>
+                  <div className="text-2xl font-semibold text-foreground">{intentBuckets.hot}</div>
+                  <p className="text-xs text-ink-muted mt-1">Intent score 70+</p>
                 </CardContent>
               </Card>
 
               <Card className="card-elevated border-l-4 border-l-yellow-500">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-yellow-400 flex items-center gap-2">
+                  <CardTitle className="text-sm font-medium text-caution flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
                     Avg Intent Score
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-white">{avgIntent.toFixed(0)}</div>
-                  <p className="text-xs text-slate-400 mt-1">Buying intent level</p>
+                  <div className="text-2xl font-semibold text-foreground">{avgIntent.toFixed(0)}</div>
+                  <p className="text-xs text-ink-muted mt-1">Buying intent level</p>
                 </CardContent>
               </Card>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
               {/* Intent Distribution */}
-              <Card className={`card-elevated transition-all ${activeFilter?.type === "intent" ? "ring-2 ring-cyan-500" : ""}`}>
+              <Card className={`card-elevated transition-all ${activeFilter?.type === "intent" ? "ring-2 ring-accent" : ""}`}>
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-cyan-400" />
+                  <CardTitle className="text-foreground flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-accent" />
                     Intent Score Distribution
                   </CardTitle>
                   <CardDescription>Click to filter accounts</CardDescription>
@@ -347,52 +346,40 @@ export default function Insights() {
                   <div className="space-y-3">
                     <button
                       onClick={() => handleFilterClick("intent", "hot", "Hot Leads (70+)")}
-                      className={`w-full text-left p-4 rounded-lg border transition-all ${
-                        activeFilter?.type === "intent" && activeFilter?.value === "hot"
-                          ? "bg-green-500/20 border-green-500"
-                          : "bg-green-500/10 border-green-500/20 hover:bg-green-500/20"
-                      }`}
+                      className={`w-full text-left p-4 rounded-sm border transition-all ${ activeFilter?.type === "intent" && activeFilter?.value === "hot" ? "bg-positive-subtle border-positive/30" : "bg-positive-subtle border-positive/30 hover:bg-positive-subtle" }`}
                     >
                       <div className="flex justify-between items-center">
-                        <span className="text-green-400 font-medium">Hot Leads (70+)</span>
-                        <span className="text-2xl font-bold text-white">{intentBuckets.hot}</span>
+                        <span className="text-positive font-medium">Hot Leads (70+)</span>
+                        <span className="text-2xl font-bold text-foreground">{intentBuckets.hot}</span>
                       </div>
-                      <div className="mt-2 h-2 bg-slate-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-green-500" style={{ width: `${(intentBuckets.hot / totalAccounts) * 100}%` }} />
+                      <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-positive" style={{ width: `${(intentBuckets.hot / totalAccounts) * 100}%` }} />
                       </div>
                     </button>
 
                     <button
                       onClick={() => handleFilterClick("intent", "warm", "Warm Leads (40-69)")}
-                      className={`w-full text-left p-4 rounded-lg border transition-all ${
-                        activeFilter?.type === "intent" && activeFilter?.value === "warm"
-                          ? "bg-yellow-500/20 border-yellow-500"
-                          : "bg-yellow-500/10 border-yellow-500/20 hover:bg-yellow-500/20"
-                      }`}
+                      className={`w-full text-left p-4 rounded-sm border transition-all ${ activeFilter?.type === "intent" && activeFilter?.value === "warm" ? "bg-caution-subtle border-caution/30" : "bg-caution-subtle border-caution/30 hover:bg-caution-subtle" }`}
                     >
                       <div className="flex justify-between items-center">
-                        <span className="text-yellow-400 font-medium">Warm Leads (40-69)</span>
-                        <span className="text-2xl font-bold text-white">{intentBuckets.warm}</span>
+                        <span className="text-caution font-medium">Warm Leads (40-69)</span>
+                        <span className="text-2xl font-bold text-foreground">{intentBuckets.warm}</span>
                       </div>
-                      <div className="mt-2 h-2 bg-slate-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-yellow-500" style={{ width: `${(intentBuckets.warm / totalAccounts) * 100}%` }} />
+                      <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-caution" style={{ width: `${(intentBuckets.warm / totalAccounts) * 100}%` }} />
                       </div>
                     </button>
 
                     <button
                       onClick={() => handleFilterClick("intent", "cold", "Cold Leads (<40)")}
-                      className={`w-full text-left p-4 rounded-lg border transition-all ${
-                        activeFilter?.type === "intent" && activeFilter?.value === "cold"
-                          ? "bg-orange-500/20 border-orange-500"
-                          : "bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20"
-                      }`}
+                      className={`w-full text-left p-4 rounded-sm border transition-all ${ activeFilter?.type === "intent" && activeFilter?.value === "cold" ? "bg-caution-subtle border-caution/30" : "bg-caution-subtle border-caution/30 hover:bg-caution-subtle" }`}
                     >
                       <div className="flex justify-between items-center">
-                        <span className="text-orange-400 font-medium">Cold Leads (&lt;40)</span>
-                        <span className="text-2xl font-bold text-white">{intentBuckets.cold}</span>
+                        <span className="text-caution font-medium">Cold Leads (&lt;40)</span>
+                        <span className="text-2xl font-bold text-foreground">{intentBuckets.cold}</span>
                       </div>
-                      <div className="mt-2 h-2 bg-slate-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-orange-500" style={{ width: `${(intentBuckets.cold / totalAccounts) * 100}%` }} />
+                      <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-caution" style={{ width: `${(intentBuckets.cold / totalAccounts) * 100}%` }} />
                       </div>
                     </button>
                   </div>
@@ -400,10 +387,10 @@ export default function Insights() {
               </Card>
 
               {/* Top Industries */}
-              <Card className={`card-elevated transition-all ${activeFilter?.type === "industry" ? "ring-2 ring-cyan-500" : ""}`}>
+              <Card className={`card-elevated transition-all ${activeFilter?.type === "industry" ? "ring-2 ring-accent" : ""}`}>
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-cyan-400" />
+                  <CardTitle className="text-foreground flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-accent" />
                     Top Industries
                   </CardTitle>
                   <CardDescription>Click to filter by industry</CardDescription>
@@ -417,19 +404,15 @@ export default function Insights() {
                         <button
                           key={industry}
                           onClick={() => handleFilterClick("industry", industry, industry)}
-                          className={`w-full text-left p-2 rounded-lg transition-all ${
-                            activeFilter?.type === "industry" && activeFilter?.value === industry
-                              ? "bg-cyan-500/20 border border-cyan-500"
-                              : "hover:bg-slate-800/50"
-                          }`}
+                          className={`w-full text-left p-2 rounded-sm transition-all ${ activeFilter?.type === "industry" && activeFilter?.value === industry ? "bg-accent-subtle border border-accent/30" : "hover:bg-muted" }`}
                         >
                           <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm text-slate-300 truncate max-w-[150px]">{industry}</span>
-                            <span className="text-sm font-semibold text-white">{count as number}</span>
+                            <span className="text-sm text-ink-muted truncate max-w-[150px]">{industry}</span>
+                            <span className="text-sm font-semibold text-foreground">{count as number}</span>
                           </div>
-                          <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-cyan-500 to-blue-500"
+                              className="h-full bg-accent"
                               style={{ width: `${((count as number) / totalAccounts) * 100}%` }}
                             />
                           </div>
@@ -440,10 +423,10 @@ export default function Insights() {
               </Card>
 
               {/* Geographic Distribution */}
-              <Card className={`card-elevated transition-all ${activeFilter?.type === "region" ? "ring-2 ring-cyan-500" : ""}`}>
+              <Card className={`card-elevated transition-all ${activeFilter?.type === "region" ? "ring-2 ring-accent" : ""}`}>
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-cyan-400" />
+                  <CardTitle className="text-foreground flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-accent" />
                     Geographic Distribution
                   </CardTitle>
                   <CardDescription>Click to filter by region</CardDescription>
@@ -457,19 +440,15 @@ export default function Insights() {
                         <button
                           key={region}
                           onClick={() => handleFilterClick("region", region, region)}
-                          className={`w-full text-left p-2 rounded-lg transition-all ${
-                            activeFilter?.type === "region" && activeFilter?.value === region
-                              ? "bg-purple-500/20 border border-purple-500"
-                              : "hover:bg-slate-800/50"
-                          }`}
+                          className={`w-full text-left p-2 rounded-sm transition-all ${ activeFilter?.type === "region" && activeFilter?.value === region ? "bg-accent-subtle border border-accent/30" : "hover:bg-muted" }`}
                         >
                           <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm text-slate-300">{region}</span>
-                            <span className="text-sm font-semibold text-white">{count as number}</span>
+                            <span className="text-sm text-ink-muted">{region}</span>
+                            <span className="text-sm font-semibold text-foreground">{count as number}</span>
                           </div>
-                          <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+                              className="h-full bg-accent"
                               style={{ width: `${((count as number) / totalAccounts) * 100}%` }}
                             />
                           </div>
@@ -481,10 +460,10 @@ export default function Insights() {
             </div>
 
             {/* Buying Stage Distribution */}
-            <Card className={`card-elevated mb-8 transition-all ${activeFilter?.type === "buyingStage" ? "ring-2 ring-cyan-500" : ""}`}>
+            <Card className={`card-elevated mb-8 transition-all ${activeFilter?.type === "buyingStage" ? "ring-2 ring-accent" : ""}`}>
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <PieChart className="h-5 w-5 text-cyan-400" />
+                <CardTitle className="text-foreground flex items-center gap-2">
+                  <PieChart className="h-5 w-5 text-accent" />
                   Buying Stage Funnel
                 </CardTitle>
                 <CardDescription>Click stages to filter accounts in each phase</CardDescription>
@@ -495,25 +474,23 @@ export default function Insights() {
                     .sort(([, a], [, b]) => (b as number) - (a as number))
                     .map(([stage, count]) => {
                       const stageColors: Record<string, string> = {
-                        "Target": "bg-slate-500/20 border-slate-500/50 hover:bg-slate-500/30",
-                        "Awareness": "bg-blue-500/20 border-blue-500/50 hover:bg-blue-500/30",
-                        "Consideration": "bg-cyan-500/20 border-cyan-500/50 hover:bg-cyan-500/30",
-                        "Decision": "bg-purple-500/20 border-purple-500/50 hover:bg-purple-500/30",
-                        "Purchase": "bg-green-500/20 border-green-500/50 hover:bg-green-500/30",
+                        "Target": "bg-muted border-border hover:bg-muted",
+                        "Awareness": "bg-accent-subtle border-accent/30 hover:bg-accent-subtle",
+                        "Consideration": "bg-accent-subtle border-accent/30 hover:bg-accent-subtle",
+                        "Decision": "bg-accent-subtle border-accent/30 hover:bg-accent-subtle",
+                        "Purchase": "bg-positive-subtle border-positive/30 hover:bg-positive-subtle",
                       };
-                      const colorClass = stageColors[stage] || "bg-slate-500/20 border-slate-500/50 hover:bg-slate-500/30";
+                      const colorClass = stageColors[stage] || "bg-muted border-border hover:bg-muted";
                       const isActive = activeFilter?.type === "buyingStage" && activeFilter?.value === stage;
                       
                       return (
                         <button
                           key={stage}
                           onClick={() => handleFilterClick("buyingStage", stage, stage)}
-                          className={`px-4 py-3 rounded-xl border transition-all ${
-                            isActive ? "ring-2 ring-cyan-500 " + colorClass : colorClass
-                          }`}
+                          className={`px-4 py-3 rounded-md border transition-all ${ isActive ? "ring-2 ring-accent " + colorClass : colorClass }`}
                         >
-                          <div className="text-2xl font-bold text-white">{count as number}</div>
-                          <div className="text-sm text-slate-400">{stage}</div>
+                          <div className="text-2xl font-bold text-foreground">{count as number}</div>
+                          <div className="text-sm text-ink-muted">{stage}</div>
                         </button>
                       );
                     })}
@@ -527,7 +504,7 @@ export default function Insights() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-white">Filtered Accounts</CardTitle>
+                      <CardTitle className="text-foreground">Filtered Accounts</CardTitle>
                       <CardDescription>
                         Showing {filteredAccounts.length} accounts matching "{activeFilter.label}"
                       </CardDescription>
@@ -542,32 +519,34 @@ export default function Insights() {
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
-                        <tr className="border-b border-slate-800">
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Company</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Industry</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Region</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Buying Stage</th>
-                          <th className="text-center py-3 px-4 text-sm font-medium text-slate-400">Intent</th>
-                          <th className="text-center py-3 px-4 text-sm font-medium text-slate-400">Employees</th>
-                          <th className="text-right py-3 px-4 text-sm font-medium text-slate-400">Actions</th>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-ink-muted">Company</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-ink-muted">Industry</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-ink-muted">Region</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-ink-muted">Buying Stage</th>
+                          <th className="text-center py-3 px-4 text-sm font-medium text-ink-muted">Intent</th>
+                          <th className="text-center py-3 px-4 text-sm font-medium text-ink-muted">Employees</th>
+                          <th className="text-right py-3 px-4 text-sm font-medium text-ink-muted">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredAccounts.slice(0, 20).map((account: any) => (
-                          <tr key={account.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+                          <tr key={account.id} className="border-b border-border hover:bg-muted transition-colors">
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
-                                  {account.name?.charAt(0) || "?"}
-                                </div>
+                                <CompanyLogo
+                                  name={account.name}
+                                  website={account.domain}
+                                  size="md"
+                                />
                                 <div>
-                                  <div className="font-medium text-white">{account.name}</div>
-                                  <div className="text-xs text-slate-500">{account.domain}</div>
+                                  <div className="font-medium text-foreground">{account.name}</div>
+                                  <div className="text-xs text-ink-subtle">{account.domain}</div>
                                 </div>
                               </div>
                             </td>
-                            <td className="py-3 px-4 text-sm text-slate-300">{account.industry || "Unknown"}</td>
-                            <td className="py-3 px-4 text-sm text-slate-300">{account.region || "Unknown"}</td>
+                            <td className="py-3 px-4 text-sm text-ink-muted">{account.industry || "Unknown"}</td>
+                            <td className="py-3 px-4 text-sm text-ink-muted">{account.region || "Unknown"}</td>
                             <td className="py-3 px-4">
                               <Badge variant="outline" className="text-xs">
                                 {account.sixsenseBuyingStage || "Unknown"}
@@ -578,12 +557,12 @@ export default function Insights() {
                                 {account.intentScore || 0}
                               </span>
                             </td>
-                            <td className="py-3 px-4 text-center text-sm text-slate-300">
+                            <td className="py-3 px-4 text-center text-sm text-ink-muted">
                               {account.employeeCount?.toLocaleString() || "-"}
                             </td>
                             <td className="py-3 px-4 text-right">
                               <Link href={`/accounts/${account.id}`}>
-                                <Button variant="ghost" size="sm" className="gap-1 text-cyan-400 hover:text-cyan-300">
+                                <Button variant="ghost" size="sm" className="gap-1 text-accent hover:text-accent">
                                   View <ExternalLink className="h-3 w-3" />
                                 </Button>
                               </Link>
@@ -593,9 +572,9 @@ export default function Insights() {
                       </tbody>
                     </table>
                     {filteredAccounts.length > 20 && (
-                      <div className="text-center py-4 text-sm text-slate-400">
+                      <div className="text-center py-4 text-sm text-ink-muted">
                         Showing 20 of {filteredAccounts.length} accounts. 
-                        <Link href="/accounts" className="text-cyan-400 hover:underline ml-1">View all in Accounts</Link>
+                        <Link href="/accounts" className="text-accent hover:underline ml-1">View all in Accounts</Link>
                       </div>
                     )}
                   </div>
@@ -607,7 +586,7 @@ export default function Insights() {
             {activeFilter && filteredAccounts.length === 0 && (
               <Card className="card-elevated">
                 <CardContent className="py-12 text-center">
-                  <div className="text-slate-400 mb-4">No accounts found matching "{activeFilter.label}"</div>
+                  <div className="text-ink-muted mb-4">No accounts found matching "{activeFilter.label}"</div>
                   <Button variant="outline" onClick={clearFilter}>Clear Filter</Button>
                 </CardContent>
               </Card>
@@ -620,8 +599,8 @@ export default function Insights() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-white flex items-center gap-2">
-                      <Hash className="h-5 w-5 text-purple-400" />
+                    <CardTitle className="text-foreground flex items-center gap-2">
+                      <Hash className="h-5 w-5 text-accent" />
                       6sense Intent Keywords
                     </CardTitle>
                     <CardDescription>
@@ -629,13 +608,13 @@ export default function Insights() {
                     </CardDescription>
                   </div>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" />
                     <input
                       type="text"
                       placeholder="Search keywords..."
                       value={keywordSearch}
                       onChange={(e) => setKeywordSearch(e.target.value)}
-                      className="pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="pl-10 pr-4 py-2 bg-muted border border-border-strong rounded-sm text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     />
                   </div>
                 </div>
@@ -646,44 +625,44 @@ export default function Insights() {
                     <div
                       key={idx}
                       onClick={() => handleFilterClick("keyword", kw.keyword, `Keyword: ${kw.keyword}`, kw.category || undefined)}
-                      className={`p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-slate-900 border transition-all cursor-pointer group ${activeFilter?.type === "keyword" && activeFilter?.value === kw.keyword ? "border-purple-500 ring-2 ring-purple-500/50" : "border-purple-500/20 hover:border-purple-500/50"}`}
+                      className={`p-4 rounded-md bg-accent border transition-all cursor-pointer group ${activeFilter?.type === "keyword" && activeFilter?.value === kw.keyword ? "border-accent/30 ring-2 ring-accent" : "border-accent/30 hover:border-accent/30"}`}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <Hash className="h-4 w-4 text-purple-400" />
-                          <span className="font-medium text-white group-hover:text-purple-300 transition-colors">
+                          <Hash className="h-4 w-4 text-accent" />
+                          <span className="font-medium text-foreground group-hover:text-accent transition-colors">
                             {kw.keyword}
                           </span>
                         </div>
                         {kw.category && (
-                          <Badge variant="outline" className="text-xs border-purple-500/30 text-purple-400">
+                          <Badge variant="outline" className="text-xs border-accent/30 text-accent">
                             {kw.category}
                           </Badge>
                         )}
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div className="bg-slate-800/50 rounded-lg p-2">
-                          <div className="text-slate-400 text-xs">Total Accounts</div>
-                          <div className="text-white font-bold">{kw.totalAccounts}</div>
+                        <div className="bg-muted rounded-sm p-2">
+                          <div className="text-ink-muted text-xs">Total Accounts</div>
+                          <div className="text-foreground font-bold">{kw.totalAccounts}</div>
                         </div>
-                        <div className="bg-slate-800/50 rounded-lg p-2">
-                          <div className="text-slate-400 text-xs">Web Visits</div>
-                          <div className="text-cyan-400 font-bold">{kw.accountsWithWebVisits}</div>
+                        <div className="bg-muted rounded-sm p-2">
+                          <div className="text-ink-muted text-xs">Web Visits</div>
+                          <div className="text-accent font-bold">{kw.accountsWithWebVisits}</div>
                         </div>
-                        <div className="bg-slate-800/50 rounded-lg p-2">
-                          <div className="text-slate-400 text-xs">6QA</div>
-                          <div className="text-green-400 font-bold">{kw.accountsWith6QA}</div>
+                        <div className="bg-muted rounded-sm p-2">
+                          <div className="text-ink-muted text-xs">6QA</div>
+                          <div className="text-positive font-bold">{kw.accountsWith6QA}</div>
                         </div>
-                        <div className="bg-slate-800/50 rounded-lg p-2">
-                          <div className="text-slate-400 text-xs">Opportunities</div>
-                          <div className="text-yellow-400 font-bold">{kw.accountsWithOpportunities}</div>
+                        <div className="bg-muted rounded-sm p-2">
+                          <div className="text-ink-muted text-xs">Opportunities</div>
+                          <div className="text-caution font-bold">{kw.accountsWithOpportunities}</div>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
                 {filteredKeywords.length === 0 && (
-                  <div className="text-center py-12 text-slate-400">
+                  <div className="text-center py-12 text-ink-muted">
                     {keywordSearch ? `No keywords matching "${keywordSearch}"` : "No keyword data available"}
                   </div>
                 )}
@@ -696,15 +675,15 @@ export default function Insights() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-white flex items-center gap-2">
-                        <Building2 className="h-5 w-5 text-purple-400" />
+                      <CardTitle className="text-foreground flex items-center gap-2">
+                        <Building2 className="h-5 w-5 text-accent" />
                         Accounts Researching "{activeFilter.value}"
                       </CardTitle>
                       <CardDescription>
                         {filteredAccounts.length} accounts likely researching this topic based on {activeFilter.category || "intent"} signals
                       </CardDescription>
                     </div>
-                    <Button variant="outline" size="sm" onClick={clearFilter} className="gap-2 border-purple-500/50 text-purple-400 hover:bg-purple-500/10">
+                    <Button variant="outline" size="sm" onClick={clearFilter} className="gap-2 border-accent/30 text-accent hover:bg-accent-subtle">
                       <X className="h-4 w-4" />
                       Clear
                     </Button>
@@ -714,30 +693,32 @@ export default function Insights() {
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
-                        <tr className="border-b border-slate-800">
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Company</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Industry</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Buying Stage</th>
-                          <th className="text-center py-3 px-4 text-sm font-medium text-slate-400">Intent</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Security Stack</th>
-                          <th className="text-right py-3 px-4 text-sm font-medium text-slate-400">Actions</th>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-ink-muted">Company</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-ink-muted">Industry</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-ink-muted">Buying Stage</th>
+                          <th className="text-center py-3 px-4 text-sm font-medium text-ink-muted">Intent</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-ink-muted">Security Stack</th>
+                          <th className="text-right py-3 px-4 text-sm font-medium text-ink-muted">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredAccounts.slice(0, 25).map((account: any) => (
-                          <tr key={account.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+                          <tr key={account.id} className="border-b border-border hover:bg-muted transition-colors">
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-bold text-sm">
-                                  {account.name?.charAt(0) || "?"}
-                                </div>
+                                <CompanyLogo
+                                  name={account.name}
+                                  website={account.domain}
+                                  size="md"
+                                />
                                 <div>
-                                  <div className="font-medium text-white">{account.name}</div>
-                                  <div className="text-xs text-slate-500">{account.domain}</div>
+                                  <div className="font-medium text-foreground">{account.name}</div>
+                                  <div className="text-xs text-ink-subtle">{account.domain}</div>
                                 </div>
                               </div>
                             </td>
-                            <td className="py-3 px-4 text-sm text-slate-300">{account.industry || "Unknown"}</td>
+                            <td className="py-3 px-4 text-sm text-ink-muted">{account.industry || "Unknown"}</td>
                             <td className="py-3 px-4">
                               <Badge variant="outline" className="text-xs">
                                 {account.sixsenseBuyingStage || "Unknown"}
@@ -748,7 +729,7 @@ export default function Insights() {
                                 {account.intentScore || 0}
                               </span>
                             </td>
-                            <td className="py-3 px-4 text-sm text-slate-300 max-w-[200px] truncate">
+                            <td className="py-3 px-4 text-sm text-ink-muted max-w-[200px] truncate">
                               {(() => {
                                 const rawData = account.rawData as Record<string, unknown> | null;
                                 const sso = rawData?.['SSO Provider'] as string || '';
@@ -757,7 +738,7 @@ export default function Insights() {
                             </td>
                             <td className="py-3 px-4 text-right">
                               <Link href={`/accounts/${account.id}`}>
-                                <Button variant="ghost" size="sm" className="gap-1 text-purple-400 hover:text-purple-300">
+                                <Button variant="ghost" size="sm" className="gap-1 text-accent hover:text-accent">
                                   View <ExternalLink className="h-3 w-3" />
                                 </Button>
                               </Link>
@@ -767,9 +748,9 @@ export default function Insights() {
                       </tbody>
                     </table>
                     {filteredAccounts.length > 25 && (
-                      <div className="text-center py-4 text-sm text-slate-400">
+                      <div className="text-center py-4 text-sm text-ink-muted">
                         Showing 25 of {filteredAccounts.length} accounts. 
-                        <Link href="/accounts" className="text-purple-400 hover:underline ml-1">View all in Accounts</Link>
+                        <Link href="/accounts" className="text-accent hover:underline ml-1">View all in Accounts</Link>
                       </div>
                     )}
                   </div>
@@ -781,8 +762,8 @@ export default function Insights() {
             {activeFilter?.type === "keyword" && filteredAccounts.length === 0 && (
               <Card className="card-elevated">
                 <CardContent className="py-12 text-center">
-                  <div className="text-slate-400 mb-4">No accounts found researching "{activeFilter.value}"</div>
-                  <Button variant="outline" onClick={clearFilter} className="border-purple-500/50 text-purple-400">Clear Filter</Button>
+                  <div className="text-ink-muted mb-4">No accounts found researching "{activeFilter.value}"</div>
+                  <Button variant="outline" onClick={clearFilter} className="border-accent/30 text-accent">Clear Filter</Button>
                 </CardContent>
               </Card>
             )}
@@ -794,8 +775,8 @@ export default function Insights() {
               {/* Engagement States */}
               <Card className="card-elevated">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-green-400" />
+                  <CardTitle className="text-foreground flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-positive" />
                     Engagement States
                   </CardTitle>
                   <CardDescription>
@@ -805,32 +786,40 @@ export default function Insights() {
                 <CardContent>
                   <div className="space-y-4">
                     {engagement?.metrics?.map((metric, idx) => {
-                      const stateColors: Record<string, string> = {
-                        "Engaged": "from-green-500 to-emerald-600",
-                        "Aware": "from-blue-500 to-cyan-600",
-                        "Interested": "from-purple-500 to-pink-600",
-                        "Considering": "from-yellow-500 to-orange-600",
+                      // Engagement states are a funnel, so they read on the
+                      // cold -> hot intent ramp rather than as arbitrary hues.
+                      const stateTone: Record<string, string> = {
+                        Aware: "var(--intent-1)",
+                        Interested: "var(--intent-2)",
+                        Considering: "var(--intent-3)",
+                        Engaged: "var(--intent-5)",
                       };
-                      const colorClass = stateColors[metric.state] || "from-slate-500 to-slate-600";
-                      
+                      const tone = stateTone[metric.state] ?? "var(--intent-1)";
+
                       return (
-                        <div key={idx} className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium text-white">{metric.state}</span>
-                            <Badge className={`bg-gradient-to-r ${colorClass} text-white border-0`}>
+                        <div key={idx} className="rounded-md border border-border-subtle bg-surface-sunken p-4">
+                          <div className="mb-2 flex items-center justify-between gap-3">
+                            <span className="flex items-center gap-2 font-medium">
+                              <span
+                                className="size-2 shrink-0 rounded-full"
+                                style={{ backgroundColor: tone }}
+                              />
+                              {metric.state}
+                            </span>
+                            <span data-numeric className="text-xs text-ink-muted">
                               {metric.accounts} accounts
-                            </Badge>
+                            </span>
                           </div>
                           {metric.amount && (
-                            <div className="text-sm text-slate-400">
-                              Pipeline: <span className="text-green-400 font-medium">${Number(metric.amount).toLocaleString()}</span>
+                            <div className="text-sm text-ink-muted">
+                              Pipeline: <span className="text-positive font-medium">${Number(metric.amount).toLocaleString()}</span>
                             </div>
                           )}
                         </div>
                       );
                     })}
                     {(!engagement?.metrics || engagement.metrics.length === 0) && (
-                      <div className="text-center py-8 text-slate-400">No engagement data available</div>
+                      <div className="text-center py-8 text-ink-muted">No engagement data available</div>
                     )}
                   </div>
                 </CardContent>
@@ -839,8 +828,8 @@ export default function Insights() {
               {/* Buying Stage Pipeline */}
               <Card className="card-elevated">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <Target className="h-5 w-5 text-yellow-400" />
+                  <CardTitle className="text-foreground flex items-center gap-2">
+                    <Target className="h-5 w-5 text-caution" />
                     Buying Stage Pipeline
                   </CardTitle>
                   <CardDescription>
@@ -851,29 +840,29 @@ export default function Insights() {
                   <div className="space-y-3">
                     {buyingStages?.stages?.map((stage, idx) => {
                       const stageColors: Record<string, string> = {
-                        "Target": "bg-slate-500",
-                        "Awareness": "bg-blue-500",
-                        "Consideration": "bg-cyan-500",
-                        "Decision": "bg-purple-500",
-                        "Purchase": "bg-green-500",
+                        "Target": "bg-muted",
+                        "Awareness": "bg-accent",
+                        "Consideration": "bg-accent",
+                        "Decision": "bg-accent",
+                        "Purchase": "bg-positive",
                       };
-                      const colorClass = stageColors[stage.stage] || "bg-slate-500";
+                      const colorClass = stageColors[stage.stage] || "bg-muted";
                       const maxAccounts = Math.max(...(buyingStages?.stages?.map(s => s.accounts) || [1]));
                       
                       return (
                         <div key={idx} className="group">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm text-slate-300">{stage.stage}</span>
+                            <span className="text-sm text-ink-muted">{stage.stage}</span>
                             <div className="flex items-center gap-3">
-                              <span className="text-sm font-bold text-white">{stage.accounts}</span>
+                              <span className="text-sm font-bold text-foreground">{stage.accounts}</span>
                               {Number(stage.newPipeline) > 0 && (
-                                <span className="text-xs text-green-400">
+                                <span className="text-xs text-positive">
                                   +${(Number(stage.newPipeline) / 1000).toFixed(0)}k
                                 </span>
                               )}
                             </div>
                           </div>
-                          <div className="h-3 bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-3 bg-muted rounded-full overflow-hidden">
                             <div
                               className={`h-full ${colorClass} transition-all group-hover:opacity-80`}
                               style={{ width: `${(stage.accounts / maxAccounts) * 100}%` }}
@@ -884,10 +873,10 @@ export default function Insights() {
                     })}
                   </div>
                   {buyingStages?.totalAccounts && (
-                    <div className="mt-6 pt-4 border-t border-slate-700">
+                    <div className="mt-6 pt-4 border-t border-border-strong">
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Total in Pipeline</span>
-                        <span className="text-2xl font-bold text-white">{buyingStages.totalAccounts}</span>
+                        <span className="text-ink-muted">Total in Pipeline</span>
+                        <span className="text-2xl font-bold text-foreground">{buyingStages.totalAccounts}</span>
                       </div>
                     </div>
                   )}
@@ -900,8 +889,8 @@ export default function Insights() {
           <TabsContent value="6qa" className="mt-6">
             <Card className="card-elevated">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-yellow-400" />
+                <CardTitle className="text-foreground flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-caution" />
                   6QA Performance Metrics
                 </CardTitle>
                 <CardDescription>
@@ -914,27 +903,27 @@ export default function Insights() {
                   <div className="space-y-6">
                     {/* Summary Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="p-4 rounded-xl bg-gradient-to-br from-green-500/10 to-slate-900 border border-green-500/20">
-                        <div className="text-sm text-slate-400 mb-1">Total 6QA</div>
-                        <div className="text-3xl font-bold text-green-400">
+                      <div className="p-4 rounded-md bg-positive border border-positive/30">
+                        <div className="text-sm text-ink-muted mb-1">Total 6QA</div>
+                        <div className="text-2xl font-semibold text-positive">
                           {sixQAPerformance.latest.total6QAs || 0}
                         </div>
                       </div>
-                      <div className="p-4 rounded-xl bg-gradient-to-br from-cyan-500/10 to-slate-900 border border-cyan-500/20">
-                        <div className="text-sm text-slate-400 mb-1">Worked</div>
-                        <div className="text-3xl font-bold text-cyan-400">
+                      <div className="p-4 rounded-md bg-accent border border-accent/30">
+                        <div className="text-sm text-ink-muted mb-1">Worked</div>
+                        <div className="text-2xl font-semibold text-accent">
                           {sixQAPerformance.latest.worked || 0}
                         </div>
                       </div>
-                      <div className="p-4 rounded-xl bg-gradient-to-br from-yellow-500/10 to-slate-900 border border-yellow-500/20">
-                        <div className="text-sm text-slate-400 mb-1">Unworked Gap</div>
-                        <div className="text-3xl font-bold text-yellow-400">
+                      <div className="p-4 rounded-md bg-caution border border-caution/30">
+                        <div className="text-sm text-ink-muted mb-1">Unworked Gap</div>
+                        <div className="text-2xl font-semibold text-caution">
                           {sixQAPerformance.latest.unworked || 0}
                         </div>
                       </div>
-                      <div className="p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-slate-900 border border-purple-500/20">
-                        <div className="text-sm text-slate-400 mb-1">Work Rate</div>
-                        <div className="text-3xl font-bold text-purple-400">
+                      <div className="p-4 rounded-md bg-accent border border-accent/30">
+                        <div className="text-sm text-ink-muted mb-1">Work Rate</div>
+                        <div className="text-2xl font-semibold text-accent">
                           {sixQAPerformance.latest.workedPercent}%
                         </div>
                       </div>
@@ -942,27 +931,27 @@ export default function Insights() {
 
                     {/* Additional Metrics */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
-                        <div className="text-sm text-slate-400 mb-1">Avg Sales Activities</div>
-                        <div className="text-xl font-bold text-white">
+                      <div className="p-4 rounded-md bg-muted border border-border-strong">
+                        <div className="text-sm text-ink-muted mb-1">Avg Sales Activities</div>
+                        <div className="text-xl font-bold text-foreground">
                           {sixQAPerformance.latest.avgSalesActivities || "-"}
                         </div>
                       </div>
-                      <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
-                        <div className="text-sm text-slate-400 mb-1">Avg Contacts Reached</div>
-                        <div className="text-xl font-bold text-white">
+                      <div className="p-4 rounded-md bg-muted border border-border-strong">
+                        <div className="text-sm text-ink-muted mb-1">Avg Contacts Reached</div>
+                        <div className="text-xl font-bold text-foreground">
                           {sixQAPerformance.latest.avgContactsReached || "-"}
                         </div>
                       </div>
-                      <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
-                        <div className="text-sm text-slate-400 mb-1">Avg Days to First Activity</div>
-                        <div className="text-xl font-bold text-white">
+                      <div className="p-4 rounded-md bg-muted border border-border-strong">
+                        <div className="text-sm text-ink-muted mb-1">Avg Days to First Activity</div>
+                        <div className="text-xl font-bold text-foreground">
                           {sixQAPerformance.latest.avgDaysToFirstActivity || "-"}
                         </div>
                       </div>
-                      <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
-                        <div className="text-sm text-slate-400 mb-1">Avg Days Since Last Activity</div>
-                        <div className="text-xl font-bold text-white">
+                      <div className="p-4 rounded-md bg-muted border border-border-strong">
+                        <div className="text-sm text-ink-muted mb-1">Avg Days Since Last Activity</div>
+                        <div className="text-xl font-bold text-foreground">
                           {sixQAPerformance.latest.avgDaysSinceLastActivity || "-"}
                         </div>
                       </div>
@@ -970,14 +959,14 @@ export default function Insights() {
 
                     {/* New 6QAs */}
                     {sixQAPerformance.latest.new6QAs !== null && sixQAPerformance.latest.new6QAs > 0 && (
-                      <div className="p-4 rounded-xl bg-gradient-to-r from-green-500/10 to-cyan-500/10 border border-green-500/30">
+                      <div className="p-4 rounded-md bg-positive border border-positive/30">
                         <div className="flex items-center gap-3">
-                          <Zap className="h-6 w-6 text-green-400" />
+                          <Zap className="h-6 w-6 text-positive" />
                           <div>
-                            <div className="text-lg font-bold text-white">
+                            <div className="text-lg font-bold text-foreground">
                               +{sixQAPerformance.latest.new6QAs} New 6QAs
                             </div>
-                            <div className="text-sm text-slate-400">
+                            <div className="text-sm text-ink-muted">
                               Added on {new Date(sixQAPerformance.latest.day).toLocaleDateString()}
                             </div>
                           </div>
@@ -986,7 +975,7 @@ export default function Insights() {
                     )}
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-slate-400">
+                  <div className="text-center py-12 text-ink-muted">
                     No 6QA performance data available
                   </div>
                 )}

@@ -29,44 +29,44 @@ interface ActivityTimelineProps {
 const activityConfig = {
   call: {
     icon: Phone,
-    color: "text-cyan-400",
-    bgColor: "bg-cyan-500/10",
-    borderColor: "border-cyan-500/30",
+    color: "text-accent",
+    bgColor: "bg-accent-subtle",
+    borderColor: "border-accent/30",
     label: "Call"
   },
   email: {
     icon: Mail,
-    color: "text-purple-400",
-    bgColor: "bg-purple-500/10",
-    borderColor: "border-purple-500/30",
+    color: "text-accent",
+    bgColor: "bg-accent-subtle",
+    borderColor: "border-accent/30",
     label: "Email"
   },
   meeting: {
     icon: Calendar,
-    color: "text-blue-400",
-    bgColor: "bg-blue-500/10",
-    borderColor: "border-blue-500/30",
+    color: "text-accent",
+    bgColor: "bg-accent-subtle",
+    borderColor: "border-accent/30",
     label: "Meeting"
   },
   note: {
     icon: MessageSquare,
-    color: "text-amber-400",
-    bgColor: "bg-amber-500/10",
-    borderColor: "border-amber-500/30",
+    color: "text-caution",
+    bgColor: "bg-caution-subtle",
+    borderColor: "border-caution/30",
     label: "Note"
   },
   intent_spike: {
     icon: TrendingUp,
-    color: "text-red-400",
-    bgColor: "bg-red-500/10",
-    borderColor: "border-red-500/30",
+    color: "text-critical",
+    bgColor: "bg-critical-subtle",
+    borderColor: "border-critical/30",
     label: "Intent Spike"
   },
   engagement: {
     icon: Users,
-    color: "text-green-400",
-    bgColor: "bg-green-500/10",
-    borderColor: "border-green-500/30",
+    color: "text-positive",
+    bgColor: "bg-positive-subtle",
+    borderColor: "border-positive/30",
     label: "Engagement"
   }
 };
@@ -104,7 +104,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
       <Card className="card-elevated">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-purple-400" />
+            <Clock className="h-5 w-5 text-accent" />
             Activity Timeline
           </CardTitle>
         </CardHeader>
@@ -112,7 +112,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
           <div className="space-y-4">
             {[1, 2, 3, 4, 5].map(i => (
               <div key={i} className="flex gap-4">
-                <div className="w-10 h-10 skeleton rounded-full" />
+                <div className="w-10 h-10 skeleton rounded-sm" />
                 <div className="flex-1 space-y-2">
                   <div className="h-4 w-32 skeleton" />
                   <div className="h-3 w-48 skeleton" />
@@ -130,7 +130,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
       <Card className="card-elevated">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-purple-400" />
+            <Clock className="h-5 w-5 text-accent" />
             Activity Timeline
           </CardTitle>
         </CardHeader>
@@ -162,7 +162,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-purple-400" />
+            <Clock className="h-5 w-5 text-accent" />
             Activity Timeline
           </span>
           <Badge variant="outline" className="text-xs">
@@ -195,7 +195,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
                     return (
                       <div key={activity.id} className="flex gap-3 group">
                         {/* Icon */}
-                        <div className={`relative z-10 w-8 h-8 rounded-full ${config.bgColor} border ${config.borderColor} flex items-center justify-center flex-shrink-0`}>
+                        <div className={`relative z-10 w-8 h-8 rounded-sm ${config.bgColor} border ${config.borderColor} flex items-center justify-center flex-shrink-0`}>
                           <Icon className={`h-4 w-4 ${config.color}`} />
                         </div>
                         
@@ -236,11 +236,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
                               {activity.metadata.sentiment && (
                                 <Badge 
                                   variant="outline" 
-                                  className={`text-xs ${
-                                    activity.metadata.sentiment === "positive" ? "text-green-400 border-green-500/30" :
-                                    activity.metadata.sentiment === "negative" ? "text-red-400 border-red-500/30" :
-                                    "text-muted-foreground"
-                                  }`}
+                                  className={`text-xs ${ activity.metadata.sentiment === "positive" ? "text-positive border-positive/30" : activity.metadata.sentiment === "negative" ? "text-critical border-critical/30" : "text-muted-foreground" }`}
                                 >
                                   {activity.metadata.sentiment}
                                 </Badge>

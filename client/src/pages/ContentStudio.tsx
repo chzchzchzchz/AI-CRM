@@ -107,15 +107,13 @@ export default function ContentStudio() {
   };
 
   return (
-    <div className="container py-8 max-w-6xl">
+    <div className="container py-1 max-w-6xl">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-xl">
-            <Sparkles className="h-6 w-6 text-white" />
-          </div>
+          <Sparkles className="size-5 shrink-0 text-ink-faint" />
           <div>
-            <h1 className="text-3xl font-bold">Content Studio</h1>
+            <h1 className="text-xl font-semibold">Content Studio</h1>
             <p className="text-muted-foreground">
               AI-powered content generation with knowledge base context
             </p>
@@ -137,12 +135,7 @@ export default function ContentStudio() {
                   <button
                     key={type.value}
                     onClick={() => setContentType(type.value as ContentType)}
-                    className={`
-                      p-3 rounded-lg border text-center transition-all
-                      ${contentType === type.value 
-                        ? 'border-teal-500 bg-teal-500/10 text-teal-400' 
-                        : 'border-border hover:border-teal-500/30 hover:bg-teal-500/5'}
-                    `}
+                    className={`p-3 rounded-sm border text-center transition-all ${contentType === type.value ? 'border-positive/30 bg-positive-subtle text-positive' : 'border-border hover:border-positive/30 hover:bg-positive-subtle'}`}
                   >
                     <div className="flex justify-center mb-1">{type.icon}</div>
                     <p className="text-xs font-medium">{type.label}</p>
@@ -156,7 +149,7 @@ export default function ContentStudio() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-teal-500" />
+                <FileText className="h-5 w-5 text-positive" />
                 Context & Instructions
               </CardTitle>
               <CardDescription>
@@ -216,7 +209,7 @@ export default function ContentStudio() {
           <Button
             onClick={handleGenerate}
             disabled={!context.trim() || isGenerating}
-            className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 py-6 text-lg"
+            className="w-full bg-positive py-6 text-lg"
           >
             {isGenerating ? (
               <>
@@ -237,7 +230,7 @@ export default function ContentStudio() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    <CheckCircle2 className="h-5 w-5 text-positive" />
                     {generatedContent.title || 'Generated Content'}
                   </CardTitle>
                   <Button
@@ -246,7 +239,7 @@ export default function ContentStudio() {
                     onClick={() => copyToClipboard(generatedContent.content, 'main')}
                   >
                     {copiedField === 'main' ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <CheckCircle2 className="h-4 w-4 text-positive" />
                     ) : (
                       <Copy className="h-4 w-4" />
                     )}
@@ -254,7 +247,7 @@ export default function ContentStudio() {
                 </div>
               </CardHeader>
               <CardContent>
-                <pre className="whitespace-pre-wrap text-sm bg-muted/50 p-4 rounded-lg overflow-auto max-h-96">
+                <pre className="whitespace-pre-wrap text-sm bg-muted/50 p-4 rounded-sm overflow-auto max-h-96">
                   {generatedContent.content}
                 </pre>
 
@@ -283,7 +276,7 @@ export default function ContentStudio() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Brain className="h-4 w-4 text-violet-500" />
+                <Brain className="h-4 w-4 text-accent" />
                 Knowledge Base
               </CardTitle>
               <CardDescription>
@@ -309,7 +302,7 @@ export default function ContentStudio() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Zap className="h-4 w-4 text-amber-500" />
+                <Zap className="h-4 w-4 text-caution" />
                 AI Capabilities
               </CardTitle>
             </CardHeader>
@@ -322,7 +315,7 @@ export default function ContentStudio() {
                 'Applies Revenue Architect persona',
               ].map((cap, i) => (
                 <div key={i} className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <CheckCircle2 className="h-4 w-4 text-positive" />
                   <span>{cap}</span>
                 </div>
               ))}
@@ -332,7 +325,7 @@ export default function ContentStudio() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Target className="h-4 w-4 text-red-500" />
+                <Target className="h-4 w-4 text-critical" />
                 Quick Templates
               </CardTitle>
             </CardHeader>

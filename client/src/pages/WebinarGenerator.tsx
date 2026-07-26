@@ -87,7 +87,7 @@ export default function WebinarGenerator() {
       className="h-8"
     >
       {copiedField === field ? (
-        <CheckCircle2 className="h-4 w-4 text-green-500" />
+        <CheckCircle2 className="h-4 w-4 text-positive" />
       ) : (
         <Copy className="h-4 w-4" />
       )}
@@ -95,14 +95,12 @@ export default function WebinarGenerator() {
   );
 
   return (
-    <div className="container py-8 max-w-5xl">
+    <div className="container py-1 max-w-5xl">
       {/* Header */}
       <div className="mb-8 text-center">
         <div className="flex items-center justify-center gap-3 mb-2">
-          <div className="p-2 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-xl">
-            <Video className="h-6 w-6 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold">Webinar Content Generator</h1>
+          <Video className="size-5 shrink-0 text-ink-faint" />
+          <h1 className="text-xl font-semibold">Webinar Content Generator</h1>
         </div>
         <p className="text-muted-foreground">
           AI-powered promotional content for your webinars
@@ -115,7 +113,7 @@ export default function WebinarGenerator() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-teal-500" />
+                <FileText className="h-5 w-5 text-positive" />
                 Step 1: Webinar Content
               </CardTitle>
               <CardDescription>
@@ -221,7 +219,7 @@ export default function WebinarGenerator() {
           <Button
             onClick={handleGenerate}
             disabled={!contentAssets.trim() || isGenerating}
-            className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 py-6 text-lg"
+            className="w-full bg-positive py-6 text-lg"
           >
             {isGenerating ? (
               <>
@@ -251,7 +249,7 @@ export default function WebinarGenerator() {
           {isGenerating && (
             <Card className="h-full flex items-center justify-center min-h-[400px]">
               <div className="text-center">
-                <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-teal-500" />
+                <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-positive" />
                 <p className="text-muted-foreground">Generating your content...</p>
               </div>
             </Card>
@@ -304,7 +302,7 @@ export default function WebinarGenerator() {
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground">CTA</label>
-                      <p className="font-semibold text-teal-500">{generatedContent.landingPage.cta}</p>
+                      <p className="font-semibold text-positive">{generatedContent.landingPage.cta}</p>
                     </div>
                   </CardContent>
                 </Card>

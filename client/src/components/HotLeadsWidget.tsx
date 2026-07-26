@@ -38,7 +38,7 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
       <Card className="card-elevated">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <Flame className="h-5 w-5 text-red-500" />
+            <Flame className="h-5 w-5 text-critical" />
             <CardTitle className="text-lg">Hot Leads</CardTitle>
           </div>
         </CardHeader>
@@ -53,19 +53,19 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
 
   const getBuyingStageColor = (stage: string | null) => {
     switch (stage) {
-      case 'Purchase': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'Decision': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'Consideration': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case 'Evaluation': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      case 'Purchase': return 'bg-positive-subtle text-positive border-positive/30';
+      case 'Decision': return 'bg-accent-subtle text-accent border-accent/30';
+      case 'Consideration': return 'bg-caution-subtle text-caution border-caution/30';
+      case 'Evaluation': return 'bg-caution-subtle text-caution border-caution/30';
+      default: return 'bg-muted text-ink-muted border-border';
     }
   };
 
   const getIntentColor = (score: number) => {
-    if (score >= 90) return 'text-red-500';
-    if (score >= 80) return 'text-orange-500';
-    if (score >= 70) return 'text-yellow-500';
-    return 'text-gray-500';
+    if (score >= 90) return 'text-critical';
+    if (score >= 80) return 'text-caution';
+    if (score >= 70) return 'text-caution';
+    return 'text-ink-subtle';
   };
 
   return (
@@ -73,9 +73,7 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-gradient-to-br from-red-600 to-orange-600 rounded-lg">
-              <Flame className="h-5 w-5 text-white" />
-            </div>
+            <Flame className="size-5 shrink-0 text-ink-faint" />
             <div>
               <CardTitle className="text-lg">Hot Leads</CardTitle>
               <p className="text-xs text-muted-foreground">
@@ -85,7 +83,7 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
           </div>
           {summary && (
             <div className="text-right text-xs">
-              <div className="font-semibold text-red-500">{summary.total.contacts}</div>
+              <div className="font-semibold text-critical">{summary.total.contacts}</div>
               <div className="text-muted-foreground">contacts</div>
             </div>
           )}
@@ -95,14 +93,14 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
         {/* Summary badges */}
         {summary && !compact && (
           <div className="flex flex-wrap gap-2 pb-2 border-b border-border/50">
-            <Badge variant="outline" className="text-xs bg-red-500/10 text-red-400 border-red-500/30">
+            <Badge variant="outline" className="text-xs bg-critical-subtle text-critical border-critical/30">
               <Zap className="h-3 w-3 mr-1" />
               {summary.critical.contacts} critical
             </Badge>
-            <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">
+            <Badge variant="outline" className="text-xs bg-caution-subtle text-caution border-caution/30">
               {summary.high.contacts} high
             </Badge>
-            <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
+            <Badge variant="outline" className="text-xs bg-caution-subtle text-caution border-caution/30">
               {summary.medium.contacts} medium
             </Badge>
           </div>
@@ -113,7 +111,7 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
           {hotLeads?.map((lead, index) => (
             <div 
               key={lead.contactId}
-              className="group p-3 rounded-lg border border-border/50 hover:border-primary/30 hover:bg-muted/30 transition-all cursor-pointer"
+              className="group p-3 rounded-sm border border-border/50 hover:border-primary/30 hover:bg-muted/30 transition-all cursor-pointer"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
@@ -130,7 +128,7 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
                         href={lead.linkedinUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-blue-500 hover:text-blue-400"
+                        className="text-accent hover:text-accent"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Linkedin className="h-3.5 w-3.5" />
@@ -183,7 +181,7 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
                   {lead.contactPhone && (
                     <a 
                       href={`tel:${lead.contactPhone}`}
-                      className="p-1.5 rounded bg-green-500/10 hover:bg-green-500/20 text-green-500"
+                      className="p-1.5 rounded bg-positive-subtle hover:bg-positive-subtle text-positive"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Phone className="h-3.5 w-3.5" />
@@ -193,7 +191,7 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
 
                 {/* Priority score */}
                 <div className="text-right">
-                  <div className={`text-lg font-bold ${lead.priorityScore >= 70 ? 'text-red-500' : lead.priorityScore >= 50 ? 'text-orange-500' : 'text-yellow-500'}`}>
+                  <div className={`text-lg font-bold ${lead.priorityScore >= 70 ? 'text-critical' : lead.priorityScore >= 50 ? 'text-caution' : 'text-caution'}`}>
                     {lead.priorityScore}
                   </div>
                   <div className="text-[10px] text-muted-foreground">priority</div>

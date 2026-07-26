@@ -86,26 +86,26 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 gap-0 bg-slate-900 border-slate-800">
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-800">
-          <Search className="h-5 w-5 text-slate-400" />
+      <DialogContent className="max-w-2xl p-0 gap-0 bg-card border-border">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+          <Search className="h-5 w-5 text-ink-muted" />
           <Input
             placeholder="Search accounts, contacts, or calls..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="border-0 bg-transparent text-white placeholder:text-slate-500 focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="border-0 bg-transparent text-foreground placeholder:text-ink-subtle focus-visible:ring-0 focus-visible:ring-offset-0"
             autoFocus
           />
-          {isLoading && <Loader2 className="h-4 w-4 animate-spin text-cyan-500" />}
+          {isLoading && <Loader2 className="h-4 w-4 animate-spin text-accent" />}
         </div>
 
         <div className="max-h-[60vh] overflow-y-auto p-2">
           {query.length === 0 ? (
-            <div className="py-12 text-center text-slate-500 text-sm">
+            <div className="py-12 text-center text-ink-subtle text-sm">
               Type to search across accounts, contacts, and calls
             </div>
           ) : !hasResults && !isLoading ? (
-            <div className="py-12 text-center text-slate-500 text-sm">
+            <div className="py-12 text-center text-ink-subtle text-sm">
               No results found for "{query}"
             </div>
           ) : (
@@ -113,7 +113,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
               {/* Accounts */}
               {filteredAccounts && filteredAccounts.length > 0 && (
                 <div>
-                  <div className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <div className="px-2 py-1 text-xs font-semibold text-ink-muted uppercase tracking-wider">
                     Accounts
                   </div>
                   <div className="space-y-1">
@@ -121,14 +121,12 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                       <button
                         key={account.id}
                         onClick={() => handleSelect('account', account.id)}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800/50 transition-colors text-left"
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-sm hover:bg-muted transition-colors text-left"
                       >
-                        <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-                          <Building2 className="h-4 w-4 text-cyan-500" />
-                        </div>
+                        <Building2 className="size-5 shrink-0 text-ink-faint" />
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-white truncate">{account.name}</div>
-                          <div className="text-sm text-slate-400 truncate">
+                          <div className="font-medium text-foreground truncate">{account.name}</div>
+                          <div className="text-sm text-ink-muted truncate">
                             {account.domain || account.industry || 'No additional info'}
                           </div>
                         </div>
@@ -141,7 +139,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
               {/* People */}
               {filteredPeople && filteredPeople.length > 0 && (
                 <div>
-                  <div className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <div className="px-2 py-1 text-xs font-semibold text-ink-muted uppercase tracking-wider">
                     Contacts
                   </div>
                   <div className="space-y-1">
@@ -149,14 +147,12 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                       <button
                         key={person.id}
                         onClick={() => handleSelect('contact', person.id)}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800/50 transition-colors text-left"
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-sm hover:bg-muted transition-colors text-left"
                       >
-                        <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                          <User className="h-4 w-4 text-purple-500" />
-                        </div>
+                        <User className="size-5 shrink-0 text-ink-faint" />
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-white truncate">{person.name}</div>
-                          <div className="text-sm text-slate-400 truncate">
+                          <div className="font-medium text-foreground truncate">{person.name}</div>
+                          <div className="text-sm text-ink-muted truncate">
                             {person.title} {person.company && `at ${person.company}`}
                           </div>
                         </div>
@@ -169,7 +165,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
               {/* Calls */}
               {filteredCalls && filteredCalls.length > 0 && (
                 <div>
-                  <div className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <div className="px-2 py-1 text-xs font-semibold text-ink-muted uppercase tracking-wider">
                     Calls
                   </div>
                   <div className="space-y-1">
@@ -177,14 +173,12 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                       <button
                         key={call.id}
                         onClick={() => handleSelect('call', call.id)}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800/50 transition-colors text-left"
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-sm hover:bg-muted transition-colors text-left"
                       >
-                        <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20">
-                          <Phone className="h-4 w-4 text-green-500" />
-                        </div>
+                        <Phone className="size-5 shrink-0 text-ink-faint" />
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-white truncate">{call.title || 'Untitled Call'}</div>
-                          <div className="text-sm text-slate-400 truncate">
+                          <div className="font-medium text-foreground truncate">{call.title || 'Untitled Call'}</div>
+                          <div className="text-sm text-ink-muted truncate">
                             {call.accountId || 'No company'} • {(call as any).participants || 'No speakers'}
                           </div>
                         </div>
@@ -197,7 +191,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
           )}
         </div>
 
-        <div className="px-4 py-2 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-between">
+        <div className="px-4 py-2 border-t border-border text-xs text-ink-subtle flex items-center justify-between">
           <span>Press ESC to close</span>
           <span>⌘K to open</span>
         </div>
