@@ -22,6 +22,32 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    // The markdown/diagram renderer is code-split at its component (see
+    // SafeStreamdown) and lands in its own chunks, so the remaining warning
+    // threshold only needs to cover the app + framework chunks.
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        /**
+         * Split dependencies that change on a different cadence than our code.
+         * A one-line UI fix should not force every visitor to re-download
+         * React and Radix; keeping them in stable chunks means their hashes
+         * survive across deploys and stay cached.
+         */
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) {
+            return "vendor-react";
+          }
+          if (id.includes("@radix-ui") || id.includes("cmdk") || id.includes("lucide-react")) {
+            return "vendor-ui";
+          }
+          if (id.includes("@trpc") || id.includes("@tanstack") || id.includes("superjson")) {
+            return "vendor-data";
+          }
+        },
+      },
+    },
   },
   server: {
     host: true,

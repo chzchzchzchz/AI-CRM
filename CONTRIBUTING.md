@@ -32,16 +32,23 @@ pnpm dev
 ```
 
 ### 4. Make Changes
-- Follow existing code style (Prettier + ESLint configs included)
+- Follow existing code style (Prettier config included)
+- Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) first — it covers the repo
+  layout, the app shell, and the design-system tokens. UI work should use
+  tokens (`bg-surface`, `text-ink-muted`), never raw palette classes
+  (`bg-slate-800`).
 - Add tests if adding new features
 - Update documentation if needed
 
 ### 5. Test Your Changes
 ```bash
-pnpm type-check
-pnpm lint
+pnpm check   # typechecks BOTH server and client
 pnpm test    # 88 tests (vitest)
+pnpm build   # client + server bundles
+pnpm audit   # must report zero advisories
 ```
+
+These are exactly what CI runs, so a green local run means a green PR.
 
 ### 6. Commit & Push
 ```bash
