@@ -111,7 +111,7 @@ export default function AdminApproval() {
   // Admin access control
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface">
+      <div>
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <Loader2 className="h-8 w-8 animate-spin text-accent" />
         </div>
@@ -121,7 +121,7 @@ export default function AdminApproval() {
 
   if (!user || user.role !== "admin") {
     return (
-      <div className="min-h-screen bg-surface">
+      <div>
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <Card className="bg-card border-border max-w-md">
             <CardContent className="p-12 text-center">
@@ -145,7 +145,7 @@ export default function AdminApproval() {
   const totalUserCount = allUsers?.length || 0;
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div>
       <div className="container py-1 space-y-5 max-w-6xl mx-auto">
         <div>
           <h1 className="text-xl font-semibold text-foreground mb-2">Access Requests</h1>

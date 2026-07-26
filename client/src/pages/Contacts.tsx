@@ -280,7 +280,7 @@ export default function ContactsEnhanced() {
 
         {/* Quick Stats */}
         <div className="grid gap-6 md:grid-cols-3">
-          <Card className="card-elevated border-l-4 border-l-purple-500">
+          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Users className="h-4 w-4 text-accent" />
@@ -293,7 +293,7 @@ export default function ContactsEnhanced() {
             </CardContent>
           </Card>
 
-          <Card className="card-elevated border-l-4 border-l-indigo-500">
+          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-accent" />
@@ -306,7 +306,7 @@ export default function ContactsEnhanced() {
             </CardContent>
           </Card>
 
-          <Card className="card-elevated border-l-4 border-l-cyan-500">
+          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Briefcase className="h-4 w-4 text-accent" />
@@ -325,7 +325,7 @@ export default function ContactsEnhanced() {
         </div>
 
         {/* Filters */}
-        <Card className="card-elevated">
+        <Card>
           <CardContent className="p-6">
             <div className="grid md:grid-cols-5 gap-4">
               {/* Search */}
@@ -419,7 +419,7 @@ export default function ContactsEnhanced() {
 
         {/* Contacts Grid */}
         {filteredContacts.length === 0 ? (
-          <Card className="card-elevated">
+          <Card>
             <CardContent className="py-16 text-center">
               <Users className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
               <h3 className="text-xl font-semibold mb-2">No contacts found</h3>
@@ -432,7 +432,7 @@ export default function ContactsEnhanced() {
                 <Card
                   key={contact.id}
                   onClick={() => navigate(`/contacts/${contact.id}`)}
-                  className="card-elevated hover:scale-[1.02] transition-all cursor-pointer group h-full">
+                  className="hover:scale-[1.02] transition-all cursor-pointer group h-full">
                   <CardHeader>
                     <div className="flex items-start gap-3">
                       <User className="size-5 shrink-0 text-ink-faint" />

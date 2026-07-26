@@ -249,14 +249,14 @@ export default function Outreach() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
+      <div className="min-h-[60vh] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div>
       <div className="container py-1 max-w-7xl">
         <div className="mb-8">
           <h1 className="text-xl font-semibold text-foreground mb-2 flex items-center gap-3">
@@ -270,7 +270,7 @@ export default function Outreach() {
           {/* Left Column - Selection */}
           <div className="space-y-6">
             {/* Step 1: Select ONE Account */}
-            <Card className="card-elevated">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-foreground flex items-center gap-2">
                   <Building2 className="h-5 w-5 text-accent" />
@@ -320,7 +320,7 @@ export default function Outreach() {
             </Card>
 
             {/* Step 2: Select ONE Contact (only shows after account selected) */}
-            <Card className={`card-elevated transition-opacity ${selectedAccountId ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+            <Card className={`transition-opacity ${selectedAccountId ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
               <CardHeader>
                 <CardTitle className="text-foreground flex items-center gap-2">
                   <Users className="h-5 w-5 text-accent" />
@@ -386,7 +386,7 @@ export default function Outreach() {
             </Card>
 
             {/* Step 3: Optional Context */}
-            <Card className="card-elevated">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-foreground">3. Add Context (Optional)</CardTitle>
                 <CardDescription>Pain points, goals, messaging angle, or attach reference docs</CardDescription>

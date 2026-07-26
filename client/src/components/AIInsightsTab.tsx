@@ -40,7 +40,7 @@ export function AIInsightsTab({ accountId }: AIInsightsTabProps) {
   return (
     <div className="space-y-6">
       {/* AI Strategic Insights */}
-      <Card className="card-elevated border-l-4 border-l-purple-500">
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>

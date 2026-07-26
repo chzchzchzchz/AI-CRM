@@ -10,6 +10,8 @@ import { ContextualAI } from "@/components/ContextualAI";
 import { useRep } from "@/contexts/RepContext";
 import { RepSwitcher } from "@/components/RepSwitcher";
 import { CompanyLogo } from "@/components/ui/company-logo";
+import { MetricGrid } from "@/components/ui/metric";
+import { StatCard } from "@/components/StatCard";
 
 type FilterType = "intent" | "industry" | "region" | "buyingStage" | "keyword" | null;
 
@@ -194,15 +196,15 @@ export default function Insights() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
+      <div className="min-h-[60vh] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface">
-      <div className="container py-1">
+    <div>
+      <div className="container max-w-[1500px] py-1">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -275,66 +277,38 @@ export default function Insights() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="mt-6">
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-              <Card className="card-elevated border-l-4 border-l-cyan-500">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-accent flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    Total Accounts
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-semibold text-foreground">{activeFilter ? filteredAccounts.length : totalAccounts}</div>
-                  <p className="text-xs text-ink-muted mt-1">
-                    {activeFilter ? `Filtered from ${totalAccounts}` : "Across all segments"}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="card-elevated border-l-4 border-l-green-500">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-positive flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Key Contacts
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-semibold text-foreground">{totalContacts.toLocaleString()}</div>
-                  <p className="text-xs text-ink-muted mt-1">Decision makers</p>
-                </CardContent>
-              </Card>
-
-              <Card className="card-elevated border-l-4 border-l-purple-500">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-accent flex items-center gap-2">
-                    <Flame className="h-4 w-4" />
-                    Hot Leads
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-semibold text-foreground">{intentBuckets.hot}</div>
-                  <p className="text-xs text-ink-muted mt-1">Intent score 70+</p>
-                </CardContent>
-              </Card>
-
-              <Card className="card-elevated border-l-4 border-l-yellow-500">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-caution flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4" />
-                    Avg Intent Score
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-semibold text-foreground">{avgIntent.toFixed(0)}</div>
-                  <p className="text-xs text-ink-muted mt-1">Buying intent level</p>
-                </CardContent>
-              </Card>
-            </div>
+            <MetricGrid className="mb-6">
+              <StatCard
+                title="Accounts"
+                value={activeFilter ? filteredAccounts.length : totalAccounts}
+                subtitle={activeFilter ? `Filtered from ${totalAccounts}` : "Across all segments"}
+                icon={Building2}
+              />
+              <StatCard
+                title="Key contacts"
+                value={totalContacts.toLocaleString()}
+                subtitle="Decision makers"
+                icon={Users}
+              />
+              <StatCard
+                title="Hot leads"
+                value={intentBuckets.hot}
+                subtitle="Intent 70+"
+                icon={Flame}
+                tone="critical"
+              />
+              <StatCard
+                title="Avg intent"
+                value={avgIntent.toFixed(0)}
+                subtitle="Buying intent level"
+                icon={TrendingUp}
+                tone="accent"
+              />
+            </MetricGrid>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
               {/* Intent Distribution */}
-              <Card className={`card-elevated transition-all ${activeFilter?.type === "intent" ? "ring-2 ring-accent" : ""}`}>
+              <Card className={`transition-all ${activeFilter?.type === "intent" ? "ring-2 ring-accent" : ""}`}>
                 <CardHeader>
                   <CardTitle className="text-foreground flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-accent" />
@@ -343,51 +317,52 @@ export default function Insights() {
                   <CardDescription>Click to filter accounts</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => handleFilterClick("intent", "hot", "Hot Leads (70+)")}
-                      className={`w-full text-left p-4 rounded-sm border transition-all ${ activeFilter?.type === "intent" && activeFilter?.value === "hot" ? "bg-positive-subtle border-positive/30" : "bg-positive-subtle border-positive/30 hover:bg-positive-subtle" }`}
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="text-positive font-medium">Hot Leads (70+)</span>
-                        <span className="text-2xl font-bold text-foreground">{intentBuckets.hot}</span>
-                      </div>
-                      <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-positive" style={{ width: `${(intentBuckets.hot / totalAccounts) * 100}%` }} />
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => handleFilterClick("intent", "warm", "Warm Leads (40-69)")}
-                      className={`w-full text-left p-4 rounded-sm border transition-all ${ activeFilter?.type === "intent" && activeFilter?.value === "warm" ? "bg-caution-subtle border-caution/30" : "bg-caution-subtle border-caution/30 hover:bg-caution-subtle" }`}
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="text-caution font-medium">Warm Leads (40-69)</span>
-                        <span className="text-2xl font-bold text-foreground">{intentBuckets.warm}</span>
-                      </div>
-                      <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-caution" style={{ width: `${(intentBuckets.warm / totalAccounts) * 100}%` }} />
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => handleFilterClick("intent", "cold", "Cold Leads (<40)")}
-                      className={`w-full text-left p-4 rounded-sm border transition-all ${ activeFilter?.type === "intent" && activeFilter?.value === "cold" ? "bg-caution-subtle border-caution/30" : "bg-caution-subtle border-caution/30 hover:bg-caution-subtle" }`}
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="text-caution font-medium">Cold Leads (&lt;40)</span>
-                        <span className="text-2xl font-bold text-foreground">{intentBuckets.cold}</span>
-                      </div>
-                      <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-caution" style={{ width: `${(intentBuckets.cold / totalAccounts) * 100}%` }} />
-                      </div>
-                    </button>
+                  {/* Selectable rows rather than filled blocks: three saturated
+                      panels stacked on top of each other read as alerts. */}
+                  <div className="space-y-1">
+                    {([
+                      ["hot", "Hot", "70+", intentBuckets.hot, "var(--intent-5)"],
+                      ["warm", "Warm", "40–69", intentBuckets.warm, "var(--intent-4)"],
+                      ["cold", "Cold", "under 40", intentBuckets.cold, "var(--intent-1)"],
+                    ] as const).map(([value, label, range, count, tone]) => {
+                      const selected =
+                        activeFilter?.type === "intent" && activeFilter?.value === value;
+                      const pct = totalAccounts > 0 ? (count / totalAccounts) * 100 : 0;
+                      return (
+                        <button
+                          key={value}
+                          onClick={() => handleFilterClick("intent", value, `${label} (${range})`)}
+                          aria-pressed={selected}
+                          className={`w-full rounded-sm px-2.5 py-2 text-left transition-colors ${ selected ? "bg-accent-subtle" : "hover:bg-muted" }`}
+                        >
+                          <div className="flex items-baseline justify-between gap-3">
+                            <span className="flex items-center gap-2 text-sm">
+                              <span
+                                className="size-2 shrink-0 rounded-full"
+                                style={{ backgroundColor: tone }}
+                              />
+                              {label}
+                              <span className="text-2xs text-ink-faint">{range}</span>
+                            </span>
+                            <span data-numeric className="text-sm font-medium tabular-nums">
+                              {count}
+                            </span>
+                          </div>
+                          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-sunken">
+                            <div
+                              className="h-full rounded-full transition-[width] duration-500"
+                              style={{ width: `${pct}%`, backgroundColor: tone }}
+                            />
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
 
               {/* Top Industries */}
-              <Card className={`card-elevated transition-all ${activeFilter?.type === "industry" ? "ring-2 ring-accent" : ""}`}>
+              <Card className={`transition-all ${activeFilter?.type === "industry" ? "ring-2 ring-accent" : ""}`}>
                 <CardHeader>
                   <CardTitle className="text-foreground flex items-center gap-2">
                     <BarChart3 className="h-5 w-5 text-accent" />
@@ -423,7 +398,7 @@ export default function Insights() {
               </Card>
 
               {/* Geographic Distribution */}
-              <Card className={`card-elevated transition-all ${activeFilter?.type === "region" ? "ring-2 ring-accent" : ""}`}>
+              <Card className={`transition-all ${activeFilter?.type === "region" ? "ring-2 ring-accent" : ""}`}>
                 <CardHeader>
                   <CardTitle className="text-foreground flex items-center gap-2">
                     <MapPin className="h-5 w-5 text-accent" />
@@ -460,7 +435,7 @@ export default function Insights() {
             </div>
 
             {/* Buying Stage Distribution */}
-            <Card className={`card-elevated mb-8 transition-all ${activeFilter?.type === "buyingStage" ? "ring-2 ring-accent" : ""}`}>
+            <Card className={`mb-8 transition-all ${activeFilter?.type === "buyingStage" ? "ring-2 ring-accent" : ""}`}>
               <CardHeader>
                 <CardTitle className="text-foreground flex items-center gap-2">
                   <PieChart className="h-5 w-5 text-accent" />
@@ -500,7 +475,7 @@ export default function Insights() {
 
             {/* Filtered Results Table */}
             {activeFilter && filteredAccounts.length > 0 && (
-              <Card className="card-elevated">
+              <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
@@ -584,7 +559,7 @@ export default function Insights() {
 
             {/* Empty state when filter has no results */}
             {activeFilter && filteredAccounts.length === 0 && (
-              <Card className="card-elevated">
+              <Card>
                 <CardContent className="py-12 text-center">
                   <div className="text-ink-muted mb-4">No accounts found matching "{activeFilter.label}"</div>
                   <Button variant="outline" onClick={clearFilter}>Clear Filter</Button>
@@ -595,7 +570,7 @@ export default function Insights() {
 
           {/* Keywords Tab */}
           <TabsContent value="keywords" className="mt-6">
-            <Card className="card-elevated mb-6">
+            <Card className="mb-6">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
@@ -671,7 +646,7 @@ export default function Insights() {
 
             {/* Filtered Accounts Table for Keywords */}
             {activeFilter?.type === "keyword" && filteredAccounts.length > 0 && (
-              <Card className="card-elevated">
+              <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
@@ -760,7 +735,7 @@ export default function Insights() {
 
             {/* Empty state when keyword filter has no results */}
             {activeFilter?.type === "keyword" && filteredAccounts.length === 0 && (
-              <Card className="card-elevated">
+              <Card>
                 <CardContent className="py-12 text-center">
                   <div className="text-ink-muted mb-4">No accounts found researching "{activeFilter.value}"</div>
                   <Button variant="outline" onClick={clearFilter} className="border-accent/30 text-accent">Clear Filter</Button>
@@ -773,7 +748,7 @@ export default function Insights() {
           <TabsContent value="engagement" className="mt-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Engagement States */}
-              <Card className="card-elevated">
+              <Card>
                 <CardHeader>
                   <CardTitle className="text-foreground flex items-center gap-2">
                     <Activity className="h-5 w-5 text-positive" />
@@ -826,7 +801,7 @@ export default function Insights() {
               </Card>
 
               {/* Buying Stage Pipeline */}
-              <Card className="card-elevated">
+              <Card>
                 <CardHeader>
                   <CardTitle className="text-foreground flex items-center gap-2">
                     <Target className="h-5 w-5 text-caution" />
@@ -887,7 +862,7 @@ export default function Insights() {
 
           {/* 6QA Performance Tab */}
           <TabsContent value="6qa" className="mt-6">
-            <Card className="card-elevated">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-foreground flex items-center gap-2">
                   <Zap className="h-5 w-5 text-caution" />

@@ -164,7 +164,7 @@ export default function TopAccounts() {
           {selectedRegion === "all" ? (
             <div className="grid gap-6 lg:grid-cols-3">
               {REGIONS.map(region => (
-                <Card key={region} className="card-elevated">
+                <Card key={region} >
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2">
@@ -202,7 +202,7 @@ export default function TopAccounts() {
               ))}
             </div>
           ) : (
-            <Card className="card-elevated">
+            <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
@@ -250,7 +250,7 @@ export default function TopAccounts() {
               {AE_LIST.map(ae => {
                 const aeAccounts = getAEAccounts(ae.email);
                 return (
-                  <Card key={ae.email} className="card-elevated">
+                  <Card key={ae.email} >
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
                         <div>
@@ -298,7 +298,7 @@ export default function TopAccounts() {
               })}
             </div>
           ) : (
-            <Card className="card-elevated">
+            <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>

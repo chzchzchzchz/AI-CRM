@@ -86,15 +86,15 @@ export default function DataValidation() {
       {/* Summary Stats */}
       {summaryQuery.data && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="p-6 border-l-4 border-l-blue-500">
+          <Card className="p-6">
             <div className="text-sm text-muted-foreground">Total Accounts</div>
             <div className="text-2xl font-semibold mt-1">{summaryQuery.data.totalAccounts}</div>
           </Card>
-          <Card className="p-6 border-l-4 border-l-cyan-500">
+          <Card className="p-6">
             <div className="text-sm text-muted-foreground">Total Contacts</div>
             <div className="text-2xl font-semibold mt-1">{summaryQuery.data.totalContacts}</div>
           </Card>
-          <Card className="p-6 border-l-4 border-l-orange-500">
+          <Card className="p-6">
             <div className="text-sm text-muted-foreground">Account Issues</div>
             <div className="text-2xl font-semibold mt-1">{summaryQuery.data.totalIssues}</div>
             <div className="text-xs text-muted-foreground mt-1">
@@ -102,7 +102,7 @@ export default function DataValidation() {
               {summaryQuery.data.accountIssues.missingIndustry} missing industries
             </div>
           </Card>
-          <Card className="p-6 border-l-4 border-l-purple-500">
+          <Card className="p-6">
             <div className="text-sm text-muted-foreground">Contact Issues</div>
             <div className="text-2xl font-semibold mt-1">
               {summaryQuery.data.contactIssues.missingEmail + summaryQuery.data.contactIssues.missingTitle}
@@ -233,7 +233,7 @@ export default function DataValidation() {
           ) : (
             <div className="space-y-4">
               {validationResults.allIssues.map((issue: any, index: number) => (
-                <Card key={index} className="p-4 border-l-4" style={{
+                <Card key={index} className="p-4" style={{
                   borderLeftColor: issue.severity === 'critical' ? '#ef4444' : 
                                    issue.severity === 'warning' ? '#f97316' : '#3b82f6'
                 }}>

@@ -7,7 +7,7 @@ import { Mail, Linkedin, Phone, TrendingUp, Building2, Users, Flame, Zap, ArrowR
 import { ContextualAI } from "@/components/ContextualAI";
 import { DemoTour } from "@/components/DemoTour";
 import { HotLeadsWidget } from "@/components/HotLeadsWidget";
-import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
+import { APP_TITLE } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Link, useLocation } from "wouter";
 import { RepSwitcher } from "@/components/RepSwitcher";
@@ -16,7 +16,7 @@ import { PageHeader } from "@/components/app-shell/PageHeader";
 import { MetricGrid } from "@/components/ui/metric";
 import { StatCard } from "@/components/StatCard";
 import { CompanyLogo } from "@/components/ui/company-logo";
-
+import { BrandLockup } from "@/components/app-shell/Brand";
 
 /**
  * War Room Dashboard - Beautiful modern redesign
@@ -46,11 +46,7 @@ export default function Home() {
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
           <div className="flex flex-col items-center gap-6">
             <div className="relative">
-              <img
-                src={APP_LOGO}
-                alt={APP_TITLE}
-                className="h-20 w-20 rounded-md object-cover shadow"
-              />
+<BrandLockup />
             </div>
             <div className="text-center space-y-2">
               <h1 className="text-2xl font-semibold tracking-tight">{APP_TITLE}</h1>
@@ -424,7 +420,7 @@ export default function Home() {
             </div>
 
             {/* Top Accounts Preview */}
-            <Card className="card-elevated">
+            <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
@@ -476,7 +472,7 @@ export default function Home() {
             <HotLeadsWidget limit={10} compact={false} />
 
             {/* This Week's Focus */}
-            <Card className="card-elevated">
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-primary" />
@@ -513,7 +509,7 @@ export default function Home() {
             </Card>
 
             {/* Trending Intent Keywords */}
-            <Card className="card-elevated border-l-4 border-l-cyan-500">
+            <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <TrendingUp className="h-5 w-5 text-accent" />
@@ -535,7 +531,6 @@ export default function Home() {
                 )}
               </CardContent>
             </Card>
-
 
           </div>
         </div>

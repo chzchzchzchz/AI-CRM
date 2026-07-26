@@ -148,7 +148,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
   return (
     <div className="space-y-4">
       {/* 6sense Intelligence Section - Always visible at top */}
-      <Card className="card-elevated border-l-4 border-l-orange-500">
+      <Card>
         <Collapsible open={expandedSections.sixsense} onOpenChange={() => toggleSection('sixsense')}>
           <CardHeader className="pb-2">
             <SectionHeader
@@ -302,7 +302,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
       </Card>
 
       {/* AI Executive Summary */}
-      <Card className="card-elevated border-l-4 border-l-primary">
+      <Card>
         <Collapsible open={expandedSections.summary} onOpenChange={() => toggleSection('summary')}>
           <CardHeader className="pb-2">
             <SectionHeader
@@ -348,7 +348,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
 
       {/* Company Description & Tech Stack */}
       {(account.description || techStack || securityStack) && (
-        <Card className="card-elevated">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5" />
@@ -365,7 +365,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
       )}
 
       {/* Research Synthesis - Collapsed by default */}
-      <Card className="card-elevated border-l-4 border-l-cyan-500">
+      <Card>
         <Collapsible open={expandedSections.research} onOpenChange={() => toggleSection('research')}>
           <CardHeader className="pb-2">
             <SectionHeader
@@ -401,7 +401,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
       </Card>
 
       {/* Strategic Recommendations - Collapsed by default */}
-      <Card className="card-elevated border-l-4 border-l-purple-500">
+      <Card>
         <Collapsible open={expandedSections.strategy} onOpenChange={() => toggleSection('strategy')}>
           <CardHeader className="pb-2">
             <SectionHeader

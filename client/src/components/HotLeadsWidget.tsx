@@ -42,7 +42,7 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
 
   if (isLoading) {
     return (
-      <Card className="card-elevated">
+      <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Flame className="h-5 w-5 text-critical" />
