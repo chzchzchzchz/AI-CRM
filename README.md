@@ -1,8 +1,8 @@
-# 🎯 TargetDash - AI-Powered Prospect Relationship Layer for Salesforce
+# TargetDash - AI-Powered Prospect Relationship Layer for Salesforce
 
 ---
 
-## 🧠 The Story
+## The Story
 
 I was at an enterprise B2B company building their sales stack. We had 14,000+ contacts, 6sense, Gong, Clay, and Salesforce in a highly complex enterprise environment.
 
@@ -19,7 +19,7 @@ So I built **TargetDash**, the AI-powered layer that organizes the noise and hel
 
 ---
 
-## 🚀 What It Does
+## What It Does
 
 **TargetDash sits on top of Salesforce** to give your reps AI-powered prospect intelligence without replacing your core system of record:
 
@@ -34,7 +34,7 @@ So I built **TargetDash**, the AI-powered layer that organizes the noise and hel
 
 ---
 
-## 📊 What You Get (Demo Dataset)
+## What You Get (Demo Dataset)
 
 Spin it up with `pnpm dev` and the seeded demo dataset looks like this out of the box:
 
@@ -113,7 +113,7 @@ Integration keys (6sense, Gong, Clay, Salesforce) are all optional and independe
 
 ---
 
-## 🏗️ Architecture - A Seamless Routing Layer
+## Architecture - A Seamless Routing Layer
 
 TargetDash **sits exactly between your reps and Salesforce**, bringing scattered intelligence into one focused view:
 
@@ -167,9 +167,9 @@ TargetDash includes an **MCP (Model Context Protocol) server**, meaning ANY AI a
 
 ---
 
-## 🎯 Key Features
+## Key Features
 
-### 🔥 Priority Actions - "What Needs Attention Today?"
+### Priority Actions - "What Needs Attention Today?"
 
 AI analyzes your whole book of accounts and helps you prioritize:
 
@@ -177,7 +177,7 @@ AI analyzes your whole book of accounts and helps you prioritize:
 * **Suggested Action** (specific email/cal sequence)
 * **Recommended Contact** (decision-maker + role)
 
-### 🧲 Vector Scoring - Surface Hidden Opportunities
+### Vector Scoring - Surface Hidden Opportunities
 
 Uses AI embeddings to score accounts by synthesizing multiple data points:
 
@@ -186,20 +186,20 @@ Uses AI embeddings to score accounts by synthesizing multiple data points:
 * Fit (employees, industry, tech stack)
 * **VECTOR score** = single unified metric for easier prioritization
 
-### 📧 Assisted Outreach
+### 📧ssisted Outreach
 
 * Personalized email drafts using account insights
 * Multiple sequences (Ping integration, cold outreach, etc.)
 * Auto-A/B testing subject lines
 
-### 📊 6sense Integration
+### 6sense Integration
 
 * Buying stage tracking
 * Keyword performance
 * 6QA (6sense Qualified Accounts) gap analysis
 * Real-time intent data seamlessly routed
 
-### 🎙️ Gong Call Intelligence
+### Gong Call Intelligence
 
 * Auto-transcribes sales calls
 * Extracts action items so nothing falls through the cracks
@@ -208,7 +208,7 @@ Uses AI embeddings to score accounts by synthesizing multiple data points:
 
 ---
 
-## 🔐 Security & Compliance
+## Security & Compliance
 
 * ✅ **No hardcoded secrets** (all in config/environment)
 * ✅ **Parameterized SQL** (Drizzle ORM, no injection vectors)
@@ -222,7 +222,7 @@ Uses AI embeddings to score accounts by synthesizing multiple data points:
 
 ---
 
-## 🚦 Roadmap
+## Roadmap
 
 * [x] **Phase 1: Core Routing** (accounts, contacts, signals) ✅
 * [x] **Phase 2: AI integration** (OpenAI, Deep-Think engine) ✅
@@ -233,7 +233,7 @@ Uses AI embeddings to score accounts by synthesizing multiple data points:
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 This is an **open-core** project:
 
@@ -249,12 +249,12 @@ PRs welcome! Especially:
 
 ---
 
-## 📫 Contact
+## Contact
 
 Questions, bugs, or feature requests? Open a [GitHub issue](https://github.com/chzchzchzchz/AI-CRM/issues).
 
 ---
 
-## 📄 License
+## License
 
 MIT License, free for personal & commercial use. See [LICENSE](https://www.google.com/search?q=LICENSE).
