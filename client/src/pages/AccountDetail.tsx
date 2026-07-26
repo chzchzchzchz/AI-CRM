@@ -1,19 +1,21 @@
 import { useState } from"react";
 import { Card, CardContent, CardHeader, CardTitle } from"@/components/ui/card";
-import { Badge } from"@/components/ui/badge";
 import { Button } from"@/components/ui/button";
 import { AIAssistant } from"@/components/AIAssistant";
+import { AccountJudgement } from"@/components/AccountJudgement";
 import { trpc } from"@/lib/trpc";
 import {
   ArrowLeft, ExternalLink, Users, TrendingUp, Building2,
-  Sparkles, Copy, Check, Flame, Mail, Linkedin, Globe,
-  Loader2, ChevronRight, Shield, AlertTriangle, RefreshCw, BrainCircuit,
+  Copy, Check, Flame, Mail, Linkedin, Globe,
+  ChevronRight, Shield, AlertTriangle, BrainCircuit, ListChecks, Zap,
   ArrowUpRight, ArrowDownRight, Minus
 } from"lucide-react";
 import { Link, useParams } from"wouter";
-import { SafeStreamdown } from"@/components/SafeStreamdown";
 import { toast } from"sonner";
 import { CompanyLogo } from"@/components/ui/company-logo";
+import { TechStackDisplay } from"@/components/TechStackDisplay";
+import { ActivityTimeline } from"@/components/ActivityTimeline";
+import { LogFollowUpDialog } from"@/components/LogFollowUpDialog";
 
 // --- Signal helpers -------------------------------------------------------
 // Heat pairs a tinted color with a word + shape/glyph so it survives greyscale
@@ -43,17 +45,30 @@ export default function AccountDetailEnhanced() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const { data: account, isLoading } = trpc.accounts.getById.useQuery({ id: accountId });
-  const { data: people } = trpc.people.getByAccountId.useQuery(
+
+  // One signal pack drives every fact on this page: contacts, deals, intent history,
+  // coverage. It is the same pack the brief is generated from, so the numbers at the
+  // top and the judgement below can never disagree — previously the page composed its
+  // own "why now" from raw columns while the brief reasoned from a different read.
+  //
+  // Deterministic and LLM-free, so the facts render immediately; only the judgement
+  // (in AccountJudgement) waits on a model.
+  const { data: signals } = trpc.intel.accountSignals.useQuery(
     { accountId },
-    { enabled: accountId > 0 }
+    { enabled: accountId > 0, refetchOnWindowFocus: false }
   );
 
-  // AI Intelligence queries — deferred until the account has loaded so they don't
-  // join the initial request batch and block the core page render on slow LLM calls.
-  const overviewQuery = trpc.ai.compileOverview.useQuery({ accountId }, { enabled: accountId > 0 && !!account });
+  const { data: timeline, isLoading: timelineLoading } = trpc.accounts.getTimeline.useQuery(
+    { accountId, limit: 50 },
+    { enabled: accountId > 0, refetchOnWindowFocus: false }
+  );
+
   const { data: salesforceInstanceUrl } = trpc.salesforce.getInstanceUrl.useQuery();
-  const { data: accountOpportunities } = trpc.opportunities.getByAccountId.useQuery({ accountId }, { enabled: accountId > 0 });
-  const { data: intentSignals } = trpc.intentScores.list.useQuery({ accountId }, { enabled: accountId > 0 && !!account });
+
+  const people = signals?.stakeholders.people;
+  const accountOpportunities = signals?.pipeline.opportunities;
+  // Newest first — the pack stores the series chronologically for trend maths.
+  const intentSignals = signals ? [...signals.intent.history].reverse() : undefined;
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -108,11 +123,11 @@ export default function AccountDetailEnhanced() {
     );
   }
 
-  const intentScore = account.intentScore || 0;
+  const intentScore = signals?.intent.score ?? account.intentScore ?? 0;
   // Prefer the real 6sense stage (column: sixsenseBuyingStage); fall back to an intent-band
   // inference only when it is genuinely absent. Reading `.buyingStage` — which is not a
   // column — meant the real stage was never shown and every account looked"Inferred".
-  const realBuyingStage = (account as any).sixsenseBuyingStage as string | null | undefined;
+  const realBuyingStage = signals?.intent.buyingStage ?? ((account as any).sixsenseBuyingStage as string | null | undefined);
   const buyingStage = realBuyingStage || (
     intentScore >= 86 ? 'Purchase' :
     intentScore >= 70 ? 'Decision' :
@@ -122,51 +137,24 @@ export default function AccountDetailEnhanced() {
 
   const heat = heatMeta(intentScore);
   const stage = stageMeta(buyingStage);
-  const profileFit = (account as any).sixsenseProfileFit as string | undefined;
+  const profileFit = signals?.intent.profileFit ?? ((account as any).sixsenseProfileFit as string | undefined);
 
-  // Intent trend: compare the two most recent signals. Real numbers only — null
+  // Intent trend: compare the two most recent readings. Real numbers only — null
   // when there isn't enough history to compute a delta.
   const intentTrend =
     intentSignals && intentSignals.length >= 2
       ? intentSignals[0].score - intentSignals[1].score
       : null;
 
-  // Pipeline is summed from real opportunity amounts.
-  const openDeals = accountOpportunities?.length || 0;
-  const pipelineValue = accountOpportunities?.reduce((sum: number, o: any) => sum + Number(o.amount || 0), 0) || 0;
+  // Pipeline totals come from the pack, which already computes the probability-weighted
+  // figure. Summing amounts client-side gave a number no one should forecast against.
+  const openDeals = signals?.pipeline.open ?? 0;
+  const pipelineValue = signals?.pipeline.totalValue ?? 0;
+  const weightedPipeline = signals?.pipeline.weightedValue ?? 0;
 
-  //"Why now" is composed strictly from fields we actually have. If nothing is
-  // recorded we say so plainly rather than inventing a narrative.
-  const whyNowParts: string[] = [];
-  whyNowParts.push(`${buyingStage} stage${realBuyingStage ? '' : ' (inferred from intent)'}`);
-  if (profileFit) whyNowParts.push(`${profileFit} profile fit`);
-  if (intentSignals && intentSignals.length > 0) {
-    const latest = intentSignals[0];
-    const d = new Date(latest.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    whyNowParts.push(`latest signal ${d}${latest.category ? ` · ${latest.category}` : ''}`);
-  }
-  const whyNow = whyNowParts.join(' · ');
-  const hasSignalActivity = !!(intentSignals && intentSignals.length > 0);
-
-  // Extract final AI output (hide reasoning)
-  const extractFinalOutput = (text: string | null | undefined): string => {
-    if (!text) return '';
-    // Remove XML tags and reasoning sections
-    let clean = text
-      .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
-      .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
-      .replace(/<strategy>[\s\S]*?<\/strategy>/gi, '')
-      .replace(/<notes>[\s\S]*?<\/notes>/gi, '')
-      // Only strip standalone horizontal rules. A bare /---+/ also ate the
-      // separator row of every markdown table (|---|---|), which silently
-      // disabled GFM table rendering across the app.
-      .replace(/^\s*-{3,}\s*$/gm, '')
-      .trim();
-    // If there's an OUTPUT section, extract just that
-    const outputMatch = clean.match(/OUTPUT[:\s]*([\s\S]*?)(?:$|---)/i);
-    if (outputMatch) clean = outputMatch[1].trim();
-    return clean;
-  };
+  // How much of this account we actually hold data for. Stating it up front is what
+  // stops a thin brief from reading like a quiet account.
+  const coverage = signals?.coverage;
 
   return (
     <div>
@@ -206,6 +194,13 @@ export default function AccountDetailEnhanced() {
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0 flex-wrap">
+            {/* Capture happens where the decision happens. A commitment made while
+                looking at the account and written down later is a commitment lost. */}
+            <LogFollowUpDialog
+              accountId={accountId}
+              accountName={account.name}
+              contacts={people?.map(p => ({ id: p.id, name: p.name, title: p.title }))}
+            />
             <Button size="sm" asChild>
               <Link href="/outreach"><Mail className="mr-1 h-4 w-4" />Outreach</Link>
             </Button>
@@ -259,18 +254,34 @@ export default function AccountDetailEnhanced() {
                 </div>
               </div>
 
-              {/* Why now + supporting facts */}
+              {/* Supporting facts — every value below is read from the same signal pack
+                  the brief is generated from, so this strip and the judgement underneath
+                  can never contradict each other. */}
               <div className="min-w-0 space-y-4">
-                <div>
-                  <div className="text-xs text-ink-muted mb-1">Why now</div>
-                  {hasSignalActivity ? (
-                    <p className="text-sm text-foreground leading-relaxed">{whyNow}</p>
-                  ) : (
-                    <p className="text-sm text-ink-muted leading-relaxed">
-                      {whyNow}. No 6sense signal activity recorded yet.
-                    </p>
-                  )}
-                </div>
+                {/* Signal coverage: how much of this account we actually hold. Shown
+                    before the facts, because it is how you read the facts. */}
+                {coverage && (
+                  <div>
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="text-xs text-ink-muted">Signal coverage</span>
+                      <span className="tabular-nums text-xs text-ink-muted">
+                        {Math.round(coverage.completeness * 100)}% · {coverage.present.length} of{' '}
+                        {coverage.present.length + coverage.missing.length} categories
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-accent transition-all duration-300"
+                        style={{ width: `${Math.round(coverage.completeness * 100)}%` }}
+                      />
+                    </div>
+                    {coverage.missing.length > 0 && (
+                      <p className="mt-1.5 text-[11px] leading-relaxed text-ink-subtle">
+                        No data for: {coverage.missing.join(', ')}. Nothing on this page infers them.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Fact strip — hairline-separated, differentiated by value type */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-px overflow-hidden rounded-sm bg-muted">
@@ -281,6 +292,11 @@ export default function AccountDetailEnhanced() {
                   <div className="bg-card p-3">
                     <div className="text-xs text-ink-muted">Contacts</div>
                     <div className="mt-1 tabular-nums text-lg font-semibold text-accent">{people?.length || 0}</div>
+                    {!!signals?.stakeholders.total && (
+                      <div className="text-[11px] text-ink-muted">
+                        <span className="tabular-nums">{signals.stakeholders.withEmail}</span> reachable
+                      </div>
+                    )}
                   </div>
                   <div className="bg-card p-3">
                     <div className="text-xs text-ink-muted">Pipeline</div>
@@ -289,7 +305,9 @@ export default function AccountDetailEnhanced() {
                         <div className="mt-1 tabular-nums text-lg font-semibold text-positive">
                           ${pipelineValue.toLocaleString()}
                         </div>
+                        {/* The honest forecast number sits under the headline one. */}
                         <div className="text-[11px] text-ink-muted">
+                          <span className="tabular-nums">${weightedPipeline.toLocaleString()}</span> weighted ·{' '}
                           <span className="tabular-nums">{openDeals}</span> open
                         </div>
                       </>
@@ -298,8 +316,19 @@ export default function AccountDetailEnhanced() {
                     )}
                   </div>
                   <div className="bg-card p-3">
-                    <div className="text-xs text-ink-muted">Relationship</div>
-                    <div className="mt-1 text-base font-medium text-foreground">{account.relationship || 'Prospect'}</div>
+                    <div className="text-xs text-ink-muted">Last contact</div>
+                    {signals?.conversations.daysSinceLastCall != null ? (
+                      <>
+                        <div className="mt-1 tabular-nums text-lg font-semibold text-foreground">
+                          {signals.conversations.daysSinceLastCall}d
+                        </div>
+                        <div className="text-[11px] text-ink-muted">
+                          <span className="tabular-nums">{signals.conversations.total}</span> calls on file
+                        </div>
+                      </>
+                    ) : (
+                      <div className="mt-1 text-base font-medium text-ink-muted">Never</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -310,7 +339,10 @@ export default function AccountDetailEnhanced() {
         {/* Two Column Layout */}
         <div className="grid md:grid-cols-3 gap-6">
           {/* Left Column - Deals, Signals, Contacts, Security */}
-          <div className="md:col-span-1 space-y-4">
+          {/* min-w-0: a grid item defaults to min-width:auto, so a long opportunity
+              name sets a floor the column can't shrink below and pushes the page
+              sideways on a phone. */}
+          <div className="min-w-0 md:col-span-1 space-y-4">
             {/* Active Deals */}
             <Card className="border-border bg-card shadow-none">
               <CardHeader className="py-3 px-4">
@@ -327,17 +359,19 @@ export default function AccountDetailEnhanced() {
               <CardContent className="px-4 pb-4 space-y-2">
                 {!accountOpportunities || accountOpportunities.length === 0 ? (
                   <p className="text-sm text-ink-muted">No open opportunities</p>
-                ) : accountOpportunities.map((opp: any) => (
-                  <div key={opp.id} className="p-3 rounded-sm bg-muted">
+                ) : accountOpportunities.map((opp, i) => (
+                  <div key={`${opp.name}-${i}`} className="p-3 rounded-sm bg-muted">
                     <div className="flex flex-wrap justify-between items-start gap-2 mb-2">
-                      <span className="text-sm font-medium truncate">{opp.name}</span>
+                      {/* truncate sets white-space:nowrap, so without min-w-0 this flex
+                          item's min-content width is the whole untruncated name. */}
+                      <span className="min-w-0 flex-1 text-sm font-medium truncate">{opp.name}</span>
                       <span className="shrink-0 rounded-sm bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
                         {opp.stage}
                       </span>
                     </div>
                     <div className="flex flex-wrap justify-between items-center gap-2">
                       <span className="tabular-nums text-sm font-semibold text-positive">
-                        ${Number(opp.amount).toLocaleString()}
+                        {opp.amount != null ? `$${Number(opp.amount).toLocaleString()}` : '—'}
                       </span>
                       <div className="flex flex-wrap items-center gap-2.5">
                         {/* The CRM's own probability — distinct from the AI prediction beside it. */}
@@ -371,14 +405,16 @@ export default function AccountDetailEnhanced() {
                   <CardTitle className="text-sm flex flex-wrap items-center gap-2">
                     <Flame className="h-4 w-4 text-caution" />
                     Intent Signals
-                    <span className="text-xs font-normal text-ink-muted">{intentSignals[0].source}</span>
+                    {intentSignals[0].source && (
+                      <span className="text-xs font-normal text-ink-muted">{intentSignals[0].source}</span>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 pb-4 space-y-1">
-                  {intentSignals.slice(0, 4).map((s: any) => (
-                    <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-1 text-sm">
+                  {intentSignals.slice(0, 4).map((s, i) => (
+                    <div key={`${s.at}-${i}`} className="flex flex-wrap items-center justify-between gap-2 py-1 text-sm">
                       <span className="text-ink-muted truncate">
-                        {new Date(s.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        {s.at ? new Date(s.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Undated'}
                         {s.category ? ` · ${s.category}` : ''}
                       </span>
                       <span className={`tabular-nums font-semibold ${getIntentColor(s.score)}`}>{s.score}</span>
@@ -406,7 +442,9 @@ export default function AccountDetailEnhanced() {
                 {!people || people.length === 0 ? (
                   <p className="text-sm text-ink-muted">No contacts found</p>
                 ) : (
-                  people.slice(0, 5).map((person: any) => (
+                  // The pack ranks people most-senior-first, so the top five are the five
+                  // that matter rather than the five that happened to sync first.
+                  people.slice(0, 5).map((person) => (
                     <Link key={person.id} href={`/contacts/${person.id}`}>
                       <div className="flex items-center justify-between p-2 rounded-sm hover:bg-muted cursor-pointer group transition-colors">
                         <div className="min-w-0">
@@ -415,6 +453,9 @@ export default function AccountDetailEnhanced() {
                           </div>
                           <div className="text-xs text-ink-muted truncate">
                             {person.title || 'No title'}
+                            {person.seniority !== 'Unknown' && person.title && (
+                              <span className="text-ink-subtle"> · {person.seniority}</span>
+                            )}
                           </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
@@ -440,6 +481,36 @@ export default function AccountDetailEnhanced() {
                 )}
               </CardContent>
             </Card>
+
+            {/* What they run. Both stacks live in the signal pack and were, until now,
+                visible only inside a component nothing rendered. */}
+            <TechStackDisplay
+              techStack={signals?.technology.techStack ?? null}
+              securityStack={signals?.technology.securityStack ?? null}
+            />
+
+            {/* Trigger events — the "something happened" signals. Also in the pack,
+                also previously unshown. */}
+            {!!signals?.triggers.length && (
+              <Card className="border-border bg-card shadow-none">
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="text-sm flex flex-wrap items-center gap-2">
+                    <Zap className="h-4 w-4 text-caution" />
+                    Trigger Events
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <ul className="space-y-1.5">
+                    {signals.triggers.map((t, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-caution" />
+                        <span className="text-foreground">{t}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Security Intelligence */}
             {(ssoProvider || mfaSolution || securityIncidents || competitorIntent) && (
@@ -486,74 +557,47 @@ export default function AccountDetailEnhanced() {
             )}
           </div>
 
-          {/* Right Column - AI Intelligence */}
-          <div className="md:col-span-2 space-y-4">
-            {/* AI Account Brief — the trustworthy centrepiece */}
-            <Card className="border-border bg-card shadow-none">
-              <CardHeader className="px-6 pt-1">
-                <CardTitle className="flex flex-wrap items-start justify-between gap-3">
-                  <span className="min-w-0">
-                    <span className="flex flex-wrap items-center gap-2 text-base font-semibold">
-                      <Sparkles className="h-4 w-4 text-accent" />
-                      AI Account Brief
+          {/* Right Column — the judgement: why this account matters and what to do */}
+          <div className="min-w-0 md:col-span-2 space-y-4">
+            <AccountJudgement accountId={accountId} />
+
+            {/* Commitments already made on calls. These outrank anything a model can
+                suggest, so they sit under the judgement rather than inside it. */}
+            {!!signals?.conversations.openActionItems.length && (
+              <Card className="border-border bg-card shadow-none">
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="text-sm flex flex-wrap items-center gap-2">
+                    <ListChecks className="h-4 w-4 text-caution" />
+                    Open commitments
+                    <span className="tabular-nums text-xs font-normal text-ink-muted">
+                      {signals.conversations.openActionItems.length}
                     </span>
-                    <span className="mt-1 block text-xs font-normal text-ink-muted">
-                      Computed from this account's own signals, deals, and contacts.
-                    </span>
-                  </span>
-                  <span className="flex flex-wrap items-center gap-2 shrink-0">
-                    {overviewQuery.data?.cached && (
-                      <span className="rounded-sm bg-muted px-2.5 py-1 text-[11px] text-ink-muted">
-                        Updated <span className="tabular-nums">{overviewQuery.data.cacheAge}m</span> ago
-                      </span>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="Regenerate brief"
-                      onClick={() => overviewQuery.refetch()}
-                      disabled={overviewQuery.isFetching}
-                    >
-                      <RefreshCw className={`h-4 w-4 ${overviewQuery.isFetching ? 'animate-spin' : ''}`} />
-                    </Button>
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-6">
-                {overviewQuery.isLoading ? (
-                  <div className="space-y-2.5 py-1">
-                    <div className="flex items-center gap-2 text-sm text-ink-muted">
-                      <Loader2 className="h-4 w-4 animate-spin text-accent" />
-                      Generating brief…
-                    </div>
-                    <div className="animate-pulse space-y-2 pt-1">
-                      <div className="h-3 w-11/12 rounded bg-muted" />
-                      <div className="h-3 w-full rounded bg-muted" />
-                      <div className="h-3 w-9/12 rounded bg-muted" />
-                    </div>
-                  </div>
-                ) : overviewQuery.data?.summary ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-accent">
-                    <SafeStreamdown>{extractFinalOutput(overviewQuery.data.summary)}</SafeStreamdown>
-                  </div>
-                ) : (
-                  <div className="rounded-sm border border-dashed border-border py-8 text-center">
-                    <Sparkles className="h-7 w-7 mx-auto mb-2 text-ink-subtle" />
-                    <p className="text-sm text-ink-muted">No brief available yet</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-3"
-                      onClick={() => overviewQuery.refetch()}
-                      disabled={overviewQuery.isFetching}
-                    >
-                      <RefreshCw className={`mr-1 h-4 w-4 ${overviewQuery.isFetching ? 'animate-spin' : ''}`} />
-                      Generate brief
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <ul className="space-y-1.5">
+                    {signals.conversations.openActionItems.map((item, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-caution" />
+                        <span className="text-foreground">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-3 text-[11px] text-ink-subtle">
+                    Captured from call transcripts. Unresolved until closed in the CRM.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* What actually happened, in order. The timeline component and the
+                procedure that feeds it were built to the same shape and never
+                connected to each other. */}
+            <ActivityTimeline
+              activities={timeline ?? []}
+              isLoading={timelineLoading}
+              maxItems={8}
+            />
           </div>
         </div>
       </div>

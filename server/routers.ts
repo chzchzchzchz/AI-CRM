@@ -32,6 +32,7 @@ import { deepThink, deepThinkSales, deepThinkHelp } from "./deep-think";
 import { toolsRouter } from "./tools-router";
 import { adminRouter } from "./admin-router";
 import { emailVerificationRouter } from "./email-verification-router";
+import { followUpsRouter } from "./follow-ups";
 import { dustRouter } from "./routers/dust";
 import { salesforceRouter } from "./routers/salesforce";
 import { notifyOwner } from "./_core/notification";
@@ -263,8 +264,14 @@ Or go to the Admin Panel: /admin/approval`
           console.error("Failed to send admin notification:", notifyError);
           // Don't fail the signup if notification fails
         }
-        
-        return { success: true };
+
+        // The id is what lets the client request a verification code for the account it
+        // just created. Without it the whole emailVerification router was unreachable —
+        // built, tested, and impossible to call.
+        //
+        // Safe to return: it identifies an account that is not approved and cannot log
+        // in, and possessing it proves nothing without the emailed code.
+        return { success: true, userId: Number(newUserId) };
       }),
     
     // Email/Password Login
@@ -943,6 +950,7 @@ Or go to the Admin Panel: /admin/approval`
             : 0;
           return {
             summary: brief.markdown,
+            judgement: brief.judgement,
             cached: brief.cached,
             cacheAge,
             metrics: brief.metrics,
@@ -1155,6 +1163,7 @@ Or go to the Admin Panel: /admin/approval`
   outreach: outreachRouter,
   admin: adminRouter,
   emailVerification: emailVerificationRouter,
+  followUps: followUpsRouter,
 
 });
 

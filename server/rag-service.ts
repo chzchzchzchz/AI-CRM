@@ -151,8 +151,22 @@ export async function searchKnowledgeBase(
   
   // Generate query embedding
   const queryEmbedding = await generateEmbedding(query);
-  
-  // Get all chunks (in production, use vector DB like Pinecone)
+
+  // Owner scope resolved as its own read rather than a join.
+  //
+  // This used to innerJoin knowledgeBase to filter by user. The demo database is a JSON
+  // shim that implements leftJoin and not innerJoin, so every RAG-backed call threw
+  // "db.select(...).from(...).innerJoin is not a function" the moment anything reached
+  // it — which nothing did, because the one procedure that uses RAG was never routed.
+  // Two reads are also cheap here: the chunk table is scanned in full either way.
+  const ownDocs = await db
+    .select({ id: knowledgeBase.id, fileName: knowledgeBase.fileName })
+    .from(knowledgeBase)
+    .where(userId ? eq(knowledgeBase.userId, userId) : sql`1=1`);
+
+  if (!ownDocs.length) return [];
+  const nameById = new Map<number, string>(ownDocs.map((d: any) => [d.id, d.fileName]));
+
   const allChunks = await db
     .select({
       id: documentChunks.id,
@@ -160,35 +174,31 @@ export async function searchKnowledgeBase(
       content: documentChunks.content,
       embedding: documentChunks.embedding,
     })
-    .from(documentChunks)
-    .innerJoin(knowledgeBase, eq(documentChunks.documentId, knowledgeBase.id))
-    .where(userId ? eq(knowledgeBase.userId, userId) : sql`1=1`);
-  
-  // Calculate similarities
-  const scored = allChunks.map((chunk: any) => ({
-    ...chunk,
-    score: cosineSimilarity(queryEmbedding, chunk.embedding as number[] || []),
-  }));
-  
+    .from(documentChunks);
+
+  // Calculate similarities over this user's chunks only. Filtering here rather than in
+  // SQL keeps the owner check explicit — a query that silently returned every user's
+  // documents would be a data leak, not a slow path.
+  const scored = allChunks
+    .filter((chunk: any) => nameById.has(chunk.documentId))
+    .map((chunk: any) => ({
+      ...chunk,
+      score: cosineSimilarity(queryEmbedding, chunk.embedding as number[] || []),
+    }));
+
   // Sort by score and take top K
   scored.sort((a: any, b: any) => b.score - a.score);
   const topChunks = scored.slice(0, topK);
-  
-  // Get document names
-  const results = await Promise.all(topChunks.map(async (chunk: any) => {
-    const [doc] = await db
-      .select({ fileName: knowledgeBase.fileName })
-      .from(knowledgeBase)
-      .where(eq(knowledgeBase.id, chunk.documentId));
-    
+
+  const results = topChunks.map((chunk: any) => {
     return {
       content: chunk.content,
       documentId: chunk.documentId,
-      fileName: doc?.fileName || 'Unknown',
+      fileName: nameById.get(chunk.documentId) || 'Unknown',
       score: chunk.score,
     };
-  }));
-  
+  });
+
   return results;
 }
 

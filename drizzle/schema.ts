@@ -278,6 +278,36 @@ export const emailSequences = mysqlTable("emailSequences", {
 export type EmailSequence = typeof emailSequences.$inferSelect;
 export type InsertEmailSequence = typeof emailSequences.$inferInsert;
 
+/**
+ * A commitment a rep made to themselves: "call the CISO at Marvel in six months".
+ *
+ * Everything else in this system is inbound — signals arriving, scores moving, calls
+ * landing. This is the one place the rep's own intent is recorded, and it is what makes
+ * the daily view a to-do list rather than a news feed. A follow-up carries the account
+ * and contact it concerns so the work can be done from wherever it surfaces, without
+ * navigating off to go and find them.
+ */
+export const followUps = mysqlTable("followUps", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  accountId: int("accountId"),
+  contactId: int("contactId"),
+  title: varchar("title", { length: 500 }).notNull(),
+  notes: text("notes"),
+  dueDate: timestamp("dueDate").notNull(),
+  /** "open" | "done" — snoozing moves dueDate rather than adding a third state. */
+  status: varchar("status", { length: 32 }).default("open").notNull(),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  // The daily read is "mine, still open, ordered by when it's due".
+  dueIdx: index("followUps_user_status_due_idx").on(table.userId, table.status, table.dueDate),
+}));
+
+export type FollowUp = typeof followUps.$inferSelect;
+export type InsertFollowUp = typeof followUps.$inferInsert;
+
 // Outreach Campaigns
 export const outreachCampaigns = mysqlTable("outreachCampaigns", {
   id: int("id").autoincrement().primaryKey(),

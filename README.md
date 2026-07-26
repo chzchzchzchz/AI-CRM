@@ -2,7 +2,9 @@
 
 The daily revenue command centre for Salesforce.
 
-See who’s hot, what changed overnight, and the next best action for every account; powered by live signals from Gong, 6sense, Clay, and Salesforce. It sits on top of your CRM, not in place of it.
+See what you owe, what changed overnight, who’s hot, and the next best action for every account; powered by live signals from Gong, 6sense, Clay, and Salesforce. It sits on top of your CRM, not in place of it.
+
+Everything a rep needs in the morning is on one screen, and everything on it can be acted on there. A follow-up you logged six months ago comes back when it’s due, and opening it gives you the contact’s details and a drafted email in place — no navigating off to go and find them.
 
 
 ---
@@ -19,6 +21,7 @@ I was at an enterprise B2B company building their sales stack. We had 14,000+ co
 * **Integrates AI natively** (working seamlessly at every layer)
 * **Reduces data entry friction** (contacts enrich themselves in the background)
 * **Generates the "Next Best Action"** in plain English
+* **Remembers what the rep committed to** ("call the CISO in six months") and surfaces it on the day, with the contact details and a draft attached
 
 So I built **TargetDash**, the AI-powered layer that organizes the noise and helps Salesforce work smoothly for your reps.
 
