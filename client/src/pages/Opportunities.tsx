@@ -80,8 +80,8 @@ export default function Opportunities() {
             <p className="text-ink-muted mt-1 text-sm">
               AI-scored deals, grounded in stated win probability.{" "}
               <span className="text-ink-muted">
-                <span className="font-mono text-foreground">{usd0(openValue)}</span> across{" "}
-                <span className="font-mono text-foreground">{openOpps.length}</span> open{" "}
+                <span className="tabular-nums text-foreground">{usd0(openValue)}</span> across{" "}
+                <span className="tabular-nums text-foreground">{openOpps.length}</span> open{" "}
                 {openOpps.length === 1 ? "deal" : "deals"}.
               </span>
             </p>
@@ -107,11 +107,11 @@ export default function Opportunities() {
                 <div className="flex items-baseline justify-between gap-2 mb-3 pb-2 border-b border-border px-1">
                   <h3 className="text-sm font-semibold flex items-center gap-2 min-w-0">
                     <span className="truncate text-foreground">{stage}</span>
-                    <span className="font-mono text-xs text-ink-muted shrink-0">{inStage.length}</span>
+                    <span className="tabular-nums text-xs text-ink-muted shrink-0">{inStage.length}</span>
                   </h3>
                   {stageValue > 0 && (
                     <span
-                      className={`font-mono text-xs shrink-0 ${ isWon ? "text-positive" : isLost ? "text-ink-muted" : "text-ink-muted" }`}
+                      className={`tabular-nums text-xs shrink-0 ${ isWon ? "text-positive" : isLost ? "text-ink-muted" : "text-ink-muted" }`}
                     >
                       {usdCompact.format(stageValue)}
                     </span>
@@ -144,7 +144,7 @@ export default function Opportunities() {
                               <span aria-hidden="true">{st.glyph}</span>
                               {st.label}
                             </span>
-                            <span className="font-mono text-sm text-foreground shrink-0">
+                            <span className="tabular-nums text-sm text-foreground shrink-0">
                               {usd0(Number(opp.amount) || 0)}
                             </span>
                           </div>
@@ -166,7 +166,7 @@ export default function Opportunities() {
                           <div className="flex items-center gap-5 pt-3 border-t border-border">
                             <div className="flex flex-col gap-0.5">
                               <span className="text-[11px] text-ink-muted">CRM prob</span>
-                              <span className="font-mono text-sm text-foreground">
+                              <span className="tabular-nums text-sm text-foreground">
                                 {prob != null ? `${prob}%` : "—"}
                               </span>
                             </div>
@@ -174,7 +174,7 @@ export default function Opportunities() {
                               <span className="text-[11px] text-accent inline-flex items-center gap-1">
                                 <BrainCircuit className="h-3 w-3" /> AI score
                               </span>
-                              <span className="font-mono text-sm text-accent">
+                              <span className="tabular-nums text-sm text-accent">
                                 {score != null ? `${score}%` : "not scored"}
                               </span>
                             </div>

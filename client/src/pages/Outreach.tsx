@@ -318,14 +318,14 @@ export default function Outreach() {
                         </div>
                         {(() => {
                           const heat = intentScore >= 70
-                            ? { glyph: "🔥", tone: "text-critical" }
+                            ? { glyph: "▲", tone: "text-critical" }
                             : intentScore >= 40
                             ? { glyph: "▲", tone: "text-caution" }
                             : { glyph: "▽", tone: "text-ink-muted" };
                           return (
                             <span className={`inline-flex items-center gap-1.5 rounded-sm bg-muted px-2.5 py-1 text-xs font-medium ${heat.tone}`}>
                               <span aria-hidden="true">{heat.glyph}</span>
-                              <span className="font-mono">{intentScore}</span>
+                              <span className="tabular-nums">{intentScore}</span>
                             </span>
                           );
                         })()}

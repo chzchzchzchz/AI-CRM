@@ -84,7 +84,7 @@ export default function SmartSearch() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-ink-muted">Matches</span>
-                    <span className="font-mono text-accent">{searchResults.resultCount ?? 0}</span>
+                    <span className="tabular-nums text-accent">{searchResults.resultCount ?? 0}</span>
                   </div>
                 </div>
               </div>
@@ -116,7 +116,7 @@ export default function SmartSearch() {
                             </div>
                           </div>
                           {a.intentScore != null && (
-                            <span className="text-accent text-sm font-mono">{a.intentScore}</span>
+                            <span className="text-accent text-sm tabular-nums">{a.intentScore}</span>
                           )}
                         </div>
                       </Link>

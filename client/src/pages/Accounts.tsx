@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { useRep } from "@/contexts/RepContext";
 import { RepSwitcher } from "@/components/RepSwitcher";
+import { CompanyLogo } from "@/components/ui/company-logo";
 
 type SortField = "name" | "intentScore" | "employees" | "industry";
 type SortOrder = "asc" | "desc";
@@ -243,7 +244,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
           <div>
             <h1 className="text-xl sm:text-xl font-semibold tracking-tight">Target Accounts</h1>
             <p className="mt-1 text-sm text-ink-muted">
-              <span className="font-mono text-ink-muted">{filteredAccounts.length}</span> accounts
+              <span className="tabular-nums text-ink-muted">{filteredAccounts.length}</span> accounts
               {isRepMode && <> · {repInfo?.region} territory</>}
             </p>
           </div>
@@ -277,7 +278,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                   <s.Icon className={`h-3.5 w-3.5 ${s.text}`} />
                   {s.label}
                 </div>
-                <div className={`mt-1.5 font-mono text-2xl font-semibold tabular-nums ${s.text}`}>{s.value}</div>
+                <div className={`mt-1.5 text-2xl font-semibold tabular-nums ${s.text}`}>{s.value}</div>
                 <div className="mt-0.5 text-[11px] text-ink-subtle">{s.hint}{active ? " · active" : ""}</div>
               </button>
             );
@@ -430,18 +431,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                 <Link key={account.id} href={`/accounts/${account.id}`}>
                   <div className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-surface/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent">
                     {/* Company Logo */}
-                    <div className="w-9 h-9 rounded-sm bg-muted border border-border/60 flex-shrink-0 overflow-hidden">
-                      <img
-                        src={`https://logo.clearbit.com/${account.domain}`}
-                        alt={`${account.name} logo`}
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-muted text-accent font-semibold text-sm">${account.name.charAt(0)}</div>`;
-                        }}
-                      />
-                    </div>
+                    <CompanyLogo name={account.name} website={account.domain} size="md" />
 
                     {/* Identity + meta */}
                     <div className="min-w-0 flex-1">
@@ -480,13 +470,13 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                       {daysSinceActivity != null && (
                         <span className={`flex items-center gap-1 ${freshText}`}>
                           <Clock className="h-3.5 w-3.5" />
-                          <span className="font-mono tabular-nums">{daysSinceActivity}d</span>
+                          <span className="tabular-nums">{daysSinceActivity}d</span>
                         </span>
                       )}
                       {salesActivities > 0 && (
                         <span className="flex items-center gap-1 text-ink-muted">
                           <Activity className="h-3.5 w-3.5" />
-                          <span className="font-mono tabular-nums">{salesActivities}</span>
+                          <span className="tabular-nums">{salesActivities}</span>
                         </span>
                       )}
                     </div>
@@ -494,7 +484,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                     {/* Intent score + heat */}
                     <div className="flex items-center gap-3 flex-shrink-0 pl-1">
                       <div className="text-right w-16">
-                        <div className="font-mono text-lg leading-none tabular-nums text-accent">
+                        <div className="text-lg leading-none tabular-nums text-accent">
                           {hasScore ? numScore : <span className="text-ink-subtle">—</span>}
                         </div>
                         {hasScore && (

@@ -88,7 +88,7 @@ export default function Integrations() {
                   <p className="text-xs text-muted-foreground">{c.blurb}</p>
                 </CardHeader>
                 <CardContent className="mt-auto space-y-2">
-                  <p className="text-[11px] text-muted-foreground font-mono">{c.env}</p>
+                  <p className="text-[11px] text-muted-foreground tabular-nums">{c.env}</p>
                   {c.webhook ? (
                     <div className="flex gap-2">
                       <Input

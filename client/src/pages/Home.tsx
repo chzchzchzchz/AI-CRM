@@ -9,9 +9,13 @@ import { DemoTour } from "@/components/DemoTour";
 import { HotLeadsWidget } from "@/components/HotLeadsWidget";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { RepSwitcher } from "@/components/RepSwitcher";
 import { useRep, REP_TERRITORIES } from "@/contexts/RepContext";
+import { CompanyLogo } from "@/components/ui/company-logo";
+import { PageHeader } from "@/components/app-shell/PageHeader";
+import { MetricGrid } from "@/components/ui/metric";
+import { StatCard } from "@/components/StatCard";
 
 
 /**
@@ -19,6 +23,7 @@ import { useRep, REP_TERRITORIES } from "@/contexts/RepContext";
  * Daily command center for sales reps with stunning visuals
  */
 export default function Home() {
+  const [, setLocation] = useLocation();
   const { user, loading: authLoading } = useAuth();
   const isDemoUser = user?.email?.includes('demo') || false;
   const { selectedRep, repInfo: globalRepInfo, matchesTerritory } = useRep();
@@ -137,6 +142,18 @@ export default function Home() {
   // For demo users, use a proportion of their accounts; otherwise use repStats
   const sixQAGap = repStats?.sixQAGap !== undefined ? repStats.sixQAGap : Math.floor(totalAccounts * 0.8);
 
+  const timeOfDay = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return "morning";
+    if (h < 18) return "afternoon";
+    return "evening";
+  })();
+
+  const openPipeline =
+    opportunitiesData
+      ?.filter((opp: any) => String(opp.status ?? "Open").toLowerCase() === "open")
+      .reduce((sum: number, opp: any) => sum + (Number(opp.amount) || 0), 0) || 0;
+
   // Use enriched priority actions with contact data
   const priorityActions = (enrichedPriorityActions || []).map((action, index) => ({
     ...action,
@@ -148,138 +165,82 @@ export default function Home() {
   return (
     <div>
       <DemoTour />
-      <div className="container py-10 space-y-8 max-w-7xl">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-card border border-border flex-shrink-0">
-              <Target className="h-6 w-6 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-xl md:text-xl font-semibold tracking-tight text-foreground">
-                Good morning{repName ? `, ${repName}` : ''}
-              </h1>
-              <div className="mt-1 text-sm text-ink-muted">
-                {isKnownRep ? (
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4 text-ink-muted" />
-                    {repTerritory} Territory
-                    <span className="text-ink-subtle">•</span>
-                    {repSize}
-                  </span>
-                ) : (
-                  "Here's your sales intelligence for today"
-                )}
-              </div>
-            </div>
-          </div>
-          {/* Rep View Switcher */}
-          <RepSwitcher />
-        </div>
+      <div className="container max-w-[1500px] space-y-5 py-1">
+        <PageHeader
+          title={`Good ${timeOfDay}${repName ? `, ${repName}` : ""}`}
+          description={
+            isKnownRep
+              ? `${repTerritory} territory · ${repSize}`
+              : "Your pipeline at a glance"
+          }
+          actions={
+            <>
+              <RepSwitcher />
+              <Button asChild variant="outline">
+                <Link href="/top-accounts">
+                  <Target className="size-4" />
+                  Top 15
+                </Link>
+              </Button>
+              <Button asChild variant="signal">
+                <Link href="/outreach">
+                  <Mail className="size-4" />
+                  Generate outreach
+                </Link>
+              </Button>
+            </>
+          }
+        />
 
-        {/* AI Assistant Bar */}
-        <ContextualAI context="home" placeholder="Ask AI: What should I prioritize today?" />
+        <ContextualAI context="home" placeholder="Ask about today's pipeline…" />
 
-        {/* Key Stats — tonal cards, mono numbers, status paired with a word */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <Link href="/accounts">
-            <Card className="h-full p-5 transition-colors hover:border-accent/30">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-ink-muted">Total Accounts</span>
-                <Building2 className="h-4 w-4 text-ink-subtle" />
-              </div>
-              <div className="mt-3 text-2xl font-semibold font-mono tabular-nums text-foreground">{totalAccounts}</div>
-              <p className="mt-1 text-xs text-ink-muted">{isKnownRep ? `${repTerritory} territory` : 'Across all territories'}</p>
-            </Card>
-          </Link>
-
-          <Link href="/accounts?filter=hot">
-            <Card className="h-full p-5 transition-colors hover:border-accent/30">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-ink-muted">Hot Leads</span>
-                <Flame className="h-4 w-4 text-critical" />
-              </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-semibold font-mono tabular-nums text-critical">{hotLeads}</span>
-                <span className="text-xs font-semibold text-critical">🔥 Hot</span>
-              </div>
-              <p className="mt-1 text-xs text-ink-muted">Intent score 70+</p>
-            </Card>
-          </Link>
-
-          <Link href="/accounts?filter=warm">
-            <Card className="h-full p-5 transition-colors hover:border-accent/30">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-ink-muted">Warm Leads</span>
-                <TrendingUp className="h-4 w-4 text-caution" />
-              </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-semibold font-mono tabular-nums text-caution">{warmLeads}</span>
-                <span className="text-xs font-semibold text-caution">🌡️ Warm</span>
-              </div>
-              <p className="mt-1 text-xs text-ink-muted">Engagement, intent 70+, or calls</p>
-            </Card>
-          </Link>
-
-          <Link href="/opportunities">
-            <Card className="h-full p-5 transition-colors hover:border-accent/30">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-ink-muted">Pipeline Revenue</span>
-                <DollarSign className="h-4 w-4 text-positive" />
-              </div>
-              <div className="mt-3 text-2xl font-semibold font-mono tabular-nums text-positive">
-                ${(opportunitiesData
-                  ?.filter((opp: any) => String(opp.status ?? "Open").toLowerCase() === "open")
-                  .reduce((sum: number, opp: any) => sum + (Number(opp.amount) || 0), 0) || 0).toLocaleString()}
-              </div>
-              <p className="mt-1 text-xs text-ink-muted">Total open pipeline</p>
-            </Card>
-          </Link>
-
-          <Link href="/accounts?filter=unworked">
-            <Card className="h-full p-5 transition-colors hover:border-accent/30">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-ink-muted">6QA Opportunity Gap</span>
-                <Target className="h-4 w-4 text-ink-subtle" />
-              </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-semibold font-mono tabular-nums text-caution">{sixsenseSummary?.sixQA?.unworked || 0}</span>
-                <span className="text-xs font-semibold text-caution">⚠ Unworked</span>
-              </div>
-              <p className="mt-1 text-xs text-ink-muted">
-                <span className="font-mono">{sixsenseSummary?.sixQA?.total ? `${Math.round(((sixsenseSummary.sixQA.unworked || 0) / sixsenseSummary.sixQA.total) * 100)}%` : '0%'}</span> of 6QAs unworked
-              </p>
-            </Card>
-          </Link>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Link href="/outreach">
-            <Card className="h-full p-4 flex items-center gap-3 transition-colors hover:border-accent/30">
-              <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-accent-subtle border border-accent/30 flex-shrink-0">
-                <Mail className="h-5 w-5 text-accent" />
-              </div>
-              <div className="min-w-0">
-                <div className="font-semibold text-sm text-foreground">Generate Outreach</div>
-                <div className="text-xs text-ink-muted">AI-powered emails</div>
-              </div>
-              <ArrowRight className="h-4 w-4 text-ink-subtle ml-auto flex-shrink-0" />
-            </Card>
-          </Link>
-          <Link href="/top-accounts">
-            <Card className="h-full p-4 flex items-center gap-3 transition-colors hover:border-accent/30">
-              <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-accent-subtle border border-accent/30 flex-shrink-0">
-                <Target className="h-5 w-5 text-accent" />
-              </div>
-              <div className="min-w-0">
-                <div className="font-semibold text-sm text-foreground">Top 15 Accounts</div>
-                <div className="text-xs text-ink-muted">By region &amp; AE</div>
-              </div>
-              <ArrowRight className="h-4 w-4 text-ink-subtle ml-auto flex-shrink-0" />
-            </Card>
-          </Link>
-        </div>
+        {/* Key figures. Butted together so the row reads as one instrument
+            panel; each tile links to the list it summarises. */}
+        <MetricGrid>
+          <StatCard
+            title="Accounts"
+            value={totalAccounts}
+            subtitle={isKnownRep ? `${repTerritory} territory` : "All territories"}
+            icon={Building2}
+            onClick={() => setLocation("/accounts")}
+          />
+          <StatCard
+            title="Hot"
+            value={hotLeads}
+            subtitle="Intent 70+"
+            icon={Flame}
+            tone="critical"
+            onClick={() => setLocation("/accounts?filter=hot")}
+          />
+          <StatCard
+            title="Warm"
+            value={warmLeads}
+            subtitle="Intent 40–69"
+            icon={TrendingUp}
+            tone="caution"
+            onClick={() => setLocation("/accounts?filter=warm")}
+          />
+          <StatCard
+            title="Open pipeline"
+            value={`$${openPipeline.toLocaleString()}`}
+            subtitle="Across open opportunities"
+            icon={DollarSign}
+            tone="positive"
+            onClick={() => setLocation("/opportunities")}
+          />
+          <StatCard
+            title="Unworked 6QA"
+            value={sixsenseSummary?.sixQA?.unworked || 0}
+            subtitle={
+              sixsenseSummary?.sixQA?.total
+                ? `${Math.round(((sixsenseSummary.sixQA.unworked || 0) / sixsenseSummary.sixQA.total) * 100)}% of qualified accounts`
+                : "No 6QA data"
+            }
+            icon={Target}
+            tone="accent"
+            onClick={() => setLocation("/accounts?filter=unworked")}
+          />
+        </MetricGrid>
 
         {/* Main Content Grid */}
         <div className="grid gap-6 lg:grid-cols-3">
@@ -288,12 +249,14 @@ export default function Home() {
             {/* Urgent Actions */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Flame className="h-5 w-5 text-critical" />
-                  <h2 className="text-xl font-semibold text-foreground">Priority Actions</h2>
+                <div>
+                  <h2 className="text-sm font-semibold tracking-tight">Priority actions</h2>
+                  <p className="mt-0.5 text-xs text-ink-muted">
+                    Highest-signal accounts to work first
+                  </p>
                 </div>
                 <Badge className="bg-critical-subtle text-critical border-critical/30">
-                  <span className="font-mono">{priorityActions.length}</span>&nbsp;urgent
+                  <span className="tabular-nums">{priorityActions.length}</span>&nbsp;urgent
                 </Badge>
               </div>
 
@@ -325,18 +288,7 @@ export default function Home() {
                       <CardContent className="p-6">
                         <div className="flex items-start gap-4">
                           {/* Company Logo */}
-                          <div className="w-12 h-12 rounded-sm bg-card border border-border flex-shrink-0 overflow-hidden">
-                            <img
-                              src={`https://logo.clearbit.com/${action.domain}`}
-                              alt={`${action.name} logo`}
-                              className="w-full h-full object-contain"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-muted text-ink-muted font-bold text-lg">${action.name.charAt(0)}</div>`;
-                              }}
-                            />
-                          </div>
+                          <CompanyLogo name={action.name} website={action.domain} size="lg" />
                           <div className="flex-1 min-w-0 space-y-3">
                             {/* Account Header with VECTOR Score */}
                             <div className="flex items-start justify-between">
@@ -345,19 +297,19 @@ export default function Home() {
                                   <h3 className="font-semibold text-lg text-foreground">{action.name}</h3>
                                   {vectorScores && (
                                     <Badge variant="outline" className={`${tierColor} border-current font-semibold`}>
-                                      VECTOR <span className="font-mono ml-1">{vectorScores.composite}/100</span>
+                                      VECTOR <span className="tabular-nums ml-1">{vectorScores.composite}/100</span>
                                     </Badge>
                                   )}
                                   {isLostOpp && (
                                     <Badge className="bg-critical-subtle text-critical border-critical/30">
-                                      ⚠️ Lost opp
+                                      Lost opp
                                     </Badge>
                                   )}
                                 </div>
                                 <p className="text-sm text-ink-muted">
-                                  Intent <span className="font-mono text-accent">{action.intentScore}</span>
+                                  Intent <span className="tabular-nums text-accent">{action.intentScore}</span>
                                   {' · '}{action.industry}
-                                  {' · '}<span className="font-mono">{action.employeeCount?.toLocaleString() || ''}</span> employees
+                                  {' · '}<span className="tabular-nums">{action.employeeCount?.toLocaleString() || ''}</span> employees
                                   {' · '}{action.region}
                                   {accountOwner && <span> · Owner: {accountOwner}</span>}
                                 </p>
@@ -365,17 +317,17 @@ export default function Home() {
                                 <div className="flex flex-wrap gap-2 mt-1">
                                   {temperature && (
                                     <Badge className={`text-xs ${ temperature === 'Hot' ? 'bg-critical-subtle text-critical border-critical/30' : temperature === 'Warm' ? 'bg-caution-subtle text-caution border-caution/30' : 'bg-accent-subtle text-accent border-accent/30' }`}>
-                                      {temperature === 'Hot' ? '🔥' : temperature === 'Warm' ? '🌡️' : '❄️'} {temperature}
+                                      {temperature}
                                     </Badge>
                                   )}
                                   {daysSinceLastEngagement !== null && daysSinceLastEngagement !== undefined && (
                                     <Badge variant="outline" className={`text-xs ${ daysSinceLastEngagement <= 7 ? 'border-positive/30 text-positive' : daysSinceLastEngagement <= 30 ? 'border-caution/30 text-caution' : 'border-critical/30 text-critical' }`}>
-                                      <span className="font-mono">{daysSinceLastEngagement}d</span>&nbsp;since activity
+                                      <span className="tabular-nums">{daysSinceLastEngagement}d</span>&nbsp;since activity
                                     </Badge>
                                   )}
                                   {salesActivities > 0 && (
                                     <Badge variant="outline" className="text-xs border-border-strong text-ink-muted">
-                                      <span className="font-mono">{salesActivities}</span>&nbsp;activities
+                                      <span className="tabular-nums">{salesActivities}</span>&nbsp;activities
                                     </Badge>
                                   )}
                                   {opportunityStatus && (
@@ -387,26 +339,17 @@ export default function Home() {
                               </div>
                               {vectorScores && (
                                 <div className="text-right text-xs">
-                                  <span className={tierColor}>Tier <span className="font-mono">{vectorScores.tier}</span></span>
+                                  <span className={tierColor}>Tier <span className="tabular-nums">{vectorScores.tier}</span></span>
                                 </div>
                               )}
                             </div>
 
-                            {/* Primary Contact Highlight */}
-                            {primaryContact && (
-                              <div className="p-2 bg-accent-subtle border border-accent/30 rounded-sm">
-                                <p className="text-sm text-foreground">
-                                  <span className="font-semibold text-accent">Contact:</span>{' '}
-                                  <span className="font-medium">{primaryContact}</span>
-                                </p>
-                              </div>
-                            )}
 
                             {/* Top Contacts */}
                             {action.topContacts && action.topContacts.length > 0 && (
                               <div className="space-y-1">
                                 <p className="text-xs font-semibold text-ink-muted">
-                                  Top Contacts (<span className="font-mono">{action.contactCount}</span>){keyContactsCount > 0 && <> · <span className="font-mono">{keyContactsCount}</span> executives</>}
+                                  Top Contacts (<span className="tabular-nums">{action.contactCount}</span>){keyContactsCount > 0 && <> · <span className="tabular-nums">{keyContactsCount}</span> executives</>}
                                 </p>
                                 {action.topContacts.slice(0, 3).map((contact: any, idx: number) => (
                                   <p key={idx} className="text-sm text-foreground">
@@ -417,17 +360,30 @@ export default function Home() {
                               </div>
                             )}
 
-                            {/* Why Now — the evidence behind the action */}
-                            <div className="p-3 bg-caution-subtle border border-caution/30 rounded-sm">
-                              <p className="text-xs font-semibold text-caution mb-1">Why now</p>
-                              <p className="text-sm text-foreground">{action.whyNow}</p>
-                            </div>
-
-                            {/* Next Best Action — the AI recommendation (cyan = signal) */}
-                            <div className="p-3 bg-accent-subtle border border-accent/30 rounded-sm">
-                              <p className="text-xs font-semibold text-accent mb-1">Next best action</p>
-                              <p className="text-sm text-foreground">{action.nextBestAction}</p>
-                            </div>
+                            {/* The evidence and the recommendation, as labelled
+                                rows against a single rule. */}
+                            <dl className="space-y-2 border-l-2 border-border pl-3">
+                              <div>
+                                <dt className="text-2xs font-medium tracking-wide text-ink-faint uppercase">
+                                  Why now
+                                </dt>
+                                <dd className="mt-0.5 text-sm">{action.whyNow}</dd>
+                              </div>
+                              <div>
+                                <dt className="text-2xs font-medium tracking-wide text-ink-faint uppercase">
+                                  Next best action
+                                </dt>
+                                <dd className="mt-0.5 text-sm">{action.nextBestAction}</dd>
+                              </div>
+                              {primaryContact && (
+                                <div>
+                                  <dt className="text-2xs font-medium tracking-wide text-ink-faint uppercase">
+                                    Contact
+                                  </dt>
+                                  <dd className="mt-0.5 text-sm">{primaryContact}</dd>
+                                </div>
+                              )}
+                            </dl>
 
                             {/* Engagement Metrics */}
                             <div className="flex flex-wrap items-center gap-3 text-xs text-ink-muted">
@@ -437,30 +393,33 @@ export default function Home() {
                               </span>
                               {engagementMetrics?.daysSinceLastCall !== null && engagementMetrics?.daysSinceLastCall !== undefined && (
                                 <Badge variant="outline" className={`text-xs ${ engagementMetrics.daysSinceLastCall <= 7 ? 'border-positive/30 text-positive' : engagementMetrics.daysSinceLastCall <= 30 ? 'border-caution/30 text-caution' : 'border-critical/30 text-critical' }`}>
-                                  <span className="font-mono">{engagementMetrics.daysSinceLastCall}d</span>&nbsp;ago
+                                  <span className="tabular-nums">{engagementMetrics.daysSinceLastCall}d</span>&nbsp;ago
                                 </Badge>
                               )}
                               <span className="text-ink-subtle">•</span>
-                              <span><span className="font-mono text-ink-muted">{engagementMetrics?.totalCalls || 0}</span> calls</span>
+                              <span><span className="tabular-nums text-ink-muted">{engagementMetrics?.totalCalls || 0}</span> calls</span>
                               <span className="text-ink-subtle">•</span>
-                              <span><span className="font-mono text-ink-muted">{action.contactCount}</span> contacts</span>
+                              <span><span className="tabular-nums text-ink-muted">{action.contactCount}</span> contacts</span>
                             </div>
 
                             {/* VECTOR Score Breakdown (compact) */}
                             {vectorScores && (
-                              <div className="flex gap-2 text-xs">
-                                <span className="px-2 py-0.5 rounded bg-muted text-ink-muted" title="Engagement">
-                                  E:<span className="font-mono">{vectorScores.engagement}</span>
-                                </span>
-                                <span className="px-2 py-0.5 rounded bg-muted text-ink-muted" title="Conversion">
-                                  C:<span className="font-mono">{vectorScores.conversion}</span>
-                                </span>
-                                <span className="px-2 py-0.5 rounded bg-muted text-ink-muted" title="Strategic">
-                                  S:<span className="font-mono">{vectorScores.strategic}</span>
-                                </span>
-                                <span className="px-2 py-0.5 rounded bg-muted text-ink-muted" title="Timing">
-                                  T:<span className="font-mono">{vectorScores.timing}</span>
-                                </span>
+                              <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+                                {([
+                                  ["Engagement", vectorScores.engagement],
+                                  ["Conversion", vectorScores.conversion],
+                                  ["Strategic", vectorScores.strategic],
+                                  ["Timing", vectorScores.timing],
+                                ] as const).map(([label, value]) => (
+                                  <div key={label}>
+                                    <div className="text-2xs tracking-wide text-ink-faint uppercase">
+                                      {label}
+                                    </div>
+                                    <div data-numeric className="text-sm font-medium tabular-nums">
+                                      {value}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             )}
 

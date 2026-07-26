@@ -273,8 +273,8 @@ export default function ContactsEnhanced() {
           <div>
             <h1 className="text-xl sm:text-xl font-semibold tracking-tight">Contacts</h1>
             <p className="mt-1 text-sm text-ink-muted">
-              <span className="font-mono text-ink-muted">{filteredContacts.length}</span> of{" "}
-              <span className="font-mono text-ink-muted">{contacts?.length || 0}</span> contacts
+              <span className="tabular-nums text-ink-muted">{filteredContacts.length}</span> of{" "}
+              <span className="tabular-nums text-ink-muted">{contacts?.length || 0}</span> contacts
               {repInfo && <> · {repInfo.label} territory</>}
             </p>
           </div>
@@ -308,7 +308,7 @@ export default function ContactsEnhanced() {
                 <s.Icon className={`h-3.5 w-3.5 ${s.text === "text-foreground" ? "text-ink-muted" : s.text}`} />
                 {s.label}
               </div>
-              <div className={`mt-1.5 font-mono text-2xl font-semibold tabular-nums ${s.text}`}>{s.value}</div>
+              <div className={`mt-1.5 text-2xl font-semibold tabular-nums ${s.text}`}>{s.value}</div>
               <div className="mt-0.5 text-[11px] text-ink-subtle">{s.hint}</div>
             </div>
           ))}
@@ -533,14 +533,14 @@ export default function ContactsEnhanced() {
                     <div className="text-right w-14">
                       {hasScore ? (
                         <>
-                          <div className="font-mono text-lg leading-none tabular-nums text-accent">{numScore}</div>
+                          <div className="text-lg leading-none tabular-nums text-accent">{numScore}</div>
                           <div className={`mt-1 flex items-center justify-end gap-1 text-[11px] font-medium ${heat.text}`}>
                             <HeatIcon className="h-3 w-3" />
                             {heat.label}
                           </div>
                         </>
                       ) : (
-                        <div className="font-mono text-lg leading-none text-ink-subtle">—</div>
+                        <div className="tabular-nums text-lg leading-none text-ink-subtle">—</div>
                       )}
                     </div>
                     <ChevronRight className="h-4 w-4 text-ink-subtle group-hover:text-ink-muted transition-colors" />
@@ -571,9 +571,9 @@ export default function ContactsEnhanced() {
               Previous
             </Button>
             <span className="px-4 py-2 text-sm text-ink-muted">
-              Page <span className="font-mono text-ink-muted">{currentPage}</span> of{" "}
-              <span className="font-mono text-ink-muted">{totalPages}</span>
-              {" "}(<span className="font-mono text-ink-muted">{filteredContacts.length}</span> contacts)
+              Page <span className="tabular-nums text-ink-muted">{currentPage}</span> of{" "}
+              <span className="tabular-nums text-ink-muted">{totalPages}</span>
+              {" "}(<span className="tabular-nums text-ink-muted">{filteredContacts.length}</span> contacts)
             </span>
             <Button
               variant="outline"

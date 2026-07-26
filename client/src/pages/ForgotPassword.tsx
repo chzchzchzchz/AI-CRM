@@ -138,7 +138,7 @@ export default function ForgotPassword() {
                   placeholder="Enter your reset code"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  className="bg-muted border-border-strong text-foreground placeholder:text-ink-faint font-mono text-sm"
+                  className="bg-muted border-border-strong text-foreground placeholder:text-ink-faint tabular-nums text-sm"
                 />
               </div>
 

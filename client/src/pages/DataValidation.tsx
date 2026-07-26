@@ -95,28 +95,28 @@ export default function DataValidation() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:divide-x md:divide-border">
               <div className="md:pr-6">
                 <div className="text-sm text-ink-muted">Total Accounts</div>
-                <div className="text-2xl font-mono font-semibold text-foreground mt-1">{summary.totalAccounts}</div>
+                <div className="text-2xl tabular-nums font-semibold text-foreground mt-1">{summary.totalAccounts}</div>
               </div>
               <div className="md:px-6">
                 <div className="text-sm text-ink-muted">Total Contacts</div>
-                <div className="text-2xl font-mono font-semibold text-foreground mt-1">{summary.totalContacts}</div>
+                <div className="text-2xl tabular-nums font-semibold text-foreground mt-1">{summary.totalContacts}</div>
               </div>
               <div className="md:px-6">
                 <div className="text-sm text-ink-muted">Account Issues</div>
-                <div className="text-2xl font-mono font-semibold text-caution mt-1">{summary.totalIssues}</div>
+                <div className="text-2xl tabular-nums font-semibold text-caution mt-1">{summary.totalIssues}</div>
                 <div className="text-xs text-ink-muted mt-1">
-                  <span className="font-mono text-ink-muted">{summary.accountIssues.missingDomain}</span> missing domains,{" "}
-                  <span className="font-mono text-ink-muted">{summary.accountIssues.missingIndustry}</span> missing industries
+                  <span className="tabular-nums text-ink-muted">{summary.accountIssues.missingDomain}</span> missing domains,{" "}
+                  <span className="tabular-nums text-ink-muted">{summary.accountIssues.missingIndustry}</span> missing industries
                 </div>
               </div>
               <div className="md:pl-6">
                 <div className="text-sm text-ink-muted">Contact Issues</div>
-                <div className="text-2xl font-mono font-semibold text-caution mt-1">
+                <div className="text-2xl tabular-nums font-semibold text-caution mt-1">
                   {summary.contactIssues.missingEmail + summary.contactIssues.missingTitle}
                 </div>
                 <div className="text-xs text-ink-muted mt-1">
-                  <span className="font-mono text-ink-muted">{summary.contactIssues.missingEmail}</span> missing emails,{" "}
-                  <span className="font-mono text-ink-muted">{summary.contactIssues.missingTitle}</span> missing titles
+                  <span className="tabular-nums text-ink-muted">{summary.contactIssues.missingEmail}</span> missing emails,{" "}
+                  <span className="tabular-nums text-ink-muted">{summary.contactIssues.missingTitle}</span> missing titles
                 </div>
               </div>
             </div>
@@ -229,7 +229,7 @@ export default function DataValidation() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-foreground">Validation Results</h2>
               <Badge variant="outline" className="text-sm border-border-strong text-ink-muted">
-                <span className="font-mono">{validationResults.totalIssues}</span> issues found
+                <span className="tabular-nums">{validationResults.totalIssues}</span> issues found
               </Badge>
             </div>
 
@@ -266,7 +266,7 @@ export default function DataValidation() {
                             <details className="mt-2">
                               <summary className="text-xs text-ink-muted cursor-pointer hover:text-accent">
                                 View search evidence (confidence:{" "}
-                                <span className="font-mono">{Math.round(issue.confidence * 100)}%</span>)
+                                <span className="tabular-nums">{Math.round(issue.confidence * 100)}%</span>)
                               </summary>
                               <div className="mt-2 p-2 bg-card rounded-sm text-xs text-ink-muted whitespace-pre-wrap">
                                 {issue.searchResults}
