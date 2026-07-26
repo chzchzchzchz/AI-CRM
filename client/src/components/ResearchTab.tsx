@@ -19,7 +19,7 @@ export function ResearchTab({ accountId }: ResearchTabProps) {
   return (
     <div className="space-y-6">
       {/* AI Research Compilation */}
-      <Card className="card-elevated border-l-4 border-l-cyan-500">
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>

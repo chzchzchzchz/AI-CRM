@@ -101,7 +101,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
 
   if (isLoading) {
     return (
-      <Card className="card-elevated">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-accent" />
@@ -127,7 +127,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
 
   if (activities.length === 0) {
     return (
-      <Card className="card-elevated">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-accent" />
@@ -158,7 +158,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
   }, [sortedActivities]);
 
   return (
-    <Card className="card-elevated">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span className="flex items-center gap-2">

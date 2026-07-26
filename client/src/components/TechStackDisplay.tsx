@@ -16,7 +16,7 @@ export function TechStackDisplay({ techStack, securityStack }: TechStackDisplayP
   }
 
   return (
-    <Card className="card-elevated border-l-4 border-l-cyan-500">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <BarChart3 className="h-5 w-5 text-accent" />

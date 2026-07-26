@@ -59,7 +59,7 @@ export default function RFPs() {
   });
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div>
 
       <div className="container py-1 space-y-5">
         <div className="flex items-center justify-between">
@@ -103,7 +103,7 @@ export default function RFPs() {
         </div>
 
         {showApiKeyInput && (
-          <Card className="card-elevated">
+          <Card>
             <CardContent className="p-6">
               <div className="space-y-3">
                 <div>
@@ -170,7 +170,7 @@ export default function RFPs() {
             <Loader2 className="h-8 w-8 animate-spin text-accent" />
           </div>
         ) : filteredRFPs.length === 0 ? (
-          <Card className="card-elevated">
+          <Card>
             <CardContent className="p-12 text-center">
               <FileText className="h-12 w-12 text-ink-subtle mx-auto mb-4" />
               <p className="text-ink-muted mb-2">No RFPs found</p>

@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { APP_LOGO, APP_TITLE } from "@/const";
+
 import { trpc } from "@/lib/trpc";
 import { Link, useLocation } from "wouter";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { BrandLockup } from "@/components/app-shell/Brand";
 
 export default function SignUp() {
   const [, setLocation] = useLocation();
@@ -73,13 +74,8 @@ export default function SignUp() {
       <div className="w-full max-w-md space-y-6">
         {/* Logo and Title */}
         <div className="flex flex-col items-center gap-4">
-          <img
-            src={APP_LOGO}
-            alt={APP_TITLE}
-            className="h-16 w-16 rounded-md object-cover shadow"
-          />
+          <BrandLockup />
           <div className="text-center space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">{APP_TITLE}</h1>
             <p className="text-sm text-muted-foreground">
               Create your account
             </p>

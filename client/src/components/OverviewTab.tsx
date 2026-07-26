@@ -41,7 +41,7 @@ export function OverviewTab({ accountId, account }: OverviewTabProps) {
   return (
     <div className="space-y-6">
       {/* AI Executive Summary */}
-      <Card className="card-elevated border-l-4 border-l-primary">
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -98,7 +98,7 @@ export function OverviewTab({ accountId, account }: OverviewTabProps) {
 
       {/* Company Description */}
       {account.description && (
-        <Card className="card-elevated">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />

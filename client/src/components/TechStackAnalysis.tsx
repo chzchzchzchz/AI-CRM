@@ -38,7 +38,7 @@ export function TechStackAnalysis({ accountId }: TechStackAnalysisProps) {
   };
 
   return (
-    <Card className="card-elevated">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <BarChart3 className="h-5 w-5" />
