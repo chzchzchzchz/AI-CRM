@@ -15,6 +15,7 @@ import { toast } from"sonner";
 import { CompanyLogo } from"@/components/ui/company-logo";
 import { TechStackDisplay } from"@/components/TechStackDisplay";
 import { ActivityTimeline } from"@/components/ActivityTimeline";
+import { LogFollowUpDialog } from"@/components/LogFollowUpDialog";
 
 // --- Signal helpers -------------------------------------------------------
 // Heat pairs a tinted color with a word + shape/glyph so it survives greyscale
@@ -193,6 +194,13 @@ export default function AccountDetailEnhanced() {
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0 flex-wrap">
+            {/* Capture happens where the decision happens. A commitment made while
+                looking at the account and written down later is a commitment lost. */}
+            <LogFollowUpDialog
+              accountId={accountId}
+              accountName={account.name}
+              contacts={people?.map(p => ({ id: p.id, name: p.name, title: p.title }))}
+            />
             <Button size="sm" asChild>
               <Link href="/outreach"><Mail className="mr-1 h-4 w-4" />Outreach</Link>
             </Button>

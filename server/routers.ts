@@ -32,6 +32,7 @@ import { deepThink, deepThinkSales, deepThinkHelp } from "./deep-think";
 import { toolsRouter } from "./tools-router";
 import { adminRouter } from "./admin-router";
 import { emailVerificationRouter } from "./email-verification-router";
+import { followUpsRouter } from "./follow-ups";
 import { dustRouter } from "./routers/dust";
 import { salesforceRouter } from "./routers/salesforce";
 import { notifyOwner } from "./_core/notification";
@@ -1162,6 +1163,7 @@ Or go to the Admin Panel: /admin/approval`
   outreach: outreachRouter,
   admin: adminRouter,
   emailVerification: emailVerificationRouter,
+  followUps: followUpsRouter,
 
 });
 

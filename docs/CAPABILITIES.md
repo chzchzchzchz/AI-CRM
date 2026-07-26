@@ -8,10 +8,10 @@ Every backend capability, and whether anything in the product actually reaches i
 
 | | Count |
 |---|---|
-| Procedures total | 170 |
-| Reachable from the UI | 87 |
+| Procedures total | 176 |
+| Reachable from the UI | 91 |
 | External by design (webhooks, probes, connector actions) | 28 |
-| **Built but not routed anywhere** | **55** |
+| **Built but not routed anywhere** | **57** |
 | ↳ of those, called only by unreachable client code | 5 |
 | App routes | 32 |
 | Client modules unreachable from `main.tsx` | 19 |
@@ -53,6 +53,8 @@ Real, working code with no path to it from the product. Each line is either some
 | `dust.getContactIntelligence` | protected | `server/routers/dust.ts` | — |
 | `dust.searchGongCalls` | protected | `server/routers/dust.ts` | — |
 | `dust.query` | protected | `server/routers/dust.ts` | — |
+| `followUps.reopen` | protected | `server/follow-ups.ts` | — |
+| `followUps.remove` | protected | `server/follow-ups.ts` | — |
 | `gemini.researchAccount` | protected | `server/gemini.ts` | — |
 | `gong.getByCompany` | protected | `server/routers.ts` | — |
 | `gong.getByAccountId` | protected | `server/routers.ts` | — |
@@ -148,6 +150,10 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `emailVerification.resendVerificationCode` | `pages/SignUp.tsx` |
 | `emailVerification.sendPasswordResetCode` | `pages/ForgotPassword.tsx` |
 | `emailVerification.resetPassword` | `pages/ForgotPassword.tsx` |
+| `followUps.list` | `components/FollowUps.tsx` |
+| `followUps.create` | `components/LogFollowUpDialog.tsx` |
+| `followUps.complete` | `components/FollowUpDialog.tsx` |
+| `followUps.snooze` | `components/FollowUpDialog.tsx` |
 | `gong.list` | `components/GlobalSearch.tsx`, `pages/Insights.tsx` |
 | `gong.listPaginated` | `pages/Calls.tsx` |
 | `hotLeads.getTopLeads` | `components/HotLeadsWidget.tsx` |
@@ -163,7 +169,7 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `opportunities.list` | `pages/Home.tsx`, `pages/Opportunities.tsx` |
 | `opportunities.upsert` | `pages/Opportunities.tsx` |
 | `opportunities.aiScore` | `pages/Opportunities.tsx` |
-| `outreach.generateEmail` | `pages/Outreach.tsx` |
+| `outreach.generateEmail` | `components/FollowUpDialog.tsx`, `pages/Outreach.tsx` |
 | `outreach.refineEmail` | `pages/Outreach.tsx` |
 | `people.getById` | `pages/ContactDetail.tsx` |
 | `people.list` | `components/GlobalSearch.tsx`, `pages/Contacts.tsx`, `pages/Insights.tsx`, `pages/Outreach.tsx` |
