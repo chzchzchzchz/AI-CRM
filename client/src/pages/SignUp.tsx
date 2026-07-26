@@ -5,26 +5,74 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_LOGO, APP_TITLE } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { Link, useLocation } from "wouter";
-import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Link } from "wouter";
+import { Loader2, CheckCircle, AlertCircle, MailCheck } from "lucide-react";
+
+/**
+ * Signup is three steps, not one: create the account, prove the address is yours,
+ * then wait for an admin.
+ *
+ * The middle step was fully built on the server — code generation, expiry, an
+ * attempt limit, a mailer — and nothing ever called it, so every account reached
+ * the approval queue with an address no one had checked.
+ */
+type Stage = "form" | "verify" | "pending";
 
 export default function SignUp() {
-  const [, setLocation] = useLocation();
+  const [stage, setStage] = useState<Stage>("form");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+
+  const [userId, setUserId] = useState<number | null>(null);
+  const [code, setCode] = useState("");
+  const [notice, setNotice] = useState("");
+  // In demo mode the server returns the code instead of mailing it, so the flow is
+  // walkable without a configured mailer. In production this stays null.
+  const [demoCode, setDemoCode] = useState<string | null>(null);
+
+  const sendCode = trpc.emailVerification.sendVerificationCode.useMutation({
+    onSuccess: res => {
+      setDemoCode("code" in res ? (res.code as string) : null);
+      setStage("verify");
+    },
+    // A failed send must not strand the account: it exists and is queued for approval
+    // either way, so say what happened and move on rather than looping on the form.
+    onError: err => {
+      setNotice(`We couldn't send a verification email (${err.message}).`);
+      setStage("pending");
+    },
+  });
 
   const signUpMutation = trpc.auth.signUp.useMutation({
+    onSuccess: res => {
+      if (res.userId) {
+        setUserId(res.userId);
+        sendCode.mutate({ userId: res.userId, email });
+      } else {
+        setStage("pending");
+      }
+    },
+    onError: err => setError(err.message || "Failed to create account"),
+  });
+
+  const verify = trpc.emailVerification.verifyEmail.useMutation({
     onSuccess: () => {
-      setSuccess(true);
-      // Don't auto-redirect - user needs to wait for admin approval
+      setNotice("");
+      setStage("pending");
     },
-    onError: (err) => {
-      setError(err.message || "Failed to create account");
+    onError: err => setError(err.message || "Could not verify that code"),
+  });
+
+  const resend = trpc.emailVerification.resendVerificationCode.useMutation({
+    onSuccess: res => {
+      setDemoCode("code" in res ? (res.code as string) : null);
+      setError("");
+      setNotice("A new code is on its way.");
     },
+    onError: err => setError(err.message),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -49,7 +97,96 @@ export default function SignUp() {
     signUpMutation.mutate({ email, password, name });
   };
 
-  if (success) {
+  if (stage === "verify") {
+    return (
+      <div className="grid min-h-screen place-items-center bg-canvas p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MailCheck className="h-5 w-5 text-accent" />
+              Verify your email
+            </CardTitle>
+            <CardDescription>
+              We sent a 6-digit code to <span className="text-foreground">{email}</span>. It
+              expires in 10 minutes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form
+              className="space-y-4"
+              onSubmit={e => {
+                e.preventDefault();
+                setError("");
+                if (userId) verify.mutate({ userId, code: code.trim() });
+              }}
+            >
+              {error && (
+                <div className="flex items-center gap-2 rounded-sm bg-destructive/10 p-3 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  {error}
+                </div>
+              )}
+              {notice && !error && (
+                <div className="rounded-sm bg-muted p-3 text-sm text-ink-muted">{notice}</div>
+              )}
+              {demoCode && (
+                <div className="rounded-sm border border-caution/30 bg-caution-subtle p-3 text-sm">
+                  <span className="text-ink-muted">Demo mode — no mail was sent. Code:</span>{" "}
+                  <span className="tabular-nums font-semibold text-foreground">{demoCode}</span>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="code">Verification code</Label>
+                <Input
+                  id="code"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="123456"
+                  value={code}
+                  onChange={e => setCode(e.target.value)}
+                  className="tabular-nums tracking-[0.3em]"
+                  required
+                />
+              </div>
+
+              <Button type="submit" className="w-full" disabled={verify.isPending || !code.trim()}>
+                {verify.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Verifying…
+                  </>
+                ) : (
+                  "Verify email"
+                )}
+              </Button>
+
+              <div className="flex items-center justify-between text-sm">
+                <button
+                  type="button"
+                  className="text-accent underline underline-offset-2 disabled:opacity-50"
+                  disabled={resend.isPending || !userId}
+                  onClick={() => userId && resend.mutate({ userId, email })}
+                >
+                  {resend.isPending ? "Sending…" : "Resend code"}
+                </button>
+                {/* The account already exists, so skipping only forgoes the check. */}
+                <button
+                  type="button"
+                  className="text-ink-muted underline underline-offset-2"
+                  onClick={() => setStage("pending")}
+                >
+                  Do this later
+                </button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (stage === "pending") {
     return (
       <div className="grid min-h-screen place-items-center bg-canvas p-4">
         <Card className="w-full max-w-md">
@@ -61,6 +198,10 @@ export default function SignUp() {
                 Your account has been created and is pending admin approval.
                 You'll receive an email once your account is approved.
               </p>
+              {notice && <p className="text-sm text-ink-muted">{notice}</p>}
+              <Link href="/login" className="text-sm text-accent underline underline-offset-2">
+                Back to sign in
+              </Link>
             </div>
           </CardContent>
         </Card>

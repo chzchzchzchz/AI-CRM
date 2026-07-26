@@ -13,8 +13,10 @@ import {
 import { FileText, Search, ExternalLink, Calendar, DollarSign, Building2, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { AddRfpDialog } from "@/components/AddRfpDialog";
 
 export default function RFPs() {
+  const utils = trpc.useUtils();
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [apiKey, setApiKey] = useState("");
@@ -82,6 +84,14 @@ export default function RFPs() {
                 </div>
               </div>
             )}
+            {/* Scraping needs a SAM.gov key; adding by hand needs nothing. Without this
+                the page is empty until someone configures a federal API. */}
+            <AddRfpDialog
+              onCreated={() => {
+                refetch();
+                utils.rfps.stats.invalidate();
+              }}
+            />
             <Button
               onClick={() => setShowApiKeyInput(!showApiKeyInput)}
               className="bg-accent hover:bg-accent gap-2"

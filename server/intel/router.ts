@@ -23,6 +23,7 @@ export const intelRouter = router({
         accountId: brief.accountId,
         accountName: brief.accountName,
         markdown: brief.markdown,
+        judgement: brief.judgement,
         metrics: brief.metrics,
         signals: brief.signals,
         signalHash: brief.signalHash,

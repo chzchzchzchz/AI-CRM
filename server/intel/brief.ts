@@ -18,7 +18,12 @@ import { gatherAccountSignals, type SignalPack } from "./signals";
  * was built from plus a standardized metrics row, so an account's trajectory is diffable.
  */
 
-export const BRIEF_VERSION = 2;
+/**
+ * Bumped to 3 when the structured judgement began being persisted alongside the
+ * markdown. Older snapshots hold prose only, and the cache filter keys on version,
+ * so they retire themselves rather than returning a brief with no actions in it.
+ */
+export const BRIEF_VERSION = 3;
 const BRIEF_CONTEXT_TYPE = "account_brief";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -42,6 +47,14 @@ export type AccountBrief = {
   accountId: number;
   accountName: string;
   markdown: string;
+  /**
+   * The validated judgement as structured data, not prose.
+   *
+   * `markdown` is a rendering of this; returning the object as well lets a UI show
+   * "next actions" as actual actions — with their priority and evidence attached —
+   * instead of re-parsing a paragraph. Null when the model was unreachable.
+   */
+  judgement: Judgement | null;
   signals: SignalPack;
   metrics: BriefMetrics;
   signalHash: string;
@@ -449,7 +462,15 @@ function findFabrication(
 
   // 1. Person-shaped references: two consecutive capitalized words where neither token is
   //    known vocabulary. This is what catches an invented stakeholder.
-  const nameMatches = text.match(/\b[A-Z][a-z]{1,15}\s+[A-Z][a-z]{1,15}\b/g) || [];
+  //
+  //    The pairs must overlap. A plain global match consumes its input, so in
+  //    "Brief Jennifer Whitfield" the only candidate tested is "Brief Jennifer" — which
+  //    passes, because "brief" is allowlisted business vocabulary — and the invented name
+  //    slips through behind it. Any capitalized word starting a sentence would do the same.
+  //    The lookahead yields a candidate at every position instead.
+  const nameMatches = [...text.matchAll(/\b(?=([A-Z][a-z]{1,15}\s+[A-Z][a-z]{1,15})\b)/g)].map(
+    (m) => m[1]
+  );
   for (const candidate of nameMatches) {
     const [first, second] = candidate.split(/\s+/).map((w) => w.toLowerCase());
     if (NON_PERSON_TERMS.has(first) || NON_PERSON_TERMS.has(second)) continue;
@@ -595,6 +616,8 @@ type Snapshot = {
   metrics: BriefMetrics;
   markdown?: string;
   validation?: Validation;
+  /** Present on briefs written after structured judgement was persisted. */
+  judgement?: Judgement;
 };
 
 async function loadSnapshots(accountId: number): Promise<Snapshot[]> {
@@ -611,6 +634,7 @@ async function loadSnapshots(accountId: number): Promise<Snapshot[]> {
           metrics: meta.metrics,
           markdown: r.value,
           validation: meta.validation,
+          judgement: meta.judgement,
         } as Snapshot;
       })
       .filter(Boolean) as Snapshot[];
@@ -679,6 +703,7 @@ export async function generateAccountBrief(
         accountId,
         accountName: pack.account.name,
         markdown: latest.markdown!,
+        judgement: latest.judgement ?? null,
         signals: pack,
         metrics,
         signalHash,
@@ -710,10 +735,18 @@ export async function generateAccountBrief(
   const degraded = !judgement;
   let validation: Validation = { dropped: [] };
   let judgementMd: string;
+  // Only the post-validation judgement is ever exposed or stored — the raw model output
+  // never leaves this function, so a dropped claim cannot reappear through the structured
+  // path after being scrubbed from the prose.
+  let validated: Judgement | null = null;
 
   if (judgement) {
     const checked = validateJudgement(judgement, pack);
     validation = checked.validation;
+    validated = {
+      ...checked.judgement,
+      situation: checked.judgement.situation || deterministicSituation(pack),
+    };
     judgementMd = renderJudgement(checked.judgement, deterministicSituation(pack));
     if (validation.dropped.length) {
       console.warn(
@@ -734,7 +767,14 @@ export async function generateAccountBrief(
         type: BRIEF_CONTEXT_TYPE,
         key: `account_${accountId}`,
         value: markdown,
-        metadata: { version: BRIEF_VERSION, signalHash, generatedAt, metrics, validation },
+        metadata: {
+          version: BRIEF_VERSION,
+          signalHash,
+          generatedAt,
+          metrics,
+          validation,
+          judgement: validated,
+        },
       });
     } catch (error) {
       console.error(`[brief] could not snapshot brief for account ${accountId}:`, error);
@@ -745,6 +785,7 @@ export async function generateAccountBrief(
     accountId,
     accountName: pack.account.name,
     markdown,
+    judgement: validated,
     signals: pack,
     metrics,
     signalHash,

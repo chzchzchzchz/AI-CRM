@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
+import { KnowledgeBase } from "@/components/KnowledgeBase";
 import { toast } from "sonner";
 import {
   Sparkles, Loader2, Copy, CheckCircle2,
@@ -29,26 +30,17 @@ export default function ContentStudio() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const kbInputRef = useRef<HTMLInputElement>(null);
-  const uploadDocMutation = trpc.tools.uploadDocument.useMutation({
-    onSuccess: (_r, vars) => toast.success(`Added "${vars.fileName}" to the knowledge base`),
-    onError: (e) => toast.error(e.message || "Upload failed"),
-  });
-  const handleKbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (e.target) e.target.value = "";
-    if (!file) return;
-    const ext = file.name.split(".").pop()?.toLowerCase() || "";
-    if (!["txt", "md", "csv", "json", "html"].includes(ext)) {
-      toast.error("Text documents only (.txt, .md, .csv, .json, .html).");
-      return;
-    }
-    const content = await file.text();
-    uploadDocMutation.mutate({ fileName: file.name, content, mimeType: file.type || "text/plain", category: "general" });
-  };
-  const [ragSources, setRagSources] = useState<string[]>([]);
+  // Whether the knowledge base actually contributed. The page used to display a
+  // hardcoded list — "Product Overview.pdf", "Competitor Analysis.docx" — as though
+  // those were the documents consulted. The server reports a real boolean; naming
+  // files it cannot name would be inventing evidence for its own output.
+  const [ragUsed, setRagUsed] = useState<boolean | null>(null);
 
-  const generateMutation = trpc.tools.generateWebinarContent.useMutation();
+  // `tools.generateContent` handles every type this page offers, grounded in the
+  // knowledge base. It was built and unrouted, so the page shipped its own fake:
+  // four of the five types returned a hardcoded template after a two-second delay
+  // and then reported "Content generated successfully!".
+  const generateMutation = trpc.tools.generateContent.useMutation();
 
   const contentTypes = [
     { value: 'email', label: 'Sales Email', icon: <Mail className="h-4 w-4" />, description: 'Personalized outreach emails' },
@@ -66,48 +58,29 @@ export default function ContentStudio() {
 
     setIsGenerating(true);
     setGeneratedContent(null);
+    setRagUsed(null);
 
     try {
-      // For now, use the webinar content generator as a base
-      // In production, this would call a unified content generation endpoint
-      if (contentType === 'webinar') {
-        const result = await generateMutation.mutateAsync({
-          contentAssets: context,
-          speaker1: targetContact || undefined,
-          painPoints: additionalNotes || undefined,
-          contentType: 'all'
-        });
+      // One path for every type. The server picks the prompt for the content type and
+      // pulls knowledge-base context itself.
+      const result = await generateMutation.mutateAsync({
+        contentType,
+        context,
+        targetAccount: targetAccount || undefined,
+        targetContact: targetContact || undefined,
+        additionalNotes: additionalNotes || undefined,
+      });
 
-        setGeneratedContent({
-          content: JSON.stringify(result, null, 2),
-          title: 'Webinar Promotional Content',
-          metadata: result
-        });
-      } else {
-        // Simulate other content types with a placeholder
-        // In production, each would have its own specialized endpoint
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const templates: Record<ContentType, string> = {
-          email: `Subject: Quick question about ${targetAccount || 'your security strategy'}\n\nHi ${targetContact || 'there'},\n\n${context}\n\nWould you have 15 minutes this week to discuss?\n\nBest regards`,
-          battle_card: `# ${targetAccount || 'Competitor'} Battle Card\n\n## Key Differentiators\n${context}\n\n## Objection Handling\n- "Why not [competitor]?" → ${additionalNotes || 'Our unique value...'}`,
-          call_script: `# Discovery Call Script\n\n## Opening\n"Hi ${targetContact || 'there'}, thanks for taking the time..."\n\n## Key Questions\n${context}\n\n## Next Steps\n${additionalNotes || 'Schedule demo...'}`,
-          linkedin: `Hi ${targetContact || 'there'},\n\n${context}\n\nWould love to connect and share some insights relevant to ${targetAccount || 'your role'}.\n\nBest,`,
-          webinar: ''
-        };
-
-        setGeneratedContent({
-          content: templates[contentType],
-          title: `Generated ${contentTypes.find(c => c.value === contentType)?.label}`
-        });
-      }
-
-      // Simulate RAG sources
-      setRagSources(['Product Overview.pdf', 'Competitor Analysis.docx', 'Case Study - Enterprise.pdf']);
-      
-      toast.success("Content generated successfully!");
+      setGeneratedContent({
+        content: result.content,
+        title: `Generated ${contentTypes.find(c => c.value === contentType)?.label}`,
+      });
+      setRagUsed(result.ragSourcesUsed);
+      toast.success("Content generated");
     } catch (error) {
-      toast.error("Failed to generate content. Please try again.");
+      // Surface the real reason. "Please try again" hides the usual cause, which is
+      // that no model is configured — retrying will not help with that.
+      toast.error(error instanceof Error ? error.message : "Failed to generate content");
       console.error(error);
     } finally {
       setIsGenerating(false);
@@ -269,19 +242,14 @@ export default function ContentStudio() {
                   {generatedContent.content}
                 </pre>
 
-                {ragSources.length > 0 && (
+                {ragUsed !== null && (
                   <div className="mt-4 pt-4 border-t">
-                    <p className="text-xs text-muted-foreground mb-2 flex flex-wrap items-center gap-1">
+                    <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-1.5">
                       <BookOpen className="h-3 w-3" />
-                      Sources used from Knowledge Base:
+                      {ragUsed
+                        ? "Grounded in your knowledge base."
+                        : "No knowledge-base context was available — this came from the prompt alone."}
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {ragSources.map((source, i) => (
-                        <Badge key={i} variant="secondary" className="text-xs">
-                          {source}
-                        </Badge>
-                      ))}
-                    </div>
                   </div>
                 )}
               </CardContent>
@@ -291,32 +259,12 @@ export default function ContentStudio() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Brain className="h-4 w-4 text-accent" />
-                Knowledge Base
-              </CardTitle>
-              <CardDescription>
-                Upload docs to enhance AI context
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <input ref={kbInputRef} type="file" accept=".txt,.md,.csv,.json,.html" className="hidden" onChange={handleKbUpload} />
-              <Button variant="outline" className="w-full" disabled={uploadDocMutation.isPending} onClick={() => kbInputRef.current?.click()}>
-                <Upload className="h-4 w-4 mr-2" />
-                {uploadDocMutation.isPending ? "Uploading…" : "Upload Documents"}
-              </Button>
-              <div className="text-xs text-muted-foreground space-y-1">
-                <p>Supported formats:</p>
-                <ul className="list-disc list-inside">
-                  <li>PDFs (battle cards, case studies)</li>
-                  <li>Word docs (playbooks, scripts)</li>
-                  <li>Text files (product info)</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Was an upload button that listed "PDFs" and "Word docs" as supported while
+              its file input accepted only .txt/.md/.csv/.json/.html — a claim the code
+              could not honour. The shared component states the real formats, and shows
+              what is in the knowledge base, which is what actually grounds the content
+              generated on this page. */}
+          <KnowledgeBase />
 
           <Card>
             <CardHeader>

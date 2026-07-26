@@ -12,6 +12,24 @@ import { getAccountById, getAllAccounts, getAllPeople } from "./db";
 import { Account, Contact } from "../drizzle/schema";
 
 /**
+ * Fields `fixIssue` will write. Never trust a field name straight from the client onto
+ * a DB column.
+ *
+ * Exported and reported per-issue so the UI can hide a fix control it would be refused
+ * for, rather than offering a button that always fails. One list, both decisions.
+ */
+export const EDITABLE_FIELDS: Record<"account" | "contact", Set<string>> = {
+  account: new Set([
+    "name", "domain", "industry", "employeeCount", "revenue", "location",
+    "region", "website", "linkedinUrl", "phone", "description",
+  ]),
+  contact: new Set([
+    "name", "firstName", "lastName", "title", "email", "phone",
+    "linkedinUrl", "location", "department",
+  ]),
+};
+
+/**
  * Validation router - AI-powered data quality checks with web search verification
  */
 export const validationRouter = router({
@@ -181,12 +199,35 @@ export const validationRouter = router({
       if (!c.accountId) issues.push({ ...base, id: `con-${c.id}-acct`, severity: "warning", field: "accountId", issue: "Not linked to an account", suggestion: "Associate this contact with an account." });
     }
 
+    // Severity order, then entity, so the list opens on what actually matters rather
+    // than on whichever account happens to be first.
+    const rank = { critical: 0, warning: 1, info: 2 } as const;
+    issues.sort(
+      (a, b) =>
+        rank[a.severity as keyof typeof rank] - rank[b.severity as keyof typeof rank] ||
+        a.entityName.localeCompare(b.entityName)
+    );
+
     return {
-      issues,
+      issues: issues.map((i) => ({
+        ...i,
+        // Whether `fixIssue` would accept a correction for this field. A ValidationIssue
+        // may also describe a "relationship" (a link between two records), which has no
+        // single column to write — never editable in place.
+        editable:
+          (i.type === "account" || i.type === "contact") &&
+          EDITABLE_FIELDS[i.type].has(i.field),
+      })),
       totalIssues: issues.length,
       criticalIssues: issues.filter((i) => i.severity === "critical").length,
       warningIssues: issues.filter((i) => i.severity === "warning").length,
       infoIssues: issues.filter((i) => i.severity === "info").length,
+      // Split by entity so the summary panel can be driven from this same list.
+      // getValidationSummary counts a slightly different set of checks, and its
+      // `totalIssues` is an account+contact combined figure — displayed under an
+      // "Account Issues" heading it read as nonsense next to its own breakdown.
+      accountIssues: issues.filter((i) => i.type === "account").length,
+      contactIssues: issues.filter((i) => i.type === "contact").length,
     };
   }),
 
@@ -202,13 +243,7 @@ export const validationRouter = router({
       newValue: z.string()
     }))
     .mutation(async ({ input }) => {
-      // Whitelist the fields that may be written — never trust the field name straight from
-      // the client onto a DB column. Previously this did nothing and reported "Fixed X".
-      const EDITABLE: Record<'account' | 'contact', Set<string>> = {
-        account: new Set(['name', 'domain', 'industry', 'employeeCount', 'revenue', 'location', 'region', 'website', 'linkedinUrl', 'phone', 'description']),
-        contact: new Set(['name', 'firstName', 'lastName', 'title', 'email', 'phone', 'linkedinUrl', 'location', 'department']),
-      };
-      if (!EDITABLE[input.entityType].has(input.field)) {
+      if (!EDITABLE_FIELDS[input.entityType].has(input.field)) {
         return { success: false, message: `Field "${input.field}" is not editable` };
       }
 

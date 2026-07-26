@@ -8,62 +8,121 @@ Every backend capability, and whether anything in the product actually reaches i
 
 | | Count |
 |---|---|
-| Procedures total | 122 |
-| Reachable from the UI | 56 |
+| Procedures total | 176 |
+| Reachable from the UI | 91 |
 | External by design (webhooks, probes, connector actions) | 28 |
-| **Built but not routed anywhere** | **38** |
+| **Built but not routed anywhere** | **57** |
+| ↳ of those, called only by unreachable client code | 5 |
 | App routes | 32 |
+| Client modules unreachable from `main.tsx` | 19 |
 | Integration connectors | 24 |
+
+"Reachable" is decided by walking the import graph from `client/src/main.tsx`, not by grepping for the procedure name. The difference is not academic: a component can call a procedure perfectly while nothing in the product renders that component, in which case the procedure is dead and a text search says otherwise.
 
 ## Built but not routed
 
 Real, working code with no path to it from the product. Each line is either something to wire up or something to retire — it should not stay in this list indefinitely.
 
-| Procedure | Access | Defined in |
-|---|---|---|
-| `clayImport.importRawData` | protected | `server/clay-import.ts` |
-| `clayImport.importAccounts` | protected | `server/clay-import.ts` |
-| `clayImport.getImportStats` | protected | `server/clay-import.ts` |
-| `clayPull.triggerEnrichment` | protected | `server/integrations-router.ts` |
-| `dust.getAccountIntelligence` | protected | `server/routers/dust.ts` |
-| `dust.getContactIntelligence` | protected | `server/routers/dust.ts` |
-| `dust.searchGongCalls` | protected | `server/routers/dust.ts` |
-| `dust.query` | protected | `server/routers/dust.ts` |
-| `emailVerification.sendVerificationCode` | public | `server/email-verification-router.ts` |
-| `emailVerification.verifyEmail` | public | `server/email-verification-router.ts` |
-| `emailVerification.resendVerificationCode` | public | `server/email-verification-router.ts` |
-| `gemini.researchAccount` | protected | `server/gemini.ts` |
-| `hotLeads.getByBuyingStage` | protected | `server/hot-leads-router.ts` |
-| `intel.accountBrief` | protected | `server/intel/router.ts` |
-| `intel.accountSignals` | protected | `server/intel/router.ts` |
-| `intel.briefHistory` | protected | `server/intel/router.ts` |
-| `intel.brainLearn` | protected | `server/intel/router.ts` |
-| `intentScores.create` | protected | `server/integrations-router.ts` |
-| `priorityActions.getRepTerritory` | protected | `server/priority-actions-router.ts` |
-| `rfps.create` | protected | `server/rfp-scraper.ts` |
-| `sequences.list` | protected | `server/sequences.ts` |
-| `sequences.save` | protected | `server/sequences.ts` |
-| `sequences.delete` | protected | `server/sequences.ts` |
-| `sixsense.syncAccountByDomain` | protected | `server/sixsense-router.ts` |
-| `sixsense.identifyByIP` | protected | `server/sixsense-router.ts` |
-| `sixsense.detectIntentSpikes` | protected | `server/sixsense-router.ts` |
-| `system.notifyOwner` | protected | `server/_core/systemRouter.ts` |
-| `tools.getDocuments` | protected | `server/tools-router.ts` |
-| `tools.deleteDocument` | protected | `server/tools-router.ts` |
-| `tools.searchKnowledge` | protected | `server/tools-router.ts` |
-| `tools.submitFeedback` | protected | `server/tools-router.ts` |
-| `tools.getLearningInsights` | protected | `server/tools-router.ts` |
-| `tools.getReportByShareId` | public | `server/tools-router.ts` |
-| `tools.deleteTranscriptReport` | protected | `server/tools-router.ts` |
-| `validation.validateAccount` | protected | `server/validation-router.ts` |
-| `validation.validateContact` | protected | `server/validation-router.ts` |
-| `validation.getAllIssues` | protected | `server/validation-router.ts` |
-| `validation.fixIssue` | protected | `server/validation-router.ts` |
+| Procedure | Access | Defined in | Called by (unreachable) |
+|---|---|---|---|
+| `accounts.getStats` | protected | `server/routers.ts` | — |
+| `accounts.enrichWith6sense` | protected | `server/routers.ts` | — |
+| `ai.enrichAccount` | protected | `server/routers.ts` | `components/AIEnrichButton.tsx` |
+| `ai.analyzeCall` | protected | `server/routers.ts` | — |
+| `ai.generateAccountResearch` | protected | `server/routers.ts` | — |
+| `ai.generateOutreachRecommendation` | protected | `server/routers.ts` | — |
+| `ai.generateEmail` | protected | `server/routers.ts` | — |
+| `ai.prioritizeContacts` | protected | `server/routers.ts` | — |
+| `ai.generateAccountSummary` | protected | `server/routers.ts` | — |
+| `ai.compileOverview` | protected | `server/routers.ts` | `components/IntelligenceTab.tsx`, `components/OverviewTab.tsx` |
+| `ai.compileResearch` | protected | `server/routers.ts` | `components/IntelligenceTab.tsx`, `components/ResearchTab.tsx` |
+| `ai.generateStrategicInsights` | protected | `server/routers.ts` | `components/AIInsightsTab.tsx`, `components/IntelligenceTab.tsx` |
+| `ai.analyzeTechStack` | protected | `server/routers.ts` | `components/TechStackAnalysis.tsx` |
+| `analytics.overview` | protected | `server/routers.ts` | — |
+| `auth.listAccessRequests` | protected | `server/routers.ts` | — |
+| `auth.reviewAccessRequest` | protected | `server/routers.ts` | — |
+| `calls.list` | protected | `server/routers.ts` | — |
+| `calls.create` | protected | `server/routers.ts` | — |
+| `calls.getByAccountId` | protected | `server/routers.ts` | — |
+| `clayImport.importRawData` | protected | `server/clay-import.ts` | — |
+| `clayImport.importAccounts` | protected | `server/clay-import.ts` | — |
+| `clayImport.getImportStats` | protected | `server/clay-import.ts` | — |
+| `clayPull.triggerEnrichment` | protected | `server/integrations-router.ts` | — |
+| `deepThink.chat` | protected | `server/routers.ts` | — |
+| `dust.getAccountIntelligence` | protected | `server/routers/dust.ts` | — |
+| `dust.getContactIntelligence` | protected | `server/routers/dust.ts` | — |
+| `dust.searchGongCalls` | protected | `server/routers/dust.ts` | — |
+| `dust.query` | protected | `server/routers/dust.ts` | — |
+| `followUps.reopen` | protected | `server/follow-ups.ts` | — |
+| `followUps.remove` | protected | `server/follow-ups.ts` | — |
+| `gemini.researchAccount` | protected | `server/gemini.ts` | — |
+| `gong.getByCompany` | protected | `server/routers.ts` | — |
+| `gong.getByAccountId` | protected | `server/routers.ts` | — |
+| `hotLeads.getByBuyingStage` | protected | `server/hot-leads-router.ts` | — |
+| `intel.briefHistory` | protected | `server/intel/router.ts` | — |
+| `intel.brainLearn` | protected | `server/intel/router.ts` | — |
+| `intentScores.create` | protected | `server/integrations-router.ts` | — |
+| `intentScores.list` | protected | `server/integrations-router.ts` | — |
+| `opportunities.getById` | protected | `server/routers.ts` | — |
+| `opportunities.getByAccountId` | protected | `server/routers.ts` | — |
+| `people.listPaginated` | protected | `server/routers.ts` | — |
+| `people.getByCompany` | protected | `server/routers.ts` | — |
+| `people.getByAccountId` | protected | `server/routers.ts` | — |
+| `priorityActions.getRepTerritory` | protected | `server/priority-actions-router.ts` | — |
+| `sequences.list` | protected | `server/sequences.ts` | — |
+| `sequences.save` | protected | `server/sequences.ts` | — |
+| `sequences.delete` | protected | `server/sequences.ts` | — |
+| `sixsense.syncAccountByDomain` | protected | `server/sixsense-router.ts` | — |
+| `sixsense.identifyByIP` | protected | `server/sixsense-router.ts` | — |
+| `sixsense.detectIntentSpikes` | protected | `server/sixsense-router.ts` | — |
+| `system.notifyOwner` | protected | `server/_core/systemRouter.ts` | — |
+| `tools.submitFeedback` | protected | `server/tools-router.ts` | — |
+| `tools.getLearningInsights` | protected | `server/tools-router.ts` | — |
+| `tools.getReportByShareId` | public | `server/tools-router.ts` | — |
+| `tools.deleteTranscriptReport` | protected | `server/tools-router.ts` | — |
+| `validation.validateAccount` | protected | `server/validation-router.ts` | — |
+| `validation.validateContact` | protected | `server/validation-router.ts` | — |
+
+## Unreachable client modules
+
+These files compile and typecheck, but no import chain leads to them from `main.tsx`, so no user can reach them. They are the reason a procedure can look wired while being dead.
+
+### Stranded features (10)
+
+Built to do something, currently doing nothing. Wire or retire.
+
+- `components/AIChatBox.tsx` — strands `ai.chat`
+- `components/AIEnrichButton.tsx` — strands `ai.enrichAccount`
+- `components/AIInsightsTab.tsx` — strands `ai.generateStrategicInsights`
+- `components/IntelligenceTab.tsx` — strands `ai.generateStrategicInsights`, `ai.compileOverview`, `ai.compileResearch`
+- `components/LoadingSkeleton.tsx`
+- `components/ManusDialog.tsx`
+- `components/OverviewTab.tsx` — strands `ai.compileOverview`
+- `components/ResearchTab.tsx` — strands `ai.compileResearch`
+- `components/TechStackAnalysis.tsx` — strands `ai.analyzeTechStack`
+- `components/app-shell/Brand.tsx`
+
+### Unused primitives (9)
+
+Design-system parts with no current consumer. Not drift — a library is allowed to be wider than today's screens — but nothing here is exercised, so treat it as untested until something imports it.
+
+- `components/ui/avatar.tsx`
+- `components/ui/charts.tsx`
+- `components/ui/command.tsx`
+- `components/ui/popover.tsx`
+- `components/ui/scroll-area.tsx`
+- `components/ui/separator.tsx`
+- `components/ui/switch.tsx`
+- `components/ui/table.tsx`
+- `hooks/useMobile.tsx`
 
 ## Reachable from the UI
 
 | Procedure | Called from |
 |---|---|
+| `accounts.list` | `components/GlobalSearch.tsx`, `pages/AITools.tsx`, `pages/Accounts.tsx`, `pages/Contacts.tsx`, `pages/Home.tsx`, `pages/Insights.tsx`, `pages/Opportunities.tsx`, `pages/Outreach.tsx`, `pages/TopAccounts.tsx` |
+| `accounts.getById` | `pages/AccountDetail.tsx`, `pages/ContactDetail.tsx` |
+| `accounts.getTimeline` | `pages/AccountDetail.tsx` |
 | `admin.getPendingRequests` | `pages/AdminApproval.tsx` |
 | `admin.approveAccessRequest` | `pages/AdminApproval.tsx` |
 | `admin.denyAccessRequest` | `pages/AdminApproval.tsx` |
@@ -72,12 +131,31 @@ Real, working code with no path to it from the product. Each line is either some
 | `admin.approveUser` | `pages/AdminApproval.tsx` |
 | `admin.denyUser` | `pages/AdminApproval.tsx` |
 | `admin.updateUserRole` | `pages/AdminApproval.tsx` |
+| `ai.search` | `pages/SmartSearch.tsx` |
+| `ai.chat` | `components/AIAssistant.tsx`, `components/GlobalAIChat.tsx` |
+| `ai.generateContactSummary` | `pages/ContactDetail.tsx` |
+| `auth.me` | `_core/hooks/useAuth.ts` |
+| `auth.logout` | `_core/hooks/useAuth.ts`, `components/app-shell/Sidebar.tsx` |
+| `auth.signUp` | `pages/SignUp.tsx` |
+| `auth.login` | `pages/Login.tsx` |
+| `auth.requestAccess` | `pages/RequestAccess.tsx` |
 | `bulkInsights.generateForTopLeads` | `pages/BulkInsights.tsx` |
 | `csvProcessor.getTemplateInfo` | `pages/CsvProcessor.tsx` |
 | `csvProcessor.analyzeAndMap` | `pages/CsvProcessor.tsx` |
 | `csvProcessor.processData` | `pages/CsvProcessor.tsx` |
+| `deepThink.sales` | `components/ContextualAI.tsx` |
+| `deepThink.help` | `components/SupportBot.tsx` |
+| `emailVerification.sendVerificationCode` | `pages/SignUp.tsx` |
+| `emailVerification.verifyEmail` | `pages/SignUp.tsx` |
+| `emailVerification.resendVerificationCode` | `pages/SignUp.tsx` |
 | `emailVerification.sendPasswordResetCode` | `pages/ForgotPassword.tsx` |
 | `emailVerification.resetPassword` | `pages/ForgotPassword.tsx` |
+| `followUps.list` | `components/FollowUps.tsx` |
+| `followUps.create` | `components/LogFollowUpDialog.tsx` |
+| `followUps.complete` | `components/FollowUpDialog.tsx` |
+| `followUps.snooze` | `components/FollowUpDialog.tsx` |
+| `gong.list` | `components/GlobalSearch.tsx`, `pages/Insights.tsx` |
+| `gong.listPaginated` | `pages/Calls.tsx` |
 | `hotLeads.getTopLeads` | `components/HotLeadsWidget.tsx` |
 | `hotLeads.getSummary` | `components/HotLeadsWidget.tsx` |
 | `integrations.preflight` | `pages/Integrations.tsx` |
@@ -85,15 +163,23 @@ Real, working code with no path to it from the product. Each line is either some
 | `integrations.slackNotify` | `pages/Integrations.tsx` |
 | `integrations.discordNotify` | `pages/Integrations.tsx` |
 | `integrations.teamsNotify` | `pages/Integrations.tsx` |
+| `intel.accountBrief` | `components/AccountJudgement.tsx` |
+| `intel.accountSignals` | `pages/AccountDetail.tsx` |
 | `intel.brain` | `pages/Insights.tsx` |
-| `intentScores.list` | `pages/AccountDetail.tsx` |
-| `outreach.generateEmail` | `pages/Outreach.tsx` |
+| `opportunities.list` | `pages/Home.tsx`, `pages/Opportunities.tsx` |
+| `opportunities.upsert` | `pages/Opportunities.tsx` |
+| `opportunities.aiScore` | `pages/Opportunities.tsx` |
+| `outreach.generateEmail` | `components/FollowUpDialog.tsx`, `pages/Outreach.tsx` |
 | `outreach.refineEmail` | `pages/Outreach.tsx` |
+| `people.getById` | `pages/ContactDetail.tsx` |
+| `people.list` | `components/GlobalSearch.tsx`, `pages/Contacts.tsx`, `pages/Insights.tsx`, `pages/Outreach.tsx` |
+| `people.prioritize` | `pages/Contacts.tsx` |
 | `priorityActions.getEnriched` | `pages/Home.tsx` |
 | `priorityActions.getRepStats` | `pages/Home.tsx`, `pages/TopAccounts.tsx` |
 | `rfps.list` | `pages/RFPs.tsx` |
 | `rfps.scrape` | `pages/RFPs.tsx` |
 | `rfps.stats` | `pages/RFPs.tsx` |
+| `rfps.create` | `components/AddRfpDialog.tsx` |
 | `salesforce.getInstanceUrl` | `pages/AccountDetail.tsx`, `pages/ContactDetail.tsx` |
 | `salesforce.testConnection` | `components/SalesforceSync.tsx` |
 | `salesforce.getSyncStatus` | `components/SalesforceSync.tsx` |
@@ -108,10 +194,13 @@ Real, working code with no path to it from the product. Each line is either some
 | `sixsenseAnalytics.getKeywords` | `pages/Home.tsx`, `pages/Insights.tsx`, `pages/SixsenseAnalytics.tsx` |
 | `sixsenseAnalytics.get6QAPerformance` | `pages/Insights.tsx`, `pages/SixsenseAnalytics.tsx` |
 | `sixsenseAnalytics.getSummary` | `pages/Home.tsx`, `pages/SixsenseAnalytics.tsx` |
-| `tools.uploadDocument` | `pages/ContentStudio.tsx`, `pages/DataHub.tsx` |
-| `tools.generateContent` | `pages/AITools.tsx` |
+| `tools.uploadDocument` | `components/KnowledgeBase.tsx` |
+| `tools.getDocuments` | `components/KnowledgeBase.tsx` |
+| `tools.deleteDocument` | `components/KnowledgeBase.tsx` |
+| `tools.searchKnowledge` | `components/KnowledgeBase.tsx` |
+| `tools.generateContent` | `pages/AITools.tsx`, `pages/ContentStudio.tsx` |
 | `tools.processLeads` | `pages/DataHub.tsx`, `pages/LeadProcessor.tsx` |
-| `tools.generateWebinarContent` | `pages/ContentStudio.tsx`, `pages/WebinarGenerator.tsx` |
+| `tools.generateWebinarContent` | `pages/WebinarGenerator.tsx` |
 | `tools.analyzeTranscript` | `pages/AITools.tsx`, `pages/TranscriptAnalyzer.tsx` |
 | `tools.saveTranscriptReport` | `pages/AITools.tsx`, `pages/TranscriptAnalyzer.tsx` |
 | `tools.getSavedTranscriptReports` | `pages/AITools.tsx`, `pages/TranscriptAnalyzer.tsx` |
@@ -120,6 +209,8 @@ Real, working code with no path to it from the product. Each line is either some
 | `validation.validateAccounts` | `pages/DataValidation.tsx` |
 | `validation.validateContacts` | `pages/DataValidation.tsx` |
 | `validation.validateAllAccountsBulk` | `pages/DataValidation.tsx` |
+| `validation.getAllIssues` | `components/ValidationIssues.tsx`, `pages/DataValidation.tsx` |
+| `validation.fixIssue` | `components/ValidationIssues.tsx` |
 
 ## External by design
 

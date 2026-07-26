@@ -4,6 +4,7 @@ import { Badge } from"@/components/ui/badge";
 import { Button } from"@/components/ui/button";
 import { AIAssistant } from"@/components/AIAssistant";
 import { trpc } from"@/lib/trpc";
+import { LogFollowUpDialog } from"@/components/LogFollowUpDialog";
 import {
   ArrowLeft, ExternalLink, Building2, Phone, Mail, MapPin, Linkedin,
   Sparkles, Copy, Check, User, Loader2, RefreshCw, ChevronRight, Flame
@@ -166,6 +167,12 @@ export default function ContactDetail() {
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0 flex-wrap">
+            {/* "Call them again in six months" is a decision made here, on this page. */}
+            <LogFollowUpDialog
+              contactId={personId}
+              accountId={contact.accountId ?? undefined}
+              accountName={contact.company ?? undefined}
+            />
             {contact.phone && (
               <Button size="sm" variant="outline" className="border-positive/30 text-positive" asChild>
                 <a href={`tel:${contact.phone}`}><Phone className="mr-1 h-4 w-4" />Call</a>

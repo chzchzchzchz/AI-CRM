@@ -8,6 +8,7 @@ import { ContextualAI } from "@/components/ContextualAI";
 import { DemoTour } from "@/components/DemoTour";
 import { HotLeadsWidget } from "@/components/HotLeadsWidget";
 import { WhatChanged } from "@/components/WhatChanged";
+import { FollowUps } from "@/components/FollowUps";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Link, useLocation } from "wouter";
@@ -491,7 +492,10 @@ export default function Home() {
 
           {/* Right Column - Tasks & Quick Actions */}
           <div className="space-y-6">
-            {/* Hot Leads Widget */}
+            {/* The daily loop, in order: what I owe, what moved, who's hot. Own
+                commitments come first — they outrank anything the system inferred. */}
+            <FollowUps limit={8} />
+
             <WhatChanged limit={6} />
 
             <HotLeadsWidget limit={10} compact={false} />

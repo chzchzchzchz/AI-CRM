@@ -166,6 +166,85 @@ describe('brief validation', () => {
   });
 });
 
+/**
+ * The brief is now returned as structure as well as prose, so the UI can render an
+ * action as an action. That creates a second way out of the engine — and a second way
+ * for a scrubbed claim to escape. These pin the two paths to the same guarantee.
+ */
+describe('structured judgement carries the same guarantee as the prose', () => {
+  it('returns only survivors, so a dropped claim cannot reappear as structure', () => {
+    const { judgement: out, validation } = validateJudgement(
+      judgement({
+        actions: [
+          {
+            action: 'Send tailored demo to Sarah Chen',
+            rationale: 'She owns the decision.',
+            evidence: 'openActionItems: Send tailored demo',
+            priority: 'high',
+          },
+          {
+            action: 'Brief Jennifer Whitfield before the board review',
+            rationale: 'She signs off on security spend.',
+            evidence: 'stakeholders',
+            priority: 'high',
+          },
+        ],
+      }),
+      pack
+    );
+
+    expect(validation.dropped).toHaveLength(1);
+    expect(out.actions).toHaveLength(1);
+    // The invented stakeholder must not survive anywhere in the returned object.
+    expect(JSON.stringify(out)).not.toContain('Jennifer Whitfield');
+  });
+
+  it('catches an invented name shielded by an allowlisted word in front of it', () => {
+    // Regression: candidate pairs used to be non-overlapping, so "Brief Jennifer
+    // Whitfield" was only ever tested as "Brief Jennifer" — and "brief" is allowlisted
+    // business vocabulary, so the fabrication passed. Any sentence-initial capital
+    // ("Call Marcus Webb", "Send Diana Fowler…") was a way through.
+    for (const shield of ['Brief', 'Call', 'Demo', 'Target']) {
+      const { validation } = validateJudgement(
+        judgement({
+          risks: [{ risk: `${shield} Priya Raghunathan slips`, evidence: 'stakeholders' }],
+        }),
+        pack
+      );
+      expect(validation.dropped, `"${shield} Priya Raghunathan" evaded detection`).toHaveLength(1);
+    }
+  });
+
+  it('preserves priority and evidence on surviving actions', () => {
+    // The UI ranks by priority and shows evidence as the reason to trust the action;
+    // dropping either field silently would make the list look authoritative but bare.
+    const { judgement: out } = validateJudgement(
+      judgement({
+        actions: [{
+          action: 'Confirm rollout scope with Marcus Reyes',
+          rationale: 'RevOps owns the integration work.',
+          evidence: 'Team Rollout, Proposal stage, $98,000',
+          priority: 'medium',
+        }],
+      }),
+      pack
+    );
+
+    expect(out.actions[0].priority).toBe('medium');
+    expect(out.actions[0].evidence).toContain('98,000');
+  });
+
+  it('blanks a fabricating situation so the caller can substitute a real one', () => {
+    // generateAccountBrief swaps the blank for deterministicSituation(pack). If validation
+    // returned the fabricated text instead, the structured path would ship it verbatim.
+    const { judgement: out } = validateJudgement(
+      judgement({ situation: 'Priya Raghunathan has championed the deal internally.' }),
+      pack
+    );
+    expect(out.situation).toBe('');
+  });
+});
+
 describe('seniority inference', () => {
   it('maps titles to seniority levels', () => {
     expect(inferSeniority('VP Sales')).toBe('VP');

@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, CheckCircle, AlertTriangle, Info, Play, Loader2, RefreshCw } from "lucide-react";
+import { ValidationIssues } from "@/components/ValidationIssues";
 
 export default function DataValidation() {
   const [validating, setValidating] = useState(false);
@@ -65,6 +66,11 @@ export default function DataValidation() {
   };
 
   const summary = summaryQuery.data;
+  // Shares the cache entry with <ValidationIssues />, so this is the same fetch, not a
+  // second one — and by construction the panel and the list agree.
+  const { data: issueCounts } = trpc.validation.getAllIssues.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
 
   return (
     <div className="text-foreground">
@@ -75,7 +81,8 @@ export default function DataValidation() {
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-foreground">Data Validation</h1>
             <p className="text-ink-muted mt-1 text-sm">
-              AI checks that verify the truth of a record — web search + analysis, not just format.
+              What's missing, fixable in place — and a deeper pass that checks whether what's
+              there is actually true.
             </p>
           </div>
           <Button
@@ -101,9 +108,16 @@ export default function DataValidation() {
                 <div className="text-sm text-ink-muted">Total Contacts</div>
                 <div className="text-2xl tabular-nums font-semibold text-foreground mt-1">{summary.totalContacts}</div>
               </div>
+              {/* Both figures come from getAllIssues — the same list rendered below.
+                  They used to come from getValidationSummary, whose `totalIssues` is an
+                  account+contact combined count; shown under "Account Issues" beside a
+                  breakdown reading "0 missing domains, 0 missing industries", the panel
+                  contradicted itself and the list underneath it. */}
               <div className="md:px-6">
                 <div className="text-sm text-ink-muted">Account Issues</div>
-                <div className="text-2xl tabular-nums font-semibold text-caution mt-1">{summary.totalIssues}</div>
+                <div className="text-2xl tabular-nums font-semibold text-caution mt-1">
+                  {issueCounts ? issueCounts.accountIssues : '—'}
+                </div>
                 <div className="text-xs text-ink-muted mt-1">
                   <span className="tabular-nums text-ink-muted">{summary.accountIssues.missingDomain}</span> missing domains,{" "}
                   <span className="tabular-nums text-ink-muted">{summary.accountIssues.missingIndustry}</span> missing industries
@@ -112,7 +126,7 @@ export default function DataValidation() {
               <div className="md:pl-6">
                 <div className="text-sm text-ink-muted">Contact Issues</div>
                 <div className="text-2xl tabular-nums font-semibold text-caution mt-1">
-                  {summary.contactIssues.missingEmail + summary.contactIssues.missingTitle}
+                  {issueCounts ? issueCounts.contactIssues : '—'}
                 </div>
                 <div className="text-xs text-ink-muted mt-1">
                   <span className="tabular-nums text-ink-muted">{summary.contactIssues.missingEmail}</span> missing emails,{" "}
@@ -123,12 +137,17 @@ export default function DataValidation() {
           </Card>
         )}
 
+        {/* What's wrong right now — free, instant, and fixable in place. Comes before
+            the AI pass because it answers the same question for zero cost. */}
+        <ValidationIssues />
+
         {/* Validation Actions */}
         <Card className="bg-card border-border shadow-none p-6">
-          <h2 className="text-xl font-semibold text-foreground mb-2">Run Validation</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-2">Deep verification</h2>
           <p className="text-sm text-ink-muted mb-4">
-            Verify actual truth (not just format) via DuckDuckGo search and AI analysis — confirming company domains,
-            employee counts, contact employment, and more.
+            The checks above find what's <em>missing</em>. This finds what's <em>wrong</em>:
+            DuckDuckGo search plus AI analysis, confirming company domains, employee counts,
+            and whether a contact still works where the record says they do.
           </p>
           <div className="space-y-4">
             <div className="flex flex-wrap gap-4">
@@ -275,13 +294,10 @@ export default function DataValidation() {
                           )}
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="ml-4 border-border-strong text-ink-muted hover:bg-muted hover:text-foreground"
-                      >
-                        Fix
-                      </Button>
+                      {/* No "Fix" affordance here on purpose. An AI finding is a claim
+                          about the world, not a known-good value to write — the editable
+                          corrections live in the issue list above, where the new value is
+                          something a person supplies. */}
                     </div>
                   </div>
                 ))}
