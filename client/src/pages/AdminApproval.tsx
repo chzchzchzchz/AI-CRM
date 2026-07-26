@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle2, XCircle, Clock, Mail, Building2, MessageSquare, Users, UserCheck, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Navigation } from "@/components/Navigation";
 import {
   Dialog,
   DialogContent,
@@ -112,10 +111,9 @@ export default function AdminApproval() {
   // Admin access control
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950">
-        <Navigation />
+      <div>
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-accent" />
         </div>
       </div>
     );
@@ -123,14 +121,13 @@ export default function AdminApproval() {
 
   if (!user || user.role !== "admin") {
     return (
-      <div className="min-h-screen bg-slate-950">
-        <Navigation />
+      <div>
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <Card className="bg-slate-900/50 border-slate-800 max-w-md">
+          <Card className="bg-card border-border max-w-md">
             <CardContent className="p-12 text-center">
-              <XCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-white mb-2">Access Denied</h2>
-              <p className="text-slate-400">
+              <XCircle className="h-16 w-16 text-critical mx-auto mb-4" />
+              <h2 className="text-2xl font-semibold text-foreground mb-2">Access Denied</h2>
+              <p className="text-ink-muted">
                 You need admin privileges to access this page.
               </p>
             </CardContent>
@@ -148,77 +145,76 @@ export default function AdminApproval() {
   const totalUserCount = allUsers?.length || 0;
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <Navigation />
-      <div className="container py-8 space-y-8 max-w-6xl mx-auto">
+    <div>
+      <div className="container py-1 space-y-5 max-w-6xl mx-auto">
         <div>
-          <h1 className="text-4xl font-bold text-white mb-2">Access Requests</h1>
-          <p className="text-slate-400">Review and approve user access requests</p>
+          <h1 className="text-xl font-semibold text-foreground mb-2">Access Requests</h1>
+          <p className="text-ink-muted">Review and approve user access requests</p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="bg-slate-900/50 border-slate-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-slate-400 text-sm">Pending Approval</p>
-                  <p className="text-3xl font-bold text-yellow-400">{totalPendingCount}</p>
+                  <p className="text-ink-muted text-sm">Pending Approval</p>
+                  <p className="text-2xl font-semibold text-caution">{totalPendingCount}</p>
                 </div>
-                <Clock className="h-8 w-8 text-yellow-400 opacity-50" />
+                <Clock className="h-8 w-8 text-caution opacity-50" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-900/50 border-slate-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-slate-400 text-sm">Total Users</p>
-                  <p className="text-3xl font-bold text-cyan-400">{totalUserCount}</p>
+                  <p className="text-ink-muted text-sm">Total Users</p>
+                  <p className="text-2xl font-semibold text-accent">{totalUserCount}</p>
                 </div>
-                <Users className="h-8 w-8 text-cyan-400 opacity-50" />
+                <Users className="h-8 w-8 text-accent opacity-50" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-900/50 border-slate-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-slate-400 text-sm">Approved</p>
-                  <p className="text-3xl font-bold text-green-400">{approvedCount}</p>
+                  <p className="text-ink-muted text-sm">Approved</p>
+                  <p className="text-2xl font-semibold text-positive">{approvedCount}</p>
                 </div>
-                <CheckCircle2 className="h-8 w-8 text-green-400 opacity-50" />
+                <CheckCircle2 className="h-8 w-8 text-positive opacity-50" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-900/50 border-slate-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-slate-400 text-sm">Denied</p>
-                  <p className="text-3xl font-bold text-red-400">{deniedCount}</p>
+                  <p className="text-ink-muted text-sm">Denied</p>
+                  <p className="text-2xl font-semibold text-critical">{deniedCount}</p>
                 </div>
-                <XCircle className="h-8 w-8 text-red-400 opacity-50" />
+                <XCircle className="h-8 w-8 text-critical opacity-50" />
               </div>
             </CardContent>
           </Card>
         </div>
 
         <Tabs defaultValue="pending" className="space-y-6">
-          <TabsList className="bg-slate-800/50">
-            <TabsTrigger value="pending" className="data-[state=active]:bg-amber-600">
+          <TabsList className="bg-muted">
+            <TabsTrigger value="pending" className="data-[state=active]:bg-caution">
               <Clock className="h-4 w-4 mr-2" />
               Pending Approval
               {totalPendingCount > 0 && (
-                <Badge variant="secondary" className="ml-2 bg-amber-500/20 text-amber-300">
+                <Badge variant="secondary" className="ml-2 bg-caution-subtle text-caution">
                   {totalPendingCount}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="users" className="data-[state=active]:bg-cyan-600">
+            <TabsTrigger value="users" className="data-[state=active]:bg-accent">
               <Users className="h-4 w-4 mr-2" />
               All Users
             </TabsTrigger>
@@ -226,14 +222,12 @@ export default function AdminApproval() {
 
           <TabsContent value="pending" className="space-y-6">
             {/* Pending User Registrations */}
-            <Card className="bg-slate-900/50 border-slate-800">
+            <Card className="bg-card border-border">
               <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-500/20 rounded-lg">
-                    <UserCheck className="h-6 w-6 text-amber-400" />
-                  </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <UserCheck className="size-5 shrink-0 text-ink-faint" />
                   <div>
-                    <CardTitle className="text-white">Pending User Registrations</CardTitle>
+                    <CardTitle className="text-foreground">Pending User Registrations</CardTitle>
                     <CardDescription>
                       {pendingUserCount === 0
                         ? "No pending user registrations"
@@ -245,11 +239,11 @@ export default function AdminApproval() {
               <CardContent>
                 {loadingPendingUsers ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
+                    <Loader2 className="h-6 w-6 animate-spin text-accent" />
                   </div>
                 ) : pendingUsers?.length === 0 ? (
-                  <div className="text-center py-8 text-slate-400">
-                    <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-green-500/50" />
+                  <div className="text-center py-8 text-ink-muted">
+                    <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-positive/50" />
                     <p>No pending user registrations</p>
                   </div>
                 ) : (
@@ -257,30 +251,30 @@ export default function AdminApproval() {
                     {pendingUsers?.map((u: any) => (
                       <div
                         key={u.id}
-                        className="p-4 bg-slate-800/50 border border-slate-700 rounded-lg hover:border-slate-600 transition-colors"
+                        className="p-4 bg-muted border border-border-strong rounded-sm hover:border-border-strong transition-colors"
                       >
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
                           <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="text-lg font-semibold text-white">{u.name}</h3>
-                              <Badge variant="outline" className="bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
+                            <div className="flex flex-wrap items-center gap-3 mb-2">
+                              <h3 className="text-lg font-semibold text-foreground">{u.name}</h3>
+                              <Badge variant="outline" className="bg-caution-subtle text-caution border-caution/30">
                                 Pending
                               </Badge>
                             </div>
-                            <div className="space-y-2 text-sm text-slate-400">
-                              <div className="flex items-center gap-2">
+                            <div className="space-y-2 text-sm text-ink-muted">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <Mail className="h-4 w-4" />
                                 <span>{u.email}</span>
                               </div>
                             </div>
-                            <p className="text-xs text-slate-400 mt-3">
+                            <p className="text-xs text-ink-muted mt-3">
                               Registered {new Date(u.createdAt).toLocaleDateString()}
                             </p>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
                             <Button
                               size="sm"
-                              className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+                              className="gap-2 bg-positive hover:bg-positive text-positive-foreground"
                               onClick={() => approveUserMutation.mutate({ userId: u.id })}
                               disabled={approveUserMutation.isPending}
                             >
@@ -294,7 +288,7 @@ export default function AdminApproval() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="gap-2 border-red-500/50 text-red-400 hover:bg-red-500/10"
+                              className="gap-2 border-critical/30 text-critical hover:bg-critical-subtle"
                               onClick={() => denyUserMutation.mutate({ userId: u.id })}
                               disabled={denyUserMutation.isPending}
                             >
@@ -311,14 +305,12 @@ export default function AdminApproval() {
             </Card>
 
             {/* Pending Access Requests */}
-            <Card className="bg-slate-900/50 border-slate-800">
+            <Card className="bg-card border-border">
               <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-500/20 rounded-lg">
-                    <Shield className="h-6 w-6 text-purple-400" />
-                  </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Shield className="size-5 shrink-0 text-ink-faint" />
                   <div>
-                    <CardTitle className="text-white">Demo Access Requests</CardTitle>
+                    <CardTitle className="text-foreground">Demo Access Requests</CardTitle>
                     <CardDescription>
                       {pendingRequestCount === 0
                         ? "No pending access requests"
@@ -330,10 +322,10 @@ export default function AdminApproval() {
           <CardContent>
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-accent" />
               </div>
             ) : requests?.filter((r: any) => r.status === "pending").length === 0 ? (
-              <div className="text-center py-8 text-slate-400">
+              <div className="text-center py-8 text-ink-muted">
                 <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No pending requests</p>
               </div>
@@ -344,45 +336,45 @@ export default function AdminApproval() {
                   .map((request: any) => (
                     <div
                       key={request.id}
-                      className="p-4 bg-slate-800/50 border border-slate-700 rounded-lg hover:border-slate-600 transition-colors"
+                      className="p-4 bg-muted border border-border-strong rounded-sm hover:border-border-strong transition-colors"
                     >
-                      <div className="flex items-start justify-between gap-4">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-semibold text-white">{request.name}</h3>
-                            <Badge variant="outline" className="bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
+                          <div className="flex flex-wrap items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold text-foreground">{request.name}</h3>
+                            <Badge variant="outline" className="bg-caution-subtle text-caution border-caution/30">
                               Pending
                             </Badge>
                           </div>
 
-                          <div className="space-y-2 text-sm text-slate-400">
-                            <div className="flex items-center gap-2">
+                          <div className="space-y-2 text-sm text-ink-muted">
+                            <div className="flex flex-wrap items-center gap-2">
                               <Mail className="h-4 w-4" />
                               <span>{request.email}</span>
                             </div>
                             {request.company && (
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <Building2 className="h-4 w-4" />
                                 <span>{request.company}</span>
                               </div>
                             )}
                             {request.reason && (
-                              <div className="flex items-start gap-2 mt-3">
+                              <div className="flex flex-wrap items-start gap-2 mt-3">
                                 <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                <p className="text-slate-300">{request.reason}</p>
+                                <p className="text-ink-muted">{request.reason}</p>
                               </div>
                             )}
                           </div>
 
-                          <p className="text-xs text-slate-400 mt-3">
+                          <p className="text-xs text-ink-muted mt-3">
                             Requested {new Date(request.createdAt).toLocaleDateString()}
                           </p>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button
                             size="sm"
-                            className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+                            className="gap-2 bg-positive hover:bg-positive text-positive-foreground"
                             onClick={() => approveMutation.mutate({ requestId: request.id })}
                             disabled={approveMutation.isPending}
                           >
@@ -397,7 +389,7 @@ export default function AdminApproval() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="gap-2 border-red-500/50 text-red-400 hover:bg-red-500/10"
+                            className="gap-2 border-critical/30 text-critical hover:bg-critical-subtle"
                             onClick={() => {
                               setSelectedRequest(request);
                               setShowDenyDialog(true);
@@ -420,14 +412,12 @@ export default function AdminApproval() {
 
           {/* All Users Tab */}
           <TabsContent value="users">
-            <Card className="bg-slate-900/50 border-slate-800">
+            <Card className="bg-card border-border">
               <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-cyan-500/20 rounded-lg">
-                    <Users className="h-6 w-6 text-cyan-400" />
-                  </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Users className="size-5 shrink-0 text-ink-faint" />
                   <div>
-                    <CardTitle className="text-white">All Users</CardTitle>
+                    <CardTitle className="text-foreground">All Users</CardTitle>
                     <CardDescription>Manage all registered users and their roles</CardDescription>
                   </div>
                 </div>
@@ -435,10 +425,10 @@ export default function AdminApproval() {
               <CardContent>
                 {loadingAllUsers ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
+                    <Loader2 className="h-6 w-6 animate-spin text-accent" />
                   </div>
                 ) : allUsers?.length === 0 ? (
-                  <div className="text-center py-8 text-slate-400">
+                  <div className="text-center py-8 text-ink-muted">
                     <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No users found</p>
                   </div>
@@ -447,28 +437,28 @@ export default function AdminApproval() {
                     {allUsers?.map((u: any) => (
                       <div
                         key={u.id}
-                        className="flex items-center justify-between p-4 bg-slate-800/30 border border-slate-700/50 rounded-lg hover:border-slate-600 transition-colors"
+                        className="flex items-center justify-between p-4 bg-muted border border-border-strong rounded-sm hover:border-border-strong transition-colors"
                       >
                         <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <p className="text-white font-medium">{u.name || 'No name'}</p>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <p className="text-foreground font-medium">{u.name || 'No name'}</p>
                             {u.isApproved ? (
-                              <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30">
+                              <Badge variant="outline" className="bg-positive-subtle text-positive border-positive/30">
                                 Approved
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
+                              <Badge variant="outline" className="bg-caution-subtle text-caution border-caution/30">
                                 Pending
                               </Badge>
                             )}
                             {u.role === 'admin' && (
-                              <Badge variant="outline" className="bg-purple-500/10 text-purple-400 border-purple-500/30">
+                              <Badge variant="outline" className="bg-accent-subtle text-accent border-accent/30">
                                 Admin
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-slate-400">{u.email}</p>
-                          <p className="text-xs text-slate-400 mt-1">
+                          <p className="text-sm text-ink-muted">{u.email}</p>
+                          <p className="text-xs text-ink-muted mt-1">
                             {u.loginMethod} • Last sign in: {u.lastSignedIn ? new Date(u.lastSignedIn).toLocaleDateString() : 'Never'}
                           </p>
                         </div>
@@ -480,10 +470,10 @@ export default function AdminApproval() {
                             }
                             disabled={u.id === user?.id}
                           >
-                            <SelectTrigger className="w-24 bg-slate-800 border-slate-700 text-white">
+                            <SelectTrigger aria-label="User role" className="w-24 bg-muted border-border-strong text-foreground">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-800 border-slate-700">
+                            <SelectContent className="bg-muted border-border-strong">
                               <SelectItem value="user">User</SelectItem>
                               <SelectItem value="admin">Admin</SelectItem>
                             </SelectContent>
@@ -491,7 +481,7 @@ export default function AdminApproval() {
                           {!u.isApproved && (
                             <Button
                               size="sm"
-                              className="gap-1 bg-green-600 hover:bg-green-700 text-white"
+                              className="gap-1 bg-positive hover:bg-positive text-positive-foreground"
                               onClick={() => approveUserMutation.mutate({ userId: u.id })}
                               disabled={approveUserMutation.isPending}
                             >
@@ -503,7 +493,7 @@ export default function AdminApproval() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="gap-1 border-red-500/50 text-red-400 hover:bg-red-500/10"
+                              className="gap-1 border-critical/30 text-critical hover:bg-critical-subtle"
                               onClick={() => denyUserMutation.mutate({ userId: u.id })}
                               disabled={denyUserMutation.isPending}
                             >
@@ -524,26 +514,26 @@ export default function AdminApproval() {
 
       {/* Deny Reason Dialog */}
       <Dialog open={showDenyDialog} onOpenChange={setShowDenyDialog}>
-        <DialogContent className="bg-slate-900 border-slate-800">
+        <DialogContent className="bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">Deny Access Request</DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogTitle className="text-foreground">Deny Access Request</DialogTitle>
+            <DialogDescription className="text-ink-muted">
               Provide a reason for denying this request (optional)
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-medium text-white mb-2">Request from:</p>
-              <p className="text-slate-300">{selectedRequest?.name}</p>
-              <p className="text-sm text-slate-400">{selectedRequest?.email}</p>
+              <p className="text-sm font-medium text-foreground mb-2">Request from:</p>
+              <p className="text-ink-muted">{selectedRequest?.name}</p>
+              <p className="text-sm text-ink-muted">{selectedRequest?.email}</p>
             </div>
 
             <Textarea
               placeholder="Reason for denial (optional)..."
               value={denyReason}
               onChange={(e) => setDenyReason(e.target.value)}
-              className="bg-slate-800 border-slate-700 text-white placeholder-slate-500"
+              className="bg-muted border-border-strong text-foreground placeholder:text-ink-faint"
             />
           </div>
 
@@ -551,12 +541,12 @@ export default function AdminApproval() {
             <Button
               variant="outline"
               onClick={() => setShowDenyDialog(false)}
-              className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              className="border-border-strong text-ink-muted hover:bg-muted"
             >
               Cancel
             </Button>
             <Button
-              className="gap-2 bg-red-600 hover:bg-red-700 text-white"
+              className="gap-2 bg-critical hover:bg-critical text-critical-foreground"
               onClick={() =>
                 denyMutation.mutate({
                   requestId: selectedRequest.id,

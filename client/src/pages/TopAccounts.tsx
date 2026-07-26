@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import { Navigation } from "@/components/Navigation";
 import { heatMeta } from "@/lib/signal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,22 +22,22 @@ const AE_LIST = Object.entries(REP_TERRITORIES).map(([email, info]) => ({
 // regions actually appear in the data so no account is dropped by a hardcoded list.
 const CONFIGURED_REGIONS = Array.from(new Set(AE_LIST.map((ae) => ae.region))).filter(Boolean);
 
-const CARD = "bg-slate-900 border-slate-800 shadow-none";
+const CARD = "bg-card border-border shadow-none";
 
 // Compact ranked row used inside a card — no border/fill at rest so it never reads as a card-in-card.
 function AccountRow({ account, index }: { account: any; index: number }) {
   const meta = heatMeta(account.intentScoreNum);
   return (
     <Link href={`/accounts/${account.id}`}>
-      <div className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-slate-800/40 cursor-pointer group">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-800 border border-slate-700 font-mono tabular-nums text-xs text-slate-300">
+      <div className="flex flex-wrap items-center gap-3 rounded-sm px-2 py-2 transition-colors hover:bg-muted cursor-pointer group">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted border border-border-strong tabular-nums text-xs text-ink-muted">
           {index + 1}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm text-slate-100 truncate group-hover:text-cyan-300 transition-colors">{account.name}</p>
-          <p className="text-xs text-slate-400 truncate">{account.industry || "Unknown"}</p>
+          <p className="font-medium text-sm text-foreground truncate group-hover:text-accent transition-colors">{account.name}</p>
+          <p className="text-xs text-ink-muted truncate">{account.industry || "Unknown"}</p>
         </div>
-        <span className={`inline-flex items-center gap-1 font-mono tabular-nums text-sm shrink-0 ${meta.text}`}>
+        <span className={`inline-flex items-center gap-1 tabular-nums text-sm shrink-0 ${meta.text}`}>
           <span aria-hidden>{meta.glyph}</span>{account.intentScoreNum}
         </span>
       </div>
@@ -103,21 +102,21 @@ export default function TopAccounts() {
     const meta = heatMeta(account.intentScoreNum);
     return (
       <Link key={account.id} href={`/accounts/${account.id}`}>
-        <div className="flex items-center gap-4 rounded-lg px-3 py-3 transition-colors hover:bg-slate-800/40 cursor-pointer group">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-800 border border-slate-700 font-mono tabular-nums text-sm text-slate-300">
+        <div className="flex flex-wrap items-center gap-4 rounded-sm px-3 py-3 transition-colors hover:bg-muted cursor-pointer group">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted border border-border-strong tabular-nums text-sm text-ink-muted">
             {index + 1}
           </span>
           <div className="flex-1 min-w-0">
-            <h4 className="font-semibold text-slate-100 truncate group-hover:text-cyan-300 transition-colors">{account.name}</h4>
-            <p className="text-sm text-slate-400 truncate">
-              {account.industry || "Unknown"} · <span className="font-mono tabular-nums">{account.employeeCount?.toLocaleString() || "?"}</span> employees
+            <h4 className="font-semibold text-foreground truncate group-hover:text-accent transition-colors">{account.name}</h4>
+            <p className="text-sm text-ink-muted truncate">
+              {account.industry || "Unknown"} · <span className="tabular-nums">{account.employeeCount?.toLocaleString() || "?"}</span> employees
             </p>
           </div>
-          <span className={`inline-flex items-center gap-1.5 font-mono tabular-nums text-sm shrink-0 ${meta.text}`}>
+          <span className={`inline-flex items-center gap-1.5 tabular-nums text-sm shrink-0 ${meta.text}`}>
             <span aria-hidden>{meta.glyph}</span>{account.intentScoreNum}
             <span className="text-xs font-sans font-medium">{meta.label}</span>
           </span>
-          <ArrowRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-cyan-300 transition-colors" />
+          <ArrowRight className="h-4 w-4 shrink-0 text-ink-muted group-hover:text-accent transition-colors" />
         </div>
       </Link>
     );
@@ -125,13 +124,12 @@ export default function TopAccounts() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <div className="container py-8 max-w-7xl space-y-6">
-          <div className="h-12 w-64 rounded-lg bg-slate-800/60 animate-pulse" />
+      <div>
+        <div className="container py-1 max-w-7xl space-y-6">
+          <div className="h-12 w-64 rounded-sm bg-muted animate-pulse" />
           <div className="grid gap-4">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-20 rounded-lg bg-slate-800/60 animate-pulse" />
+              <div key={i} className="h-20 rounded-sm bg-muted animate-pulse" />
             ))}
           </div>
         </div>
@@ -140,28 +138,27 @@ export default function TopAccounts() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="container py-8 max-w-7xl">
+    <div>
+      <div className="container py-1 max-w-7xl">
         {/* Header */}
-        <div className="mb-8 flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-800 border border-slate-700">
-            <Target className="h-5 w-5 text-cyan-400" />
+        <div className="mb-8 flex flex-wrap items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm bg-muted border border-border-strong">
+            <Target className="h-5 w-5 text-accent" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-50">Top Accounts</h1>
-            <p className="mt-1 text-sm text-slate-400">Prioritized by intent score, grouped by region and AE territory.</p>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">Top Accounts</h1>
+            <p className="mt-1 text-sm text-ink-muted">Prioritized by intent score, grouped by region and AE territory.</p>
           </div>
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="bg-slate-900 border border-slate-800">
-            <TabsTrigger value="regions" className="gap-2 data-[state=active]:bg-cyan-500/15 data-[state=active]:text-cyan-300">
+          <TabsList className="bg-card border border-border">
+            <TabsTrigger value="regions" className="gap-2 data-[state=active]:bg-accent-subtle data-[state=active]:text-accent">
               <MapPin className="h-4 w-4" />
               By region
             </TabsTrigger>
-            <TabsTrigger value="ae" className="gap-2 data-[state=active]:bg-cyan-500/15 data-[state=active]:text-cyan-300">
+            <TabsTrigger value="ae" className="gap-2 data-[state=active]:bg-accent-subtle data-[state=active]:text-accent">
               <UserCircle className="h-4 w-4" />
               By AE
             </TabsTrigger>
@@ -169,10 +166,9 @@ export default function TopAccounts() {
 
           {/* By Region Tab */}
           <TabsContent value="regions" className="space-y-6">
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-4">
               <Select value={selectedRegion} onValueChange={setSelectedRegion}>
-                <SelectTrigger className="w-48 bg-slate-800 border-slate-700 text-slate-100">
-                  <SelectValue placeholder="Select region" />
+                <SelectTrigger className="w-48 bg-muted border-border-strong text-foreground" aria-label="Select region"><SelectValue placeholder="Select region" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All regions</SelectItem>
@@ -181,7 +177,7 @@ export default function TopAccounts() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-sm text-slate-400">Top 15 accounts per region by intent score</p>
+              <p className="text-sm text-ink-muted">Top 15 accounts per region by intent score</p>
             </div>
 
             {selectedRegion === "all" ? (
@@ -189,12 +185,12 @@ export default function TopAccounts() {
                 {REGIONS.map(region => (
                   <Card key={region} className={CARD}>
                     <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <CardTitle className="text-base flex items-center gap-2 text-slate-100">
-                          <MapPin className="h-4 w-4 text-cyan-400" />
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <CardTitle className="text-base flex flex-wrap items-center gap-2 text-foreground">
+                          <MapPin className="h-4 w-4 text-accent" />
                           {region}
                         </CardTitle>
-                        <Badge variant="outline" className="border-slate-700 text-slate-300 font-mono tabular-nums">
+                        <Badge variant="outline" className="border-border-strong text-ink-muted tabular-nums">
                           {accountsByRegion[region]?.length || 0}
                         </Badge>
                       </div>
@@ -204,9 +200,9 @@ export default function TopAccounts() {
                         <AccountRow key={account.id} account={account} index={index} />
                       ))}
                       {(accountsByRegion[region]?.length || 0) === 0 && (
-                        <p className="px-2 py-4 text-xs text-slate-400">No accounts in this region</p>
+                        <p className="px-2 py-4 text-xs text-ink-muted">No accounts in this region</p>
                       )}
-                      <Button asChild variant="ghost" size="sm" className="w-full mt-2 text-cyan-300 hover:text-cyan-200 hover:bg-slate-800">
+                      <Button asChild variant="ghost" size="sm" className="w-full mt-2 text-accent hover:text-accent hover:bg-muted">
                         <Link href={`/accounts?region=${region}`}>
                           View all {region} accounts
                           <ArrowRight className="ml-2 h-4 w-4" />
@@ -219,16 +215,16 @@ export default function TopAccounts() {
             ) : (
               <Card className={CARD}>
                 <CardHeader>
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-base flex items-center gap-2 text-slate-100">
-                      <MapPin className="h-4 w-4 text-cyan-400" />
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <CardTitle className="text-base flex flex-wrap items-center gap-2 text-foreground">
+                      <MapPin className="h-4 w-4 text-accent" />
                       {selectedRegion} region · top 15
                     </CardTitle>
-                    <Badge variant="outline" className="border-slate-700 text-slate-300 font-mono tabular-nums">
+                    <Badge variant="outline" className="border-border-strong text-ink-muted tabular-nums">
                       {accountsByRegion[selectedRegion]?.length || 0}
                     </Badge>
                   </div>
-                  <CardDescription className="text-slate-400">Ranked by intent score</CardDescription>
+                  <CardDescription className="text-ink-muted">Ranked by intent score</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-1">
                   {accountsByRegion[selectedRegion]?.map((account: any, index: number) =>
@@ -241,10 +237,9 @@ export default function TopAccounts() {
 
           {/* By AE Tab */}
           <TabsContent value="ae" className="space-y-6">
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-4">
               <Select value={selectedAE} onValueChange={setSelectedAE}>
-                <SelectTrigger className="w-64 bg-slate-800 border-slate-700 text-slate-100">
-                  <SelectValue placeholder="Select AE" />
+                <SelectTrigger className="w-64 bg-muted border-border-strong text-foreground" aria-label="Select AE"><SelectValue placeholder="Select AE" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All AEs</SelectItem>
@@ -255,7 +250,7 @@ export default function TopAccounts() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-sm text-slate-400">Weekly prioritized accounts for each AE</p>
+              <p className="text-sm text-ink-muted">Weekly prioritized accounts for each AE</p>
             </div>
 
             {selectedAE === "all" ? (
@@ -265,18 +260,18 @@ export default function TopAccounts() {
                   return (
                     <Card key={ae.email} className={CARD}>
                       <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <div>
-                            <CardTitle className="text-base flex items-center gap-2 text-slate-100">
-                              <UserCircle className="h-4 w-4 text-cyan-400" />
+                            <CardTitle className="text-base flex flex-wrap items-center gap-2 text-foreground">
+                              <UserCircle className="h-4 w-4 text-accent" />
                               {ae.name}
                             </CardTitle>
-                            <CardDescription className="mt-1 flex items-center gap-1.5 text-slate-400">
+                            <CardDescription className="mt-1 flex flex-wrap items-center gap-1.5 text-ink-muted">
                               <MapPin className="h-3 w-3" />
                               {ae.region} · {ae.size} employees
                             </CardDescription>
                           </div>
-                          <Badge variant="outline" className="border-slate-700 text-slate-300 font-mono tabular-nums">
+                          <Badge variant="outline" className="border-border-strong text-ink-muted tabular-nums">
                             {aeAccounts.length}
                           </Badge>
                         </div>
@@ -286,12 +281,12 @@ export default function TopAccounts() {
                           <AccountRow key={account.id} account={account} index={index} />
                         ))}
                         {aeAccounts.length === 0 && (
-                          <p className="px-2 py-4 text-xs text-slate-400">No accounts in this territory</p>
+                          <p className="px-2 py-4 text-xs text-ink-muted">No accounts in this territory</p>
                         )}
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="w-full mt-2 text-cyan-300 hover:text-cyan-200 hover:bg-slate-800"
+                          className="w-full mt-2 text-accent hover:text-accent hover:bg-muted"
                           onClick={() => setSelectedAE(ae.email)}
                         >
                           View all {ae.name.split(" ")[0]}'s accounts
@@ -305,31 +300,31 @@ export default function TopAccounts() {
             ) : (
               <Card className={CARD}>
                 <CardHeader>
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <CardTitle className="text-base flex items-center gap-2 text-slate-100">
-                        <UserCircle className="h-4 w-4 text-cyan-400" />
+                      <CardTitle className="text-base flex flex-wrap items-center gap-2 text-foreground">
+                        <UserCircle className="h-4 w-4 text-accent" />
                         {AE_LIST.find(ae => ae.email === selectedAE)?.name}'s weekly priority accounts
                       </CardTitle>
-                      <CardDescription className="mt-1 flex items-center gap-1.5 text-slate-400">
+                      <CardDescription className="mt-1 flex flex-wrap items-center gap-1.5 text-ink-muted">
                         <MapPin className="h-3 w-3" />
                         {AE_LIST.find(ae => ae.email === selectedAE)?.region} ·{" "}
                         {AE_LIST.find(ae => ae.email === selectedAE)?.size} employees
                       </CardDescription>
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                      <Badge variant="outline" className="border-slate-700 text-slate-300 font-mono tabular-nums">
+                      <Badge variant="outline" className="border-border-strong text-ink-muted tabular-nums">
                         {getAEAccounts(selectedAE).length} accounts
                       </Badge>
                       {repStats && (
-                        <div className="flex gap-3 text-xs">
-                          <span className="inline-flex items-center gap-1 font-medium text-emerald-400">
+                        <div className="flex flex-wrap gap-3 text-xs">
+                          <span className="inline-flex items-center gap-1 font-medium text-positive">
                             <span aria-hidden>▲</span>
-                            <span className="font-mono tabular-nums">{repStats.hotLeads}</span> hot
+                            <span className="tabular-nums">{repStats.hotLeads}</span> hot
                           </span>
-                          <span className="inline-flex items-center gap-1 font-medium text-amber-400">
+                          <span className="inline-flex items-center gap-1 font-medium text-caution">
                             <span aria-hidden>●</span>
-                            <span className="font-mono tabular-nums">{repStats.warmLeads}</span> warm
+                            <span className="tabular-nums">{repStats.warmLeads}</span> warm
                           </span>
                         </div>
                       )}

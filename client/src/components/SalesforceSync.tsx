@@ -55,7 +55,7 @@ export function SalesforceSync() {
   return (
     <Card className="w-full max-w-2xl">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex flex-wrap items-center gap-2">
           <Database className="h-5 w-5" />
           Salesforce Sync
         </CardTitle>
@@ -65,12 +65,12 @@ export function SalesforceSync() {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Connection Status */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium">Connection:</span>
           {testConnection.isLoading ? (
             <Badge variant="secondary">Checking...</Badge>
           ) : testConnection.data?.connected ? (
-            <Badge variant="default" className="bg-green-600">
+            <Badge variant="default" className="bg-positive">
               <CheckCircle className="h-3 w-3 mr-1" />
               Connected
             </Badge>
@@ -83,21 +83,21 @@ export function SalesforceSync() {
         </div>
 
         {/* Current Data Stats */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center p-3 bg-muted rounded-lg">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 [&>*]:min-w-0">
+          <div className="text-center p-2 sm:p-3 bg-muted rounded-sm">
             <Building className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-            <div className="text-2xl font-bold">{status?.accounts || 0}</div>
-            <div className="text-xs text-muted-foreground">Accounts</div>
+            <div className="text-xl sm:text-2xl font-semibold tabular-nums">{status?.accounts || 0}</div>
+            <div className="text-2xs sm:text-xs text-ink-muted truncate">Accounts</div>
           </div>
-          <div className="text-center p-3 bg-muted rounded-lg">
+          <div className="text-center p-2 sm:p-3 bg-muted rounded-sm">
             <Users className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-            <div className="text-2xl font-bold">{status?.contacts || 0}</div>
-            <div className="text-xs text-muted-foreground">Contacts</div>
+            <div className="text-xl sm:text-2xl font-semibold tabular-nums">{status?.contacts || 0}</div>
+            <div className="text-2xs sm:text-xs text-ink-muted truncate">Contacts</div>
           </div>
-          <div className="text-center p-3 bg-muted rounded-lg">
+          <div className="text-center p-2 sm:p-3 bg-muted rounded-sm">
             <CheckCircle className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-            <div className="text-2xl font-bold">{status?.linkedContacts || 0}</div>
-            <div className="text-xs text-muted-foreground">Linked</div>
+            <div className="text-xl sm:text-2xl font-semibold tabular-nums">{status?.linkedContacts || 0}</div>
+            <div className="text-2xs sm:text-xs text-ink-muted truncate">Linked</div>
           </div>
         </div>
 
@@ -130,14 +130,14 @@ export function SalesforceSync() {
 
         {/* Status Message */}
         {syncStatus && (
-          <div className="p-3 bg-muted rounded-lg text-sm">
+          <div className="p-3 bg-muted rounded-sm text-sm break-words">
             {syncStatus}
           </div>
         )}
 
         {/* Error Message */}
         {testConnection.data && !testConnection.data.connected && (
-          <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
+          <div className="p-3 bg-critical-subtle text-critical rounded-sm text-sm break-words">
             {testConnection.data.error || "Unable to connect to Salesforce. Check your credentials in Settings → Secrets."}
           </div>
         )}

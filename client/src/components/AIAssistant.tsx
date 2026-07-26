@@ -101,12 +101,12 @@ export function AIAssistant({ context }: AIAssistantProps) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 p-4 bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all z-50 group"
+        className="fixed bottom-6 right-6 p-4 bg-accent text-accent-foreground rounded-sm shadow-lg hover:shadow-xl transition-all z-50 group"
       >
         <Bot className="h-6 w-6" />
         <span className="absolute -top-1 -right-1 flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
         </span>
       </button>
     );
@@ -114,17 +114,15 @@ export function AIAssistant({ context }: AIAssistantProps) {
 
   return (
     <div className={`fixed bottom-6 right-6 z-50 transition-all ${isMinimized ? 'w-80' : 'w-96'}`}>
-      <Card className={`bg-slate-900 border-slate-700 shadow-2xl ${isMinimized ? 'h-16' : 'h-[600px]'} flex flex-col`}>
-        <CardHeader className="flex-shrink-0 border-b border-slate-800 p-4">
+      <Card className={`bg-card border-border-strong shadow-2xl ${isMinimized ? 'h-16' : 'h-[600px]'} flex flex-col`}>
+        <CardHeader className="flex-shrink-0 border-b border-border p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg">
-                <Bot className="h-4 w-4 text-white" />
-              </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Bot className="size-5 shrink-0 text-ink-faint" />
               <div>
-                <CardTitle className="text-white text-sm">Sales AI Assistant</CardTitle>
+                <CardTitle className="text-foreground text-sm">Sales AI Assistant</CardTitle>
                 {context && (
-                  <Badge variant="outline" className="border-cyan-500/30 text-cyan-400 text-xs mt-1">
+                  <Badge variant="outline" className="border-accent/30 text-accent text-xs mt-1">
                     <Sparkles className="h-3 w-3 mr-1" />
                     {context.type === "account" ? "Account Context" : 
                      context.type === "contact" ? "Contact Context" : "General"}
@@ -132,12 +130,12 @@ export function AIAssistant({ context }: AIAssistantProps) {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsMinimized(!isMinimized)}
-                className="h-8 w-8 p-0 text-slate-400 hover:text-white"
+                className="h-8 w-8 p-0 text-ink-muted hover:text-foreground"
               >
                 {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
               </Button>
@@ -145,7 +143,7 @@ export function AIAssistant({ context }: AIAssistantProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsOpen(false)}
-                className="h-8 w-8 p-0 text-slate-400 hover:text-white"
+                className="h-8 w-8 p-0 text-ink-muted hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -158,10 +156,10 @@ export function AIAssistant({ context }: AIAssistantProps) {
             <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 ? (
                 <div className="space-y-4">
-                  <p className="text-slate-400 text-sm">
+                  <p className="text-ink-muted text-sm">
                     Hi! I'm your AI sales assistant. I can help you with:
                   </p>
-                  <ul className="text-slate-400 text-sm space-y-2 list-disc list-inside">
+                  <ul className="text-ink-muted text-sm space-y-2 list-disc list-inside">
                     <li>Finding accounts and contacts</li>
                     <li>Analyzing call transcripts</li>
                     <li>Identifying buying signals</li>
@@ -169,12 +167,12 @@ export function AIAssistant({ context }: AIAssistantProps) {
                     <li>Summarizing account activity</li>
                   </ul>
                   <div className="space-y-2">
-                    <p className="text-slate-500 text-xs font-semibold">Try asking:</p>
+                    <p className="text-ink-subtle text-xs font-semibold">Try asking:</p>
                     {suggestedQuestions.map((q, i) => (
                       <button
                         key={i}
                         onClick={() => setInput(q)}
-                        className="block w-full text-left text-xs text-cyan-400 hover:text-cyan-300 bg-slate-950/50 hover:bg-slate-950 p-2 rounded border border-slate-800 hover:border-cyan-500/30 transition-all"
+                        className="block w-full text-left text-xs text-accent hover:text-accent bg-canvas hover:bg-canvas p-2 rounded border border-border hover:border-accent/30 transition-all"
                       >
                         {q}
                       </button>
@@ -184,11 +182,7 @@ export function AIAssistant({ context }: AIAssistantProps) {
               ) : (
                 messages.map((msg, i) => (
                   <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[85%] rounded-lg p-3 ${
-                      msg.role === "user" 
-                        ? "bg-cyan-600 text-white" 
-                        : "bg-slate-950 border border-slate-800 text-slate-300"
-                    }`}>
+                    <div className={`max-w-[85%] rounded-sm p-3 ${ msg.role === "user" ? "bg-accent text-accent-foreground" : "bg-canvas border border-border text-ink-muted" }`}>
                       {msg.role === "assistant" ? (
                         <SafeStreamdown className="text-sm">{msg.content}</SafeStreamdown>
                       ) : (
@@ -200,27 +194,27 @@ export function AIAssistant({ context }: AIAssistantProps) {
               )}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-slate-950 border border-slate-800 rounded-lg p-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-cyan-500" />
+                  <div className="bg-canvas border border-border rounded-sm p-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-accent" />
                   </div>
                 </div>
               )}
             </CardContent>
 
-            <div className="flex-shrink-0 border-t border-slate-800 p-4">
+            <div className="flex-shrink-0 border-t border-border p-4">
               <div className="flex gap-2">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Ask me anything..."
-                  className="bg-slate-950 border-slate-700 text-white placeholder:text-slate-500"
+                  className="bg-canvas border-border-strong text-foreground placeholder:text-ink-subtle"
                   disabled={isLoading}
                 />
                 <Button
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading}
-                  className="bg-cyan-600 hover:bg-cyan-700 shrink-0"
+                  className="bg-accent hover:bg-accent shrink-0"
                 >
                   <Send className="h-4 w-4" />
                 </Button>

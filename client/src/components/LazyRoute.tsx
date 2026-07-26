@@ -13,8 +13,8 @@ export function lazyLoad<T extends ComponentType<any>>(
   return (props: any) => (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-accent" />
         </div>
       }
     >

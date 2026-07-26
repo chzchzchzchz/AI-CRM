@@ -41,11 +41,11 @@ export function OverviewTab({ accountId, account }: OverviewTabProps) {
   return (
     <div className="space-y-6">
       {/* AI Executive Summary */}
-      <Card className="card-elevated border-l-4 border-l-primary">
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex flex-wrap items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
                 Executive Summary
               </CardTitle>
@@ -53,7 +53,7 @@ export function OverviewTab({ accountId, account }: OverviewTabProps) {
                 AI-powered analysis of this account's strategic position and opportunities
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {data?.cached && (
                 <Badge variant="outline" className="gap-1">
                   <Clock className="h-3 w-3" />
@@ -89,7 +89,7 @@ export function OverviewTab({ accountId, account }: OverviewTabProps) {
               <SafeStreamdown>{data.summary}</SafeStreamdown>
             </div>
           ) : (
-            <div className="p-4 rounded-lg bg-muted/50 text-center text-muted-foreground">
+            <div className="p-4 rounded-sm bg-muted/50 text-center text-muted-foreground">
               No summary available
             </div>
           )}
@@ -98,9 +98,9 @@ export function OverviewTab({ accountId, account }: OverviewTabProps) {
 
       {/* Company Description */}
       {account.description && (
-        <Card className="card-elevated">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex flex-wrap items-center gap-2">
               <FileText className="h-5 w-5" />
               Company Description
             </CardTitle>

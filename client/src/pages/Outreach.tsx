@@ -1,5 +1,4 @@
 import { useState, useRef, useMemo } from "react";
-import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -258,22 +257,21 @@ export default function Outreach() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+      <div className="flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="container py-6 space-y-6 max-w-7xl">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-slate-800 border border-slate-700">
-            <Sparkles className="h-5 w-5 text-purple-400" />
+    <div>
+      <div className="container py-1 space-y-5 max-w-7xl">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="p-2 rounded-sm bg-muted border border-border-strong">
+            <Sparkles className="h-5 w-5 text-accent" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">AI-Powered Outreach</h1>
+            <h1 className="text-2xl font-semibold">AI-Powered Outreach</h1>
             <p className="text-sm text-muted-foreground">
               Generate personalized emails grounded in account intelligence.
             </p>
@@ -284,9 +282,9 @@ export default function Outreach() {
           {/* Left Column - Selection */}
           <div className="space-y-6">
             {/* Step 1: Select ONE Account */}
-            <Card className="card-elevated">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
+                <CardTitle className="text-foreground flex items-center gap-2">
                   <Building2 className="h-5 w-5 text-muted-foreground" />
                   1. Select Target Account
                 </CardTitle>
@@ -295,16 +293,23 @@ export default function Outreach() {
               <CardContent>
                 <div className="mb-4">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" />
                     <Input
                       placeholder="Search accounts..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-400"
+                      className="pl-10 bg-muted border-border-strong text-foreground placeholder:text-ink-muted"
                     />
                   </div>
                 </div>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                <div
+                  // A scrollable region needs to be reachable by keyboard, or its
+                  // overflowed content is unreachable without a pointer.
+                  tabIndex={0}
+                  role="group"
+                  aria-label="Target accounts"
+                  className="space-y-2 max-h-[300px] overflow-y-auto rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
                   {filteredAccounts.map((account) => {
                     const isSelected = selectedAccountId === account.id;
                     const intentScore = parseInt(String(account.intentScore || 0), 10);
@@ -312,26 +317,22 @@ export default function Outreach() {
                       <div
                         key={account.id}
                         onClick={() => selectAccount(account.id)}
-                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
-                          isSelected 
-                            ? 'bg-cyan-600/30 border border-cyan-500' 
-                            : 'bg-slate-800/50 hover:bg-slate-800 border border-transparent'
-                        }`}
+                        className={`flex items-center gap-3 p-3 rounded-sm cursor-pointer transition-all ${ isSelected ? 'bg-accent-subtle border border-accent/30' : 'bg-muted hover:bg-muted border border-transparent' }`}
                       >
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-white truncate">{account.name}</div>
-                          <div className="text-sm text-slate-400">{account.industry || "Unknown"}</div>
+                          <div className="font-medium text-foreground truncate">{account.name}</div>
+                          <div className="text-sm text-ink-muted">{account.industry || "Unknown"}</div>
                         </div>
                         {(() => {
                           const heat = intentScore >= 70
-                            ? { glyph: "🔥", tone: "text-red-400" }
+                            ? { glyph: "▲", tone: "text-critical" }
                             : intentScore >= 40
-                            ? { glyph: "▲", tone: "text-amber-400" }
-                            : { glyph: "▽", tone: "text-slate-400" };
+                            ? { glyph: "▲", tone: "text-caution" }
+                            : { glyph: "▽", tone: "text-ink-muted" };
                           return (
-                            <span className={`inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-2.5 py-1 text-xs font-medium ${heat.tone}`}>
+                            <span className={`inline-flex items-center gap-1.5 rounded-sm bg-muted px-2.5 py-1 text-xs font-medium ${heat.tone}`}>
                               <span aria-hidden="true">{heat.glyph}</span>
-                              <span className="font-mono">{intentScore}</span>
+                              <span className="tabular-nums">{intentScore}</span>
                             </span>
                           );
                         })()}
@@ -340,18 +341,24 @@ export default function Outreach() {
                   })}
                 </div>
                 {selectedAccount && (
-                  <div className="mt-4 p-3 bg-cyan-900/30 rounded-lg border border-cyan-700">
-                    <div className="text-sm text-cyan-300">Selected: <strong>{selectedAccount.name}</strong></div>
+                  <div className="mt-4 p-3 bg-accent-subtle rounded-sm border border-accent/30">
+                    <div className="text-sm text-accent">Selected: <strong>{selectedAccount.name}</strong></div>
                   </div>
                 )}
               </CardContent>
             </Card>
 
             {/* Step 2: Select ONE Contact (only shows after account selected) */}
-            <Card className={`card-elevated transition-opacity ${selectedAccountId ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+            {/* Not dimmed with opacity: halving the card also halves the contrast of
+                the very sentence explaining why it is disabled. Interaction is
+                gated and the state is announced instead. */}
+            <Card
+              aria-disabled={!selectedAccountId}
+              className={selectedAccountId ? undefined : "pointer-events-none"}
+            >
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Users className="h-5 w-5 text-purple-400" />
+                <CardTitle className="text-foreground flex flex-wrap items-center gap-2">
+                  <Users className="h-5 w-5 text-accent" />
                   2. Select Contact
                 </CardTitle>
                 <CardDescription>
@@ -365,18 +372,18 @@ export default function Outreach() {
                   <>
                     <div className="mb-4">
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" />
                         <Input
                           placeholder="Search contacts..."
                           value={contactSearchQuery}
                           onChange={(e) => setContactSearchQuery(e.target.value)}
-                          className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-400"
+                          className="pl-10 bg-muted border-border-strong text-foreground placeholder:text-ink-muted"
                         />
                       </div>
                     </div>
                     <div className="space-y-2 max-h-[250px] overflow-y-auto">
                       {filteredContacts.length === 0 ? (
-                        <div className="text-center py-8 text-slate-400">
+                        <div className="text-center py-8 text-ink-muted">
                           No contacts found for this account
                         </div>
                       ) : (
@@ -386,17 +393,13 @@ export default function Outreach() {
                             <div
                               key={contact.id}
                               onClick={() => selectContact(contact.id)}
-                              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
-                                isSelected 
-                                  ? 'bg-purple-600/30 border border-purple-500' 
-                                  : 'bg-slate-800/50 hover:bg-slate-800 border border-transparent'
-                              }`}
+                              className={`flex items-center gap-3 p-3 rounded-sm cursor-pointer transition-all ${ isSelected ? 'bg-accent-subtle border border-accent/30' : 'bg-muted hover:bg-muted border border-transparent' }`}
                             >
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium text-white truncate">{contact.name}</div>
-                                <div className="text-sm text-slate-400 truncate">{contact.title || "No title"}</div>
+                                <div className="font-medium text-foreground truncate">{contact.name}</div>
+                                <div className="text-sm text-ink-muted truncate">{contact.title || "No title"}</div>
                                 {contact.email && (
-                                  <div className="text-xs text-slate-400 truncate">{contact.email}</div>
+                                  <div className="text-xs text-ink-muted truncate">{contact.email}</div>
                                 )}
                               </div>
                             </div>
@@ -405,10 +408,10 @@ export default function Outreach() {
                       )}
                     </div>
                     {selectedContact && (
-                      <div className="mt-4 p-3 bg-purple-900/30 rounded-lg border border-purple-700">
-                        <div className="text-sm text-purple-300">
+                      <div className="mt-4 p-3 bg-accent-subtle rounded-sm border border-accent/30">
+                        <div className="text-sm text-accent">
                           Selected: <strong>{selectedContact.name}</strong>
-                          {selectedContact.email && <span className="text-purple-400"> ({selectedContact.email})</span>}
+                          {selectedContact.email && <span className="text-accent"> ({selectedContact.email})</span>}
                         </div>
                       </div>
                     )}
@@ -418,9 +421,9 @@ export default function Outreach() {
             </Card>
 
             {/* Step 3: Optional Context */}
-            <Card className="card-elevated">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-white">3. Add Context (Optional)</CardTitle>
+                <CardTitle className="text-foreground">3. Add Context (Optional)</CardTitle>
                 <CardDescription>Pain points, goals, messaging angle, or attach reference docs</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -428,7 +431,7 @@ export default function Outreach() {
                   placeholder="e.g., Focus on their pain points, mention recent news, emphasize your key differentiators..."
                   value={context}
                   onChange={(e) => setContext(e.target.value)}
-                  className="min-h-[100px] bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-400"
+                  className="min-h-[100px] bg-muted border-border-strong text-foreground placeholder:text-ink-muted"
                 />
                 
                 {/* File Attachments */}
@@ -445,7 +448,7 @@ export default function Outreach() {
                     variant="outline"
                     size="sm"
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                    className="border-border-strong text-ink-muted hover:bg-muted"
                   >
                     <Paperclip className="h-4 w-4 mr-2" />
                     Attach Reference Docs (PDF, DOCX, PPTX)
@@ -454,17 +457,17 @@ export default function Outreach() {
                   {attachedFiles.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {attachedFiles.map((file, i) => (
-                        <Badge key={i} variant="secondary" className="flex items-center gap-1 bg-slate-800">
+                        <Badge key={i} variant="secondary" className="flex flex-wrap items-center gap-1 bg-muted">
                           <File className="h-3 w-3" />
                           <span className="max-w-[150px] truncate text-xs">{file.name}</span>
-                          <button onClick={() => removeFile(i)} className="ml-1 hover:text-red-400">
+                          <button onClick={() => removeFile(i)} className="ml-1 hover:text-critical">
                             <X className="h-3 w-3" />
                           </button>
                         </Badge>
                       ))}
                     </div>
                   )}
-                  <p className="text-xs text-slate-400">Attach case studies, product docs, or competitor info to enhance the email</p>
+                  <p className="text-xs text-ink-muted">Attach case studies, product docs, or competitor info to enhance the email</p>
                 </div>
               </CardContent>
             </Card>
@@ -496,18 +499,18 @@ export default function Outreach() {
             {/* Strategy (Collapsible) */}
             {strategy && (
               <Collapsible open={isStrategyOpen} onOpenChange={setIsStrategyOpen}>
-                <Card className="bg-slate-900/50 border-slate-800">
+                <Card className="bg-card border-border">
                   <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer hover:bg-slate-800/30 transition-colors">
+                    <CardHeader className="cursor-pointer hover:bg-muted transition-colors">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-white flex items-center gap-2">
-                          <FileText className="h-5 w-5 text-amber-400" />
+                        <CardTitle className="text-foreground flex flex-wrap items-center gap-2">
+                          <FileText className="h-5 w-5 text-caution" />
                           Strategy & Notes
                         </CardTitle>
                         {isStrategyOpen ? (
-                          <ChevronUp className="h-5 w-5 text-slate-400" />
+                          <ChevronUp className="h-5 w-5 text-ink-muted" />
                         ) : (
-                          <ChevronDown className="h-5 w-5 text-slate-400" />
+                          <ChevronDown className="h-5 w-5 text-ink-muted" />
                         )}
                       </div>
                       <CardDescription>Internal notes (not for sending)</CardDescription>
@@ -515,7 +518,7 @@ export default function Outreach() {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <CardContent>
-                      <div className="whitespace-pre-wrap text-slate-400 bg-slate-800/50 p-4 rounded-lg border border-slate-700 text-sm">
+                      <div className="whitespace-pre-wrap text-ink-muted bg-muted p-4 rounded-sm border border-border-strong text-sm">
                         {strategy}
                       </div>
                     </CardContent>
@@ -525,11 +528,11 @@ export default function Outreach() {
             )}
 
             {/* Generated Email */}
-            <Card className="bg-slate-900/50 border-slate-800 sticky top-8">
+            <Card className="bg-card border-border sticky top-8">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <Mail className="h-5 w-5 text-green-400" />
+                  <CardTitle className="text-foreground flex flex-wrap items-center gap-2">
+                    <Mail className="h-5 w-5 text-positive" />
                     Ready-to-Send Email
                   </CardTitle>
                   {generatedEmail && (
@@ -537,7 +540,7 @@ export default function Outreach() {
                       variant="outline"
                       size="sm"
                       onClick={handleCopy}
-                      className="border-slate-700"
+                      className="border-border-strong"
                     >
                       {copied ? (
                         <>
@@ -558,7 +561,7 @@ export default function Outreach() {
               <CardContent>
                 {generatedEmail ? (
                   <div className="space-y-4">
-                    <div className="whitespace-pre-wrap text-slate-300 bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                    <div className="whitespace-pre-wrap text-ink-muted bg-muted p-4 rounded-sm border border-border-strong">
                       {generatedEmail}
                     </div>
                     
@@ -570,7 +573,7 @@ export default function Outreach() {
                           value={refinementInput}
                           onChange={(e) => setRefinementInput(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleRefine()}
-                          className="flex-1 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-400"
+                          className="flex-1 bg-muted border-border-strong text-foreground placeholder:text-ink-muted"
                         />
                         <Button
                           variant="outline"
@@ -587,19 +590,19 @@ export default function Outreach() {
                           )}
                         </Button>
                       </div>
-                      <p className="text-xs text-slate-400">Press Enter or click Refine to adjust the email</p>
+                      <p className="text-xs text-ink-muted">Press Enter or click Refine to adjust the email</p>
                     </div>
                     
                     {/* View Reasoning (Optional) */}
                     {rawReasoning && (
                       <Collapsible open={isReasoningOpen} onOpenChange={setIsReasoningOpen}>
-                        <CollapsibleTrigger className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-400">
+                        <CollapsibleTrigger className="flex flex-wrap items-center gap-1 text-xs text-ink-muted hover:text-ink-muted">
                           {isReasoningOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                           {isReasoningOpen ? 'Hide' : 'View'} AI reasoning
                         </CollapsibleTrigger>
                         <CollapsibleContent>
-                          <div className="mt-2 p-3 bg-slate-900 rounded border border-slate-800 max-h-[200px] overflow-y-auto">
-                            <code className="text-xs text-slate-400 whitespace-pre-wrap break-all">
+                          <div className="mt-2 p-3 bg-card rounded border border-border max-h-[200px] overflow-y-auto">
+                            <code className="text-xs text-ink-muted whitespace-pre-wrap break-all">
                               {rawReasoning}
                             </code>
                           </div>
@@ -608,7 +611,7 @@ export default function Outreach() {
                     )}
                     
                     {/* Send Buttons */}
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3">
                       <Button asChild variant="outline" className="flex-1">
                         <a
                           href={getGmailUrl()}
@@ -635,8 +638,8 @@ export default function Outreach() {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Sparkles className="h-12 w-12 text-slate-600 mb-4" />
-                    <p className="text-slate-400">
+                    <Sparkles className="h-12 w-12 text-ink-subtle mb-4" />
+                    <p className="text-ink-muted">
                       Select an account and click Generate to create a personalized email
                     </p>
                   </div>

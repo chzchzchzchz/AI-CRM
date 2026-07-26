@@ -1,14 +1,14 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
+import { useState } from"react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from"@/components/ui/card";
+import { Button } from"@/components/ui/button";
+import { Textarea } from"@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from"@/components/ui/tabs";
+import { trpc } from"@/lib/trpc";
+import { toast } from"sonner";
 import { 
   Sparkles, Loader2, Copy, CheckCircle2, 
   FileText, Mail, Share2, Video
-} from "lucide-react";
+} from"lucide-react";
 
 interface GeneratedContent {
   landingPage: {
@@ -87,7 +87,7 @@ export default function WebinarGenerator() {
       className="h-8"
     >
       {copiedField === field ? (
-        <CheckCircle2 className="h-4 w-4 text-green-500" />
+        <CheckCircle2 className="h-4 w-4 text-positive" />
       ) : (
         <Copy className="h-4 w-4" />
       )}
@@ -95,14 +95,14 @@ export default function WebinarGenerator() {
   );
 
   return (
-    <div className="container py-8 max-w-5xl">
+    <div className="container py-1 max-w-5xl">
       {/* Header */}
       <div className="mb-8 text-center">
-        <div className="flex items-center justify-center gap-3 mb-2">
-          <div className="p-2 bg-slate-800 border border-slate-700 rounded-xl">
-            <Video className="h-6 w-6 text-white" />
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-2">
+          <div className="p-2 bg-muted border border-border-strong rounded-md">
+            <Video className="h-6 w-6 text-foreground" />
           </div>
-          <h1 className="text-3xl font-bold">Webinar Content Generator</h1>
+          <h1 className="text-xl font-semibold">Webinar Content Generator</h1>
         </div>
         <p className="text-muted-foreground">
           AI-powered promotional content for your webinars
@@ -115,7 +115,7 @@ export default function WebinarGenerator() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-teal-500" />
+                <FileText className="h-5 w-5 text-positive" />
                 Step 1: Webinar Content
               </CardTitle>
               <CardDescription>
@@ -188,7 +188,7 @@ export default function WebinarGenerator() {
               <CardTitle className="text-base flex items-center justify-between">
                 <span>Style & Brand Settings</span>
                 <span className="text-xs text-muted-foreground">
-                  {showSettings ? "Hide" : "Show"}
+                  {showSettings ?"Hide" :"Show"}
                 </span>
               </CardTitle>
             </CardHeader>
@@ -221,7 +221,7 @@ export default function WebinarGenerator() {
           <Button
             onClick={handleGenerate}
             disabled={!contentAssets.trim() || isGenerating}
-            className="w-full bg-cyan-500 text-slate-950 hover:bg-blue-500 py-6 text-lg"
+            className="w-full py-6 text-lg"
           >
             {isGenerating ? (
               <>
@@ -251,7 +251,7 @@ export default function WebinarGenerator() {
           {isGenerating && (
             <Card className="h-full flex items-center justify-center min-h-[400px]">
               <div className="text-center">
-                <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-teal-500" />
+                <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-positive" />
                 <p className="text-muted-foreground">Generating your content...</p>
               </div>
             </Card>
@@ -260,15 +260,15 @@ export default function WebinarGenerator() {
           {generatedContent && (
             <Tabs defaultValue="landing" className="h-full">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="landing" className="flex items-center gap-1">
+                <TabsTrigger value="landing" className="flex flex-wrap items-center gap-1">
                   <FileText className="h-4 w-4" />
                   Landing
                 </TabsTrigger>
-                <TabsTrigger value="email" className="flex items-center gap-1">
+                <TabsTrigger value="email" className="flex flex-wrap items-center gap-1">
                   <Mail className="h-4 w-4" />
                   Emails
                 </TabsTrigger>
-                <TabsTrigger value="social" className="flex items-center gap-1">
+                <TabsTrigger value="social" className="flex flex-wrap items-center gap-1">
                   <Share2 className="h-4 w-4" />
                   Social
                 </TabsTrigger>
@@ -304,7 +304,7 @@ export default function WebinarGenerator() {
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground">CTA</label>
-                      <p className="font-semibold text-teal-500">{generatedContent.landingPage.cta}</p>
+                      <p className="font-semibold text-positive">{generatedContent.landingPage.cta}</p>
                     </div>
                   </CardContent>
                 </Card>

@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -123,16 +122,15 @@ export default function ContentStudio() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="container py-6 space-y-6 max-w-6xl">
+    <div>
+      <div className="container py-1 space-y-5 max-w-6xl">
         {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-slate-800 border border-slate-700">
-            <Sparkles className="h-5 w-5 text-purple-400" />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="p-2 rounded-sm bg-muted border border-border-strong">
+            <Sparkles className="h-5 w-5 text-accent" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Content Studio</h1>
+            <h1 className="text-2xl font-semibold">Content Studio</h1>
             <p className="text-sm text-muted-foreground">
               AI-powered content generation grounded in your knowledge base.
             </p>
@@ -153,12 +151,7 @@ export default function ContentStudio() {
                   <button
                     key={type.value}
                     onClick={() => setContentType(type.value as ContentType)}
-                    className={`
-                      p-3 rounded-lg border text-center transition-all
-                      ${contentType === type.value
-                        ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
-                        : 'border-slate-700 text-muted-foreground hover:border-cyan-500/40 hover:bg-slate-800'}
-                    `}
+                    className={`p-3 rounded-sm border text-center transition-all ${contentType === type.value ? 'border-accent/30 bg-accent-subtle text-accent' : 'border-border-strong text-muted-foreground hover:border-accent/30 hover:bg-muted'}`}
                   >
                     <div className="flex justify-center mb-1">{type.icon}</div>
                     <p className="text-xs font-medium">{type.label}</p>
@@ -254,8 +247,8 @@ export default function ContentStudio() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  <CardTitle className="flex flex-wrap items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-positive" />
                     {generatedContent.title || 'Generated Content'}
                   </CardTitle>
                   <Button
@@ -264,7 +257,7 @@ export default function ContentStudio() {
                     onClick={() => copyToClipboard(generatedContent.content, 'main')}
                   >
                     {copiedField === 'main' ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <CheckCircle2 className="h-4 w-4 text-positive" />
                     ) : (
                       <Copy className="h-4 w-4" />
                     )}
@@ -272,13 +265,13 @@ export default function ContentStudio() {
                 </div>
               </CardHeader>
               <CardContent>
-                <pre className="whitespace-pre-wrap text-sm bg-muted/50 p-4 rounded-lg overflow-auto max-h-96">
+                <pre className="whitespace-pre-wrap text-sm bg-muted/50 p-4 rounded-sm overflow-auto max-h-96">
                   {generatedContent.content}
                 </pre>
 
                 {ragSources.length > 0 && (
                   <div className="mt-4 pt-4 border-t">
-                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground mb-2 flex flex-wrap items-center gap-1">
                       <BookOpen className="h-3 w-3" />
                       Sources used from Knowledge Base:
                     </p>
@@ -301,7 +294,7 @@ export default function ContentStudio() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Brain className="h-4 w-4 text-purple-400" />
+                <Brain className="h-4 w-4 text-accent" />
                 Knowledge Base
               </CardTitle>
               <CardDescription>
@@ -327,7 +320,7 @@ export default function ContentStudio() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-base flex flex-wrap items-center gap-2">
                 <Zap className="h-4 w-4 text-muted-foreground" />
                 AI Capabilities
               </CardTitle>
@@ -340,8 +333,8 @@ export default function ContentStudio() {
                 'Learns from your edits',
                 'Applies Revenue Architect persona',
               ].map((cap, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
+                  <CheckCircle2 className="h-4 w-4 text-positive" />
                   <span>{cap}</span>
                 </div>
               ))}

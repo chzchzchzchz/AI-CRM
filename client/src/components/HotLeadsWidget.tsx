@@ -4,8 +4,15 @@
  */
 
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge, StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
@@ -35,10 +42,10 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
 
   if (isLoading) {
     return (
-      <Card className="card-elevated">
+      <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <Flame className="h-5 w-5 text-red-500" />
+            <Flame className="h-5 w-5 text-critical" />
             <CardTitle className="text-lg">Hot Leads</CardTitle>
           </div>
         </CardHeader>
@@ -53,165 +60,152 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
 
   const getBuyingStageColor = (stage: string | null) => {
     switch (stage) {
-      case 'Purchase': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'Decision': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'Consideration': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case 'Evaluation': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      case 'Purchase': return 'bg-positive-subtle text-positive border-positive/30';
+      case 'Decision': return 'bg-accent-subtle text-accent border-accent/30';
+      case 'Consideration': return 'bg-caution-subtle text-caution border-caution/30';
+      case 'Evaluation': return 'bg-caution-subtle text-caution border-caution/30';
+      default: return 'bg-muted text-ink-muted border-border';
     }
   };
 
   const getIntentColor = (score: number) => {
-    if (score >= 90) return 'text-red-500';
-    if (score >= 80) return 'text-orange-500';
-    if (score >= 70) return 'text-yellow-500';
-    return 'text-gray-500';
+    if (score >= 90) return 'text-critical';
+    if (score >= 80) return 'text-caution';
+    if (score >= 70) return 'text-caution';
+    return 'text-ink-subtle';
   };
 
   return (
-    <Card className="card-elevated">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-gradient-to-br from-red-600 to-orange-600 rounded-lg">
-              <Flame className="h-5 w-5 text-white" />
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle>Hot leads</CardTitle>
+        <CardDescription>Top contacts at high-intent accounts</CardDescription>
+        {summary && (
+          <CardAction>
+            <div className="text-right">
+              <div data-numeric className="text-lg leading-none font-semibold">
+                {summary.total.contacts}
+              </div>
+              <div className="text-2xs text-ink-faint">contacts</div>
             </div>
-            <div>
-              <CardTitle className="text-lg">Hot Leads</CardTitle>
-              <p className="text-xs text-muted-foreground">
-                Top contacts at high-intent accounts
-              </p>
-            </div>
-          </div>
-          {summary && (
-            <div className="text-right text-xs">
-              <div className="font-semibold text-red-500">{summary.total.contacts}</div>
-              <div className="text-muted-foreground">contacts</div>
-            </div>
-          )}
-        </div>
+          </CardAction>
+        )}
       </CardHeader>
-      <CardContent className="space-y-2">
-        {/* Summary badges */}
+
+      <CardContent className="p-0">
+        {/* Priority split. Dots carry the tone; a row of filled pills competed
+            with the list underneath. */}
         {summary && !compact && (
-          <div className="flex flex-wrap gap-2 pb-2 border-b border-border/50">
-            <Badge variant="outline" className="text-xs bg-red-500/10 text-red-400 border-red-500/30">
-              <Zap className="h-3 w-3 mr-1" />
-              {summary.critical.contacts} critical
-            </Badge>
-            <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">
-              {summary.high.contacts} high
-            </Badge>
-            <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
-              {summary.medium.contacts} medium
-            </Badge>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 border-b border-border-subtle px-5 py-2.5">
+            <StatusDot tone="critical" className="text-ink-muted">
+              <span data-numeric className="font-medium text-foreground">{summary.critical.contacts}</span> critical
+            </StatusDot>
+            <StatusDot tone="caution" className="text-ink-muted">
+              <span data-numeric className="font-medium text-foreground">{summary.high.contacts}</span> high
+            </StatusDot>
+            <StatusDot tone="neutral" className="text-ink-muted">
+              <span data-numeric className="font-medium text-foreground">{summary.medium.contacts}</span> medium
+            </StatusDot>
           </div>
         )}
 
-        {/* Hot leads list */}
-        <div className="space-y-2 max-h-[500px] overflow-y-auto">
+        <ul className="max-h-[560px] divide-y divide-border-subtle overflow-y-auto">
           {hotLeads?.map((lead, index) => (
-            <div 
+            <li
               key={lead.contactId}
-              className="group p-3 rounded-lg border border-border/50 hover:border-primary/30 hover:bg-muted/30 transition-all cursor-pointer"
+              className="group flex flex-wrap items-start gap-3 px-5 py-3 transition-colors hover:bg-muted/50"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  {/* Contact info */}
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-bold text-muted-foreground">#{index + 1}</span>
-                    <Link href={`/contacts/${lead.contactId}`}>
-                      <span className="font-semibold text-sm hover:text-primary truncate">
-                        {lead.contactName}
-                      </span>
-                    </Link>
-                    {lead.linkedinUrl && (
-                      <a 
-                        href={lead.linkedinUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-500 hover:text-blue-400"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Linkedin className="h-3.5 w-3.5" />
-                      </a>
-                    )}
-                  </div>
-                  
-                  {/* Title */}
-                  {lead.contactTitle && (
-                    <p className="text-xs text-muted-foreground truncate mb-1">
-                      {lead.contactTitle}
-                    </p>
-                  )}
-                  
-                  {/* Account info */}
-                  <div className="flex items-center gap-2 text-xs">
-                    <Link href={`/accounts/${lead.accountId}`}>
-                      <span className="flex items-center gap-1 text-muted-foreground hover:text-primary">
-                        <Building2 className="h-3 w-3" />
-                        {lead.accountName}
-                      </span>
-                    </Link>
-                    <span className={`font-bold ${getIntentColor(lead.intentScore)}`}>
-                      {lead.intentScore}
-                    </span>
-                    {lead.buyingStage && (
-                      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getBuyingStageColor(lead.buyingStage)}`}>
-                        {lead.buyingStage}
-                      </Badge>
-                    )}
-                  </div>
+              <span
+                data-numeric
+                className="w-4 shrink-0 pt-0.5 text-2xs tabular-nums text-ink-faint"
+              >
+                {index + 1}
+              </span>
 
-                  {/* Priority reason */}
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {lead.priorityReason}
-                  </p>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Link
+                    href={`/contacts/${lead.contactId}`}
+                    className="truncate text-sm font-medium hover:text-accent"
+                  >
+                    {lead.contactName}
+                  </Link>
+                  {lead.linkedinUrl && (
+                    <a
+                      href={lead.linkedinUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-ink-faint hover:text-accent"
+                      onClick={e => e.stopPropagation()}
+                      aria-label={`${lead.contactName} on LinkedIn`}
+                    >
+                      <Linkedin className="size-3.5" />
+                    </a>
+                  )}
                 </div>
 
-                {/* Actions */}
-                <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {lead.contactTitle && (
+                  <p className="truncate text-xs text-ink-muted">{lead.contactTitle}</p>
+                )}
+
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs text-ink-muted">
+                  <Link
+                    href={`/accounts/${lead.accountId}`}
+                    className="truncate hover:text-accent"
+                  >
+                    {lead.accountName}
+                  </Link>
+                  <span className="text-ink-faint">·</span>
+                  <span data-numeric className="tabular-nums">
+                    intent {lead.intentScore}
+                  </span>
+                  {lead.buyingStage && (
+                    <Badge variant="secondary" size="sm">{lead.buyingStage}</Badge>
+                  )}
+                </div>
+
+                {lead.priorityReason && (
+                  <p className="mt-1 text-2xs text-ink-faint">{lead.priorityReason}</p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap shrink-0 items-center gap-1">
+                {/* Contact actions surface on hover but stay reachable by keyboard. */}
+                <div className="flex flex-wrap gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                   {lead.contactEmail && (
-                    <a 
-                      href={`mailto:${lead.contactEmail}`}
-                      className="p-1.5 rounded bg-primary/10 hover:bg-primary/20 text-primary"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Mail className="h-3.5 w-3.5" />
-                    </a>
+                    <Button asChild variant="ghost" size="icon-sm">
+                      <a href={`mailto:${lead.contactEmail}`} onClick={e => e.stopPropagation()} aria-label="Email">
+                        <Mail className="size-3.5" />
+                      </a>
+                    </Button>
                   )}
                   {lead.contactPhone && (
-                    <a 
-                      href={`tel:${lead.contactPhone}`}
-                      className="p-1.5 rounded bg-green-500/10 hover:bg-green-500/20 text-green-500"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Phone className="h-3.5 w-3.5" />
-                    </a>
+                    <Button asChild variant="ghost" size="icon-sm">
+                      <a href={`tel:${lead.contactPhone}`} onClick={e => e.stopPropagation()} aria-label="Call">
+                        <Phone className="size-3.5" />
+                      </a>
+                    </Button>
                   )}
                 </div>
-
-                {/* Priority score */}
-                <div className="text-right">
-                  <div className={`text-lg font-bold ${lead.priorityScore >= 70 ? 'text-red-500' : lead.priorityScore >= 50 ? 'text-orange-500' : 'text-yellow-500'}`}>
+                <div className="w-8 text-right">
+                  <div data-numeric className="text-sm font-semibold tabular-nums">
                     {lead.priorityScore}
                   </div>
-                  <div className="text-[10px] text-muted-foreground">priority</div>
+                  <div className="text-2xs text-ink-faint">pri</div>
                 </div>
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
 
-        {/* View all link */}
         {!compact && (
-          <div className="pt-2 border-t border-border/50">
-            <Link href="/accounts?filter=hot">
-              <Button variant="ghost" className="w-full text-sm">
-                View All Hot Accounts
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </Link>
+          <div className="border-t border-border-subtle p-2">
+            <Button asChild variant="ghost" size="sm" className="w-full">
+              <Link href="/accounts?filter=hot">
+                View all hot accounts
+                <ChevronRight className="size-3.5" />
+              </Link>
+            </Button>
           </div>
         )}
       </CardContent>
