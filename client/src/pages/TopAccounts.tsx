@@ -166,10 +166,9 @@ export default function TopAccounts() {
 
           {/* By Region Tab */}
           <TabsContent value="regions" className="space-y-6">
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-4">
               <Select value={selectedRegion} onValueChange={setSelectedRegion}>
-                <SelectTrigger className="w-48 bg-muted border-border-strong text-foreground">
-                  <SelectValue placeholder="Select region" />
+                <SelectTrigger className="w-48 bg-muted border-border-strong text-foreground" aria-label="Select region"><SelectValue placeholder="Select region" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All regions</SelectItem>
@@ -238,10 +237,9 @@ export default function TopAccounts() {
 
           {/* By AE Tab */}
           <TabsContent value="ae" className="space-y-6">
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-4">
               <Select value={selectedAE} onValueChange={setSelectedAE}>
-                <SelectTrigger className="w-64 bg-muted border-border-strong text-foreground">
-                  <SelectValue placeholder="Select AE" />
+                <SelectTrigger className="w-64 bg-muted border-border-strong text-foreground" aria-label="Select AE"><SelectValue placeholder="Select AE" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All AEs</SelectItem>

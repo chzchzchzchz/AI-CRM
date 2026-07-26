@@ -1,45 +1,45 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { AIAssistant } from "@/components/AIAssistant";
-import { trpc } from "@/lib/trpc";
+import { useState } from"react";
+import { Card, CardContent, CardHeader, CardTitle } from"@/components/ui/card";
+import { Badge } from"@/components/ui/badge";
+import { Button } from"@/components/ui/button";
+import { AIAssistant } from"@/components/AIAssistant";
+import { trpc } from"@/lib/trpc";
 import {
   ArrowLeft, ExternalLink, Users, TrendingUp, Building2,
   Sparkles, Copy, Check, Flame, Mail, Linkedin, Globe,
   Loader2, ChevronRight, Shield, AlertTriangle, RefreshCw, BrainCircuit,
   ArrowUpRight, ArrowDownRight, Minus
-} from "lucide-react";
-import { Link, useParams } from "wouter";
-import { SafeStreamdown } from "@/components/SafeStreamdown";
-import { toast } from "sonner";
-import { CompanyLogo } from "@/components/ui/company-logo";
+} from"lucide-react";
+import { Link, useParams } from"wouter";
+import { SafeStreamdown } from"@/components/SafeStreamdown";
+import { toast } from"sonner";
+import { CompanyLogo } from"@/components/ui/company-logo";
 
 // --- Signal helpers -------------------------------------------------------
 // Heat pairs a tinted color with a word + shape/glyph so it survives greyscale
 // and colour blindness (never colour alone).
 function heatMeta(score: number): { label: string; cls: string; hot: boolean } {
-  if (score >= 80) return { label: "Hot", cls: "text-critical", hot: true };
-  if (score >= 60) return { label: "Warm", cls: "text-caution", hot: false };
-  if (score >= 40) return { label: "Cool", cls: "text-accent", hot: false };
-  return { label: "Cold", cls: "text-ink-muted", hot: false };
+  if (score >= 80) return { label:"Hot", cls:"text-critical", hot: true };
+  if (score >= 60) return { label:"Warm", cls:"text-caution", hot: false };
+  if (score >= 40) return { label:"Cool", cls:"text-accent", hot: false };
+  return { label:"Cold", cls:"text-ink-muted", hot: false };
 }
 
 // Buying-stage colour is a status, not a signal — cyan stays reserved for the
 // AI/intent voice, so stages map to the status ramp instead.
 function stageMeta(stage: string): { cls: string } {
   switch (stage) {
-    case "Purchase": return { cls: "text-positive" };
-    case "Decision": return { cls: "text-accent" };
-    case "Consideration": return { cls: "text-caution" };
-    case "Awareness": return { cls: "text-ink-muted" };
-    default: return { cls: "text-ink-muted" };
+    case"Purchase": return { cls:"text-positive" };
+    case"Decision": return { cls:"text-accent" };
+    case"Consideration": return { cls:"text-caution" };
+    case"Awareness": return { cls:"text-ink-muted" };
+    default: return { cls:"text-ink-muted" };
   }
 }
 
 export default function AccountDetailEnhanced() {
   const { id } = useParams<{ id: string }>();
-  const accountId = parseInt(id || "0");
+  const accountId = parseInt(id ||"0");
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const { data: account, isLoading } = trpc.accounts.getById.useQuery({ id: accountId });
@@ -111,7 +111,7 @@ export default function AccountDetailEnhanced() {
   const intentScore = account.intentScore || 0;
   // Prefer the real 6sense stage (column: sixsenseBuyingStage); fall back to an intent-band
   // inference only when it is genuinely absent. Reading `.buyingStage` — which is not a
-  // column — meant the real stage was never shown and every account looked "Inferred".
+  // column — meant the real stage was never shown and every account looked"Inferred".
   const realBuyingStage = (account as any).sixsenseBuyingStage as string | null | undefined;
   const buyingStage = realBuyingStage || (
     intentScore >= 86 ? 'Purchase' :
@@ -135,7 +135,7 @@ export default function AccountDetailEnhanced() {
   const openDeals = accountOpportunities?.length || 0;
   const pipelineValue = accountOpportunities?.reduce((sum: number, o: any) => sum + Number(o.amount || 0), 0) || 0;
 
-  // "Why now" is composed strictly from fields we actually have. If nothing is
+  //"Why now" is composed strictly from fields we actually have. If nothing is
   // recorded we say so plainly rather than inventing a narrative.
   const whyNowParts: string[] = [];
   whyNowParts.push(`${buyingStage} stage${realBuyingStage ? '' : ' (inferred from intent)'}`);
@@ -206,7 +206,7 @@ export default function AccountDetailEnhanced() {
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0 flex-wrap">
-            <Button size="sm" className="bg-accent text-foreground hover:bg-accent" asChild>
+            <Button size="sm" asChild>
               <Link href="/outreach"><Mail className="mr-1 h-4 w-4" />Outreach</Link>
             </Button>
             {account.linkedinUrl && (
@@ -522,7 +522,7 @@ export default function AccountDetailEnhanced() {
               <CardContent className="px-6">
                 {overviewQuery.isLoading ? (
                   <div className="space-y-2.5 py-1">
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-ink-muted">
+                    <div className="flex items-center gap-2 text-sm text-ink-muted">
                       <Loader2 className="h-4 w-4 animate-spin text-accent" />
                       Generating brief…
                     </div>

@@ -199,7 +199,7 @@ export function SupportBot() {
 
       {/* Input */}
       <div className="flex-shrink-0 p-4 border-t border-border">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}

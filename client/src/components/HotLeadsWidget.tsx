@@ -44,7 +44,7 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
     return (
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
             <Flame className="h-5 w-5 text-critical" />
             <CardTitle className="text-lg">Hot Leads</CardTitle>
           </div>

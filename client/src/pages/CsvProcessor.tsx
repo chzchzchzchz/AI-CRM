@@ -1,18 +1,18 @@
-import { useState, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useState, useCallback } from"react";
+import { Button } from"@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from"@/components/ui/card";
+import { Badge } from"@/components/ui/badge";
+import { Input } from"@/components/ui/input";
+import { Label } from"@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from"@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from"@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from"@/components/ui/alert";
 import {
   Upload, FileSpreadsheet, Sparkles, Download, ArrowRight,
   CheckCircle2, AlertCircle, Loader2, Trash2,
   HelpCircle, Wand2, RefreshCw
-} from "lucide-react";
-import { trpc } from "@/lib/trpc";
+} from"lucide-react";
+import { trpc } from"@/lib/trpc";
 
 interface UploadedFile {
   name: string;
@@ -41,7 +41,7 @@ export default function CsvProcessor() {
   const [contactOwner, setContactOwner] = useState("");
   const [processedCsv, setProcessedCsv] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<Record<string, string>[] | null>(null);
-  const [step, setStep] = useState<"upload" | "configure" | "map" | "preview" | "export">("upload");
+  const [step, setStep] = useState<"upload" |"configure" |"map" |"preview" |"export">("upload");
   const [warnings, setWarnings] = useState<string[]>([]);
   const [confidence, setConfidence] = useState<number>(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -65,7 +65,7 @@ export default function CsvProcessor() {
       const values = parseCSVLine(lines[i]);
       const row: Record<string, string> = {};
       headers.forEach((header, idx) => {
-        row[header] = values[idx] || "";
+        row[header] = values[idx] ||"";
       });
       rows.push(row);
     }
@@ -76,7 +76,7 @@ export default function CsvProcessor() {
   // Parse a single CSV line handling quotes
   const parseCSVLine = (line: string): string[] => {
     const result: string[] = [];
-    let current = "";
+    let current ="";
     let inQuotes = false;
 
     for (let i = 0; i < line.length; i++) {
@@ -88,9 +88,9 @@ export default function CsvProcessor() {
         } else {
           inQuotes = !inQuotes;
         }
-      } else if (char === "," && !inQuotes) {
+      } else if (char ==="," && !inQuotes) {
         result.push(current.trim());
-        current = "";
+        current ="";
       } else {
         current += char;
       }
@@ -121,7 +121,7 @@ export default function CsvProcessor() {
     });
 
     // Reset input
-    event.target.value = "";
+    event.target.value ="";
   }, []);
 
   // Handle drag and drop
@@ -130,7 +130,7 @@ export default function CsvProcessor() {
     const files = event.dataTransfer.files;
     
     Array.from(files).forEach(file => {
-      if (file.type === "text/csv" || file.name.endsWith(".csv")) {
+      if (file.type ==="text/csv" || file.name.endsWith(".csv")) {
         const reader = new FileReader();
         reader.onload = (e) => {
           const text = e.target?.result as string;
@@ -169,7 +169,7 @@ export default function CsvProcessor() {
       file.rows.forEach(row => {
         const newRow: Record<string, string> = {};
         allHeaders.forEach(h => {
-          newRow[h] = row[h] || "";
+          newRow[h] = row[h] ||"";
         });
         allRows.push(newRow);
       });
@@ -230,7 +230,7 @@ export default function CsvProcessor() {
         transformations,
         eventName,
         defaultStatus,
-        contactOwner: contactOwner === "__blank__" ? "" : (contactOwner || undefined),
+        contactOwner: contactOwner ==="__blank__" ?"" : (contactOwner || undefined),
       });
 
       if (result.success) {
@@ -249,11 +249,11 @@ export default function CsvProcessor() {
   const downloadCsv = () => {
     if (!processedCsv) return;
 
-    const blob = new Blob([processedCsv], { type: "text/csv" });
+    const blob = new Blob([processedCsv], { type:"text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${eventName || "processed"}_import.csv`;
+    a.download = `${eventName ||"processed"}_import.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -276,7 +276,7 @@ export default function CsvProcessor() {
     setConfidence(0);
   };
 
-  const steps = ["upload", "configure", "map", "preview", "export"];
+  const steps = ["upload","configure","map","preview","export"];
   const currentStepIndex = steps.indexOf(step);
 
   return (
@@ -304,7 +304,7 @@ export default function CsvProcessor() {
             const isDone = currentStepIndex > i;
             return (
               <div key={s} className="flex items-center">
-                <div className={`flex items-center gap-2 px-4 py-2 rounded-sm text-sm font-medium ${ isCurrent ? "bg-accent text-foreground" : isDone ? "bg-muted text-accent" : "bg-muted text-ink-muted" }`}>
+                <div className={`flex items-center gap-2 px-4 py-2 rounded-sm text-sm font-medium ${ isCurrent ?"" : isDone ?"bg-muted text-accent" :"bg-muted text-ink-muted" }`}>
                   <span className="capitalize"><span className="tabular-nums">{i + 1}.</span> {s}</span>
                 </div>
                 {i < 4 && <ArrowRight className="h-4 w-4 mx-2 text-ink-subtle" />}
@@ -334,7 +334,7 @@ export default function CsvProcessor() {
         <Card className="bg-card border-border shadow-none">
           <CardContent className="p-6">
             {/* Step 1: Upload */}
-            {step === "upload" && (
+            {step ==="upload" && (
               <div className="space-y-6">
                 <div
                   onDrop={handleDrop}
@@ -370,7 +370,7 @@ export default function CsvProcessor() {
                           <div>
                             <p className="font-medium text-foreground">{file.name}</p>
                             <p className="text-sm text-ink-muted">
-                              <span className="tabular-nums text-ink-muted">{file.rowCount}</span> rows •{" "}
+                              <span className="tabular-nums text-ink-muted">{file.rowCount}</span> rows •{""}
                               <span className="tabular-nums text-ink-muted">{file.headers.length}</span> columns
                             </p>
                           </div>
@@ -390,7 +390,7 @@ export default function CsvProcessor() {
             )}
 
             {/* Step 2: Configure */}
-            {step === "configure" && (
+            {step ==="configure" && (
               <div className="space-y-6">
                 <div className="grid gap-6 md:grid-cols-2">
                   <div className="space-y-2">
@@ -403,14 +403,14 @@ export default function CsvProcessor() {
                       className="bg-muted border-border-strong text-foreground placeholder:text-ink-muted"
                     />
                     <p className="text-xs text-ink-muted">
-                      This will populate the "Recent Event" column
+                      This will populate the"Recent Event" column
                     </p>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="defaultStatus" className="text-foreground">Default Attendee Status *</Label>
                     <Select value={defaultStatus} onValueChange={setDefaultStatus}>
-                      <SelectTrigger>
+                      <SelectTrigger aria-label="Default status">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -424,8 +424,7 @@ export default function CsvProcessor() {
                   <div className="space-y-2">
                     <Label htmlFor="contactOwner" className="text-foreground">Contact Owner (optional)</Label>
                     <Select value={contactOwner} onValueChange={setContactOwner}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Leave blank for SDR routing" />
+                      <SelectTrigger aria-label="Leave blank for SDR routing"><SelectValue placeholder="Leave blank for SDR routing" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__blank__">Leave blank (SDR routing)</SelectItem>
@@ -435,7 +434,7 @@ export default function CsvProcessor() {
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-ink-muted">
-                      Required for "Met with sales" status
+                      Required for"Met with sales" status
                     </p>
                   </div>
                 </div>
@@ -444,8 +443,8 @@ export default function CsvProcessor() {
                   <AlertCircle className="h-4 w-4 text-accent" />
                   <AlertTitle className="text-foreground">Data Summary</AlertTitle>
                   <AlertDescription className="text-ink-muted">
-                    <span className="tabular-nums text-ink-muted">{combinedData?.rows.length}</span> total rows from{" "}
-                    <span className="tabular-nums text-ink-muted">{uploadedFiles.length}</span> file(s) •{" "}
+                    <span className="tabular-nums text-ink-muted">{combinedData?.rows.length}</span> total rows from{""}
+                    <span className="tabular-nums text-ink-muted">{uploadedFiles.length}</span> file(s) •{""}
                     <span className="tabular-nums text-ink-muted">{combinedData?.headers.length}</span> columns detected
                   </AlertDescription>
                 </Alert>
@@ -477,7 +476,7 @@ export default function CsvProcessor() {
             )}
 
             {/* Step 3: Map Fields */}
-            {step === "map" && (
+            {step ==="map" && (
               <div className="space-y-6">
                 {warnings.length > 0 && (
                   <Alert variant="destructive">
@@ -518,11 +517,10 @@ export default function CsvProcessor() {
                       </div>
                       <ArrowRight className="h-4 w-4 text-ink-subtle flex-shrink-0" />
                       <Select
-                        value={mappings[field.name] || "__unmapped__"}
-                        onValueChange={(v) => updateMapping(field.name, v === "__unmapped__" ? null : v)}
+                        value={mappings[field.name] ||"__unmapped__"}
+                        onValueChange={(v) => updateMapping(field.name, v ==="__unmapped__" ? null : v)}
                       >
-                        <SelectTrigger className="w-[200px]">
-                          <SelectValue placeholder="Select source column" />
+                        <SelectTrigger className="w-[200px]" aria-label="Select source column"><SelectValue placeholder="Select source column" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__unmapped__">-- Not mapped --</SelectItem>
@@ -562,11 +560,11 @@ export default function CsvProcessor() {
             )}
 
             {/* Step 4: Preview */}
-            {step === "preview" && (
+            {step ==="preview" && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold flex flex-wrap items-center gap-2 text-foreground">
+                    <h3 className="font-semibold flex items-center gap-2 text-foreground">
                       <CheckCircle2 className="h-5 w-5 text-positive" />
                       Processing Complete
                     </h3>
@@ -592,7 +590,7 @@ export default function CsvProcessor() {
                         <tr key={i} className="border-b border-border last:border-0 text-foreground">
                           {templateInfo?.fields.slice(0, 8).map(f => (
                             <td key={f.name} className="p-2 whitespace-nowrap max-w-[150px] truncate">
-                              {row[f.name] || "-"}
+                              {row[f.name] ||"-"}
                             </td>
                           ))}
                         </tr>

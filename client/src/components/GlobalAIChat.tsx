@@ -271,7 +271,7 @@ export function GlobalAIChat() {
           {/* Input Area */}
           <div className="flex-shrink-0 border-t border-border bg-card backdrop-blur-sm">
             <div className="container mx-auto px-6 py-4 max-w-4xl">
-              <div className="flex flex-wrap gap-3">
+              <div className="flex gap-3">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -392,7 +392,7 @@ export function GlobalAIChat() {
         </CardContent>
 
         <div className="flex-shrink-0 border-t border-border p-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2">
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}

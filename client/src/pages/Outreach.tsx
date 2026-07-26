@@ -284,7 +284,7 @@ export default function Outreach() {
             {/* Step 1: Select ONE Account */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-foreground flex flex-wrap items-center gap-2">
+                <CardTitle className="text-foreground flex items-center gap-2">
                   <Building2 className="h-5 w-5 text-muted-foreground" />
                   1. Select Target Account
                 </CardTitle>
@@ -302,7 +302,14 @@ export default function Outreach() {
                     />
                   </div>
                 </div>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                <div
+                  // A scrollable region needs to be reachable by keyboard, or its
+                  // overflowed content is unreachable without a pointer.
+                  tabIndex={0}
+                  role="group"
+                  aria-label="Target accounts"
+                  className="space-y-2 max-h-[300px] overflow-y-auto rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
                   {filteredAccounts.map((account) => {
                     const isSelected = selectedAccountId === account.id;
                     const intentScore = parseInt(String(account.intentScore || 0), 10);
@@ -342,7 +349,13 @@ export default function Outreach() {
             </Card>
 
             {/* Step 2: Select ONE Contact (only shows after account selected) */}
-            <Card className={`transition-opacity ${selectedAccountId ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+            {/* Not dimmed with opacity: halving the card also halves the contrast of
+                the very sentence explaining why it is disabled. Interaction is
+                gated and the state is announced instead. */}
+            <Card
+              aria-disabled={!selectedAccountId}
+              className={selectedAccountId ? undefined : "pointer-events-none"}
+            >
               <CardHeader>
                 <CardTitle className="text-foreground flex flex-wrap items-center gap-2">
                   <Users className="h-5 w-5 text-accent" />
@@ -554,7 +567,7 @@ export default function Outreach() {
                     
                     {/* Refinement Input */}
                     <div className="space-y-2">
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex gap-2">
                         <Input
                           placeholder="Make it shorter, add urgency, change tone..."
                           value={refinementInput}

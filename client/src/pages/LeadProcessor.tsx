@@ -1,14 +1,14 @@
-import { useState, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
+import { useState, useCallback } from"react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from"@/components/ui/card";
+import { Button } from"@/components/ui/button";
+import { Badge } from"@/components/ui/badge";
+import { Progress } from"@/components/ui/progress";
+import { trpc } from"@/lib/trpc";
+import { toast } from"sonner";
 import { 
   Upload, FileSpreadsheet, Download, Sparkles, CheckCircle2, 
   AlertCircle, Loader2, X, FileText, Zap, Settings2
-} from "lucide-react";
+} from"lucide-react";
 
 interface ProcessingResult {
   originalCount: number;
@@ -206,21 +206,9 @@ export default function LeadProcessor() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {[
-              "Field name mapping",
-              "Phone number formatting",
-              "Company name cleaning",
-              "Status standardization",
-              "Email validation",
-              "Personal email filtering",
-              "Title normalization",
-              "Region mapping",
-              "Duplicate detection",
-              "Campaign name generation",
-              "Employee count parsing",
-              "Industry classification"
+            {["Field name mapping","Phone number formatting","Company name cleaning","Status standardization","Email validation","Personal email filtering","Title normalization","Region mapping","Duplicate detection","Campaign name generation","Employee count parsing","Industry classification"
             ].map((rule, i) => (
-              <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
+              <div key={i} className="flex items-center gap-2 text-sm">
                 <CheckCircle2 className="h-4 w-4 text-positive flex-shrink-0" />
                 <span>{rule}</span>
               </div>
@@ -233,7 +221,7 @@ export default function LeadProcessor() {
       <Button
         onClick={processFiles}
         disabled={files.length === 0 || isProcessing}
-        className="w-full bg-accent text-foreground hover:bg-accent py-6 text-lg"
+        className="w-full py-6 text-lg"
       >
         {isProcessing ? (
           <>
@@ -253,9 +241,8 @@ export default function LeadProcessor() {
         <div className="mt-4">
           <Progress value={progress} className="h-2" />
           <p className="text-sm text-muted-foreground mt-2 text-center">
-            {progress < 20 ? "Reading files..." : 
-             progress < 80 ? "AI processing rules..." : 
-             "Finalizing..."}
+            {progress < 20 ?"Reading files..." : 
+             progress < 80 ?"AI processing rules..." :"Finalizing..."}
           </p>
         </div>
       )}
@@ -287,7 +274,7 @@ export default function LeadProcessor() {
 
             {result.issues.length > 0 && (
               <div className="mb-6">
-                <p className="font-medium mb-2 flex flex-wrap items-center gap-2">
+                <p className="font-medium mb-2 flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 text-caution" />
                   Issues Found:
                 </p>

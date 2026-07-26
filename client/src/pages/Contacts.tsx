@@ -1,26 +1,26 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { trpc } from "@/lib/trpc";
-import { Link, useLocation } from "wouter";
+import { useState, useMemo, useCallback, useEffect } from"react";
+import { Card, CardContent } from"@/components/ui/card";
+import { Button } from"@/components/ui/button";
+import { Input } from"@/components/ui/input";
+import { trpc } from"@/lib/trpc";
+import { Link, useLocation } from"wouter";
 import {
   User, Mail, Linkedin, MapPin, Building2, Search, ArrowUpDown, ExternalLink,
   Briefcase, Users, Sparkles, Phone, TrendingUp, Flame, Snowflake, ChevronRight, Target
-} from "lucide-react";
-import { ContextualAI } from "@/components/ContextualAI";
+} from"lucide-react";
+import { ContextualAI } from"@/components/ContextualAI";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useRep } from "@/contexts/RepContext";
-import { RepSwitcher } from "@/components/RepSwitcher";
+} from"@/components/ui/select";
+import { useRep } from"@/contexts/RepContext";
+import { RepSwitcher } from"@/components/RepSwitcher";
 
-type SortField = "name" | "title" | "company";
-type SortOrder = "asc" | "desc";
+type SortField ="name" |"title" |"company";
+type SortOrder ="asc" |"desc";
 
 export default function ContactsEnhanced() {
   const [, navigate] = useLocation();
@@ -88,22 +88,7 @@ export default function ContactsEnhanced() {
   }, [contacts]);
 
   // MFA/Identity Provider options - hardcoded list of identity/auth vendors
-  const MFA_PROVIDERS = [
-    "Ping Identity",
-    "Okta",
-    "Duo Security",
-    "Azure AD",
-    "OneLogin",
-    "ForgeRock",
-    "Auth0",
-    "CyberArk",
-    "RSA SecurID",
-    "SailPoint",
-    "Saviynt",
-    "IBM Security Verify",
-    "Oracle Identity",
-    "SecureAuth",
-    "Thales SafeNet"
+  const MFA_PROVIDERS = ["Ping Identity","Okta","Duo Security","Azure AD","OneLogin","ForgeRock","Auth0","CyberArk","RSA SecurID","SailPoint","Saviynt","IBM Security Verify","Oracle Identity","SecureAuth","Thales SafeNet"
   ];
 
   // Extract MFA/Identity providers found in accounts' techStack
@@ -151,18 +136,18 @@ export default function ContactsEnhanced() {
         territoryAccountIds.has(contact.company?.toLowerCase() || '');
 
       const matchesSearch = !searchQuery ||
-        (contact.name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-        (contact.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-        (contact.company?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-        (contact.email?.toLowerCase() || "").includes(searchQuery.toLowerCase());
+        (contact.name?.toLowerCase() ||"").includes(searchQuery.toLowerCase()) ||
+        (contact.title?.toLowerCase() ||"").includes(searchQuery.toLowerCase()) ||
+        (contact.company?.toLowerCase() ||"").includes(searchQuery.toLowerCase()) ||
+        (contact.email?.toLowerCase() ||"").includes(searchQuery.toLowerCase());
 
-      const matchesCompany = companyFilter === "all" || contact.company === companyFilter;
-      const matchesTitle = titleFilter === "all" ||
+      const matchesCompany = companyFilter ==="all" || contact.company === companyFilter;
+      const matchesTitle = titleFilter ==="all" ||
         contact.title?.toLowerCase().includes(titleFilter.toLowerCase());
 
       // MFA Provider filter - check if contact's company uses the selected MFA provider
       let matchesTech = true;
-      if (techFilter !== "all" && contact.company) {
+      if (techFilter !=="all" && contact.company) {
         const companyTech = accountTechMap.get(contact.company.toLowerCase()) || '';
         const filterLower = techFilter.toLowerCase();
         const shortName = filterLower.split(' ')[0];
@@ -178,24 +163,24 @@ export default function ContactsEnhanced() {
         let aVal: string, bVal: string;
 
         switch (sortField) {
-          case "name":
-            aVal = a.name?.toLowerCase() || "";
-            bVal = b.name?.toLowerCase() || "";
+          case"name":
+            aVal = a.name?.toLowerCase() ||"";
+            bVal = b.name?.toLowerCase() ||"";
             break;
-          case "title":
-            aVal = a.title?.toLowerCase() || "";
-            bVal = b.title?.toLowerCase() || "";
+          case"title":
+            aVal = a.title?.toLowerCase() ||"";
+            bVal = b.title?.toLowerCase() ||"";
             break;
-          case "company":
-            aVal = a.company?.toLowerCase() || "";
-            bVal = b.company?.toLowerCase() || "";
+          case"company":
+            aVal = a.company?.toLowerCase() ||"";
+            bVal = b.company?.toLowerCase() ||"";
             break;
           default:
             return 0;
         }
 
-        if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
-        if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
+        if (aVal < bVal) return sortOrder ==="asc" ? -1 : 1;
+        if (aVal > bVal) return sortOrder ==="asc" ? 1 : -1;
         return 0;
       });
     }
@@ -205,7 +190,7 @@ export default function ContactsEnhanced() {
 
   const handleToggleSort = useCallback((field: SortField) => {
     if (sortField === field) {
-      setSortOrder(order => order === "asc" ? "desc" : "asc");
+      setSortOrder(order => order ==="asc" ?"desc" :"asc");
     } else {
       setSortField(field);
       setSortOrder("asc");
@@ -230,9 +215,9 @@ export default function ContactsEnhanced() {
 
   // Intent heat: tinted text + glyph + word, never color alone.
   const getHeat = (score: number) => {
-    if (score >= 70) return { label: "Hot", Icon: Flame, text: "text-critical" };
-    if (score >= 40) return { label: "Warm", Icon: TrendingUp, text: "text-caution" };
-    return { label: "Cold", Icon: Snowflake, text: "text-accent" };
+    if (score >= 70) return { label:"Hot", Icon: Flame, text:"text-critical" };
+    if (score >= 40) return { label:"Warm", Icon: TrendingUp, text:"text-caution" };
+    return { label:"Cold", Icon: Snowflake, text:"text-accent" };
   };
 
   // Loading state
@@ -259,9 +244,9 @@ export default function ContactsEnhanced() {
   const decisionMakerCount = filteredContacts.filter((c: any) => isDecisionMaker(c.title)).length;
 
   const stats: { key: string; label: string; value: number; Icon: any; text: string; hint: string }[] = [
-    { key: "contacts", label: "Contacts", value: filteredContacts.length, Icon: Users, text: "text-foreground", hint: "In current view" },
-    { key: "companies", label: "Companies", value: companies.length, Icon: Building2, text: "text-foreground", hint: "Unique accounts" },
-    { key: "dm", label: "Decision makers", value: decisionMakerCount, Icon: Briefcase, text: "text-accent", hint: "C-level & VPs" },
+    { key:"contacts", label:"Contacts", value: filteredContacts.length, Icon: Users, text:"text-foreground", hint:"In current view" },
+    { key:"companies", label:"Companies", value: companies.length, Icon: Building2, text:"text-foreground", hint:"Unique accounts" },
+    { key:"dm", label:"Decision makers", value: decisionMakerCount, Icon: Briefcase, text:"text-accent", hint:"C-level & VPs" },
   ];
 
   return (
@@ -273,7 +258,7 @@ export default function ContactsEnhanced() {
           <div>
             <h1 className="text-xl sm:text-xl font-semibold tracking-tight">Contacts</h1>
             <p className="mt-1 text-sm text-ink-muted">
-              <span className="tabular-nums text-ink-muted">{filteredContacts.length}</span> of{" "}
+              <span className="tabular-nums text-ink-muted">{filteredContacts.length}</span> of{""}
               <span className="tabular-nums text-ink-muted">{contacts?.length || 0}</span> contacts
               {repInfo && <> · {repInfo.label} territory</>}
             </p>
@@ -283,12 +268,12 @@ export default function ContactsEnhanced() {
             <Button
               onClick={() => setShowAIPriority(!showAIPriority)}
               variant="outline"
-              className={showAIPriority ? "border-accent/30 bg-accent-subtle text-accent hover:bg-accent-subtle" : ""}
+              className={showAIPriority ?"border-accent/30 bg-accent-subtle text-accent hover:bg-accent-subtle" :""}
             >
               <Sparkles className="mr-2 h-4 w-4" />
-              {showAIPriority ? (isPrioritizing ? "Prioritizing…" : "AI Priority On") : "AI Priority Off"}
+              {showAIPriority ? (isPrioritizing ?"Prioritizing…" :"AI Priority On") :"AI Priority Off"}
             </Button>
-            <Button asChild className="bg-accent text-foreground hover:bg-accent font-medium">
+            <Button asChild className="font-medium">
               <Link href="/outreach">
                 <Mail className="mr-2 h-4 w-4" />
                 Generate Outreach
@@ -305,7 +290,7 @@ export default function ContactsEnhanced() {
           {stats.map((s) => (
             <div key={s.key} className="px-4 py-4 sm:px-5">
               <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-ink-muted">
-                <s.Icon className={`h-3.5 w-3.5 ${s.text === "text-foreground" ? "text-ink-muted" : s.text}`} />
+                <s.Icon className={`h-3.5 w-3.5 ${s.text ==="text-foreground" ?"text-ink-muted" : s.text}`} />
                 {s.label}
               </div>
               <div className={`mt-1.5 text-2xl font-semibold tabular-nums ${s.text}`}>{s.value}</div>
@@ -332,8 +317,7 @@ export default function ContactsEnhanced() {
               </div>
 
               <Select value={companyFilter} onValueChange={setCompanyFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Companies" />
+                <SelectTrigger aria-label="All Companies"><SelectValue placeholder="All Companies" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Companies</SelectItem>
@@ -344,8 +328,7 @@ export default function ContactsEnhanced() {
               </Select>
 
               <Select value={titleFilter} onValueChange={setTitleFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Titles" />
+                <SelectTrigger aria-label="All Titles"><SelectValue placeholder="All Titles" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Titles</SelectItem>
@@ -358,8 +341,7 @@ export default function ContactsEnhanced() {
               </Select>
 
               <Select value={techFilter} onValueChange={setTechFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="MFA Provider" />
+                <SelectTrigger aria-label="MFA Provider"><SelectValue placeholder="MFA Provider" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All MFA</SelectItem>
@@ -374,32 +356,32 @@ export default function ContactsEnhanced() {
             <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border/50">
               <span className="text-xs font-medium text-ink-muted">Sort by</span>
               <Button
-                variant={sortField === "name" ? "default" : "outline"}
+                variant={sortField ==="name" ?"default" :"outline"}
                 size="sm"
                 onClick={() => handleToggleSort("name")}
               >
                 Name
-                {sortField === "name" && (
+                {sortField ==="name" && (
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 )}
               </Button>
               <Button
-                variant={sortField === "company" ? "default" : "outline"}
+                variant={sortField ==="company" ?"default" :"outline"}
                 size="sm"
                 onClick={() => handleToggleSort("company")}
               >
                 Company
-                {sortField === "company" && (
+                {sortField ==="company" && (
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 )}
               </Button>
               <Button
-                variant={sortField === "title" ? "default" : "outline"}
+                variant={sortField ==="title" ?"default" :"outline"}
                 size="sm"
                 onClick={() => handleToggleSort("title")}
               >
                 Title
-                {sortField === "title" && (
+                {sortField ==="title" && (
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 )}
               </Button>
@@ -441,7 +423,7 @@ export default function ContactsEnhanced() {
                   tabIndex={0}
                   onClick={() => navigate(`/contacts/${contact.id}`)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
+                    if (e.key ==="Enter" || e.key ==="") {
                       e.preventDefault();
                       navigate(`/contacts/${contact.id}`);
                     }
@@ -467,7 +449,7 @@ export default function ContactsEnhanced() {
                       )}
                     </div>
                     <div className="mt-0.5 text-xs text-ink-muted truncate">
-                      {contact.title || "No title"}
+                      {contact.title ||"No title"}
                     </div>
                   </div>
 
@@ -481,7 +463,7 @@ export default function ContactsEnhanced() {
                       {contact.department && (
                         <span className="text-[10px] text-ink-muted bg-muted rounded px-1.5 py-0.5">{contact.department}</span>
                       )}
-                      {industry && industry !== "Unknown" && (
+                      {industry && industry !=="Unknown" && (
                         <span className="text-[10px] text-ink-muted bg-muted rounded px-1.5 py-0.5">{industry}</span>
                       )}
                     </div>
@@ -518,7 +500,7 @@ export default function ContactsEnhanced() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          window.open(contact.linkedinUrl, "_blank", "noopener,noreferrer");
+                          window.open(contact.linkedinUrl,"_blank","noopener,noreferrer");
                         }}
                         className="p-1.5 rounded hover:bg-muted hover:text-accent transition-colors"
                       >
@@ -571,9 +553,9 @@ export default function ContactsEnhanced() {
               Previous
             </Button>
             <span className="px-4 py-2 text-sm text-ink-muted">
-              Page <span className="tabular-nums text-ink-muted">{currentPage}</span> of{" "}
+              Page <span className="tabular-nums text-ink-muted">{currentPage}</span> of{""}
               <span className="tabular-nums text-ink-muted">{totalPages}</span>
-              {" "}(<span className="tabular-nums text-ink-muted">{filteredContacts.length}</span> contacts)
+              {""}(<span className="tabular-nums text-ink-muted">{filteredContacts.length}</span> contacts)
             </span>
             <Button
               variant="outline"

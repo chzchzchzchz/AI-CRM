@@ -115,7 +115,7 @@ export default function AITools() {
           <Button
             variant={activeTool === 'analyzer' ? 'default' : 'ghost'}
             onClick={() => setActiveTool('analyzer')}
-            className={activeTool === 'analyzer' ? 'bg-accent text-foreground hover:bg-accent' : ''}
+            className={activeTool === 'analyzer' ? '' : ''}
           >
             <Mic className="w-4 h-4 mr-2" />
             Call Analyzer
@@ -123,7 +123,7 @@ export default function AITools() {
           <Button
             variant={activeTool === 'processor' ? 'default' : 'ghost'}
             onClick={() => setActiveTool('processor')}
-            className={activeTool === 'processor' ? 'bg-accent text-foreground hover:bg-accent' : ''}
+            className={activeTool === 'processor' ? '' : ''}
           >
             <BarChart3 className="w-4 h-4 mr-2" />
             Data Processor
@@ -131,7 +131,7 @@ export default function AITools() {
           <Button
             variant={activeTool === 'content' ? 'default' : 'ghost'}
             onClick={() => setActiveTool('content')}
-            className={activeTool === 'content' ? 'bg-accent text-foreground hover:bg-accent' : ''}
+            className={activeTool === 'content' ? '' : ''}
           >
             <PenTool className="w-4 h-4 mr-2" />
             Content Studio
@@ -352,7 +352,7 @@ BETA INTEREST
 -------------
 Interest Level: ${r.betaInterest.interestLevel}
 Apprehensions: ${r.betaInterest.apprehensions}
-${r.betaInterest.interestQuote ? `Quote: "${r.betaInterest.interestQuote}"` : ''}
+${r.betaInterest.interestQuote ? `Quote:"${r.betaInterest.interestQuote}"` : ''}
 
 TOP QUOTES
 ----------
@@ -693,8 +693,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               <CardContent>
                 <div className="space-y-3">
                   {result.topQuotes.map((quote, i) => (
-                    <p key={i} className="text-sm text-foreground italic border-l border-border-strong pl-3">
-                      "{quote}"
+                    <p key={i} className="text-sm text-foreground italic border-l border-border-strong pl-3">"{quote}"
                     </p>
                   ))}
                 </div>
@@ -755,7 +754,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">I can answer questions about this transcript. What would you like to know?</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2">
               <Input
                 placeholder="Ask a question about the transcript (e.g., 'Did they mention specific competitors?')"
                 value={followUpQuestion}
@@ -779,7 +778,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         {!viewingReport && (
           <Card className="bg-card/50">
             <CardContent className="p-4">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex gap-2">
                 <Input
                   placeholder="Report name..."
                   value={reportName}
@@ -897,7 +896,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           variant={analyzerMode === 'single' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setAnalyzerMode('single')}
-          className={analyzerMode === 'single' ? 'bg-accent text-foreground hover:bg-accent' : ''}
+          className={analyzerMode === 'single' ? '' : ''}
         >
           <FileText className="w-4 h-4 mr-2" />
           Single Analysis
@@ -906,7 +905,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           variant={analyzerMode === 'compare' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setAnalyzerMode('compare')}
-          className={analyzerMode === 'compare' ? 'bg-accent text-foreground hover:bg-accent' : ''}
+          className={analyzerMode === 'compare' ? '' : ''}
         >
           <Layers className="w-4 h-4 mr-2" />
           Compare
@@ -915,7 +914,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           variant={analyzerMode === 'bulk' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setAnalyzerMode('bulk')}
-          className={analyzerMode === 'bulk' ? 'bg-accent text-foreground hover:bg-accent' : ''}
+          className={analyzerMode === 'bulk' ? '' : ''}
         >
           <Users className="w-4 h-4 mr-2" />
           Bulk
@@ -973,7 +972,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
 
           {/* Analyze Button */}
           <Button
-            className="w-full bg-accent text-foreground hover:bg-accent"
+            className="w-full"
             size="lg"
             onClick={handleAnalyze}
             disabled={analyzeMutation.isPending || transcript.length < 100}
@@ -999,7 +998,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
           <Card className="bg-card/50">
             <CardHeader>
-              <CardTitle className="flex flex-wrap items-center gap-2 text-accent">
+              <CardTitle className="flex items-center gap-2 text-accent">
                 <FileText className="w-5 h-5" />
                 First Meeting
               </CardTitle>
@@ -1015,7 +1014,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           </Card>
           <Card className="bg-card/50">
             <CardHeader>
-              <CardTitle className="flex flex-wrap items-center gap-2 text-accent">
+              <CardTitle className="flex items-center gap-2 text-accent">
                 <FileText className="w-5 h-5" />
                 Second Meeting
               </CardTitle>
@@ -1031,7 +1030,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           </Card>
           <div className="lg:col-span-2">
             <Button
-              className="w-full bg-accent text-foreground hover:bg-accent"
+              className="w-full"
               size="lg"
               onClick={handleCompareAnalyze}
               disabled={analyzeMutation.isPending}
@@ -1051,7 +1050,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         <div className="max-w-4xl mx-auto space-y-6">
           <Card className="bg-card/50">
             <CardHeader>
-              <CardTitle className="flex flex-wrap items-center gap-2">
+              <CardTitle className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-positive" />
                 Add Transcripts to Batch ({bulkTranscripts.length} added)
               </CardTitle>
@@ -1099,7 +1098,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           {bulkProcessing && (
             <Card className="bg-positive-subtle border-positive/30">
               <CardContent className="p-4">
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-4">
                   <Loader2 className="w-5 h-5 animate-spin text-positive" />
                   <div className="flex-1">
                     <p className="text-sm text-foreground">Processing {bulkTranscripts.length} transcripts...</p>
@@ -1113,7 +1112,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           )}
 
           <Button
-            className="w-full bg-accent text-foreground hover:bg-accent"
+            className="w-full"
             size="lg"
             onClick={handleBulkAnalyze}
             disabled={bulkProcessing || bulkTranscripts.length === 0}
@@ -1265,7 +1264,7 @@ function DataProcessorTool() {
                   </p>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2 flex-shrink-0">
+              <div className="flex gap-2 flex-shrink-0">
                 <Button variant="ghost" size="sm" onClick={() => fileRef.current?.click()}>
                   Replace
                 </Button>
@@ -1304,7 +1303,7 @@ function DataProcessorTool() {
               CSV Processor page — hand off there rather than faking processing here. */}
           <Button
             asChild
-            className="w-full bg-accent text-foreground hover:bg-accent"
+            className="w-full"
             size="lg"
           >
             <Link href="/csv-processor">
@@ -1357,7 +1356,7 @@ function ContentStudioTool() {
   const handleGenerate = () => {
     setGenerating(true);
     // Fold the user's ideas/suggestions into the context — they were collected and dropped.
-    const mergedContext = [context, suggestions.trim() ? `Ideas & suggestions to include: ${suggestions.trim()}` : ""]
+    const mergedContext = [context, suggestions.trim() ? `Ideas & suggestions to include: ${suggestions.trim()}` :""]
       .filter(Boolean).join("\n\n");
     generateMutation.mutate({
       contentType,
@@ -1457,7 +1456,7 @@ function ContentStudioTool() {
           </Card>
 
           <Button
-            className="w-full bg-accent text-foreground hover:bg-accent"
+            className="w-full"
             size="lg"
             onClick={handleGenerate}
             disabled={generating || generateMutation.isPending}

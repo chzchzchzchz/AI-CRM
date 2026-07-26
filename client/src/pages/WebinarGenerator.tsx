@@ -1,14 +1,14 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
+import { useState } from"react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from"@/components/ui/card";
+import { Button } from"@/components/ui/button";
+import { Textarea } from"@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from"@/components/ui/tabs";
+import { trpc } from"@/lib/trpc";
+import { toast } from"sonner";
 import { 
   Sparkles, Loader2, Copy, CheckCircle2, 
   FileText, Mail, Share2, Video
-} from "lucide-react";
+} from"lucide-react";
 
 interface GeneratedContent {
   landingPage: {
@@ -114,7 +114,7 @@ export default function WebinarGenerator() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex flex-wrap items-center gap-2">
+              <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-positive" />
                 Step 1: Webinar Content
               </CardTitle>
@@ -188,7 +188,7 @@ export default function WebinarGenerator() {
               <CardTitle className="text-base flex items-center justify-between">
                 <span>Style & Brand Settings</span>
                 <span className="text-xs text-muted-foreground">
-                  {showSettings ? "Hide" : "Show"}
+                  {showSettings ?"Hide" :"Show"}
                 </span>
               </CardTitle>
             </CardHeader>
@@ -221,7 +221,7 @@ export default function WebinarGenerator() {
           <Button
             onClick={handleGenerate}
             disabled={!contentAssets.trim() || isGenerating}
-            className="w-full bg-accent text-foreground hover:bg-accent py-6 text-lg"
+            className="w-full py-6 text-lg"
           >
             {isGenerating ? (
               <>

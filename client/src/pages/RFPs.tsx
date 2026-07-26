@@ -116,12 +116,12 @@ export default function RFPs() {
                       href="https://sam.gov/content/system-accounts"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-accent hover:underline"
+                      className="text-accent underline underline-offset-2"
                     >
                       SAM.gov System Accounts
                     </a>
                   </p>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex gap-3">
                     <Input
                       type="password"
                       value={apiKey}
@@ -143,7 +143,7 @@ export default function RFPs() {
           </Card>
         )}
 
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" />
             <Input
@@ -154,7 +154,7 @@ export default function RFPs() {
             />
           </div>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-48 bg-card border-border text-foreground">
+            <SelectTrigger aria-label="Filter by category" className="w-48 bg-card border-border text-foreground">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

@@ -51,7 +51,7 @@ export default function RequestAccess() {
               <p className="text-muted-foreground">
                 Your access request has been submitted. You'll receive an email once your request is reviewed.
               </p>
-              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Mail className="h-4 w-4" />
                 Check your inbox at <span className="font-medium text-foreground">{email}</span>
               </div>
@@ -96,7 +96,7 @@ export default function RequestAccess() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="flex flex-wrap items-center gap-2 p-3 rounded-sm bg-destructive/10 text-destructive text-sm">
+                <div className="flex items-center gap-2 p-3 rounded-sm bg-destructive/10 text-destructive text-sm">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   {error}
                 </div>
@@ -170,7 +170,7 @@ export default function RequestAccess() {
         <div className="text-center space-y-2 text-sm">
           <p className="text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-primary hover:underline">
+            <Link href="/login" className="text-accent underline underline-offset-2">
               Sign in
             </Link>
           </p>
