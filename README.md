@@ -1,4 +1,9 @@
-# TargetDash - AI-Powered Prospect Relationship Layer for Salesforce
+# TargetDash 
+
+The daily revenue command centre for Salesforce.
+
+See who’s hot, what changed overnight, and the next best action for every account; powered by live signals from Gong, 6sense, Clay, and Salesforce. It sits on top of your CRM, not in place of it.
+
 
 ---
 
