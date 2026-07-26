@@ -191,7 +191,7 @@ Uses AI embeddings to score accounts by synthesizing multiple data points:
 * Fit (employees, industry, tech stack)
 * **VECTOR score** = single unified metric for easier prioritization
 
-### 📧ssisted Outreach
+### Assisted Outreach
 
 * Personalized email drafts using account insights
 * Multiple sequences (Ping integration, cold outreach, etc.)
