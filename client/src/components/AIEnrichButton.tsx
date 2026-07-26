@@ -38,7 +38,7 @@ export function AIEnrichButton({ accountId, onEnriched }: AIEnrichButtonProps) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="bg-card border-border text-foreground max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex flex-wrap items-center gap-2">
               <Sparkles className="h-5 w-5 text-accent" />
               AI Account Intelligence
             </DialogTitle>
@@ -66,7 +66,7 @@ export function AIEnrichButton({ accountId, onEnriched }: AIEnrichButtonProps) {
                 <h3 className="text-sm font-semibold text-ink-muted mb-2">Key Insights</h3>
                 <ul className="space-y-2">
                   {insights.insights.map((insight: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2">
+                    <li key={i} className="flex flex-wrap items-start gap-2">
                       <span className="text-accent mt-1">•</span>
                       <span className="text-ink-muted">{insight}</span>
                     </li>
@@ -78,7 +78,7 @@ export function AIEnrichButton({ accountId, onEnriched }: AIEnrichButtonProps) {
                 <h3 className="text-sm font-semibold text-ink-muted mb-2">Recommended Actions</h3>
                 <ul className="space-y-2">
                   {insights.recommendations.map((rec: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2">
+                    <li key={i} className="flex flex-wrap items-start gap-2">
                       <span className="text-accent mt-1">→</span>
                       <span className="text-ink-muted">{rec}</span>
                     </li>

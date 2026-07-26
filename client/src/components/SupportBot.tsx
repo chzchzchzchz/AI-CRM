@@ -113,7 +113,7 @@ export function SupportBot() {
     <Card className="fixed bottom-6 right-6 z-40 flex max-h-[600px] w-96 max-w-[calc(100vw-3rem)] flex-col border-border shadow-xl">
       <CardHeader className="flex-shrink-0 pb-2 border-b border-border">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Sparkles className="size-5 shrink-0 text-ink-faint" />
             <div>
               <CardTitle className="text-base">AI Help</CardTitle>
@@ -164,7 +164,7 @@ export function SupportBot() {
               <div className="ml-0">
                 <button
                   onClick={() => toggleReasoning(i)}
-                  className="flex items-center gap-1 text-[10px] text-ink-subtle hover:text-ink-muted transition-colors py-1"
+                  className="flex flex-wrap items-center gap-1 text-[10px] text-ink-subtle hover:text-ink-muted transition-colors py-1"
                 >
                   {expandedReasoning === i ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   <span>{expandedReasoning === i ? "Hide" : "View"} reasoning</span>
@@ -187,7 +187,7 @@ export function SupportBot() {
         {isLoading && (
           <div className="flex justify-start">
             <div className="bg-muted rounded-sm p-3">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin text-accent" />
                 <span className="text-xs text-ink-muted">Thinking...</span>
               </div>
@@ -199,7 +199,7 @@ export function SupportBot() {
 
       {/* Input */}
       <div className="flex-shrink-0 p-4 border-t border-border">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}

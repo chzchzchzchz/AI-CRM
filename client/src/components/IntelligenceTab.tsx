@@ -109,7 +109,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
   }) => (
     <CollapsibleTrigger asChild>
       <div className="flex items-center justify-between cursor-pointer hover:bg-muted/50 -mx-6 px-6 py-2 rounded-sm transition-colors">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className={`p-2 rounded-sm ${color}`}>
             <Icon className="h-5 w-5 text-foreground" />
           </div>
@@ -118,7 +118,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
             <p className="text-sm text-muted-foreground">{subtitle}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {cached && cacheAge && (
             <Badge variant="outline" className="gap-1 text-xs">
               <Clock className="h-3 w-3" />
@@ -187,7 +187,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               {/* Security Intelligence */}
               {(sixsenseData.mfaSolution || sixsenseData.ssoProvider || sixsenseData.complianceStatus) && (
                 <div className="space-y-3">
-                  <h4 className="font-semibold flex items-center gap-2">
+                  <h4 className="font-semibold flex flex-wrap items-center gap-2">
                     <Shield className="h-4 w-4 text-accent" />
                     Security Stack Intelligence
                   </h4>
@@ -217,7 +217,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               {/* Competitor Intent */}
               {sixsenseData.competitorIntent && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold flex items-center gap-2">
+                  <h4 className="font-semibold flex flex-wrap items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-caution" />
                     Competitor MFA Intent
                   </h4>
@@ -230,7 +230,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               {/* Security Incidents */}
               {sixsenseData.securityIncidents && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold flex items-center gap-2">
+                  <h4 className="font-semibold flex flex-wrap items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-critical" />
                     Recent Security Incidents
                   </h4>
@@ -256,7 +256,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               {/* Cybersecurity Insights */}
               {sixsenseData.cybersecurityInsights && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold flex items-center gap-2">
+                  <h4 className="font-semibold flex flex-wrap items-center gap-2">
                     <Layers className="h-4 w-4 text-accent" />
                     Cybersecurity Insights
                   </h4>
@@ -269,7 +269,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               {/* ABM Brief */}
               {sixsenseData.abmBrief && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold flex items-center gap-2">
+                  <h4 className="font-semibold flex flex-wrap items-center gap-2">
                     <Building2 className="h-4 w-4 text-accent" />
                     ABM Intelligence Brief
                   </h4>
@@ -282,7 +282,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               {/* Keywords */}
               {sixsenseData.keywords && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold flex items-center gap-2">
+                  <h4 className="font-semibold flex flex-wrap items-center gap-2">
                     <Zap className="h-4 w-4 text-caution" />
                     Intent Keywords
                   </h4>
@@ -321,7 +321,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
             <CardContent>
               {overviewQuery.isLoading ? (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-2">
                     <RefreshCw className="h-4 w-4 animate-spin" />
                     Generating AI analysis...
                   </div>
@@ -330,7 +330,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
                   <div className="h-4 bg-muted rounded animate-pulse w-4/6" />
                 </div>
               ) : overviewQuery.isError ? (
-                <div className="text-critical flex items-center gap-2">
+                <div className="text-critical flex flex-wrap items-center gap-2">
                   <AlertTriangle className="h-4 w-4" />
                   Failed to load summary. <Button variant="link" className="p-0 h-auto" onClick={() => overviewQuery.refetch()}>Retry</Button>
                 </div>
@@ -350,7 +350,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
       {(account.description || techStack || securityStack) && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex flex-wrap items-center gap-2">
               <Building2 className="h-5 w-5" />
               Company Description
             </CardTitle>

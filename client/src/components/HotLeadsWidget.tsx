@@ -44,7 +44,7 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
     return (
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Flame className="h-5 w-5 text-critical" />
             <CardTitle className="text-lg">Hot Leads</CardTitle>
           </div>
@@ -113,7 +113,7 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
           {hotLeads?.map((lead, index) => (
             <li
               key={lead.contactId}
-              className="group flex items-start gap-3 px-5 py-3 transition-colors hover:bg-muted/50"
+              className="group flex flex-wrap items-start gap-3 px-5 py-3 transition-colors hover:bg-muted/50"
             >
               <span
                 data-numeric
@@ -123,7 +123,7 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
               </span>
 
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <Link
                     href={`/contacts/${lead.contactId}`}
                     className="truncate text-sm font-medium hover:text-accent"
@@ -169,9 +169,9 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
                 )}
               </div>
 
-              <div className="flex shrink-0 items-center gap-1">
+              <div className="flex flex-wrap shrink-0 items-center gap-1">
                 {/* Contact actions surface on hover but stay reachable by keyboard. */}
-                <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                <div className="flex flex-wrap gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                   {lead.contactEmail && (
                     <Button asChild variant="ghost" size="icon-sm">
                       <a href={`mailto:${lead.contactEmail}`} onClick={e => e.stopPropagation()} aria-label="Email">

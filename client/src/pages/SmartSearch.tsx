@@ -32,7 +32,7 @@ export default function SmartSearch() {
 
       <div className="container py-1 space-y-5 max-w-4xl">
         {/* Header */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="p-2 rounded-sm bg-muted border border-border-strong">
             <Sparkles className="h-5 w-5 text-accent" />
           </div>
@@ -47,7 +47,7 @@ export default function SmartSearch() {
         {/* Search — the one lead action on this screen */}
         <Card>
           <CardContent className="space-y-6">
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted pointer-events-none" />
                 <Input
@@ -78,11 +78,11 @@ export default function SmartSearch() {
                 </p>
                 <p className="text-foreground">{searchResults.explanation}</p>
                 <div className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-ink-muted">Intent</span>
                     <span className="text-accent">{searchResults.intent}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-ink-muted">Matches</span>
                     <span className="tabular-nums text-accent">{searchResults.resultCount ?? 0}</span>
                   </div>
@@ -143,7 +143,7 @@ export default function SmartSearch() {
                 <button
                   key={i}
                   onClick={() => setQuery(example)}
-                  className="group flex items-center justify-between gap-2 w-full text-left p-3 rounded-sm bg-muted hover:bg-muted border border-border-strong hover:border-accent/30 transition-colors text-ink-muted hover:text-foreground"
+                  className="group flex flex-wrap items-center justify-between gap-2 w-full text-left p-3 rounded-sm bg-muted hover:bg-muted border border-border-strong hover:border-accent/30 transition-colors text-ink-muted hover:text-foreground"
                 >
                   <span className="text-sm">{example}</span>
                   <CornerDownLeft className="h-3.5 w-3.5 text-ink-subtle opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />

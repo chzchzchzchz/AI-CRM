@@ -117,7 +117,7 @@ export function AIAssistant({ context }: AIAssistantProps) {
       <Card className={`bg-card border-border-strong shadow-2xl ${isMinimized ? 'h-16' : 'h-[600px]'} flex flex-col`}>
         <CardHeader className="flex-shrink-0 border-b border-border p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Bot className="size-5 shrink-0 text-ink-faint" />
               <div>
                 <CardTitle className="text-foreground text-sm">Sales AI Assistant</CardTitle>
@@ -130,7 +130,7 @@ export function AIAssistant({ context }: AIAssistantProps) {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
@@ -202,7 +202,7 @@ export function AIAssistant({ context }: AIAssistantProps) {
             </CardContent>
 
             <div className="flex-shrink-0 border-t border-border p-4">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}

@@ -44,7 +44,7 @@ export function AIInsightsTab({ accountId }: AIInsightsTabProps) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex flex-wrap items-center gap-2">
                 <Target className="h-5 w-5 text-accent" />
                 Strategic Recommendations
               </CardTitle>
@@ -52,7 +52,7 @@ export function AIInsightsTab({ accountId }: AIInsightsTabProps) {
                 AI-powered buying signals, outreach strategies, and next best actions
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {data?.cached && (
                 <Badge variant="outline" className="gap-1">
                   <Clock className="h-3 w-3" />
@@ -73,7 +73,7 @@ export function AIInsightsTab({ accountId }: AIInsightsTabProps) {
         <CardContent className="space-y-4">
           {(isLoading || isFetching) ? (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-4">
                 <RefreshCw className="h-4 w-4 animate-spin" />
                 {forceRefresh ? "Regenerating insights..." : "Loading insights..."}
               </div>

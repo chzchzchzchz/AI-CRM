@@ -29,7 +29,7 @@ function AccountRow({ account, index }: { account: any; index: number }) {
   const meta = heatMeta(account.intentScoreNum);
   return (
     <Link href={`/accounts/${account.id}`}>
-      <div className="flex items-center gap-3 rounded-sm px-2 py-2 transition-colors hover:bg-muted cursor-pointer group">
+      <div className="flex flex-wrap items-center gap-3 rounded-sm px-2 py-2 transition-colors hover:bg-muted cursor-pointer group">
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted border border-border-strong tabular-nums text-xs text-ink-muted">
           {index + 1}
         </span>
@@ -102,7 +102,7 @@ export default function TopAccounts() {
     const meta = heatMeta(account.intentScoreNum);
     return (
       <Link key={account.id} href={`/accounts/${account.id}`}>
-        <div className="flex items-center gap-4 rounded-sm px-3 py-3 transition-colors hover:bg-muted cursor-pointer group">
+        <div className="flex flex-wrap items-center gap-4 rounded-sm px-3 py-3 transition-colors hover:bg-muted cursor-pointer group">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted border border-border-strong tabular-nums text-sm text-ink-muted">
             {index + 1}
           </span>
@@ -141,7 +141,7 @@ export default function TopAccounts() {
     <div>
       <div className="container py-1 max-w-7xl">
         {/* Header */}
-        <div className="mb-8 flex items-start gap-3">
+        <div className="mb-8 flex flex-wrap items-start gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm bg-muted border border-border-strong">
             <Target className="h-5 w-5 text-accent" />
           </div>
@@ -186,8 +186,8 @@ export default function TopAccounts() {
                 {REGIONS.map(region => (
                   <Card key={region} className={CARD}>
                     <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <CardTitle className="text-base flex flex-wrap items-center gap-2 text-foreground">
                           <MapPin className="h-4 w-4 text-accent" />
                           {region}
                         </CardTitle>
@@ -216,8 +216,8 @@ export default function TopAccounts() {
             ) : (
               <Card className={CARD}>
                 <CardHeader>
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <CardTitle className="text-base flex flex-wrap items-center gap-2 text-foreground">
                       <MapPin className="h-4 w-4 text-accent" />
                       {selectedRegion} region · top 15
                     </CardTitle>
@@ -262,13 +262,13 @@ export default function TopAccounts() {
                   return (
                     <Card key={ae.email} className={CARD}>
                       <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <div>
-                            <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                            <CardTitle className="text-base flex flex-wrap items-center gap-2 text-foreground">
                               <UserCircle className="h-4 w-4 text-accent" />
                               {ae.name}
                             </CardTitle>
-                            <CardDescription className="mt-1 flex items-center gap-1.5 text-ink-muted">
+                            <CardDescription className="mt-1 flex flex-wrap items-center gap-1.5 text-ink-muted">
                               <MapPin className="h-3 w-3" />
                               {ae.region} · {ae.size} employees
                             </CardDescription>
@@ -302,13 +302,13 @@ export default function TopAccounts() {
             ) : (
               <Card className={CARD}>
                 <CardHeader>
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                      <CardTitle className="text-base flex flex-wrap items-center gap-2 text-foreground">
                         <UserCircle className="h-4 w-4 text-accent" />
                         {AE_LIST.find(ae => ae.email === selectedAE)?.name}'s weekly priority accounts
                       </CardTitle>
-                      <CardDescription className="mt-1 flex items-center gap-1.5 text-ink-muted">
+                      <CardDescription className="mt-1 flex flex-wrap items-center gap-1.5 text-ink-muted">
                         <MapPin className="h-3 w-3" />
                         {AE_LIST.find(ae => ae.email === selectedAE)?.region} ·{" "}
                         {AE_LIST.find(ae => ae.email === selectedAE)?.size} employees
@@ -319,7 +319,7 @@ export default function TopAccounts() {
                         {getAEAccounts(selectedAE).length} accounts
                       </Badge>
                       {repStats && (
-                        <div className="flex gap-3 text-xs">
+                        <div className="flex flex-wrap gap-3 text-xs">
                           <span className="inline-flex items-center gap-1 font-medium text-positive">
                             <span aria-hidden>▲</span>
                             <span className="tabular-nums">{repStats.hotLeads}</span> hot

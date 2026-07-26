@@ -278,7 +278,7 @@ export default function ContactsEnhanced() {
               {repInfo && <> · {repInfo.label} territory</>}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <RepSwitcher />
             <Button
               onClick={() => setShowAIPriority(!showAIPriority)}
@@ -304,7 +304,7 @@ export default function ContactsEnhanced() {
         <div className="grid grid-cols-3 rounded-md border border-border/60 bg-card divide-x divide-border/50 overflow-hidden">
           {stats.map((s) => (
             <div key={s.key} className="px-4 py-4 sm:px-5">
-              <div className="flex items-center gap-2 text-xs font-medium text-ink-muted">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-ink-muted">
                 <s.Icon className={`h-3.5 w-3.5 ${s.text === "text-foreground" ? "text-ink-muted" : s.text}`} />
                 {s.label}
               </div>
@@ -404,7 +404,7 @@ export default function ContactsEnhanced() {
                 )}
               </Button>
               {showAIPriority && (
-                <span className="ml-1 flex items-center gap-1 text-xs text-accent">
+                <span className="ml-1 flex flex-wrap items-center gap-1 text-xs text-accent">
                   <Sparkles className="h-3.5 w-3.5" />
                   Ordered by AI priority
                 </span>
@@ -446,7 +446,7 @@ export default function ContactsEnhanced() {
                       navigate(`/contacts/${contact.id}`);
                     }
                   }}
-                  className="group flex items-center gap-4 px-4 py-3 cursor-pointer transition-colors hover:bg-surface/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+                  className="group flex flex-wrap items-center gap-4 px-4 py-3 cursor-pointer transition-colors hover:bg-surface/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
                 >
                   {/* Avatar */}
                   <div className="w-9 h-9 rounded-sm bg-muted border border-border/60 flex items-center justify-center flex-shrink-0">
@@ -455,7 +455,7 @@ export default function ContactsEnhanced() {
 
                   {/* Identity */}
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-[15px] text-foreground truncate group-hover:text-accent transition-colors">
                         {contact.name}
                       </span>
@@ -473,7 +473,7 @@ export default function ContactsEnhanced() {
 
                   {/* Company + tags */}
                   <div className="hidden md:block w-48 flex-shrink-0 min-w-0">
-                    <div className="flex items-center gap-1.5 text-sm text-ink-muted truncate">
+                    <div className="flex flex-wrap items-center gap-1.5 text-sm text-ink-muted truncate">
                       <Building2 className="h-3.5 w-3.5 text-ink-subtle flex-shrink-0" />
                       <span className="truncate">{contact.company}</span>
                     </div>
@@ -529,7 +529,7 @@ export default function ContactsEnhanced() {
                   </div>
 
                   {/* Account intent */}
-                  <div className="flex items-center gap-3 flex-shrink-0 pl-1">
+                  <div className="flex flex-wrap items-center gap-3 flex-shrink-0 pl-1">
                     <div className="text-right w-14">
                       {hasScore ? (
                         <>
@@ -553,7 +553,7 @@ export default function ContactsEnhanced() {
 
         {/* Pagination Controls */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-8">
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-8">
             <Button
               variant="outline"
               size="sm"

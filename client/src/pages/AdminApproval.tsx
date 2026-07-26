@@ -224,7 +224,7 @@ export default function AdminApproval() {
             {/* Pending User Registrations */}
             <Card className="bg-card border-border">
               <CardHeader>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <UserCheck className="size-5 shrink-0 text-ink-faint" />
                   <div>
                     <CardTitle className="text-foreground">Pending User Registrations</CardTitle>
@@ -253,16 +253,16 @@ export default function AdminApproval() {
                         key={u.id}
                         className="p-4 bg-muted border border-border-strong rounded-sm hover:border-border-strong transition-colors"
                       >
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
                           <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
+                            <div className="flex flex-wrap items-center gap-3 mb-2">
                               <h3 className="text-lg font-semibold text-foreground">{u.name}</h3>
                               <Badge variant="outline" className="bg-caution-subtle text-caution border-caution/30">
                                 Pending
                               </Badge>
                             </div>
                             <div className="space-y-2 text-sm text-ink-muted">
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <Mail className="h-4 w-4" />
                                 <span>{u.email}</span>
                               </div>
@@ -271,7 +271,7 @@ export default function AdminApproval() {
                               Registered {new Date(u.createdAt).toLocaleDateString()}
                             </p>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
                             <Button
                               size="sm"
                               className="gap-2 bg-positive hover:bg-positive text-positive-foreground"
@@ -307,7 +307,7 @@ export default function AdminApproval() {
             {/* Pending Access Requests */}
             <Card className="bg-card border-border">
               <CardHeader>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <Shield className="size-5 shrink-0 text-ink-faint" />
                   <div>
                     <CardTitle className="text-foreground">Demo Access Requests</CardTitle>
@@ -338,9 +338,9 @@ export default function AdminApproval() {
                       key={request.id}
                       className="p-4 bg-muted border border-border-strong rounded-sm hover:border-border-strong transition-colors"
                     >
-                      <div className="flex items-start justify-between gap-4">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
+                          <div className="flex flex-wrap items-center gap-3 mb-2">
                             <h3 className="text-lg font-semibold text-foreground">{request.name}</h3>
                             <Badge variant="outline" className="bg-caution-subtle text-caution border-caution/30">
                               Pending
@@ -348,18 +348,18 @@ export default function AdminApproval() {
                           </div>
 
                           <div className="space-y-2 text-sm text-ink-muted">
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               <Mail className="h-4 w-4" />
                               <span>{request.email}</span>
                             </div>
                             {request.company && (
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <Building2 className="h-4 w-4" />
                                 <span>{request.company}</span>
                               </div>
                             )}
                             {request.reason && (
-                              <div className="flex items-start gap-2 mt-3">
+                              <div className="flex flex-wrap items-start gap-2 mt-3">
                                 <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0" />
                                 <p className="text-ink-muted">{request.reason}</p>
                               </div>
@@ -371,7 +371,7 @@ export default function AdminApproval() {
                           </p>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button
                             size="sm"
                             className="gap-2 bg-positive hover:bg-positive text-positive-foreground"
@@ -414,7 +414,7 @@ export default function AdminApproval() {
           <TabsContent value="users">
             <Card className="bg-card border-border">
               <CardHeader>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <Users className="size-5 shrink-0 text-ink-faint" />
                   <div>
                     <CardTitle className="text-foreground">All Users</CardTitle>
@@ -440,7 +440,7 @@ export default function AdminApproval() {
                         className="flex items-center justify-between p-4 bg-muted border border-border-strong rounded-sm hover:border-border-strong transition-colors"
                       >
                         <div className="flex-1">
-                          <div className="flex items-center gap-3">
+                          <div className="flex flex-wrap items-center gap-3">
                             <p className="text-foreground font-medium">{u.name || 'No name'}</p>
                             {u.isApproved ? (
                               <Badge variant="outline" className="bg-positive-subtle text-positive border-positive/30">
@@ -462,7 +462,7 @@ export default function AdminApproval() {
                             {u.loginMethod} • Last sign in: {u.lastSignedIn ? new Date(u.lastSignedIn).toLocaleDateString() : 'Never'}
                           </p>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           <Select
                             value={u.role}
                             onValueChange={(value: "user" | "admin") => 

@@ -76,28 +76,28 @@ export default function SixsenseAnalytics() {
         {/* 6QA headline funnel row: total → worked → gap → ready-to-buy (tonal grid, no colored stripes) */}
         <div className="mb-8 grid grid-cols-2 md:grid-cols-4 gap-px bg-muted rounded-sm overflow-hidden border border-border">
           <div className="bg-card p-4">
-            <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
               <Zap className="h-3.5 w-3.5 text-accent" /> Total 6QAs
             </div>
             <div className="mt-2 tabular-nums text-2xl text-accent">{summary?.sixQA?.total || 0}</div>
             <div className="mt-1 text-xs text-ink-muted">qualified accounts</div>
           </div>
           <div className="bg-card p-4">
-            <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
               <span aria-hidden className="text-positive">▲</span> Worked
             </div>
             <div className="mt-2 tabular-nums text-2xl text-positive">{summary?.sixQA?.worked || 0}</div>
             <div className="mt-1 text-xs text-ink-muted">{workedPct}% of 6QAs</div>
           </div>
           <div className="bg-card p-4">
-            <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
               <span aria-hidden className="text-caution">●</span> Unworked gap
             </div>
             <div className="mt-2 tabular-nums text-2xl text-caution">{summary?.sixQA?.unworked || 0}</div>
             <div className="mt-1 text-xs text-ink-muted">{100 - workedPct}% opportunity gap</div>
           </div>
           <div className="bg-card p-4">
-            <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
               <ShoppingCart className="h-3.5 w-3.5 text-accent" /> Decision + purchase
             </div>
             <div className="mt-2 tabular-nums text-2xl text-foreground">
@@ -127,7 +127,7 @@ export default function SixsenseAnalytics() {
           <TabsContent value="funnel" className="space-y-4">
             <Card className={CARD}>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                <CardTitle className="text-base flex flex-wrap items-center gap-2 text-foreground">
                   <Target className="h-4 w-4 text-accent" />
                   Buying-stage funnel
                 </CardTitle>
@@ -145,11 +145,11 @@ export default function SixsenseAnalytics() {
                     return (
                       <div key={stage.stage}>
                         <div className="flex items-center justify-between mb-1.5">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             {stageIcons[stage.stage]}
                             <span className="text-sm text-ink-muted">{stage.stage}</span>
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex flex-wrap items-center gap-3">
                             <span className="tabular-nums text-xs text-ink-muted">{percentage}%</span>
                             <span className="tabular-nums text-sm text-foreground w-12 text-right">{stage.accounts}</span>
                           </div>
@@ -176,7 +176,7 @@ export default function SixsenseAnalytics() {
           <TabsContent value="engagement" className="space-y-6">
             <Card className={CARD}>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                <CardTitle className="text-base flex flex-wrap items-center gap-2 text-foreground">
                   <Activity className="h-4 w-4 text-accent" />
                   Engagement breakdown
                 </CardTitle>
@@ -202,10 +202,10 @@ export default function SixsenseAnalytics() {
 
             {/* Engagement Gap Alert — amber tint, 1px border (no accent stripe), glyph + word */}
             <div className="rounded-sm bg-caution/[0.08] border border-caution/30 p-4">
-              <div className="flex items-start gap-3">
+              <div className="flex flex-wrap items-start gap-3">
                 <AlertTriangle className="h-5 w-5 shrink-0 text-caution" />
                 <div>
-                  <div className="text-sm font-medium text-caution flex items-center gap-1.5">
+                  <div className="text-sm font-medium text-caution flex flex-wrap items-center gap-1.5">
                     <span aria-hidden>●</span> Engagement gap
                   </div>
                   <p className="mt-1 text-sm text-ink-muted">
@@ -229,7 +229,7 @@ export default function SixsenseAnalytics() {
           <TabsContent value="keywords" className="space-y-6">
             <Card className={CARD}>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                <CardTitle className="text-base flex flex-wrap items-center gap-2 text-foreground">
                   <Hash className="h-4 w-4 text-accent" />
                   Intent keywords
                 </CardTitle>
@@ -326,7 +326,7 @@ export default function SixsenseAnalytics() {
                       const Icon = m.icon;
                       return (
                         <div key={m.label} className="p-4 rounded-sm bg-muted border border-border">
-                          <div className="flex items-center gap-1.5 text-xs text-ink-muted">
+                          <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
                             <Icon className="h-3.5 w-3.5" /> {m.label}
                           </div>
                           <div className="mt-1 tabular-nums text-2xl text-foreground">
@@ -344,11 +344,11 @@ export default function SixsenseAnalytics() {
                   <h4 className="mb-4 text-sm font-semibold text-foreground">6QA trend · last 10 days</h4>
                   <div className="space-y-2">
                     {performance?.trend?.slice(-10).map((day) => (
-                      <div key={String(day.day)} className="flex items-center gap-4">
+                      <div key={String(day.day)} className="flex flex-wrap items-center gap-4">
                         <span className="w-24 tabular-nums text-xs text-ink-muted">
                           {new Date(day.day!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                         </span>
-                        <div className="flex-1 flex items-center gap-2">
+                        <div className="flex-1 flex flex-wrap items-center gap-2">
                           <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden flex">
                             <div className="h-full bg-positive" style={{ width: `${((day.worked || 0) / (day.total6QAs || 1)) * 100}%` }} />
                             <div className="h-full bg-caution" style={{ width: `${((day.unworked || 0) / (day.total6QAs || 1)) * 100}%` }} />
@@ -360,11 +360,11 @@ export default function SixsenseAnalytics() {
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 flex gap-4 text-xs text-ink-muted">
-                    <span className="flex items-center gap-1.5">
+                  <div className="mt-3 flex flex-wrap gap-4 text-xs text-ink-muted">
+                    <span className="flex flex-wrap items-center gap-1.5">
                       <span aria-hidden className="text-positive">▲</span> Worked
                     </span>
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex flex-wrap items-center gap-1.5">
                       <span aria-hidden className="text-caution">●</span> Unworked
                     </span>
                   </div>

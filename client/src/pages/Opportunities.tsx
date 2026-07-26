@@ -95,7 +95,7 @@ export default function Opportunities() {
           </Button>
         </div>
 
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex flex-wrap gap-4 overflow-x-auto pb-4">
           {STAGES.map((stage) => {
             const inStage = allOpps.filter((o: any) => o.stage === stage);
             const stageValue = inStage.reduce((s: number, o: any) => s + (Number(o.amount) || 0), 0);
@@ -104,8 +104,8 @@ export default function Opportunities() {
 
             return (
               <div key={stage} className="w-[280px] shrink-0">
-                <div className="flex items-baseline justify-between gap-2 mb-3 pb-2 border-b border-border px-1">
-                  <h3 className="text-sm font-semibold flex items-center gap-2 min-w-0">
+                <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3 pb-2 border-b border-border px-1">
+                  <h3 className="text-sm font-semibold flex flex-wrap items-center gap-2 min-w-0">
                     <span className="truncate text-foreground">{stage}</span>
                     <span className="tabular-nums text-xs text-ink-muted shrink-0">{inStage.length}</span>
                   </h3>
@@ -139,7 +139,7 @@ export default function Opportunities() {
                         className="bg-card border-border gap-0 py-0 rounded-sm shadow-none"
                       >
                         <CardContent className="p-4">
-                          <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
                             <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${st.cls}`}>
                               <span aria-hidden="true">{st.glyph}</span>
                               {st.label}
@@ -153,7 +153,7 @@ export default function Opportunities() {
                             {opp.name}
                           </h4>
 
-                          <div className="flex items-center gap-1.5 text-xs text-ink-muted mb-3">
+                          <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-muted mb-3">
                             <CalendarDays className="h-3.5 w-3.5 shrink-0" />
                             <span>
                               {opp.expectedCloseDate
@@ -163,7 +163,7 @@ export default function Opportunities() {
                           </div>
 
                           {/* Two distinct, labeled figures: CRM's stated probability vs the AI's success score. */}
-                          <div className="flex items-center gap-5 pt-3 border-t border-border">
+                          <div className="flex flex-wrap items-center gap-5 pt-3 border-t border-border">
                             <div className="flex flex-col gap-0.5">
                               <span className="text-[11px] text-ink-muted">CRM prob</span>
                               <span className="tabular-nums text-sm text-foreground">

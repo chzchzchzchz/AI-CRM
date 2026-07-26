@@ -98,7 +98,7 @@ export default function WebinarGenerator() {
     <div className="container py-1 max-w-5xl">
       {/* Header */}
       <div className="mb-8 text-center">
-        <div className="flex items-center justify-center gap-3 mb-2">
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-2">
           <div className="p-2 bg-muted border border-border-strong rounded-md">
             <Video className="h-6 w-6 text-foreground" />
           </div>
@@ -114,7 +114,7 @@ export default function WebinarGenerator() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex flex-wrap items-center gap-2">
                 <FileText className="h-5 w-5 text-positive" />
                 Step 1: Webinar Content
               </CardTitle>
@@ -260,15 +260,15 @@ export default function WebinarGenerator() {
           {generatedContent && (
             <Tabs defaultValue="landing" className="h-full">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="landing" className="flex items-center gap-1">
+                <TabsTrigger value="landing" className="flex flex-wrap items-center gap-1">
                   <FileText className="h-4 w-4" />
                   Landing
                 </TabsTrigger>
-                <TabsTrigger value="email" className="flex items-center gap-1">
+                <TabsTrigger value="email" className="flex flex-wrap items-center gap-1">
                   <Mail className="h-4 w-4" />
                   Emails
                 </TabsTrigger>
-                <TabsTrigger value="social" className="flex items-center gap-1">
+                <TabsTrigger value="social" className="flex flex-wrap items-center gap-1">
                   <Share2 className="h-4 w-4" />
                   Social
                 </TabsTrigger>

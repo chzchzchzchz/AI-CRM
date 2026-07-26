@@ -78,7 +78,7 @@ export default function SixsenseSync() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               <Button
                 onClick={() => handleSyncAll(10)}
                 disabled={syncing}

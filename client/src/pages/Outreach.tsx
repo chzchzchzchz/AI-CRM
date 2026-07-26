@@ -266,7 +266,7 @@ export default function Outreach() {
   return (
     <div>
       <div className="container py-1 space-y-5 max-w-7xl">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="p-2 rounded-sm bg-muted border border-border-strong">
             <Sparkles className="h-5 w-5 text-accent" />
           </div>
@@ -284,7 +284,7 @@ export default function Outreach() {
             {/* Step 1: Select ONE Account */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-foreground flex items-center gap-2">
+                <CardTitle className="text-foreground flex flex-wrap items-center gap-2">
                   <Building2 className="h-5 w-5 text-muted-foreground" />
                   1. Select Target Account
                 </CardTitle>
@@ -344,7 +344,7 @@ export default function Outreach() {
             {/* Step 2: Select ONE Contact (only shows after account selected) */}
             <Card className={`transition-opacity ${selectedAccountId ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
               <CardHeader>
-                <CardTitle className="text-foreground flex items-center gap-2">
+                <CardTitle className="text-foreground flex flex-wrap items-center gap-2">
                   <Users className="h-5 w-5 text-accent" />
                   2. Select Contact
                 </CardTitle>
@@ -444,7 +444,7 @@ export default function Outreach() {
                   {attachedFiles.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {attachedFiles.map((file, i) => (
-                        <Badge key={i} variant="secondary" className="flex items-center gap-1 bg-muted">
+                        <Badge key={i} variant="secondary" className="flex flex-wrap items-center gap-1 bg-muted">
                           <File className="h-3 w-3" />
                           <span className="max-w-[150px] truncate text-xs">{file.name}</span>
                           <button onClick={() => removeFile(i)} className="ml-1 hover:text-critical">
@@ -490,7 +490,7 @@ export default function Outreach() {
                   <CollapsibleTrigger asChild>
                     <CardHeader className="cursor-pointer hover:bg-muted transition-colors">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-foreground flex items-center gap-2">
+                        <CardTitle className="text-foreground flex flex-wrap items-center gap-2">
                           <FileText className="h-5 w-5 text-caution" />
                           Strategy & Notes
                         </CardTitle>
@@ -518,7 +518,7 @@ export default function Outreach() {
             <Card className="bg-card border-border sticky top-8">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-foreground flex items-center gap-2">
+                  <CardTitle className="text-foreground flex flex-wrap items-center gap-2">
                     <Mail className="h-5 w-5 text-positive" />
                     Ready-to-Send Email
                   </CardTitle>
@@ -554,7 +554,7 @@ export default function Outreach() {
                     
                     {/* Refinement Input */}
                     <div className="space-y-2">
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Input
                           placeholder="Make it shorter, add urgency, change tone..."
                           value={refinementInput}
@@ -583,7 +583,7 @@ export default function Outreach() {
                     {/* View Reasoning (Optional) */}
                     {rawReasoning && (
                       <Collapsible open={isReasoningOpen} onOpenChange={setIsReasoningOpen}>
-                        <CollapsibleTrigger className="flex items-center gap-1 text-xs text-ink-muted hover:text-ink-muted">
+                        <CollapsibleTrigger className="flex flex-wrap items-center gap-1 text-xs text-ink-muted hover:text-ink-muted">
                           {isReasoningOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                           {isReasoningOpen ? 'Hide' : 'View'} AI reasoning
                         </CollapsibleTrigger>
@@ -598,7 +598,7 @@ export default function Outreach() {
                     )}
                     
                     {/* Send Buttons */}
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3">
                       <Button asChild variant="outline" className="flex-1">
                         <a
                           href={getGmailUrl()}

@@ -86,7 +86,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0 gap-0 bg-card border-border">
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-border">
           <Search className="h-5 w-5 text-ink-muted" />
           <Input
             placeholder="Search accounts, contacts, or calls..."
@@ -120,7 +120,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                       <button
                         key={account.id}
                         onClick={() => handleSelect('account', account.id)}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-sm hover:bg-muted transition-colors text-left"
+                        className="w-full flex flex-wrap items-center gap-3 px-3 py-2 rounded-sm hover:bg-muted transition-colors text-left"
                       >
                         <Building2 className="size-5 shrink-0 text-ink-faint" />
                         <div className="flex-1 min-w-0">
@@ -146,7 +146,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                       <button
                         key={person.id}
                         onClick={() => handleSelect('contact', person.id)}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-sm hover:bg-muted transition-colors text-left"
+                        className="w-full flex flex-wrap items-center gap-3 px-3 py-2 rounded-sm hover:bg-muted transition-colors text-left"
                       >
                         <User className="size-5 shrink-0 text-ink-faint" />
                         <div className="flex-1 min-w-0">
@@ -172,7 +172,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                       <button
                         key={call.id}
                         onClick={() => handleSelect('call', call.id)}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-sm hover:bg-muted transition-colors text-left"
+                        className="w-full flex flex-wrap items-center gap-3 px-3 py-2 rounded-sm hover:bg-muted transition-colors text-left"
                       >
                         <Phone className="size-5 shrink-0 text-ink-faint" />
                         <div className="flex-1 min-w-0">

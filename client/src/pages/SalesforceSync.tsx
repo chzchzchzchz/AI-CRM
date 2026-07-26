@@ -58,8 +58,10 @@ export default function SalesforceSync() {
           <dl className="space-y-1.5">
             {SETUP_STEPS.map(step => (
               <div key={step.key} className="flex flex-wrap items-baseline gap-2">
-                <dt>
-                  <code className="rounded-xs bg-muted px-1.5 py-0.5 font-mono text-2xs text-foreground">
+                <dt className="min-w-0">
+                  {/* These identifiers have no spaces, so they need an explicit
+                      break opportunity or they set the card's minimum width. */}
+                  <code className="rounded-xs bg-muted px-1.5 py-0.5 font-mono text-2xs break-all text-foreground">
                     {step.key}
                   </code>
                 </dt>

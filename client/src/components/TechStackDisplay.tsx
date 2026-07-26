@@ -18,7 +18,7 @@ export function TechStackDisplay({ techStack, securityStack }: TechStackDisplayP
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex flex-wrap items-center gap-2">
           <BarChart3 className="h-5 w-5 text-accent" />
           Technology Stack
         </CardTitle>
@@ -30,7 +30,7 @@ export function TechStackDisplay({ techStack, securityStack }: TechStackDisplayP
         {/* Tech Stack */}
         {hasTechStack && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Server className="h-4 w-4 text-accent" />
               <h4 className="font-semibold text-sm">Technology Stack</h4>
             </div>
@@ -51,7 +51,7 @@ export function TechStackDisplay({ techStack, securityStack }: TechStackDisplayP
         {/* Security Stack */}
         {hasSecurityStack && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Shield className="h-4 w-4 text-critical" />
               <h4 className="font-semibold text-sm">Security Stack</h4>
             </div>

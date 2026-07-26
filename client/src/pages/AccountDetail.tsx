@@ -175,14 +175,14 @@ export default function AccountDetailEnhanced() {
       <div className="container py-1 space-y-5 max-w-7xl">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex flex-wrap items-center gap-3 min-w-0">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/accounts"><ArrowLeft className="h-5 w-5" /></Link>
             </Button>
             {/* Company Logo */}
             <CompanyLogo name={account.name} website={account.domain} size="xl" />
             <div className="min-w-0">
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <h1 className="text-2xl font-semibold tracking-tight truncate">{account.name}</h1>
                 {/* Stage badge: colour + word + shape */}
                 <span className={`inline-flex items-center gap-1.5 rounded-sm bg-muted px-2.5 py-1 text-xs font-medium ${stage.cls}`}>
@@ -193,7 +193,7 @@ export default function AccountDetailEnhanced() {
               <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-sm text-ink-muted mt-0.5">
                 {account.domain && (
                   <a href={`https://${account.domain}`} target="_blank" rel="noopener noreferrer"
-                     className="flex items-center gap-1 hover:text-accent transition-colors">
+                     className="flex flex-wrap items-center gap-1 hover:text-accent transition-colors">
                     <Globe className="h-3 w-3" />{account.domain}
                   </a>
                 )}
@@ -229,14 +229,14 @@ export default function AccountDetailEnhanced() {
           <CardContent className="px-6">
             <div className="grid gap-6 lg:grid-cols-[minmax(0,auto)_1fr]">
               {/* Intent score — the signal, in cyan mono */}
-              <div className="flex items-start gap-5 lg:border-r lg:border-border lg:pr-8">
+              <div className="flex flex-wrap items-start gap-5 lg:border-r lg:border-border lg:pr-8">
                 <div>
                   <div className="text-xs text-ink-muted">Intent score</div>
-                  <div className="flex items-end gap-2">
+                  <div className="flex flex-wrap items-end gap-2">
                     <span className="tabular-nums text-6xl font-semibold leading-none text-accent">{intentScore}</span>
                     <span className="mb-1 tabular-nums text-sm text-ink-muted">/ 100</span>
                   </div>
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
                     <span className={`inline-flex items-center gap-1.5 rounded-sm bg-muted px-2.5 py-1 text-xs font-medium ${heat.cls}`}>
                       {heat.hot
                         ? <Flame className="h-3 w-3" />
@@ -315,7 +315,7 @@ export default function AccountDetailEnhanced() {
             <Card className="border-border bg-card shadow-none">
               <CardHeader className="py-3 px-4">
                 <CardTitle className="text-sm flex items-center justify-between">
-                  <span className="flex items-center gap-2">
+                  <span className="flex flex-wrap items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-positive" />
                     Active Deals
                   </span>
@@ -329,17 +329,17 @@ export default function AccountDetailEnhanced() {
                   <p className="text-sm text-ink-muted">No open opportunities</p>
                 ) : accountOpportunities.map((opp: any) => (
                   <div key={opp.id} className="p-3 rounded-sm bg-muted">
-                    <div className="flex justify-between items-start gap-2 mb-2">
+                    <div className="flex flex-wrap justify-between items-start gap-2 mb-2">
                       <span className="text-sm font-medium truncate">{opp.name}</span>
                       <span className="shrink-0 rounded-sm bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
                         {opp.stage}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center gap-2">
+                    <div className="flex flex-wrap justify-between items-center gap-2">
                       <span className="tabular-nums text-sm font-semibold text-positive">
                         ${Number(opp.amount).toLocaleString()}
                       </span>
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex flex-wrap items-center gap-2.5">
                         {/* The CRM's own probability — distinct from the AI prediction beside it. */}
                         {opp.probability != null && (
                           <span className="tabular-nums text-[11px] text-ink-muted" title="Probability recorded in the CRM">
@@ -348,7 +348,7 @@ export default function AccountDetailEnhanced() {
                         )}
                         {opp.aiSuccessScore != null && (
                           <div
-                            className="flex items-center gap-1"
+                            className="flex flex-wrap items-center gap-1"
                             title="AI-predicted likelihood of winning — not the CRM probability"
                           >
                             <BrainCircuit className="h-3 w-3 text-accent" />
@@ -368,7 +368,7 @@ export default function AccountDetailEnhanced() {
             {intentSignals && intentSignals.length > 0 && (
               <Card className="border-border bg-card shadow-none">
                 <CardHeader className="py-3 px-4">
-                  <CardTitle className="text-sm flex items-center gap-2">
+                  <CardTitle className="text-sm flex flex-wrap items-center gap-2">
                     <Flame className="h-4 w-4 text-caution" />
                     Intent Signals
                     <span className="text-xs font-normal text-ink-muted">{intentSignals[0].source}</span>
@@ -376,7 +376,7 @@ export default function AccountDetailEnhanced() {
                 </CardHeader>
                 <CardContent className="px-4 pb-4 space-y-1">
                   {intentSignals.slice(0, 4).map((s: any) => (
-                    <div key={s.id} className="flex items-center justify-between gap-2 py-1 text-sm">
+                    <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-1 text-sm">
                       <span className="text-ink-muted truncate">
                         {new Date(s.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         {s.category ? ` · ${s.category}` : ''}
@@ -392,7 +392,7 @@ export default function AccountDetailEnhanced() {
             <Card className="border-border bg-card shadow-none">
               <CardHeader className="py-3 px-4">
                 <CardTitle className="text-sm flex items-center justify-between">
-                  <span className="flex items-center gap-2">
+                  <span className="flex flex-wrap items-center gap-2">
                     <Users className="h-4 w-4 text-accent" />
                     Key Contacts
                     <span className="tabular-nums text-xs font-normal text-ink-muted">{people?.length || 0}</span>
@@ -417,7 +417,7 @@ export default function AccountDetailEnhanced() {
                             {person.title || 'No title'}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
+                        <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
                           {person.linkedinUrl && (
                             <button type="button" aria-label="Open LinkedIn profile"
                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(person.linkedinUrl!, '_blank', 'noopener,noreferrer'); }}
@@ -445,27 +445,27 @@ export default function AccountDetailEnhanced() {
             {(ssoProvider || mfaSolution || securityIncidents || competitorIntent) && (
               <Card className="border-border bg-card shadow-none">
                 <CardHeader className="py-3 px-4">
-                  <CardTitle className="text-sm flex items-center gap-2">
+                  <CardTitle className="text-sm flex flex-wrap items-center gap-2">
                     <Shield className="h-4 w-4 text-accent" />
                     Security Intel
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 pb-4 space-y-3">
                   {ssoProvider && (
-                    <div className="flex justify-between items-center gap-2 text-sm">
+                    <div className="flex flex-wrap justify-between items-center gap-2 text-sm">
                       <span className="text-ink-muted">SSO</span>
                       <span className="font-medium">{ssoProvider}</span>
                     </div>
                   )}
                   {mfaSolution && (
-                    <div className="flex justify-between items-center gap-2 text-sm">
+                    <div className="flex flex-wrap justify-between items-center gap-2 text-sm">
                       <span className="text-ink-muted">MFA</span>
                       <span className="font-medium">{mfaSolution}</span>
                     </div>
                   )}
                   {competitorIntent && (
                     <div className="rounded-sm bg-caution-subtle border border-caution/30 p-2.5">
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-caution mb-1">
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-caution mb-1">
                         <AlertTriangle className="h-3 w-3" />
                         Competitor Intent
                       </div>
@@ -474,7 +474,7 @@ export default function AccountDetailEnhanced() {
                   )}
                   {securityIncidents && (
                     <div className="rounded-sm bg-critical-subtle border border-critical/30 p-2.5">
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-critical mb-1">
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-critical mb-1">
                         <AlertTriangle className="h-3 w-3" />
                         Security Incidents
                       </div>
@@ -491,9 +491,9 @@ export default function AccountDetailEnhanced() {
             {/* AI Account Brief — the trustworthy centrepiece */}
             <Card className="border-border bg-card shadow-none">
               <CardHeader className="px-6 pt-1">
-                <CardTitle className="flex items-start justify-between gap-3">
+                <CardTitle className="flex flex-wrap items-start justify-between gap-3">
                   <span className="min-w-0">
-                    <span className="flex items-center gap-2 text-base font-semibold">
+                    <span className="flex flex-wrap items-center gap-2 text-base font-semibold">
                       <Sparkles className="h-4 w-4 text-accent" />
                       AI Account Brief
                     </span>
@@ -501,7 +501,7 @@ export default function AccountDetailEnhanced() {
                       Computed from this account's own signals, deals, and contacts.
                     </span>
                   </span>
-                  <span className="flex items-center gap-2 shrink-0">
+                  <span className="flex flex-wrap items-center gap-2 shrink-0">
                     {overviewQuery.data?.cached && (
                       <span className="rounded-sm bg-muted px-2.5 py-1 text-[11px] text-ink-muted">
                         Updated <span className="tabular-nums">{overviewQuery.data.cacheAge}m</span> ago
@@ -522,7 +522,7 @@ export default function AccountDetailEnhanced() {
               <CardContent className="px-6">
                 {overviewQuery.isLoading ? (
                   <div className="space-y-2.5 py-1">
-                    <div className="flex items-center gap-2 text-sm text-ink-muted">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-ink-muted">
                       <Loader2 className="h-4 w-4 animate-spin text-accent" />
                       Generating brief…
                     </div>

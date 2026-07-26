@@ -267,14 +267,14 @@ export default function Insights() {
         )}
 
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-foreground">Data Analytics Studio</h1>
             <p className="mt-1 text-sm text-ink-muted">
               {isRepMode ? `${repInfo?.region} territory · ` : ''}Every figure is computed from live account data — click any segment to drill in.
             </p>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
             <RepSwitcher />
             {activeFilter && (
               <Button
@@ -298,8 +298,8 @@ export default function Insights() {
         {/* Active Filter Banner */}
         {activeFilter && (
           <div className="mb-6 p-4 rounded-md bg-accent/[0.06] border border-accent/30">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <Filter className="h-4 w-4 text-accent" />
                 <span className="text-foreground text-sm">
                   Filtering by {activeFilter.type}: <span className="text-accent font-medium">{activeFilter.label}</span>
@@ -342,11 +342,11 @@ export default function Insights() {
             <Card className={`${CARD} mb-8`}>
               <CardContent className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
                 <div className="lg:w-72 lg:pr-6 lg:border-r lg:border-border">
-                  <div className="flex items-center gap-2 text-xs font-semibold tracking-wide text-ink-muted">
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-semibold tracking-wide text-ink-muted">
                     <Flame className="h-4 w-4 text-positive" />
                     Hot leads right now
                   </div>
-                  <div className="mt-3 flex items-baseline gap-3">
+                  <div className="mt-3 flex flex-wrap items-baseline gap-3">
                     <span className="tabular-nums text-5xl font-semibold text-accent leading-none">
                       {intentBuckets.hot}
                     </span>
@@ -361,7 +361,7 @@ export default function Insights() {
 
                 <div className="flex-1 grid grid-cols-3 divide-x divide-border">
                   <div className="pr-4">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
                       <Building2 className="h-3.5 w-3.5" /> Accounts
                     </div>
                     <div className="mt-2 tabular-nums text-2xl text-foreground">
@@ -372,7 +372,7 @@ export default function Insights() {
                     </div>
                   </div>
                   <div className="px-4">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
                       <Users className="h-3.5 w-3.5" /> Key contacts
                     </div>
                     <div className="mt-2 tabular-nums text-2xl text-foreground">
@@ -381,7 +381,7 @@ export default function Insights() {
                     <div className="text-xs text-ink-muted mt-1">decision makers</div>
                   </div>
                   <div className="pl-4">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
                       <Activity className="h-3.5 w-3.5" /> Avg intent
                     </div>
                     <div className="mt-2 tabular-nums text-2xl text-accent">
@@ -399,7 +399,7 @@ export default function Insights() {
               {/* Intent Distribution */}
               <Card className={`${CARD} transition-colors ${activeFilter?.type === "intent" ? "ring-1 ring-accent" : ""}`}>
                 <CardHeader>
-                  <CardTitle className="text-foreground text-base flex items-center gap-2">
+                  <CardTitle className="text-foreground text-base flex flex-wrap items-center gap-2">
                     <Activity className="h-4 w-4 text-accent" />
                     Intent distribution
                   </CardTitle>
@@ -443,7 +443,7 @@ export default function Insights() {
               {/* Top Industries */}
               <Card className={`${CARD} transition-colors ${activeFilter?.type === "industry" ? "ring-1 ring-accent" : ""}`}>
                 <CardHeader>
-                  <CardTitle className="text-foreground text-base flex items-center gap-2">
+                  <CardTitle className="text-foreground text-base flex flex-wrap items-center gap-2">
                     <BarChart3 className="h-4 w-4 text-accent" />
                     Top industries
                   </CardTitle>
@@ -482,7 +482,7 @@ export default function Insights() {
               {/* Geographic Distribution */}
               <Card className={`${CARD} transition-colors ${activeFilter?.type === "region" ? "ring-1 ring-accent" : ""}`}>
                 <CardHeader>
-                  <CardTitle className="text-foreground text-base flex items-center gap-2">
+                  <CardTitle className="text-foreground text-base flex flex-wrap items-center gap-2">
                     <MapPin className="h-4 w-4 text-accent" />
                     Geographic distribution
                   </CardTitle>
@@ -522,7 +522,7 @@ export default function Insights() {
             {/* Buying Stage Funnel */}
             <Card className={`${CARD} mb-8 transition-colors ${activeFilter?.type === "buyingStage" ? "ring-1 ring-accent" : ""}`}>
               <CardHeader>
-                <CardTitle className="text-foreground text-base flex items-center gap-2">
+                <CardTitle className="text-foreground text-base flex flex-wrap items-center gap-2">
                   <Target className="h-4 w-4 text-accent" />
                   Buying-stage funnel
                 </CardTitle>
@@ -540,7 +540,7 @@ export default function Insights() {
                         onClick={() => handleFilterClick("buyingStage", stage, stage)}
                         className={`w-full text-left rounded-sm p-2 transition-colors ${ isActive ? "bg-accent-subtle ring-1 ring-accent" : "hover:bg-muted" }`}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           <span className="w-28 shrink-0 text-sm text-ink-muted">{stage}</span>
                           <div className="flex-1 h-6 rounded-md bg-muted overflow-hidden">
                             <div className={`h-full ${bar} rounded-md`} style={{ width: `${Math.max(pct, 3)}%` }} />
@@ -560,7 +560,7 @@ export default function Insights() {
             {activeFilter && filteredAccounts.length > 0 && (
               <Card className={CARD}>
                 <CardHeader>
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <CardTitle className="text-foreground text-base">Filtered accounts</CardTitle>
                       <CardDescription className="text-ink-muted">
@@ -593,7 +593,7 @@ export default function Insights() {
                           return (
                             <tr key={account.id} className="border-b border-border hover:bg-muted transition-colors">
                               <td className="py-3 px-4">
-                                <div className="flex items-center gap-3">
+                                <div className="flex flex-wrap items-center gap-3">
                                   <CompanyLogo name={account.name} website={account.domain} size="md" />
                                   <div>
                                     <div className="font-medium text-foreground">{account.name}</div>
@@ -654,9 +654,9 @@ export default function Insights() {
           <TabsContent value="keywords" className="mt-6">
             <Card className={`${CARD} mb-6`}>
               <CardHeader>
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <CardTitle className="text-foreground text-base flex items-center gap-2">
+                    <CardTitle className="text-foreground text-base flex flex-wrap items-center gap-2">
                       <Hash className="h-4 w-4 text-accent" />
                       6sense intent keywords
                     </CardTitle>
@@ -686,8 +686,8 @@ export default function Insights() {
                         onClick={() => handleFilterClick("keyword", kw.keyword, `Keyword: ${kw.keyword}`, kw.category || undefined)}
                         className={`p-4 rounded-sm bg-card border transition-colors cursor-pointer group ${active ? "border-accent/30 ring-1 ring-accent" : "border-border hover:border-accent/30"}`}
                       >
-                        <div className="flex items-start justify-between gap-2 mb-3">
-                          <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+                          <div className="flex flex-wrap items-center gap-2 min-w-0">
                             <Hash className="h-4 w-4 text-accent shrink-0" />
                             <span className="font-medium text-foreground truncate group-hover:text-accent transition-colors">
                               {kw.keyword}
@@ -733,9 +733,9 @@ export default function Insights() {
             {activeFilter?.type === "keyword" && filteredAccounts.length > 0 && (
               <Card className={CARD}>
                 <CardHeader>
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <CardTitle className="text-foreground text-base flex items-center gap-2">
+                      <CardTitle className="text-foreground text-base flex flex-wrap items-center gap-2">
                         <Building2 className="h-4 w-4 text-accent" />
                         Accounts researching “{activeFilter.value}”
                       </CardTitle>
@@ -768,7 +768,7 @@ export default function Insights() {
                           return (
                             <tr key={account.id} className="border-b border-border hover:bg-muted transition-colors">
                               <td className="py-3 px-4">
-                                <div className="flex items-center gap-3">
+                                <div className="flex flex-wrap items-center gap-3">
                                   <CompanyLogo name={account.name} website={account.domain} size="md" />
                                   <div>
                                     <div className="font-medium text-foreground">{account.name}</div>
@@ -834,7 +834,7 @@ export default function Insights() {
               {/* Engagement States */}
               <Card className={CARD}>
                 <CardHeader>
-                  <CardTitle className="text-foreground text-base flex items-center gap-2">
+                  <CardTitle className="text-foreground text-base flex flex-wrap items-center gap-2">
                     <Activity className="h-4 w-4 text-accent" />
                     Engagement states
                   </CardTitle>
@@ -846,7 +846,7 @@ export default function Insights() {
                   <div className="space-y-3">
                     {engagement?.metrics?.map((metric, idx) => (
                       <div key={idx} className="p-4 rounded-sm bg-muted border border-border">
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
                           <span className="font-medium text-foreground">{metric.state}</span>
                           <span className="tabular-nums text-lg text-accent">{metric.accounts}</span>
                         </div>
@@ -867,7 +867,7 @@ export default function Insights() {
               {/* Buying Stage Pipeline */}
               <Card className={CARD}>
                 <CardHeader>
-                  <CardTitle className="text-foreground text-base flex items-center gap-2">
+                  <CardTitle className="text-foreground text-base flex flex-wrap items-center gap-2">
                     <Target className="h-4 w-4 text-accent" />
                     Buying-stage pipeline
                   </CardTitle>
@@ -884,7 +884,7 @@ export default function Insights() {
                         <div key={idx} className="group">
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="text-sm text-ink-muted">{stage.stage}</span>
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-3">
                               <span className="tabular-nums text-sm text-foreground">{stage.accounts}</span>
                               {Number(stage.newPipeline) > 0 && (
                                 <span className="text-xs text-positive tabular-nums">
@@ -920,7 +920,7 @@ export default function Insights() {
           <TabsContent value="6qa" className="mt-6">
             <Card className={CARD}>
               <CardHeader>
-                <CardTitle className="text-foreground text-base flex items-center gap-2">
+                <CardTitle className="text-foreground text-base flex flex-wrap items-center gap-2">
                   <Zap className="h-4 w-4 text-accent" />
                   6QA performance
                 </CardTitle>
@@ -941,7 +941,7 @@ export default function Insights() {
                         </div>
                       </div>
                       <div className="bg-card p-4">
-                        <div className="text-xs font-semibold tracking-wide text-ink-muted flex items-center gap-1.5">
+                        <div className="text-xs font-semibold tracking-wide text-ink-muted flex flex-wrap items-center gap-1.5">
                           <span aria-hidden className="text-positive">▲</span> Worked
                         </div>
                         <div className="mt-2 tabular-nums text-2xl text-positive">
@@ -949,7 +949,7 @@ export default function Insights() {
                         </div>
                       </div>
                       <div className="bg-card p-4">
-                        <div className="text-xs font-semibold tracking-wide text-ink-muted flex items-center gap-1.5">
+                        <div className="text-xs font-semibold tracking-wide text-ink-muted flex flex-wrap items-center gap-1.5">
                           <span aria-hidden className="text-caution">●</span> Unworked gap
                         </div>
                         <div className="mt-2 tabular-nums text-2xl text-caution">
@@ -984,7 +984,7 @@ export default function Insights() {
                     {/* New 6QAs */}
                     {sixQAPerformance.latest.new6QAs !== null && sixQAPerformance.latest.new6QAs > 0 && (
                       <div className="p-4 rounded-sm bg-positive/[0.08] border border-positive/30">
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           <Zap className="h-5 w-5 text-positive shrink-0" />
                           <div>
                             <div className="text-foreground font-medium">
