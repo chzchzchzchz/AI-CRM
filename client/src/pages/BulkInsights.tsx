@@ -39,7 +39,7 @@ export default function BulkInsights() {
       <div className="grid gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex flex-wrap items-center gap-2">
               <Sparkles className="h-5 w-5 text-accent" />
               Generate Insights for Top Hot Leads
             </CardTitle>
@@ -48,7 +48,7 @@ export default function BulkInsights() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               <Button
                 onClick={() => handleGenerate(10)}
                 disabled={isGenerating}
@@ -156,7 +156,7 @@ export default function BulkInsights() {
                     {results.results.map((result: any, idx: number) => (
                       <div
                         key={idx}
-                        className="flex items-center gap-2 p-3 border rounded-sm"
+                        className="flex flex-wrap items-center gap-2 p-3 border rounded-sm"
                       >
                         {result.success ? (
                           <CheckCircle2 className="h-5 w-5 text-positive flex-shrink-0" />

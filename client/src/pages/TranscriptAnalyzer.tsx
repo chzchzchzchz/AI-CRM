@@ -56,7 +56,7 @@ function SectionCard({ title, icon, children }: { title: string; icon: React.Rea
   return (
     <Card className="bg-card border-border">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
+        <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
           {icon}
           {title}
         </CardTitle>
@@ -192,7 +192,7 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
     <div>
       <div className="container py-1 max-w-6xl">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
+        <div className="flex flex-wrap items-center gap-3 mb-8">
           <div className="bg-accent p-3 rounded-md">
             <FileText className="w-6 h-6 text-foreground" />
           </div>
@@ -308,7 +308,7 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
               <div className="space-y-6">
                 {/* Action Bar */}
                 <div className="flex items-center justify-between bg-card p-4 rounded-sm border">
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-wrap items-center gap-4">
                     <Input
                       placeholder="Report name..."
                       value={reportName}
@@ -320,7 +320,7 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
                       Save Report
                     </Button>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button variant="outline" onClick={handleCopy}>
                       {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
                       {copied ? 'Copied!' : 'Copy All'}
@@ -339,7 +339,7 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
                 {showTranscript && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="flex flex-wrap items-center gap-2">
                         <FileText className="w-5 h-5" />
                         Original Transcript
                       </CardTitle>

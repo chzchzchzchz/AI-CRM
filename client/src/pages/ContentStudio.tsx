@@ -125,7 +125,7 @@ export default function ContentStudio() {
     <div>
       <div className="container py-1 space-y-5 max-w-6xl">
         {/* Header */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="p-2 rounded-sm bg-muted border border-border-strong">
             <Sparkles className="h-5 w-5 text-accent" />
           </div>
@@ -164,7 +164,7 @@ export default function ContentStudio() {
           {/* Context Input */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex flex-wrap items-center gap-2">
                 <FileText className="h-5 w-5 text-muted-foreground" />
                 Context & Instructions
               </CardTitle>
@@ -247,7 +247,7 @@ export default function ContentStudio() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex flex-wrap items-center gap-2">
                     <CheckCircle2 className="h-5 w-5 text-positive" />
                     {generatedContent.title || 'Generated Content'}
                   </CardTitle>
@@ -271,7 +271,7 @@ export default function ContentStudio() {
 
                 {ragSources.length > 0 && (
                   <div className="mt-4 pt-4 border-t">
-                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground mb-2 flex flex-wrap items-center gap-1">
                       <BookOpen className="h-3 w-3" />
                       Sources used from Knowledge Base:
                     </p>
@@ -293,7 +293,7 @@ export default function ContentStudio() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-base flex flex-wrap items-center gap-2">
                 <Brain className="h-4 w-4 text-accent" />
                 Knowledge Base
               </CardTitle>
@@ -320,7 +320,7 @@ export default function ContentStudio() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-base flex flex-wrap items-center gap-2">
                 <Zap className="h-4 w-4 text-muted-foreground" />
                 AI Capabilities
               </CardTitle>
@@ -333,7 +333,7 @@ export default function ContentStudio() {
                 'Learns from your edits',
                 'Applies Revenue Architect persona',
               ].map((cap, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm">
+                <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
                   <CheckCircle2 className="h-4 w-4 text-positive" />
                   <span>{cap}</span>
                 </div>
@@ -343,7 +343,7 @@ export default function ContentStudio() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-base flex flex-wrap items-center gap-2">
                 <Target className="h-4 w-4 text-muted-foreground" />
                 Quick Templates
               </CardTitle>

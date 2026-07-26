@@ -103,7 +103,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex flex-wrap items-center gap-2">
             <Clock className="h-5 w-5 text-accent" />
             Activity Timeline
           </CardTitle>
@@ -111,7 +111,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
         <CardContent>
           <div className="space-y-4">
             {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="flex gap-4">
+              <div key={i} className="flex flex-wrap gap-4">
                 <div className="w-10 h-10 skeleton rounded-sm" />
                 <div className="flex-1 space-y-2">
                   <div className="h-4 w-32 skeleton" />
@@ -129,7 +129,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex flex-wrap items-center gap-2">
             <Clock className="h-5 w-5 text-accent" />
             Activity Timeline
           </CardTitle>
@@ -161,7 +161,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
+          <span className="flex flex-wrap items-center gap-2">
             <Clock className="h-5 w-5 text-accent" />
             Activity Timeline
           </span>
@@ -179,7 +179,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
             {Object.entries(groupedActivities).map(([dateKey, dateActivities]) => (
               <div key={dateKey}>
                 {/* Date header */}
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex flex-wrap items-center gap-3 mb-4">
                   <div className="w-10 h-6 flex items-center justify-center bg-muted rounded text-xs font-medium text-muted-foreground">
                     {formatRelativeDate(dateActivities[0].date)}
                   </div>
@@ -193,7 +193,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
                     const Icon = config.icon;
                     
                     return (
-                      <div key={activity.id} className="flex gap-3 group">
+                      <div key={activity.id} className="flex flex-wrap gap-3 group">
                         {/* Icon */}
                         <div className={`relative z-10 w-8 h-8 rounded-sm ${config.bgColor} border ${config.borderColor} flex items-center justify-center flex-shrink-0`}>
                           <Icon className={`h-4 w-4 ${config.color}`} />
@@ -201,7 +201,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
                         
                         {/* Content */}
                         <div className="flex-1 min-w-0 pb-3">
-                          <div className="flex items-start justify-between gap-2">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
                             <div>
                               <p className="font-medium text-sm line-clamp-1">
                                 {activity.title}
@@ -219,15 +219,15 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
                           
                           {/* Metadata */}
                           {activity.metadata && (
-                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                            <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
                               {activity.metadata.duration && (
-                                <span className="flex items-center gap-1">
+                                <span className="flex flex-wrap items-center gap-1">
                                   <Clock className="h-3 w-3" />
                                   {activity.metadata.duration}
                                 </span>
                               )}
                               {activity.metadata.participants && activity.metadata.participants.length > 0 && (
-                                <span className="flex items-center gap-1">
+                                <span className="flex flex-wrap items-center gap-1">
                                   <User className="h-3 w-3" />
                                   {activity.metadata.participants.slice(0, 2).join(", ")}
                                   {activity.metadata.participants.length > 2 && ` +${activity.metadata.participants.length - 2}`}
@@ -242,7 +242,7 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
                                 </Badge>
                               )}
                               {activity.metadata.score !== undefined && (
-                                <span className="flex items-center gap-1">
+                                <span className="flex flex-wrap items-center gap-1">
                                   <TrendingUp className="h-3 w-3" />
                                   +{activity.metadata.score} intent
                                 </span>

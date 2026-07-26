@@ -150,7 +150,7 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
   return (
     <Card variant="sunken" className="mb-5">
       <CardContent className="p-2">
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <input
             type="file"
             ref={fileInputRef}
@@ -241,7 +241,7 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
           <div className="mt-4 p-4 bg-card rounded-sm border border-accent/30">
             {/* Cache indicator */}
             {response.cached && (
-              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-accent/30">
+              <div className="flex flex-wrap items-center gap-2 mb-2 pb-2 border-b border-accent/30">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-positive-subtle text-positive text-[10px] font-medium">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -253,7 +253,7 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
                 )}
               </div>
             )}
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="prose prose-sm dark:prose-invert max-w-none flex-1">
                 <SafeStreamdown>{response.answer}</SafeStreamdown>
               </div>
@@ -272,7 +272,7 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
               <div className="mt-3 pt-3 border-t border-accent/30">
                 <button
                   onClick={() => setShowReasoning(!showReasoning)}
-                  className="flex items-center gap-1 text-[10px] text-accent/60 hover:text-accent transition-colors"
+                  className="flex flex-wrap items-center gap-1 text-[10px] text-accent/60 hover:text-accent transition-colors"
                 >
                   {showReasoning ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   <span>{showReasoning ? "Hide" : "View"} reasoning</span>

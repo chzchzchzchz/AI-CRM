@@ -45,7 +45,7 @@ export function OverviewTab({ accountId, account }: OverviewTabProps) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex flex-wrap items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
                 Executive Summary
               </CardTitle>
@@ -53,7 +53,7 @@ export function OverviewTab({ accountId, account }: OverviewTabProps) {
                 AI-powered analysis of this account's strategic position and opportunities
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {data?.cached && (
                 <Badge variant="outline" className="gap-1">
                   <Clock className="h-3 w-3" />
@@ -100,7 +100,7 @@ export function OverviewTab({ accountId, account }: OverviewTabProps) {
       {account.description && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex flex-wrap items-center gap-2">
               <FileText className="h-5 w-5" />
               Company Description
             </CardTitle>

@@ -286,7 +286,7 @@ export default function Home() {
                   return (
                     <Card key={action.id} className="transition-colors hover:border-accent/30 cursor-pointer group">
                       <CardContent className="p-6">
-                        <div className="flex items-start gap-4">
+                        <div className="flex flex-wrap items-start gap-4">
                           {/* Company Logo */}
                           <CompanyLogo name={action.name} website={action.domain} size="lg" />
                           <div className="flex-1 min-w-0 space-y-3">
@@ -387,7 +387,7 @@ export default function Home() {
 
                             {/* Engagement Metrics */}
                             <div className="flex flex-wrap items-center gap-3 text-xs text-ink-muted">
-                              <span className="flex items-center gap-1">
+                              <span className="flex flex-wrap items-center gap-1">
                                 <Calendar className="h-3 w-3" />
                                 Last: {engagementMetrics?.lastCallFormatted || 'Never'}
                               </span>
@@ -466,7 +466,7 @@ export default function Home() {
 
                     return (
                       <Link key={account.id} href={`/accounts/${account.id}`}>
-                        <div className="flex items-center gap-4 p-4 rounded-md border border-border/50 hover:border-primary/50 hover:bg-accent/50 transition-all cursor-pointer group">
+                        <div className="flex flex-wrap items-center gap-4 p-4 rounded-md border border-border/50 hover:border-primary/50 hover:bg-accent/50 transition-all cursor-pointer group">
                           <div className="flex items-center justify-center w-10 h-10 rounded-sm bg-accent-subtle border border-accent/30 text-accent font-bold">
                             {index + 1}
                           </div>
@@ -496,32 +496,32 @@ export default function Home() {
             {/* This Week's Focus */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex flex-wrap items-center gap-2">
                   <Calendar className="h-5 w-5 text-primary" />
                   This Week's Focus
                 </CardTitle>
                 <CardDescription>Your priorities for the week</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-start gap-3 group">
+                <div className="flex flex-wrap items-start gap-3 group">
                   <Checkbox id="task1" className="mt-1" />
                   <label htmlFor="task1" className="text-sm font-medium leading-relaxed cursor-pointer group-hover:text-primary transition-colors">
                     Follow up with hot leads ({hotLeads} accounts{globalRepInfo ? ` in ${globalRepInfo.region}` : ''})
                   </label>
                 </div>
-                <div className="flex items-start gap-3 group">
+                <div className="flex flex-wrap items-start gap-3 group">
                   <Checkbox id="task2" className="mt-1" />
                   <label htmlFor="task2" className="text-sm font-medium leading-relaxed cursor-pointer group-hover:text-primary transition-colors">
                     Review warm leads ({warmLeads} accounts{globalRepInfo ? ` in ${globalRepInfo.region}` : ''})
                   </label>
                 </div>
-                <div className="flex items-start gap-3 group">
+                <div className="flex flex-wrap items-start gap-3 group">
                   <Checkbox id="task3" className="mt-1" />
                   <label htmlFor="task3" className="text-sm font-medium leading-relaxed cursor-pointer group-hover:text-primary transition-colors">
                     Work unworked 6QAs ({sixsenseSummary?.sixQA?.unworked || 0} accounts)
                   </label>
                 </div>
-                <div className="flex items-start gap-3 group">
+                <div className="flex flex-wrap items-start gap-3 group">
                   <Checkbox id="task4" className="mt-1" />
                   <label htmlFor="task4" className="text-sm font-medium leading-relaxed cursor-pointer group-hover:text-primary transition-colors">
                     Engage priority accounts ({priorityActions.length} urgent)
@@ -533,7 +533,7 @@ export default function Home() {
             {/* Trending Intent Keywords */}
             <Card className="border border-accent/30">
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
+                <CardTitle className="flex flex-wrap items-center gap-2 text-base">
                   <TrendingUp className="h-5 w-5 text-accent" />
                   Trending Intent Keywords
                 </CardTitle>

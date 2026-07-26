@@ -217,7 +217,7 @@ export default function DataValidation() {
               )}
             </div>
           </div>
-          <p className="text-xs text-ink-muted mt-3 flex items-center gap-1.5">
+          <p className="text-xs text-ink-muted mt-3 flex flex-wrap items-center gap-1.5">
             <AlertTriangle className="h-3.5 w-3.5 text-caution shrink-0" />
             Validation takes ~2 seconds per record (web search + AI). 20 accounts ≈ 40s, 30 contacts ≈ 60s.
           </p>
@@ -244,7 +244,7 @@ export default function DataValidation() {
                 {validationResults.allIssues.map((issue: any, index: number) => (
                   <div key={index} className="rounded-sm bg-muted border border-border p-4">
                     <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3 flex-1">
+                      <div className="flex flex-wrap items-start gap-3 flex-1">
                         {getSeverityIcon(issue.severity)}
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">

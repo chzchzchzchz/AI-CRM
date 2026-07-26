@@ -206,7 +206,7 @@ export default function DataHub() {
     <div className="container py-1 max-w-6xl">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
+        <div className="flex flex-wrap items-center gap-3 mb-2">
           <div className="p-2 bg-muted border border-border-strong rounded-md">
             <Brain className="h-6 w-6 text-accent" />
           </div>
@@ -224,7 +224,7 @@ export default function DataHub() {
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex flex-wrap items-center gap-2">
                 <Upload className="h-5 w-5 text-accent" />
                 Upload Data
               </CardTitle>
@@ -281,7 +281,7 @@ export default function DataHub() {
               {status !== 'idle' && status !== 'complete' && (
                 <div className="mt-6 space-y-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2">
+                    <span className="flex flex-wrap items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       {status === 'uploading' && 'Uploading files...'}
                       {status === 'analyzing' && 'AI analyzing data structure...'}
@@ -294,7 +294,7 @@ export default function DataHub() {
               )}
 
               {/* Action Buttons */}
-              <div className="mt-6 flex gap-3">
+              <div className="mt-6 flex flex-wrap gap-3">
                 <Button
                   onClick={processFiles}
                   disabled={files.length === 0 || status === 'processing' || status === 'analyzing'}
@@ -327,7 +327,7 @@ export default function DataHub() {
           {result && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex flex-wrap items-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-positive" />
                   Processing Complete
                 </CardTitle>
@@ -350,7 +350,7 @@ export default function DataHub() {
 
                 {result.issues.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-sm font-medium flex items-center gap-2">
+                    <p className="text-sm font-medium flex flex-wrap items-center gap-2">
                       <AlertTriangle className="h-4 w-4 text-caution" />
                       Issues Found ({result.issues.length})
                     </p>
@@ -377,7 +377,7 @@ export default function DataHub() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-base flex flex-wrap items-center gap-2">
                 <Zap className="h-4 w-4 text-caution" />
                 AI Processing Rules
               </CardTitle>
@@ -391,7 +391,7 @@ export default function DataHub() {
                 { icon: <Database className="h-4 w-4" />, label: 'Field mapping & merging' },
                 { icon: <XCircle className="h-4 w-4" />, label: 'Personal email filtering' },
               ].map((rule, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm">
+                <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
                   <div className="text-positive">{rule.icon}</div>
                   <span>{rule.label}</span>
                 </div>
@@ -401,7 +401,7 @@ export default function DataHub() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-base flex flex-wrap items-center gap-2">
                 <Brain className="h-4 w-4 text-accent" />
                 Learning from You
               </CardTitle>
@@ -424,7 +424,7 @@ export default function DataHub() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-base flex flex-wrap items-center gap-2">
                 <FileText className="h-4 w-4 text-accent" />
                 Knowledge Base
               </CardTitle>

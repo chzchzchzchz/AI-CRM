@@ -23,7 +23,7 @@ export function ResearchTab({ accountId }: ResearchTabProps) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex flex-wrap items-center gap-2">
                 <Sparkles className="h-5 w-5 text-accent" />
                 AI Research Synthesis
               </CardTitle>
@@ -32,7 +32,7 @@ export function ResearchTab({ accountId }: ResearchTabProps) {
               </CardDescription>
             </div>
             {data && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {data.cached && (
                   <Badge variant="outline" className="gap-1">
                     <Clock className="h-3 w-3" />
@@ -68,7 +68,7 @@ export function ResearchTab({ accountId }: ResearchTabProps) {
               {data.rawTriggers && Object.keys(data.rawTriggers).length > 0 && (
                 <Card className="bg-caution-subtle border-caution/30">
                   <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="text-base flex flex-wrap items-center gap-2">
                       <TrendingUp className="h-4 w-4 text-caution" />
                       Trigger Events (Raw Data)
                     </CardTitle>
@@ -88,7 +88,7 @@ export function ResearchTab({ accountId }: ResearchTabProps) {
               {data.rawNews && Object.keys(data.rawNews).length > 0 && (
                 <Card className="bg-accent-subtle border-accent/30">
                   <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="text-base flex flex-wrap items-center gap-2">
                       <Newspaper className="h-4 w-4 text-accent" />
                       News & Funding (Raw Data)
                     </CardTitle>

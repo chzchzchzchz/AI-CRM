@@ -248,7 +248,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
               {isRepMode && <> · {repInfo?.region} territory</>}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <RepSwitcher />
             <Button asChild className="bg-accent text-foreground hover:bg-accent font-medium">
               <Link href="/outreach">
@@ -274,7 +274,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                 aria-pressed={active}
                 className={`text-left px-4 py-4 sm:px-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${active ? "bg-surface/[0.04]" : "hover:bg-surface/[0.025]"}`}
               >
-                <div className="flex items-center gap-2 text-xs font-medium text-ink-muted">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-ink-muted">
                   <s.Icon className={`h-3.5 w-3.5 ${s.text}`} />
                   {s.label}
                 </div>
@@ -429,13 +429,13 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
 
               return (
                 <Link key={account.id} href={`/accounts/${account.id}`}>
-                  <div className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-surface/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent">
+                  <div className="group flex flex-wrap items-center gap-4 px-4 py-3 transition-colors hover:bg-surface/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent">
                     {/* Company Logo */}
                     <CompanyLogo name={account.name} website={account.domain} size="md" />
 
                     {/* Identity + meta */}
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold text-[15px] text-foreground truncate group-hover:text-accent transition-colors">
                           {account.name}
                         </span>
@@ -448,17 +448,17 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                       <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-ink-muted">
                         <span className="truncate">{account.domain}</span>
                         {account.industry && (
-                          <span className="flex items-center gap-1 before:content-['·'] before:text-ink-subtle">
+                          <span className="flex flex-wrap items-center gap-1 before:content-['·'] before:text-ink-subtle">
                             <Building2 className="h-3 w-3" />{account.industry}
                           </span>
                         )}
                         {account.employeeCount && (
-                          <span className="flex items-center gap-1 before:content-['·'] before:text-ink-subtle">
+                          <span className="flex flex-wrap items-center gap-1 before:content-['·'] before:text-ink-subtle">
                             <Users className="h-3 w-3" />{account.employeeCount}
                           </span>
                         )}
                         {account.region && (
-                          <span className="flex items-center gap-1 before:content-['·'] before:text-ink-subtle">
+                          <span className="flex flex-wrap items-center gap-1 before:content-['·'] before:text-ink-subtle">
                             <MapPin className="h-3 w-3" />{account.region}
                           </span>
                         )}
@@ -474,7 +474,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                         </span>
                       )}
                       {salesActivities > 0 && (
-                        <span className="flex items-center gap-1 text-ink-muted">
+                        <span className="flex flex-wrap items-center gap-1 text-ink-muted">
                           <Activity className="h-3.5 w-3.5" />
                           <span className="tabular-nums">{salesActivities}</span>
                         </span>
@@ -482,7 +482,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                     </div>
 
                     {/* Intent score + heat */}
-                    <div className="flex items-center gap-3 flex-shrink-0 pl-1">
+                    <div className="flex flex-wrap items-center gap-3 flex-shrink-0 pl-1">
                       <div className="text-right w-16">
                         <div className="text-lg leading-none tabular-nums text-accent">
                           {hasScore ? numScore : <span className="text-ink-subtle">—</span>}

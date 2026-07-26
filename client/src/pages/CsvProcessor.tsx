@@ -284,7 +284,7 @@ export default function CsvProcessor() {
       <div className="container mx-auto py-8 px-4 max-w-6xl">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="p-2.5 bg-muted rounded-sm">
               <FileSpreadsheet className="h-6 w-6 text-accent" />
             </div>
@@ -298,7 +298,7 @@ export default function CsvProcessor() {
         </div>
 
         {/* Progress Steps — cyan marks the live step; slate for done/upcoming. */}
-        <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
+        <div className="flex flex-wrap items-center gap-2 mb-8 overflow-x-auto pb-2">
           {steps.map((s, i) => {
             const isCurrent = step === s;
             const isDone = currentStepIndex > i;
@@ -316,7 +316,7 @@ export default function CsvProcessor() {
         {/* Instructions Card */}
         <Card className="mb-6 bg-card border-border shadow-none">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg text-foreground">
+            <CardTitle className="flex flex-wrap items-center gap-2 text-lg text-foreground">
               <HelpCircle className="h-5 w-5 text-accent" />
               How It Works
             </CardTitle>
@@ -365,7 +365,7 @@ export default function CsvProcessor() {
                     </h3>
                     {uploadedFiles.map((file, i) => (
                       <div key={i} className="flex items-center justify-between p-3 bg-muted rounded-sm">
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           <FileSpreadsheet className="h-5 w-5 text-accent" />
                           <div>
                             <p className="font-medium text-foreground">{file.name}</p>
@@ -450,7 +450,7 @@ export default function CsvProcessor() {
                   </AlertDescription>
                 </Alert>
 
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
                   <Button variant="outline" onClick={() => setStep("upload")} className="border-border-strong text-foreground hover:bg-muted hover:text-foreground">
                     Back
                   </Button>
@@ -506,9 +506,9 @@ export default function CsvProcessor() {
 
                 <div className="grid gap-3 max-h-[400px] overflow-y-auto pr-2">
                   {templateInfo?.fields.map(field => (
-                    <div key={field.name} className="flex items-center gap-4 p-3 bg-muted rounded-sm">
+                    <div key={field.name} className="flex flex-wrap items-center gap-4 p-3 bg-muted rounded-sm">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="font-medium text-foreground">{field.name}</span>
                           {field.required && (
                             <Badge variant="outline" className="text-xs bg-muted text-caution border-caution/30">Required</Badge>
@@ -535,7 +535,7 @@ export default function CsvProcessor() {
                   ))}
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
                   <Button variant="outline" onClick={() => setStep("configure")} className="border-border-strong text-foreground hover:bg-muted hover:text-foreground">
                     Back
                   </Button>
@@ -566,7 +566,7 @@ export default function CsvProcessor() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold flex items-center gap-2 text-foreground">
+                    <h3 className="font-semibold flex flex-wrap items-center gap-2 text-foreground">
                       <CheckCircle2 className="h-5 w-5 text-positive" />
                       Processing Complete
                     </h3>
@@ -601,7 +601,7 @@ export default function CsvProcessor() {
                   </table>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
                   <Button variant="outline" onClick={() => setStep("map")} className="border-border-strong text-foreground hover:bg-muted hover:text-foreground">
                     Back to Mapping
                   </Button>

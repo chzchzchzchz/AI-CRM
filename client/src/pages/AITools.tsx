@@ -100,7 +100,7 @@ export default function AITools() {
     <div>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
+        <div className="flex flex-wrap items-center gap-4 mb-8">
           <div className="w-12 h-12 rounded-md bg-muted border border-border-strong flex items-center justify-center">
             <Brain className="w-6 h-6 text-accent" />
           </div>
@@ -111,7 +111,7 @@ export default function AITools() {
         </div>
 
         {/* Tool Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-border pb-4">
+        <div className="flex flex-wrap gap-2 mb-6 border-b border-border pb-4">
           <Button
             variant={activeTool === 'analyzer' ? 'default' : 'ghost'}
             onClick={() => setActiveTool('analyzer')}
@@ -372,7 +372,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => setShowSavedReports(false)}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
@@ -410,7 +410,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
                         {new Date(report.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button variant="ghost" size="sm" onClick={() => copyShareLink(report.shareId)}>
                         <Link2 className="w-4 h-4" />
                       </Button>
@@ -434,7 +434,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="w-10 h-10 rounded-sm bg-muted border border-border-strong flex items-center justify-center">
               <Brain className="w-5 h-5 text-accent" />
             </div>
@@ -445,7 +445,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               <p className="text-sm text-muted-foreground">Extracted insights from your transcript</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={copyToClipboard}>
               {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
               {copied ? 'Copied' : 'Copy'}
@@ -460,7 +460,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         {result.linkedAccount && (
           <Card className="bg-accent-subtle border-accent/30">
             <CardContent className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <Link2 className="w-5 h-5 text-accent" />
                 <div>
                   <p className="text-sm font-medium text-foreground">Linked to Account: {result.linkedAccount.name}</p>
@@ -483,7 +483,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             {/* About Prospect */}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
+                <CardTitle className="text-sm flex flex-wrap items-center gap-2">
                   <User className="w-4 h-4 text-accent" />
                   About the Prospect
                 </CardTitle>
@@ -507,7 +507,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             {/* AI Tools Used */}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
+                <CardTitle className="text-sm flex flex-wrap items-center gap-2">
                   <Sparkles className="w-4 h-4 text-accent" />
                   AI Tools Used
                 </CardTitle>
@@ -531,7 +531,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             {/* Security Stack */}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
+                <CardTitle className="text-sm flex flex-wrap items-center gap-2">
                   <Shield className="w-4 h-4 text-accent" />
                   Current Security Stack
                 </CardTitle>
@@ -554,7 +554,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             {/* Top Risks */}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
+                <CardTitle className="text-sm flex flex-wrap items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-critical" />
                   Top Risks
                 </CardTitle>
@@ -562,7 +562,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               <CardContent>
                 <ul className="space-y-2">
                   {result.topRisks.map((risk, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
+                    <li key={i} className="flex flex-wrap items-start gap-2 text-sm">
                       <span className="w-1.5 h-1.5 rounded-full bg-critical mt-2 flex-shrink-0" />
                       <span className="text-foreground">{risk}</span>
                     </li>
@@ -574,7 +574,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             {/* Top Challenges */}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
+                <CardTitle className="text-sm flex flex-wrap items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-caution" />
                   Top Challenges
                 </CardTitle>
@@ -582,7 +582,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               <CardContent>
                 <ul className="space-y-2">
                   {result.topChallenges.map((challenge, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
+                    <li key={i} className="flex flex-wrap items-start gap-2 text-sm">
                       <span className="w-1.5 h-1.5 rounded-full bg-caution mt-2 flex-shrink-0" />
                       <span className="text-foreground">{challenge}</span>
                     </li>
@@ -594,7 +594,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             {/* Drivers of Urgency */}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
+                <CardTitle className="text-sm flex flex-wrap items-center gap-2">
                   <Zap className="w-4 h-4 text-caution" />
                   Drivers of Urgency
                 </CardTitle>
@@ -607,7 +607,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             {/* Budget & Timeline */}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
+                <CardTitle className="text-sm flex flex-wrap items-center gap-2">
                   <DollarSign className="w-4 h-4 text-positive" />
                   Budget, Timeline & Priority
                 </CardTitle>
@@ -623,7 +623,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             {/* Pitch & Demo Feedback */}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
+                <CardTitle className="text-sm flex flex-wrap items-center gap-2">
                   <Target className="w-4 h-4 text-positive" />
                   Pitch & Demo Feedback
                 </CardTitle>
@@ -631,7 +631,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               <CardContent>
                 <ul className="space-y-2">
                   {result.feedbackPoints.map((point, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
+                    <li key={i} className="flex flex-wrap items-start gap-2 text-sm">
                       <span className="w-1.5 h-1.5 rounded-full bg-positive mt-2 flex-shrink-0" />
                       <span className="text-foreground">{point}</span>
                     </li>
@@ -643,7 +643,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             {/* Beta Interest */}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
+                <CardTitle className="text-sm flex flex-wrap items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-accent" />
                   Beta Interest
                 </CardTitle>
@@ -685,7 +685,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             {/* Top Quotes */}
             <Card className="bg-card/50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
+                <CardTitle className="text-sm flex flex-wrap items-center gap-2">
                   <Quote className="w-4 h-4 text-critical" />
                   Top Quotes
                 </CardTitle>
@@ -706,7 +706,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         {/* Additional Insights */}
         <Card className="bg-card/50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
+            <CardTitle className="text-sm flex flex-wrap items-center gap-2">
               <Lightbulb className="w-4 h-4 text-caution" />
               Additional Key Insights
             </CardTitle>
@@ -714,7 +714,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {result.additionalInsights.map((insight, i) => (
-                <div key={i} className="flex items-start gap-2 text-sm">
+                <div key={i} className="flex flex-wrap items-start gap-2 text-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-caution mt-2 flex-shrink-0" />
                   <span className="text-foreground">{insight}</span>
                 </div>
@@ -726,7 +726,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         {/* Next Steps */}
         <Card className="bg-card/50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
+            <CardTitle className="text-sm flex flex-wrap items-center gap-2">
               <ChevronRight className="w-4 h-4 text-accent" />
               Next Steps
             </CardTitle>
@@ -734,7 +734,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           <CardContent>
             <ol className="space-y-2">
               {result.nextSteps.map((step, i) => (
-                <li key={i} className="flex items-start gap-3 text-sm">
+                <li key={i} className="flex flex-wrap items-start gap-3 text-sm">
                   <span className="w-6 h-6 rounded-sm bg-accent-subtle text-accent flex items-center justify-center flex-shrink-0 text-xs font-medium">
                     {i + 1}
                   </span>
@@ -748,14 +748,14 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         {/* Ask About This Meeting */}
         <Card className="bg-card/50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
+            <CardTitle className="text-sm flex flex-wrap items-center gap-2">
               <MessageSquare className="w-4 h-4 text-accent" />
               Ask About This Meeting
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">I can answer questions about this transcript. What would you like to know?</p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Input
                 placeholder="Ask a question about the transcript (e.g., 'Did they mention specific competitors?')"
                 value={followUpQuestion}
@@ -779,7 +779,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         {!viewingReport && (
           <Card className="bg-card/50">
             <CardContent className="p-4">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Input
                   placeholder="Report name..."
                   value={reportName}
@@ -799,7 +799,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         {viewingReport && (
           <Card className="bg-accent-subtle border-accent/30">
             <CardContent className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <Eye className="w-5 h-5 text-accent" />
                 <p className="text-sm text-foreground">Viewing saved report: <span className="font-medium">{viewingReport.name}</span></p>
               </div>
@@ -892,7 +892,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
       </div>
 
       {/* Mode Selector */}
-      <div className="flex justify-center gap-2">
+      <div className="flex flex-wrap justify-center gap-2">
         <Button
           variant={analyzerMode === 'single' ? 'default' : 'outline'}
           size="sm"
@@ -927,11 +927,11 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
       <Card className="bg-card/50 max-w-4xl mx-auto">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex flex-wrap items-center gap-2">
               <Mic className="w-5 h-5 text-accent" />
               Meeting Transcript
             </CardTitle>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={loadExample}>
                 <FileText className="w-4 h-4 mr-2" />
                 Load Example
@@ -999,7 +999,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
           <Card className="bg-card/50">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-accent">
+              <CardTitle className="flex flex-wrap items-center gap-2 text-accent">
                 <FileText className="w-5 h-5" />
                 First Meeting
               </CardTitle>
@@ -1015,7 +1015,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           </Card>
           <Card className="bg-card/50">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-accent">
+              <CardTitle className="flex flex-wrap items-center gap-2 text-accent">
                 <FileText className="w-5 h-5" />
                 Second Meeting
               </CardTitle>
@@ -1051,7 +1051,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         <div className="max-w-4xl mx-auto space-y-6">
           <Card className="bg-card/50">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex flex-wrap items-center gap-2">
                 <Users className="w-5 h-5 text-positive" />
                 Add Transcripts to Batch ({bulkTranscripts.length} added)
               </CardTitle>
@@ -1063,7 +1063,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
                 onChange={(e) => setTranscript(e.target.value)}
                 className="min-h-[200px] tabular-nums text-sm"
               />
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={addBulkTranscript} className="flex-1">
                   <Zap className="w-4 h-4 mr-2" />
                   Add to Batch
@@ -1099,7 +1099,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           {bulkProcessing && (
             <Card className="bg-positive-subtle border-positive/30">
               <CardContent className="p-4">
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                   <Loader2 className="w-5 h-5 animate-spin text-positive" />
                   <div className="flex-1">
                     <p className="text-sm text-foreground">Processing {bulkTranscripts.length} transcripts...</p>
@@ -1125,7 +1125,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           {bulkResults.length > 0 && (
             <Card className="bg-card/50">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex flex-wrap items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-positive" />
                   Bulk Analysis Summary ({bulkResults.length} transcripts)
                 </CardTitle>
@@ -1240,7 +1240,7 @@ function DataProcessorTool() {
       {/* Upload Section */}
       <Card className="bg-card/50 max-w-4xl mx-auto">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex flex-wrap items-center gap-2">
             <Upload className="w-5 h-5 text-accent" />
             Upload Data File
           </CardTitle>
@@ -1254,8 +1254,8 @@ function DataProcessorTool() {
             className="hidden"
           />
           {file ? (
-            <div className="flex items-center justify-between gap-4 rounded-sm border border-border-strong bg-muted p-4">
-              <div className="flex items-center gap-3 min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-sm border border-border-strong bg-muted p-4">
+              <div className="flex flex-wrap items-center gap-3 min-w-0">
                 <FileIcon className="w-8 h-8 text-accent flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="font-medium text-foreground truncate">{file.name}</p>
@@ -1265,7 +1265,7 @@ function DataProcessorTool() {
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2 flex-shrink-0">
+              <div className="flex flex-wrap gap-2 flex-shrink-0">
                 <Button variant="ghost" size="sm" onClick={() => fileRef.current?.click()}>
                   Replace
                 </Button>
@@ -1479,7 +1479,7 @@ function ContentStudioTool() {
         {/* Right: Output */}
         <Card className="bg-card/50 h-fit">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex flex-wrap items-center gap-2">
               <FileText className="w-5 h-5 text-positive" />
               Generated Content
             </CardTitle>
@@ -1490,7 +1490,7 @@ function ContentStudioTool() {
                 <div className="p-4 bg-background rounded-sm border border-border whitespace-pre-wrap text-sm text-foreground">
                   {generatedContent}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button 
                     variant="outline" 
                     size="sm"

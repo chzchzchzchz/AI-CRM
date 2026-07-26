@@ -59,7 +59,7 @@ export default function Integrations() {
   return (
     <div>
       <div className="container py-1 space-y-5 max-w-6xl">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="p-2 rounded-sm bg-muted border border-border-strong">
             <Plug className="h-5 w-5 text-accent" />
           </div>
@@ -90,7 +90,7 @@ export default function Integrations() {
                 <CardContent className="mt-auto space-y-2">
                   <p className="text-[11px] text-muted-foreground tabular-nums">{c.env}</p>
                   {c.webhook ? (
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Input
                         placeholder="Paste webhook URL to test…"
                         value={urls[c.key] || ""}

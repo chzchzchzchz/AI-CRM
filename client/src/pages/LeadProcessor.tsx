@@ -131,7 +131,7 @@ export default function LeadProcessor() {
     <div className="container py-1 max-w-4xl">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
+        <div className="flex flex-wrap items-center gap-3 mb-2">
           <div className="p-2 bg-muted border border-border-strong rounded-md">
             <Zap className="h-6 w-6 text-accent" />
           </div>
@@ -176,7 +176,7 @@ export default function LeadProcessor() {
             <div className="mt-4 space-y-2">
               {files.map((file, i) => (
                 <div key={i} className="flex items-center justify-between p-3 bg-muted rounded-sm">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <FileSpreadsheet className="h-5 w-5 text-positive" />
                     <span className="font-medium">{file.name}</span>
                     <span className="text-xs text-muted-foreground">
@@ -196,7 +196,7 @@ export default function LeadProcessor() {
       {/* Processing Rules Info */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
             <Settings2 className="h-5 w-5 text-accent" />
             AI Processing Rules
           </CardTitle>
@@ -220,7 +220,7 @@ export default function LeadProcessor() {
               "Employee count parsing",
               "Industry classification"
             ].map((rule, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm">
+              <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
                 <CheckCircle2 className="h-4 w-4 text-positive flex-shrink-0" />
                 <span>{rule}</span>
               </div>
@@ -264,7 +264,7 @@ export default function LeadProcessor() {
       {result && (
         <Card className="mt-6 border-positive/30">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-positive">
+            <CardTitle className="flex flex-wrap items-center gap-2 text-positive">
               <CheckCircle2 className="h-5 w-5" />
               Processing Complete
             </CardTitle>
@@ -287,7 +287,7 @@ export default function LeadProcessor() {
 
             {result.issues.length > 0 && (
               <div className="mb-6">
-                <p className="font-medium mb-2 flex items-center gap-2">
+                <p className="font-medium mb-2 flex flex-wrap items-center gap-2">
                   <AlertCircle className="h-4 w-4 text-caution" />
                   Issues Found:
                 </p>

@@ -69,9 +69,9 @@ export default function RFPs() {
               Track open government RFPs from SAM.gov
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {stats && (
-              <div className="flex items-center gap-4 px-4 py-2 bg-card border border-border rounded-sm">
+              <div className="flex flex-wrap items-center gap-4 px-4 py-2 bg-card border border-border rounded-sm">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-accent">{stats.total}</div>
                   <div className="text-xs text-ink-muted">Total</div>
@@ -121,7 +121,7 @@ export default function RFPs() {
                       SAM.gov System Accounts
                     </a>
                   </p>
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-3">
                     <Input
                       type="password"
                       value={apiKey}
@@ -143,7 +143,7 @@ export default function RFPs() {
           </Card>
         )}
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" />
             <Input
@@ -191,7 +191,7 @@ export default function RFPs() {
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex flex-wrap items-center gap-3 mb-2">
                           <h3 className="text-lg font-semibold text-foreground">{rfp.title}</h3>
                           <Badge 
                             variant="outline" 
@@ -205,19 +205,19 @@ export default function RFPs() {
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-ink-muted mb-3">
-                          <span className="flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-ink-muted mb-3">
+                          <span className="flex flex-wrap items-center gap-1">
                             <Building2 className="h-4 w-4" />
                             {rfp.agency}
                           </span>
                           {rfp.responseDeadline && (
-                            <span className="flex items-center gap-1">
+                            <span className="flex flex-wrap items-center gap-1">
                               <Calendar className="h-4 w-4" />
                               Deadline: {new Date(rfp.responseDeadline).toLocaleDateString()}
                             </span>
                           )}
                           {rfp.awardAmount && (
-                            <span className="flex items-center gap-1">
+                            <span className="flex flex-wrap items-center gap-1">
                               <DollarSign className="h-4 w-4" />
                               ${rfp.awardAmount.toLocaleString()}
                             </span>

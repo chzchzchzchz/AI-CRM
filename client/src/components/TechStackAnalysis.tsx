@@ -40,7 +40,7 @@ export function TechStackAnalysis({ accountId }: TechStackAnalysisProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex flex-wrap items-center gap-2">
           <BarChart3 className="h-5 w-5" />
           Technology Stack
         </CardTitle>
@@ -77,7 +77,7 @@ export function TechStackAnalysis({ accountId }: TechStackAnalysisProps) {
               
               return (
                 <div key={key} className="space-y-3">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Icon className={`h-5 w-5 ${config.color}`} />
                     <h4 className="font-semibold">{config.label}</h4>
                   </div>

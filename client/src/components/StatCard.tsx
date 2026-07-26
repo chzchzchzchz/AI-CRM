@@ -65,7 +65,7 @@ export function StatCard({
         className
       )}
     >
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         {Icon && <Icon className={cn("size-3.5 shrink-0", TONE_CLASS[resolved])} />}
         <span className="truncate text-2xs font-medium tracking-wide text-ink-muted uppercase">
           {title}

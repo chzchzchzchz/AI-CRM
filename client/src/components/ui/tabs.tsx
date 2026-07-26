@@ -34,8 +34,11 @@ function Tabs({
 const tabsListVariants = cva("inline-flex w-fit items-center", {
   variants: {
     variant: {
+      // Underline tabs scroll rather than wrap: a wrapped underline strip
+      // reads as two broken rules stacked on each other. `scrollbar-none`
+      // keeps the rail from gaining a scrollbar's height on desktop.
       underline:
-        "h-9 w-full justify-start gap-4 border-b border-border-subtle p-0",
+        "h-9 w-full max-w-full justify-start gap-4 overflow-x-auto border-b border-border-subtle p-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
       segmented: "h-8 gap-0.5 rounded-lg bg-surface-sunken p-0.5",
     },
   },

@@ -133,15 +133,16 @@ export function GlobalAIChat() {
   if (!isOpen) {
     return (
       <Button
+        size="icon-lg"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-sm shadow-lg bg-accent z-50 group"
-        aria-label="Toggle AI Assistant"
+        // p-0 because the size utilities below fix the box: the default
+        // variant's horizontal padding pushed the icon past the 56px edge and
+        // clipped it. The pulsing "notification" dot that used to sit here was
+        // accent-on-accent, so it rendered invisible while still costing layout.
+        className="fixed right-6 bottom-6 z-40 size-14 rounded-md p-0 shadow-lg"
+        aria-label="Open AI assistant"
       >
-        <MessageSquare className="h-6 w-6" />
-        <span className="absolute -top-1 -right-1 flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
-        </span>
+        <MessageSquare className="size-6" />
       </Button>
     );
   }
@@ -155,7 +156,7 @@ export function GlobalAIChat() {
           <div className="flex-shrink-0 border-b border-border bg-card backdrop-blur-sm">
             <div className="container mx-auto px-6 py-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                   <div className={`p-3 rounded-md bg-accent ${isWarRoomMode ? ' ' : ' '} shadow-lg`}>
                     {isWarRoomMode ? <Zap className="h-6 w-6 text-foreground" /> : <Bot className="h-6 w-6 text-foreground" />}
                   </div>
@@ -174,7 +175,7 @@ export function GlobalAIChat() {
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -270,7 +271,7 @@ export function GlobalAIChat() {
           {/* Input Area */}
           <div className="flex-shrink-0 border-t border-border bg-card backdrop-blur-sm">
             <div className="container mx-auto px-6 py-4 max-w-4xl">
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -304,14 +305,14 @@ export function GlobalAIChat() {
       <Card className="bg-card border-border-strong shadow-2xl h-[600px] flex flex-col">
         <CardHeader className="flex-shrink-0 border-b border-border p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Bot className="size-5 shrink-0 text-ink-faint" />
               <div>
                 <CardTitle className="text-foreground text-sm">AI Assistant</CardTitle>
                 <p className="text-xs text-ink-muted">Ask me anything</p>
               </div>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
@@ -391,7 +392,7 @@ export function GlobalAIChat() {
         </CardContent>
 
         <div className="flex-shrink-0 border-t border-border p-4">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}

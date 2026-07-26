@@ -113,7 +113,7 @@ export default function Calls() {
             <span className="tabular-nums text-foreground">{lastOnPage}</span> of{" "}
             <span className="tabular-nums text-foreground">{totalCalls.toLocaleString()}</span>
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -161,8 +161,8 @@ export default function Calls() {
                   className="bg-card border-border shadow-none transition-colors hover:border-accent/30"
                 >
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="flex flex-wrap items-start gap-3 flex-1 min-w-0">
                         <div className="p-2 bg-muted rounded-sm">
                           <Phone className="h-4 w-4 text-accent" />
                         </div>
@@ -172,19 +172,19 @@ export default function Calls() {
                           </h3>
                           <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-ink-muted">
                             {call.callDate && (
-                              <span className="flex items-center gap-1">
+                              <span className="flex flex-wrap items-center gap-1">
                                 <Calendar className="h-3 w-3" />
                                 {new Date(call.callDate).toLocaleDateString()}
                               </span>
                             )}
                             {call.duration && (
-                              <span className="flex items-center gap-1">
+                              <span className="flex flex-wrap items-center gap-1">
                                 <Clock className="h-3 w-3" />
                                 <span className="tabular-nums text-ink-muted">{call.duration}</span>
                               </span>
                             )}
                             {call.accountId && (
-                              <Link href={`/accounts/${call.accountId}`} className="flex items-center gap-1 text-ink-muted hover:text-accent">
+                              <Link href={`/accounts/${call.accountId}`} className="flex flex-wrap items-center gap-1 text-ink-muted hover:text-accent">
                                 <Building2 className="h-3 w-3" />
                                 Account #{call.accountId}
                               </Link>
@@ -192,7 +192,7 @@ export default function Calls() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-2 flex-shrink-0">
+                      <div className="flex flex-wrap gap-2 flex-shrink-0">
                         {call.recordingUrl && (
                           <Button
                             variant="outline"
@@ -252,7 +252,7 @@ export default function Calls() {
         )}
 
         {/* Bottom Pagination */}
-        <div className="flex items-center justify-center gap-2 pt-4">
+        <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
           <Button
             variant="outline"
             size="sm"

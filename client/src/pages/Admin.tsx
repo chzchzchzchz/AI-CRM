@@ -97,7 +97,7 @@ export default function Admin() {
         {/* 6sense Enrichment */}
         <Card className="border-accent/30 shadow-lg">
           <CardHeader>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Database className="size-5 shrink-0 text-ink-faint" />
               <div>
                 <CardTitle>6sense Live Enrichment</CardTitle>
@@ -162,7 +162,7 @@ export default function Admin() {
         {/* Background Job Queue */}
         <Card className="border-accent/30 shadow-lg">
           <CardHeader>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Clock className="size-5 shrink-0 text-ink-faint" />
               <div>
                 <CardTitle>Background Job Queue</CardTitle>
@@ -232,7 +232,7 @@ export default function Admin() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 bg-positive rounded-sm border border-positive/30">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
                   <CheckCircle2 className="h-5 w-5 text-positive" />
                   <span className="font-semibold text-positive">6sense API</span>
                 </div>
@@ -242,7 +242,7 @@ export default function Admin() {
               </div>
 
               <div className="p-4 bg-accent rounded-sm border border-accent/30">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
                   <Database className="h-5 w-5 text-accent" />
                   <span className="font-semibold text-accent">Database</span>
                 </div>
@@ -252,7 +252,7 @@ export default function Admin() {
               </div>
 
               <div className="p-4 bg-accent rounded-sm border border-accent/30">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
                   <Clock className="h-5 w-5 text-accent" />
                   <span className="font-semibold text-accent">Job Queue</span>
                 </div>

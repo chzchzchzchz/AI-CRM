@@ -139,7 +139,7 @@ export default function ContactDetail() {
       <div className="container py-1 space-y-5 max-w-5xl">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex flex-wrap items-center gap-3 min-w-0">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/contacts"><ArrowLeft className="h-5 w-5" /></Link>
             </Button>
@@ -153,12 +153,12 @@ export default function ContactDetail() {
                 {contact.title && <span className="text-ink-muted">{contact.title}</span>}
                 {contact.company && (
                   <Link href={account ? `/accounts/${account.id}` : '#'}
-                        className="flex items-center gap-1 hover:text-accent transition-colors">
+                        className="flex flex-wrap items-center gap-1 hover:text-accent transition-colors">
                     <Building2 className="h-3 w-3" />{contact.company}
                   </Link>
                 )}
                 {contact.location && (
-                  <span className="flex items-center gap-1">
+                  <span className="flex flex-wrap items-center gap-1">
                     <MapPin className="h-3 w-3" />{contact.location}
                   </span>
                 )}
@@ -196,22 +196,22 @@ export default function ContactDetail() {
           {/* Contact Details */}
           <Card className="border-border bg-card shadow-none">
             <CardHeader className="py-3 px-4">
-              <CardTitle className="text-sm flex items-center gap-2">
+              <CardTitle className="text-sm flex flex-wrap items-center gap-2">
                 <User className="h-4 w-4 text-accent" />
                 Contact Details
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4 divide-y divide-border">
               {contact.title && (
-                <div className="flex justify-between items-center gap-3 py-2.5 first:pt-0">
+                <div className="flex flex-wrap justify-between items-center gap-3 py-2.5 first:pt-0">
                   <span className="text-sm text-ink-muted">Title</span>
                   <span className="font-medium text-sm text-right">{contact.title}</span>
                 </div>
               )}
               {contact.email && (
-                <div className="flex justify-between items-center gap-3 py-2.5 first:pt-0">
+                <div className="flex flex-wrap justify-between items-center gap-3 py-2.5 first:pt-0">
                   <span className="text-sm text-ink-muted">Email</span>
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 min-w-0">
                     <span className="font-medium text-sm truncate">{contact.email}</span>
                     <button onClick={() => copyToClipboard(contact.email!, 'email')} aria-label="Copy email address" className="p-1 hover:bg-muted rounded shrink-0">
                       {copiedField === 'email' ? <Check className="h-3 w-3 text-positive" /> : <Copy className="h-3 w-3 text-ink-muted" />}
@@ -220,9 +220,9 @@ export default function ContactDetail() {
                 </div>
               )}
               {contact.phone && (
-                <div className="flex justify-between items-center gap-3 py-2.5 first:pt-0">
+                <div className="flex flex-wrap justify-between items-center gap-3 py-2.5 first:pt-0">
                   <span className="text-sm text-ink-muted">Phone</span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="tabular-nums text-sm">{contact.phone}</span>
                     <button onClick={() => copyToClipboard(contact.phone!, 'phone')} aria-label="Copy phone number" className="p-1 hover:bg-muted rounded shrink-0">
                       {copiedField === 'phone' ? <Check className="h-3 w-3 text-positive" /> : <Copy className="h-3 w-3 text-ink-muted" />}
@@ -231,10 +231,10 @@ export default function ContactDetail() {
                 </div>
               )}
               {contact.linkedinUrl && (
-                <div className="flex justify-between items-center gap-3 py-2.5 first:pt-0">
+                <div className="flex flex-wrap justify-between items-center gap-3 py-2.5 first:pt-0">
                   <span className="text-sm text-ink-muted">LinkedIn</span>
                   <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer"
-                     className="flex items-center gap-1 text-accent hover:text-accent text-sm">
+                     className="flex flex-wrap items-center gap-1 text-accent hover:text-accent text-sm">
                     View Profile <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
@@ -246,12 +246,12 @@ export default function ContactDetail() {
           <Card className="border-border bg-card shadow-none">
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-sm flex items-center justify-between">
-                <span className="flex items-center gap-2">
+                <span className="flex flex-wrap items-center gap-2">
                   <Building2 className="h-4 w-4 text-accent" />
                   Account Context
                 </span>
                 {account && (
-                  <Link href={`/accounts/${account.id}`} className="text-xs text-accent hover:text-accent flex items-center gap-1">
+                  <Link href={`/accounts/${account.id}`} className="text-xs text-accent hover:text-accent flex flex-wrap items-center gap-1">
                     View Account <ChevronRight className="h-3 w-3" />
                   </Link>
                 )}
@@ -261,10 +261,10 @@ export default function ContactDetail() {
               {account ? (
                 <div className="space-y-3">
                   {/* Intent — cyan mono, with heat glyph + word */}
-                  <div className="flex items-end justify-between gap-3 rounded-sm bg-muted p-3">
+                  <div className="flex flex-wrap items-end justify-between gap-3 rounded-sm bg-muted p-3">
                     <div>
                       <div className="text-xs text-ink-muted">Intent score</div>
-                      <div className="flex items-end gap-1.5">
+                      <div className="flex flex-wrap items-end gap-1.5">
                         <span className="tabular-nums text-2xl font-semibold leading-none text-accent">{intentScore}</span>
                         <span className="mb-0.5 tabular-nums text-xs text-ink-muted">/ 100</span>
                       </div>
@@ -276,11 +276,11 @@ export default function ContactDetail() {
                       {heat.label}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center gap-3">
+                  <div className="flex flex-wrap justify-between items-center gap-3">
                     <span className="text-sm text-ink-muted">Company</span>
                     <span className="font-medium text-sm text-right">{account.name}</span>
                   </div>
-                  <div className="flex justify-between items-center gap-3">
+                  <div className="flex flex-wrap justify-between items-center gap-3">
                     <span className="text-sm text-ink-muted">Buying Stage</span>
                     {accountStage ? (
                       <span className={`inline-flex items-center gap-1.5 rounded-sm bg-muted px-2.5 py-1 text-xs font-medium ${stage.cls}`}>
@@ -292,7 +292,7 @@ export default function ContactDetail() {
                     )}
                   </div>
                   {account.industry && (
-                    <div className="flex justify-between items-center gap-3">
+                    <div className="flex flex-wrap justify-between items-center gap-3">
                       <span className="text-sm text-ink-muted">Industry</span>
                       <span className="font-medium text-sm text-right">{account.industry}</span>
                     </div>
@@ -308,9 +308,9 @@ export default function ContactDetail() {
         {/* AI Contact Brief */}
         <Card className="border-border bg-card shadow-none">
           <CardHeader className="px-6 pt-1">
-            <CardTitle className="flex items-start justify-between gap-3">
+            <CardTitle className="flex flex-wrap items-start justify-between gap-3">
               <span className="min-w-0">
-                <span className="flex items-center gap-2 text-base font-semibold">
+                <span className="flex flex-wrap items-center gap-2 text-base font-semibold">
                   <Sparkles className="h-4 w-4 text-accent" />
                   AI Contact Brief
                   {contact.linkedinUrl && (
@@ -344,7 +344,7 @@ export default function ContactDetail() {
           <CardContent className="px-6">
             {isGenerating ? (
               <div className="space-y-2.5 py-1">
-                <div className="flex items-center gap-2 text-sm text-ink-muted">
+                <div className="flex flex-wrap items-center gap-2 text-sm text-ink-muted">
                   <Loader2 className="h-4 w-4 animate-spin text-accent" />
                   {contact.linkedinUrl ? 'Analyzing LinkedIn profile…' : 'Generating summary…'}
                 </div>

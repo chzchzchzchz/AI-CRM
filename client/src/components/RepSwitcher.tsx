@@ -8,7 +8,7 @@ export function RepSwitcher() {
   const currentOption = REP_OPTIONS.find(r => r.email === selectedRep) || REP_OPTIONS[0];
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <UserCircle className="h-5 w-5 text-muted-foreground" />
       <Select
         value={currentOption.value}
