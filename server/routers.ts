@@ -263,8 +263,14 @@ Or go to the Admin Panel: /admin/approval`
           console.error("Failed to send admin notification:", notifyError);
           // Don't fail the signup if notification fails
         }
-        
-        return { success: true };
+
+        // The id is what lets the client request a verification code for the account it
+        // just created. Without it the whole emailVerification router was unreachable —
+        // built, tested, and impossible to call.
+        //
+        // Safe to return: it identifies an account that is not approved and cannot log
+        // in, and possessing it proves nothing without the emailed code.
+        return { success: true, userId: Number(newUserId) };
       }),
     
     // Email/Password Login

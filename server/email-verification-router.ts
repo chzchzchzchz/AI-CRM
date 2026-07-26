@@ -21,6 +21,18 @@ function generateResetCode(): string {
   return crypto.randomBytes(16).toString("hex");
 }
 
+/**
+ * Constant-time comparison, so response timing doesn't leak how much of a guessed
+ * code was correct. Length is compared first because timingSafeEqual throws on a
+ * length mismatch — that branch reveals only the length, which is fixed and public.
+ */
+export function codesMatch(expected: string, provided: string): boolean {
+  const a = Buffer.from(String(expected));
+  const b = Buffer.from(String(provided));
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
 export const emailVerificationRouter = router({
   sendVerificationCode: publicProcedure
     .input(z.object({
@@ -59,15 +71,16 @@ export const emailVerificationRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
+      // Look the row up by user, NOT by (user, code).
+      //
+      // Matching on the code meant a wrong guess found no row and returned "Invalid
+      // verification code" without touching `attempts` — so the three-attempt limit
+      // below could never fire and the six-digit code was open to brute force. The
+      // counter only means something if a failed guess is what increments it.
       const verification = await db
         .select()
         .from(emailVerificationCodes)
-        .where(
-          and(
-            eq(emailVerificationCodes.userId, input.userId),
-            eq(emailVerificationCodes.code, input.code)
-          )
-        )
+        .where(eq(emailVerificationCodes.userId, input.userId))
         .limit(1);
 
       if (!verification[0]) {
@@ -75,12 +88,27 @@ export const emailVerificationRouter = router({
       }
 
       const verCode = verification[0];
+
+      // Checked before the comparison: an exhausted code must stop being an oracle.
+      if ((verCode.attempts || 0) >= 3) {
+        throw new Error("Too many attempts. Please request a new code.");
+      }
+
       if (verCode.expiresAt < new Date()) {
         throw new Error("Verification code expired");
       }
 
-      if ((verCode.attempts || 0) >= 3) {
-        throw new Error("Too many attempts. Please request a new code.");
+      if (!codesMatch(verCode.code, input.code)) {
+        await db
+          .update(emailVerificationCodes)
+          .set({ attempts: (verCode.attempts || 0) + 1 })
+          .where(eq(emailVerificationCodes.id, verCode.id));
+        logSecurityEvent(
+          "EMAIL_VERIFICATION_FAILED",
+          { userId: input.userId, attempts: (verCode.attempts || 0) + 1 },
+          "warn"
+        );
+        throw new Error("Invalid verification code");
       }
 
       await db

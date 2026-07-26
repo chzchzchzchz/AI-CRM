@@ -9,9 +9,9 @@ Every backend capability, and whether anything in the product actually reaches i
 | | Count |
 |---|---|
 | Procedures total | 170 |
-| Reachable from the UI | 78 |
+| Reachable from the UI | 81 |
 | External by design (webhooks, probes, connector actions) | 28 |
-| **Built but not routed anywhere** | **64** |
+| **Built but not routed anywhere** | **61** |
 | ↳ of those, called only by unreachable client code | 5 |
 | App routes | 32 |
 | Client modules unreachable from `main.tsx` | 19 |
@@ -53,9 +53,6 @@ Real, working code with no path to it from the product. Each line is either some
 | `dust.getContactIntelligence` | protected | `server/routers/dust.ts` | — |
 | `dust.searchGongCalls` | protected | `server/routers/dust.ts` | — |
 | `dust.query` | protected | `server/routers/dust.ts` | — |
-| `emailVerification.sendVerificationCode` | public | `server/email-verification-router.ts` | — |
-| `emailVerification.verifyEmail` | public | `server/email-verification-router.ts` | — |
-| `emailVerification.resendVerificationCode` | public | `server/email-verification-router.ts` | — |
 | `gemini.researchAccount` | protected | `server/gemini.ts` | — |
 | `gong.getByCompany` | protected | `server/routers.ts` | — |
 | `gong.getByAccountId` | protected | `server/routers.ts` | — |
@@ -152,6 +149,9 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `csvProcessor.processData` | `pages/CsvProcessor.tsx` |
 | `deepThink.sales` | `components/ContextualAI.tsx` |
 | `deepThink.help` | `components/SupportBot.tsx` |
+| `emailVerification.sendVerificationCode` | `pages/SignUp.tsx` |
+| `emailVerification.verifyEmail` | `pages/SignUp.tsx` |
+| `emailVerification.resendVerificationCode` | `pages/SignUp.tsx` |
 | `emailVerification.sendPasswordResetCode` | `pages/ForgotPassword.tsx` |
 | `emailVerification.resetPassword` | `pages/ForgotPassword.tsx` |
 | `gong.list` | `components/GlobalSearch.tsx`, `pages/Insights.tsx` |
