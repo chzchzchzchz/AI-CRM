@@ -51,7 +51,7 @@ Point it at your own 6sense/Gong/Clay/Salesforce data and it routes your real bo
 
 ---
 
-## 🛠️ Quick Start
+## Quick Start
 
 ### Run the demo (zero config, ~2 minutes)
 
