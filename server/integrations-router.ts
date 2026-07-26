@@ -18,6 +18,12 @@ import {
   salesloftCreatePerson, outreachCreateProspect, calendlyGetAccount,
   asanaCreateTask, clickupCreateTask, pagerdutyTrigger,
 } from "./integrations/connectors";
+import {
+  isZoomInfoConfigured,
+  zoominfoEnrichCompany,
+  zoominfoSearchContacts,
+  zoominfoEnrichContact,
+} from "./integrations/zoominfo";
 
 // ---- Native SaaS connectors (Slack, Discord, Teams, HubSpot, Notion, Linear, Intercom, webhooks) ----
 export const integrationsRouter = router({
@@ -33,6 +39,7 @@ export const integrationsRouter = router({
     airtable: !!(process.env.AIRTABLE_TOKEN && process.env.AIRTABLE_BASE_ID && process.env.AIRTABLE_TABLE),
     pipedrive: !!(process.env.PIPEDRIVE_API_TOKEN && process.env.PIPEDRIVE_DOMAIN),
     apollo: !!process.env.APOLLO_API_KEY,
+    zoominfo: isZoomInfoConfigured(),
     googleChat: !!process.env.GOOGLE_CHAT_WEBHOOK_URL,
     twilio: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM_NUMBER),
     segment: !!process.env.SEGMENT_WRITE_KEY,
@@ -105,6 +112,30 @@ export const integrationsRouter = router({
   sendWebhook: protectedProcedure
     .input(z.object({ url: z.string().url(), payload: z.record(z.string(), z.any()) }))
     .mutation(({ input }) => sendWebhook(input.url, input.payload)),
+
+  // ---- ZoomInfo (Enterprise API; JWT lifecycle handled in the connector) ----
+  zoominfoEnrichCompany: protectedProcedure
+    .input(
+      z
+        .object({ domain: z.string().min(1).optional(), name: z.string().min(1).optional() })
+        .refine(v => v.domain || v.name, { message: "domain or name is required" }),
+    )
+    .mutation(({ input }) => zoominfoEnrichCompany(input)),
+
+  zoominfoSearchContacts: protectedProcedure
+    .input(
+      z.object({
+        companyDomain: z.string().min(1),
+        managementLevel: z.string().optional(),
+        department: z.string().optional(),
+        limit: z.number().int().min(1).max(100).optional(),
+      }),
+    )
+    .mutation(({ input }) => zoominfoSearchContacts(input)),
+
+  zoominfoEnrichContact: protectedProcedure
+    .input(z.object({ email: z.string().email() }))
+    .mutation(({ input }) => zoominfoEnrichContact(input.email)),
 });
 
 // ---- 6sense intent scores ----

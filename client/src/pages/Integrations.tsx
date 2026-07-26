@@ -11,7 +11,7 @@ type StatusKey =
   | "slack" | "discord" | "teams" | "googleChat" | "hubspot" | "notion"
   | "linear" | "intercom" | "airtable" | "pipedrive" | "apollo"
   | "twilio" | "segment" | "salesloft" | "outreach" | "calendly"
-  | "asana" | "clickup" | "pagerduty";
+  | "asana" | "clickup" | "pagerduty" | "zoominfo";
 
 const CONNECTORS: { key: StatusKey; name: string; blurb: string; env: string; webhook?: boolean }[] = [
   { key: "slack", name: "Slack", blurb: "Post hot-lead alerts to a channel", env: "SLACK_WEBHOOK_URL", webhook: true },
@@ -25,6 +25,7 @@ const CONNECTORS: { key: StatusKey; name: string; blurb: string; env: string; we
   { key: "airtable", name: "Airtable", blurb: "Create records in a base", env: "AIRTABLE_TOKEN + BASE + TABLE" },
   { key: "pipedrive", name: "Pipedrive", blurb: "Create deals", env: "PIPEDRIVE_API_TOKEN + DOMAIN" },
   { key: "apollo", name: "Apollo.io", blurb: "Enrich people by email", env: "APOLLO_API_KEY" },
+  { key: "zoominfo", name: "ZoomInfo", blurb: "Enrich companies and find contacts", env: "ZOOMINFO_USERNAME + PASSWORD (or CLIENT_ID + PRIVATE_KEY)" },
   { key: "twilio", name: "Twilio", blurb: "Send SMS alerts", env: "TWILIO_ACCOUNT_SID + AUTH_TOKEN + FROM" },
   { key: "segment", name: "Segment", blurb: "Track analytics events", env: "SEGMENT_WRITE_KEY" },
   { key: "salesloft", name: "Salesloft", blurb: "Create people (engagement)", env: "SALESLOFT_API_KEY" },
