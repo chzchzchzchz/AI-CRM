@@ -201,28 +201,6 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     return filtered;
   }, [accounts, searchQuery, regionFilter, industryFilter, relationshipFilter, intentFilter, techFilter, sortField, sortOrder]);
 
-  const getIntentBadge = (score: string) => {
-    const numScore = parseInt(score);
-    if (numScore >= 70) return { 
-      color: "badge-danger", 
-      label: "Hot", 
-      icon: Flame,
-      gradient: " "
-    };
-    if (numScore >= 40) return { 
-      color: "badge-warning", 
-      label: "Warm", 
-      icon: TrendingUp,
-      gradient: " "
-    };
-    return { 
-      color: "badge-primary", 
-      label: "Cold", 
-      icon: Target,
-      gradient: " "
-    };
-  };
-
   const handleToggleSort = useCallback((field: SortField) => {
     if (sortField === field) {
       setSortOrder(order => order === "asc" ? "desc" : "asc");

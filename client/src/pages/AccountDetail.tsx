@@ -178,7 +178,7 @@ export default function AccountDetailEnhanced() {
             <div className="text-xs text-muted-foreground mb-1">Intent Score</div>
             <div className={`text-3xl font-bold ${getIntentColor(intentScore)}`}>{intentScore}</div>
             <div className="text-xs text-muted-foreground">
-              {intentScore >= 80 ? '🔥 Hot' : intentScore >= 60 ? '🌡️ Warm' : '❄️ Cold'}
+              {intentScore >= 80 ? 'Hot' : intentScore >= 60 ? 'Warm' : 'Cold'}
             </div>
           </Card>
           <Card className="p-4">

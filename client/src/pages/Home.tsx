@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, StatusDot } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Linkedin, Phone, TrendingUp, Building2, Users, Flame, Zap, ArrowRight, Sparkles, Target, Calendar, MapPin, UserCircle, FileSpreadsheet, DollarSign } from "lucide-react";
 import { ContextualAI } from "@/components/ContextualAI";
@@ -9,9 +9,13 @@ import { DemoTour } from "@/components/DemoTour";
 import { HotLeadsWidget } from "@/components/HotLeadsWidget";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { RepSwitcher } from "@/components/RepSwitcher";
 import { useRep, REP_TERRITORIES } from "@/contexts/RepContext";
+import { PageHeader } from "@/components/app-shell/PageHeader";
+import { MetricGrid } from "@/components/ui/metric";
+import { StatCard } from "@/components/StatCard";
+import { CompanyLogo } from "@/components/ui/company-logo";
 
 
 /**
@@ -22,6 +26,7 @@ export default function Home() {
   const { user, loading: authLoading } = useAuth();
   const isDemoUser = user?.email?.includes('demo') || false;
   const { selectedRep, repInfo: globalRepInfo, matchesTerritory } = useRep();
+  const [, setLocation] = useLocation();
   
   // Get the effective email based on selection
   const userEmail = selectedRep || user?.email || '';
@@ -137,6 +142,18 @@ export default function Home() {
   // For demo users, use a proportion of their accounts; otherwise use repStats
   const sixQAGap = repStats?.sixQAGap !== undefined ? repStats.sixQAGap : Math.floor(totalAccounts * 0.8);
 
+  const timeOfDay = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return "morning";
+    if (h < 18) return "afternoon";
+    return "evening";
+  })();
+
+  const openPipeline =
+    opportunitiesData
+      ?.filter((opp: any) => String(opp.status ?? "Open").toLowerCase() === "open")
+      .reduce((sum: number, opp: any) => sum + (Number(opp.amount) || 0), 0) || 0;
+
   // Use enriched priority actions with contact data
   const priorityActions = (enrichedPriorityActions || []).map((action, index) => ({
     ...action,
@@ -149,149 +166,80 @@ export default function Home() {
     <div>
       <DemoTour />
       <div className="container py-1 space-y-5 max-w-7xl">
-        {/* Hero Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Target className="size-5 shrink-0 text-ink-faint" />
-              <div>
-                <h1 className="text-xl font-semibold tracking-tight">
-                  Good morning{repName ? `, ${repName}` : ''} 👋
-                </h1>
-                <p className="text-ink-muted text-sm mt-0.5">
-                  {isKnownRep ? (
-                    <span className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      {repTerritory} Territory &bull; {repSize}
-                    </span>
-                  ) : (
-                    "Here's your sales intelligence for today"
-                  )}
-                </p>
-              </div>
-            </div>
-            {/* Rep View Switcher */}
-            <RepSwitcher />
-          </div>
-        </div>
+        <PageHeader
+          title={`Good ${timeOfDay}${repName ? `, ${repName}` : ""}`}
+          description={
+            isKnownRep
+              ? `${repTerritory} territory · ${repSize}`
+              : "Your pipeline at a glance"
+          }
+          actions={
+            <>
+              <RepSwitcher />
+              <Button asChild variant="outline">
+                <Link href="/top-accounts">
+                  <Target className="size-4" />
+                  Top 15
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/outreach">
+                  <Mail className="size-4" />
+                  Generate outreach
+                </Link>
+              </Button>
+            </>
+          }
+        />
 
-        {/* AI Assistant Bar */}
-        <ContextualAI context="home" placeholder="Ask AI: What should I prioritize today?" />
+        <ContextualAI context="home" placeholder="Ask about today's pipeline…" />
 
-        {/* Key Stats - Beautiful Cards - All Clickable */}
-        <div className="grid gap-6 md:grid-cols-4">
-          <Link href="/accounts">
-            <Card className="card-elevated border-l-4 border-l-indigo-500 cursor-pointer hover:scale-[1.02] transition-transform">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Accounts</CardTitle>
-                <Building2 className="h-5 w-5 text-accent" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold">{totalAccounts}</div>
-                <p className="text-xs text-muted-foreground mt-1">{isKnownRep ? `${repTerritory} territory` : 'Across all territories'}</p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/accounts?filter=hot">
-            <Card className="card-elevated border-l-4 border-l-red-500 cursor-pointer hover:scale-[1.02] transition-transform">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Hot Leads</CardTitle>
-                <Flame className="h-5 w-5 text-critical" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold text-critical dark:text-critical">{hotLeads}</div>
-                <p className="text-xs text-muted-foreground mt-1">Intent score 70+</p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/accounts?filter=warm">
-            <Card className="card-elevated border-l-4 border-l-orange-500 cursor-pointer hover:scale-[1.02] transition-transform">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Warm Leads</CardTitle>
-                <TrendingUp className="h-5 w-5 text-caution" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold text-caution dark:text-caution">{warmLeads}</div>
-                <p className="text-xs text-muted-foreground mt-1">Engagement, intent 70+, or calls</p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/opportunities">
-            <Card className="card-elevated border-l-4 border-l-emerald-500 cursor-pointer hover:scale-[1.02] transition-transform">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Pipeline Revenue</CardTitle>
-                <DollarSign className="h-5 w-5 text-positive" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold text-positive dark:text-positive">
-                  ${(opportunitiesData
-                    ?.filter((opp: any) => String(opp.status ?? "Open").toLowerCase() === "open")
-                    .reduce((sum: number, opp: any) => sum + (Number(opp.amount) || 0), 0) || 0).toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Total open pipeline</p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/accounts?filter=unworked">
-            <Card className="card-elevated border-l-4 border-l-cyan-500 cursor-pointer hover:scale-[1.02] transition-transform">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">6QA Opportunity Gap</CardTitle>
-                <Target className="h-5 w-5 text-accent" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold text-critical">{sixsenseSummary?.sixQA?.unworked || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {sixsenseSummary?.sixQA?.total ? `${Math.round(((sixsenseSummary.sixQA.unworked || 0) / sixsenseSummary.sixQA.total) * 100)}%` : '0%'} unworked 6QAs
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
-
-        {/* Quick Actions Bar - Horizontal at top */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Link href="/outreach">
-            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
-              <CardContent className="p-4 flex items-center gap-3">
-                <Mail className="size-5 shrink-0 text-ink-faint" />
-                <div>
-                  <div className="font-semibold text-sm">Generate Outreach</div>
-                  <div className="text-xs text-muted-foreground">AI-powered emails</div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-          {/* HIDDEN - Gong Calls removed per user request
-          {!isDemoUser && (
-            <Link href="/calls">
-              <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <Phone className="size-5 shrink-0 text-ink-faint" />
-                  <div>
-                    <div className="font-semibold text-sm">Review Gong Calls</div>
-                    <div className="text-xs text-muted-foreground">Latest conversations</div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          )}
-          */}
-          <Link href="/top-accounts">
-            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full border-accent/30">
-              <CardContent className="p-4 flex items-center gap-3">
-                <Target className="size-5 shrink-0 text-ink-faint" />
-                <div>
-                  <div className="font-semibold text-sm">Top 15 Accounts</div>
-                  <div className="text-xs text-muted-foreground">By Region & AE</div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
+        {/* Key figures. Each tile links to the list it summarises. */}
+        <MetricGrid>
+          <StatCard
+            title="Accounts"
+            value={totalAccounts}
+            subtitle={isKnownRep ? `${repTerritory} territory` : "All territories"}
+            icon={Building2}
+            onClick={() => setLocation("/accounts")}
+          />
+          <StatCard
+            title="Hot"
+            value={hotLeads}
+            subtitle="Intent 70+"
+            icon={Flame}
+            tone="critical"
+            onClick={() => setLocation("/accounts?filter=hot")}
+          />
+          <StatCard
+            title="Warm"
+            value={warmLeads}
+            subtitle="Intent 40–69"
+            icon={TrendingUp}
+            tone="caution"
+            onClick={() => setLocation("/accounts?filter=warm")}
+          />
+          <StatCard
+            title="Open pipeline"
+            value={`$${openPipeline.toLocaleString()}`}
+            subtitle="Across open opportunities"
+            icon={DollarSign}
+            tone="positive"
+            onClick={() => setLocation("/opportunities")}
+          />
+          <StatCard
+            title="Unworked 6QA"
+            value={sixsenseSummary?.sixQA?.unworked || 0}
+            subtitle={
+              sixsenseSummary?.sixQA?.total
+                ? `${Math.round(((sixsenseSummary.sixQA.unworked || 0) / sixsenseSummary.sixQA.total) * 100)}% of qualified accounts`
+                : "No 6QA data"
+            }
+            icon={Target}
+            tone="accent"
+            onClick={() => setLocation("/accounts?filter=unworked")}
+          />
+        </MetricGrid>
 
         {/* Main Content Grid */}
         <div className="grid gap-6 lg:grid-cols-3">
@@ -299,188 +247,174 @@ export default function Home() {
           <div className="lg:col-span-2 space-y-6">
             {/* Urgent Actions */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Flame className="h-6 w-6 text-critical" />
-                  <h2 className="text-2xl font-semibold">Priority Actions</h2>
+              <div className="mb-3 flex items-end justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold tracking-tight">Priority actions</h3>
+                  <p className="mt-0.5 text-xs text-ink-muted">
+                    Highest-signal accounts to work first
+                  </p>
                 </div>
-                <Badge className="badge-danger">3 urgent</Badge>
+                <Badge variant="critical">{priorityActions.length} urgent</Badge>
               </div>
 
               <div className="space-y-3">
                 {priorityActions.map((action) => {
-                  const Icon = action.icon;
                   const vectorScores = (action as any).vectorScores;
                   const engagementMetrics = (action as any).engagementMetrics;
                   const primaryContact = (action as any).primaryContact;
                   const keyContactsCount = (action as any).keyContactsCount || 0;
                   const isLostOpp = (action as any).isLostOpp;
-                  const lostOppContext = (action as any).lostOppContext;
-                  // NEW: Surfaced rawData fields
                   const temperature = (action as any).temperature;
                   const daysSinceLastEngagement = (action as any).daysSinceLastEngagement;
                   const accountOwner = (action as any).accountOwner;
                   const opportunityStatus = (action as any).opportunityStatus;
                   const salesActivities = (action as any).salesActivities;
-                  const triggerEvents = (action as any).triggerEvents;
-                  
-                  // Determine VECTOR tier color
-                  const tierColor = vectorScores?.tier === 1 ? 'text-positive' : 
-                                   vectorScores?.tier === 2 ? 'text-positive' : 
-                                   vectorScores?.tier === 3 ? 'text-caution' : 
-                                   vectorScores?.tier === 4 ? 'text-caution' : 'text-critical';
-                  
+
+                  const facts = [
+                    action.industry,
+                    action.employeeCount ? `${action.employeeCount.toLocaleString()} employees` : null,
+                    action.region,
+                    accountOwner ? `Owner: ${accountOwner}` : null,
+                  ].filter(Boolean);
+
                   return (
-                    <Card key={action.id} className="card-elevated hover:scale-[1.01] transition-transform cursor-pointer group">
-                      <CardContent className="p-6">
-                        <div className="flex items-start gap-4">
-                          {/* Company Logo */}
-                          <div className="w-12 h-12 rounded-sm bg-card border border-border flex-shrink-0 overflow-hidden">
-                            <img
-                              src={`https://logo.clearbit.com/${action.domain}`}
-                              alt={`${action.name} logo`}
-                              className="w-full h-full object-contain"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-accent ${action.gradient} rounded-lg"><svg class="h-6 w-6 text-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>`;
-                              }}
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0 space-y-3">
-                            {/* Account Header with VECTOR Score */}
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                  <h3 className="font-semibold text-lg">ENGAGE {action.name}</h3>
-                                  {vectorScores && (
-                                    <Badge variant="outline" className={`${tierColor} border-current font-bold`}>
-                                      VECTOR {vectorScores.composite}/100
-                                    </Badge>
-                                  )}
-                                  {isLostOpp && (
-                                    <Badge variant="destructive" className="bg-caution hover:bg-caution">
-                                      ⚠️ LOST OPP
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                  Intent: {action.intentScore} | {action.industry} | {action.employeeCount?.toLocaleString() || ''} employees | {action.region}
-                                  {accountOwner && <span> | Owner: {accountOwner}</span>}
-                                </p>
-                                {/* Temperature & Activity Badges */}
-                                <div className="flex flex-wrap gap-2 mt-1">
-                                  {temperature && (
-                                    <Badge className={`text-xs ${ temperature === 'Hot' ? 'bg-critical-subtle text-critical border-critical/30' : temperature === 'Warm' ? 'bg-caution-subtle text-caution border-caution/30' : 'bg-accent-subtle text-accent border-accent/30' }`}>
-                                      {temperature === 'Hot' ? '🔥' : temperature === 'Warm' ? '🌡️' : '❄️'} {temperature}
-                                    </Badge>
-                                  )}
-                                  {daysSinceLastEngagement !== null && daysSinceLastEngagement !== undefined && (
-                                    <Badge variant="outline" className={`text-xs ${ daysSinceLastEngagement <= 7 ? 'border-positive/30 text-positive' : daysSinceLastEngagement <= 30 ? 'border-caution/30 text-caution' : 'border-critical/30 text-critical' }`}>
-                                      {daysSinceLastEngagement}d since activity
-                                    </Badge>
-                                  )}
-                                  {salesActivities > 0 && (
-                                    <Badge variant="outline" className="text-xs border-accent/30 text-accent">
-                                      {salesActivities} activities
-                                    </Badge>
-                                  )}
-                                  {opportunityStatus && (
-                                    <Badge variant="outline" className="text-xs border-accent/30 text-accent">
-                                      Opp: {opportunityStatus}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                              {vectorScores && (
-                                <div className="text-right text-xs text-muted-foreground">
-                                  <span className={tierColor}>Tier {vectorScores.tier}</span>
-                                </div>
-                              )}
-                            </div>
+                    <Card key={action.id} interactive className="group">
+                      <CardContent className="space-y-3.5 p-4">
+                        <div className="flex items-start gap-3">
+                          <CompanyLogo name={action.name} website={action.domain} size="lg" />
 
-                            {/* Primary Contact Highlight */}
-                            {primaryContact && (
-                              <div className="p-2 bg-accent-subtle border border-accent/30 rounded-sm">
-                                <p className="text-sm">
-                                  <span className="font-semibold text-accent">Contact:</span>{' '}
-                                  <span className="font-medium">{primaryContact}</span>
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Top Contacts */}
-                            {action.topContacts && action.topContacts.length > 0 && (
-                              <div className="space-y-1">
-                                <p className="text-xs font-semibold text-muted-foreground uppercase">
-                                  Top Contacts ({action.contactCount}){keyContactsCount > 0 && ` • ${keyContactsCount} executives`}:
-                                </p>
-                                {action.topContacts.slice(0, 3).map((contact: any, idx: number) => (
-                                  <p key={idx} className="text-sm">
-                                    • <span className={`font-medium ${contact.isKeyTitle ? 'text-accent' : ''}`}>{contact.name}</span>
-                                    {contact.title && <span className="text-muted-foreground"> - {contact.title}</span>}
-                                  </p>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Why Now with VECTOR context */}
-                            <div className="p-3 bg-caution-subtle border border-caution/30 rounded-sm">
-                              <p className="text-xs font-semibold text-caution dark:text-caution mb-1">Why Now:</p>
-                              <p className="text-sm text-foreground">{action.whyNow}</p>
-                            </div>
-
-                            {/* Next Best Action */}
-                            <div className="p-3 bg-primary/10 border border-primary/20 rounded-sm">
-                              <p className="text-xs font-semibold text-primary mb-1">Next Best Action:</p>
-                              <p className="text-sm text-foreground">{action.nextBestAction}</p>
-                            </div>
-
-                            {/* Engagement Metrics */}
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                Last: {engagementMetrics?.lastCallFormatted || 'Never'}
-                              </span>
-                              {engagementMetrics?.daysSinceLastCall !== null && engagementMetrics?.daysSinceLastCall !== undefined && (
-                                <Badge variant="outline" className={`text-xs ${ engagementMetrics.daysSinceLastCall <= 7 ? 'border-positive/30 text-positive' : engagementMetrics.daysSinceLastCall <= 30 ? 'border-caution/30 text-caution' : 'border-critical/30 text-critical' }`}>
-                                  {engagementMetrics.daysSinceLastCall}d ago
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <h4 className="truncate font-medium group-hover:text-accent">
+                                {action.name}
+                              </h4>
+                              {temperature && (
+                                <Badge
+                                  variant={
+                                    temperature === "Hot"
+                                      ? "critical"
+                                      : temperature === "Warm"
+                                        ? "caution"
+                                        : "secondary"
+                                  }
+                                >
+                                  {temperature}
                                 </Badge>
                               )}
-                              <span>•</span>
-                              <span>{engagementMetrics?.totalCalls || 0} calls</span>
-                              <span>•</span>
-                              <span>{action.contactCount} contacts</span>
+                              {isLostOpp && <Badge variant="caution">Lost opp</Badge>}
                             </div>
-
-                            {/* VECTOR Score Breakdown (compact) */}
-                            {vectorScores && (
-                              <div className="flex gap-2 text-xs">
-                                <span className="px-2 py-0.5 bg-accent-subtle rounded" title="Engagement">
-                                  E:{vectorScores.engagement}
-                                </span>
-                                <span className="px-2 py-0.5 bg-positive-subtle rounded" title="Conversion">
-                                  C:{vectorScores.conversion}
-                                </span>
-                                <span className="px-2 py-0.5 bg-accent-subtle rounded" title="Strategic">
-                                  S:{vectorScores.strategic}
-                                </span>
-                                <span className="px-2 py-0.5 bg-caution-subtle rounded" title="Timing">
-                                  T:{vectorScores.timing}
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Action Button */}
-                            <div>
-                              <Button asChild variant="outline" size="sm" className="group-hover:border-primary group-hover:text-primary">
-                                <Link href={`/accounts/${action.id}`}>
-                                  View Full Account
-                                  <ArrowRight className="ml-2 h-4 w-4" />
-                                </Link>
-                              </Button>
-                            </div>
+                            <p className="mt-0.5 truncate text-xs text-ink-muted">
+                              {facts.join(" · ")}
+                            </p>
                           </div>
+
+                          {vectorScores && (
+                            <div className="shrink-0 text-right">
+                              <div data-numeric className="text-lg leading-none font-semibold">
+                                {vectorScores.composite}
+                                <span className="text-xs font-normal text-ink-faint">/100</span>
+                              </div>
+                              <div className="mt-0.5 text-2xs text-ink-faint">
+                                VECTOR · tier {vectorScores.tier}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* The two judgement calls, as labelled rows rather than
+                            filled panels — a stack of saturated boxes buried the
+                            text they were meant to emphasise. */}
+                        <dl className="space-y-2 border-l-2 border-border pl-3">
+                          <div>
+                            <dt className="text-2xs font-medium tracking-wide text-ink-faint uppercase">
+                              Why now
+                            </dt>
+                            <dd className="mt-0.5 text-sm">{action.whyNow}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-2xs font-medium tracking-wide text-ink-faint uppercase">
+                              Next best action
+                            </dt>
+                            <dd className="mt-0.5 text-sm">{action.nextBestAction}</dd>
+                          </div>
+                          {primaryContact && (
+                            <div>
+                              <dt className="text-2xs font-medium tracking-wide text-ink-faint uppercase">
+                                Contact
+                              </dt>
+                              <dd className="mt-0.5 text-sm">{primaryContact}</dd>
+                            </div>
+                          )}
+                        </dl>
+
+                        {action.topContacts && action.topContacts.length > 0 && (
+                          <ul className="space-y-0.5">
+                            {action.topContacts.slice(0, 3).map((contact: any, idx: number) => (
+                              <li key={idx} className="text-xs">
+                                <span className={contact.isKeyTitle ? "font-medium text-accent" : "font-medium"}>
+                                  {contact.name}
+                                </span>
+                                {contact.title && (
+                                  <span className="text-ink-muted"> — {contact.title}</span>
+                                )}
+                              </li>
+                            ))}
+                            {keyContactsCount > 0 && (
+                              <li className="text-2xs text-ink-faint">
+                                {action.contactCount} contacts · {keyContactsCount} executives
+                              </li>
+                            )}
+                          </ul>
+                        )}
+
+                        {vectorScores && (
+                          <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+                            {[
+                              ["Engagement", vectorScores.engagement],
+                              ["Conversion", vectorScores.conversion],
+                              ["Strategic", vectorScores.strategic],
+                              ["Timing", vectorScores.timing],
+                            ].map(([label, value]) => (
+                              <div key={String(label)}>
+                                <div className="text-2xs tracking-wide text-ink-faint uppercase">
+                                  {label}
+                                </div>
+                                <div data-numeric className="text-sm font-medium tabular-nums">
+                                  {value as number}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border-subtle pt-3 text-2xs text-ink-muted">
+                          <span>Last contact {engagementMetrics?.lastCallFormatted || "never"}</span>
+                          {engagementMetrics?.daysSinceLastCall != null && (
+                            <StatusDot
+                              tone={
+                                engagementMetrics.daysSinceLastCall <= 7
+                                  ? "positive"
+                                  : engagementMetrics.daysSinceLastCall <= 30
+                                    ? "caution"
+                                    : "critical"
+                              }
+                              className="text-2xs"
+                            >
+                              {engagementMetrics.daysSinceLastCall}d ago
+                            </StatusDot>
+                          )}
+                          <span>{engagementMetrics?.totalCalls || 0} calls</span>
+                          {salesActivities > 0 && <span>{salesActivities} activities</span>}
+                          {opportunityStatus && <span>Opp: {opportunityStatus}</span>}
+                          {daysSinceLastEngagement != null && (
+                            <span>{daysSinceLastEngagement}d since engagement</span>
+                          )}
+                          <Button asChild variant="ghost" size="sm" className="ml-auto">
+                            <Link href={`/accounts/${action.id}`}>
+                              Open account
+                              <ArrowRight className="size-3.5" />
+                            </Link>
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
