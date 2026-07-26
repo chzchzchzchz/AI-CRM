@@ -109,10 +109,18 @@ export default function Outreach() {
     setConversationHistory([]);
     setRawReasoning('');
 
-    // Read file contents if attached
+    // Read file contents if attached. Only text-based formats can be read in the browser —
+    // file.text() on a PDF/DOCX/PPTX returns binary/zip bytes, which is noise to the model.
+    // For those we note the filename rather than feeding garbage.
     let fileContext = "";
     if (attachedFiles.length > 0) {
+      const TEXT_EXT = ['txt', 'md', 'csv', 'json', 'html', 'xml', 'log'];
       for (const file of attachedFiles) {
+        const ext = file.name.split('.').pop()?.toLowerCase() || '';
+        if (!TEXT_EXT.includes(ext)) {
+          fileContext += `\n\n--- ${file.name} (attached; text not extractable in-browser) ---`;
+          continue;
+        }
         try {
           const text = await file.text();
           fileContext += `\n\n--- ${file.name} ---\n${text.slice(0, 10000)}`;
@@ -249,7 +257,7 @@ export default function Outreach() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </div>
     );
@@ -257,13 +265,17 @@ export default function Outreach() {
 
   return (
     <div>
-      <div className="container py-1 max-w-7xl">
-        <div className="mb-8">
-          <h1 className="text-xl font-semibold text-foreground mb-2 flex items-center gap-3">
-            <Sparkles className="h-10 w-10 text-accent" />
-            AI-Powered Outreach
-          </h1>
-          <p className="text-ink-muted">Generate personalized emails using account intelligence</p>
+      <div className="container py-1 space-y-5 max-w-7xl">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-sm bg-muted border border-border-strong">
+            <Sparkles className="h-5 w-5 text-accent" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold">AI-Powered Outreach</h1>
+            <p className="text-sm text-muted-foreground">
+              Generate personalized emails grounded in account intelligence.
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -273,7 +285,7 @@ export default function Outreach() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-foreground flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-accent" />
+                  <Building2 className="h-5 w-5 text-muted-foreground" />
                   1. Select Target Account
                 </CardTitle>
                 <CardDescription>Choose ONE account (sorted by intent score)</CardDescription>
@@ -286,7 +298,7 @@ export default function Outreach() {
                       placeholder="Search accounts..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 bg-muted border-border-strong text-foreground placeholder:text-ink-subtle"
+                      className="pl-10 bg-muted border-border-strong text-foreground placeholder:text-ink-muted"
                     />
                   </div>
                 </div>
@@ -304,9 +316,19 @@ export default function Outreach() {
                           <div className="font-medium text-foreground truncate">{account.name}</div>
                           <div className="text-sm text-ink-muted">{account.industry || "Unknown"}</div>
                         </div>
-                        <Badge className={`${ intentScore >= 70 ? 'bg-critical-subtle text-critical border-critical/30' : intentScore >= 40 ? 'bg-caution-subtle text-caution border-caution/30' : 'bg-muted text-ink-muted border-border' }`}>
-                          {intentScore}
-                        </Badge>
+                        {(() => {
+                          const heat = intentScore >= 70
+                            ? { glyph: "🔥", tone: "text-critical" }
+                            : intentScore >= 40
+                            ? { glyph: "▲", tone: "text-caution" }
+                            : { glyph: "▽", tone: "text-ink-muted" };
+                          return (
+                            <span className={`inline-flex items-center gap-1.5 rounded-sm bg-muted px-2.5 py-1 text-xs font-medium ${heat.tone}`}>
+                              <span aria-hidden="true">{heat.glyph}</span>
+                              <span className="font-mono">{intentScore}</span>
+                            </span>
+                          );
+                        })()}
                       </div>
                     );
                   })}
@@ -342,13 +364,13 @@ export default function Outreach() {
                           placeholder="Search contacts..."
                           value={contactSearchQuery}
                           onChange={(e) => setContactSearchQuery(e.target.value)}
-                          className="pl-10 bg-muted border-border-strong text-foreground placeholder:text-ink-subtle"
+                          className="pl-10 bg-muted border-border-strong text-foreground placeholder:text-ink-muted"
                         />
                       </div>
                     </div>
                     <div className="space-y-2 max-h-[250px] overflow-y-auto">
                       {filteredContacts.length === 0 ? (
-                        <div className="text-center py-8 text-ink-subtle">
+                        <div className="text-center py-8 text-ink-muted">
                           No contacts found for this account
                         </div>
                       ) : (
@@ -364,7 +386,7 @@ export default function Outreach() {
                                 <div className="font-medium text-foreground truncate">{contact.name}</div>
                                 <div className="text-sm text-ink-muted truncate">{contact.title || "No title"}</div>
                                 {contact.email && (
-                                  <div className="text-xs text-ink-subtle truncate">{contact.email}</div>
+                                  <div className="text-xs text-ink-muted truncate">{contact.email}</div>
                                 )}
                               </div>
                             </div>
@@ -396,7 +418,7 @@ export default function Outreach() {
                   placeholder="e.g., Focus on their pain points, mention recent news, emphasize your key differentiators..."
                   value={context}
                   onChange={(e) => setContext(e.target.value)}
-                  className="min-h-[100px] bg-muted border-border-strong text-foreground placeholder:text-ink-subtle"
+                  className="min-h-[100px] bg-muted border-border-strong text-foreground placeholder:text-ink-muted"
                 />
                 
                 {/* File Attachments */}
@@ -432,21 +454,23 @@ export default function Outreach() {
                       ))}
                     </div>
                   )}
-                  <p className="text-xs text-ink-subtle">Attach case studies, product docs, or competitor info to enhance the email</p>
+                  <p className="text-xs text-ink-muted">Attach case studies, product docs, or competitor info to enhance the email</p>
                 </div>
               </CardContent>
             </Card>
 
             {/* Generate Button */}
             <Button
+              variant="signal"
+              size="lg"
               onClick={handleGenerate}
               disabled={generateMutation.isPending || !selectedAccountId}
-              className="w-full bg-accent text-accent-foreground py-6 text-lg"
+              className="w-full"
             >
               {generateMutation.isPending ? (
                 <>
                   <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  Generating Strategy & Email...
+                  Generating email…
                 </>
               ) : (
                 <>
@@ -536,12 +560,12 @@ export default function Outreach() {
                           value={refinementInput}
                           onChange={(e) => setRefinementInput(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleRefine()}
-                          className="flex-1 bg-muted border-border-strong text-foreground placeholder:text-ink-subtle"
+                          className="flex-1 bg-muted border-border-strong text-foreground placeholder:text-ink-muted"
                         />
                         <Button
+                          variant="outline"
                           onClick={handleRefine}
                           disabled={refineMutation.isPending || !refinementInput.trim()}
-                          className="bg-accent hover:bg-accent"
                         >
                           {refineMutation.isPending ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -553,19 +577,19 @@ export default function Outreach() {
                           )}
                         </Button>
                       </div>
-                      <p className="text-xs text-ink-subtle">Press Enter or click Refine to adjust the email</p>
+                      <p className="text-xs text-ink-muted">Press Enter or click Refine to adjust the email</p>
                     </div>
                     
                     {/* View Reasoning (Optional) */}
                     {rawReasoning && (
                       <Collapsible open={isReasoningOpen} onOpenChange={setIsReasoningOpen}>
-                        <CollapsibleTrigger className="flex items-center gap-1 text-xs text-ink-subtle hover:text-ink-muted">
+                        <CollapsibleTrigger className="flex items-center gap-1 text-xs text-ink-muted hover:text-ink-muted">
                           {isReasoningOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                           {isReasoningOpen ? 'Hide' : 'View'} AI reasoning
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <div className="mt-2 p-3 bg-card rounded border border-border max-h-[200px] overflow-y-auto">
-                            <code className="text-xs text-ink-subtle whitespace-pre-wrap break-all">
+                            <code className="text-xs text-ink-muted whitespace-pre-wrap break-all">
                               {rawReasoning}
                             </code>
                           </div>
@@ -575,10 +599,7 @@ export default function Outreach() {
                     
                     {/* Send Buttons */}
                     <div className="flex gap-3">
-                      <Button
-                        asChild
-                        className="flex-1 bg-critical hover:bg-critical text-critical-foreground"
-                      >
+                      <Button asChild variant="outline" className="flex-1">
                         <a
                           href={getGmailUrl()}
                           target="_blank"
@@ -589,10 +610,7 @@ export default function Outreach() {
                           <ExternalLink className="h-3 w-3 ml-2" />
                         </a>
                       </Button>
-                      <Button
-                        asChild
-                        className="flex-1 bg-accent hover:bg-accent text-accent-foreground"
-                      >
+                      <Button asChild variant="outline" className="flex-1">
                         <a
                           href={getOutlookUrl()}
                           target="_blank"
@@ -608,7 +626,7 @@ export default function Outreach() {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <Sparkles className="h-12 w-12 text-ink-subtle mb-4" />
-                    <p className="text-ink-subtle">
+                    <p className="text-ink-muted">
                       Select an account and click Generate to create a personalized email
                     </p>
                   </div>

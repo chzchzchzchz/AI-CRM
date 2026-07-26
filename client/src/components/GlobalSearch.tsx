@@ -66,8 +66,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     if (type === 'account') {
       setLocation(`/accounts/${id}`);
     } else if (type === 'contact') {
-      // Navigate to contacts page for now
-      setLocation('/contacts');
+      setLocation(`/contacts/${id}`);
     } else if (type === 'call') {
       setLocation('/calls');
     }

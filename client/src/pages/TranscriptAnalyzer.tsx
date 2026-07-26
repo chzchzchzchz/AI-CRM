@@ -431,7 +431,7 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
                         <p>{result.betaInterest.apprehensions || 'None mentioned'}</p>
                       </div>
                       {result.betaInterest.interestQuote && (
-                        <div className="bg-muted border-l-2 border-accent/30 pl-3 py-2 italic">
+                        <div className="bg-muted border-l border-border-strong pl-3 py-2 italic">
                           "{result.betaInterest.interestQuote}"
                         </div>
                       )}
@@ -443,7 +443,7 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
                 <SectionCard title="Top Quotes" icon={<Quote className="w-5 h-5 text-accent" />}>
                   <div className="space-y-4">
                     {result.topQuotes.map((quote, idx) => (
-                      <div key={idx} className="bg-muted border-l-2 border-accent/30 pl-4 py-3 italic">
+                      <div key={idx} className="bg-muted border-l border-border-strong pl-4 py-3 italic">
                         "{quote}"
                       </div>
                     ))}

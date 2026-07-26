@@ -74,11 +74,11 @@ export default function RFPs() {
               <div className="flex items-center gap-4 px-4 py-2 bg-card border border-border rounded-sm">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-accent">{stats.total}</div>
-                  <div className="text-xs text-ink-subtle">Total</div>
+                  <div className="text-xs text-ink-muted">Total</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-positive">{stats.open}</div>
-                  <div className="text-xs text-ink-subtle">Open</div>
+                  <div className="text-xs text-ink-muted">Open</div>
                 </div>
               </div>
             )}
@@ -110,7 +110,7 @@ export default function RFPs() {
                   <label className="text-sm text-ink-muted mb-2 block">
                     SAM.gov API Key
                   </label>
-                  <p className="text-xs text-ink-subtle mb-3">
+                  <p className="text-xs text-ink-muted mb-3">
                     Get your API key from{" "}
                     <a
                       href="https://sam.gov/content/system-accounts"
@@ -145,7 +145,7 @@ export default function RFPs() {
 
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-subtle" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" />
             <Input
               placeholder="Search RFPs by title, agency, or keywords..."
               value={searchQuery}
@@ -174,7 +174,7 @@ export default function RFPs() {
             <CardContent className="p-12 text-center">
               <FileText className="h-12 w-12 text-ink-subtle mx-auto mb-4" />
               <p className="text-ink-muted mb-2">No RFPs found</p>
-              <p className="text-sm text-ink-subtle">
+              <p className="text-sm text-ink-muted">
                 {rfps.length === 0 
                   ? "Click 'Scrape SAM.gov' to fetch the latest opportunities"
                   : "Try adjusting your search or filters"}

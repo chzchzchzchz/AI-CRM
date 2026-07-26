@@ -46,6 +46,17 @@ const buttonVariants = cva(
         ],
         ghost: "text-ink-muted hover:bg-muted hover:text-foreground",
         link: "text-accent underline-offset-4 hover:underline active:translate-y-0",
+        /**
+         * The single highest-intent action on a view. Kept as a named variant
+         * so call sites keep expressing that intent, but it now resolves to
+         * the accent rather than a hardcoded cyan-on-near-black pair.
+         */
+        signal: [
+          "bg-accent text-accent-foreground font-semibold shadow-sm",
+          "hover:brightness-[1.08]",
+          "after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:h-px after:rounded-t-md",
+          "after:bg-white/20",
+        ],
       },
       size: {
         default: "h-8 px-3 text-sm has-[>svg]:px-2.5",

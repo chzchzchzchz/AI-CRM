@@ -136,14 +136,22 @@ export const clayWebhookRouter = router({
           existing = results.length > 0 ? results[0] : null;
         }
 
-        const accountData = {
+        // Map the categorized enrichment onto the REAL account columns. The previous version
+        // wrote `stack`/`research`/`trigger`, none of which are columns on the accounts
+        // table (they are techStack / triggerEvents / aiResearchCache / rawData), so every
+        // Clay enrichment was silently dropped.
+        const accountData: Record<string, any> = {
           name: name || cleanDomain || 'Unknown',
           domain: cleanDomain || name || 'unknown',
-          stack: Object.keys(stack).length > 0 ? JSON.stringify(stack) : null,
-          research: Object.keys(research).length > 0 ? JSON.stringify(research) : null,
-          trigger: Object.keys(trigger).length > 0 ? JSON.stringify(trigger) : null,
-          rawData: Object.keys(rawData).length > 0 ? JSON.stringify(rawData) : null,
+          techStack: Object.keys(stack).length > 0 ? JSON.stringify(stack) : null,
+          triggerEvents: Object.keys(trigger).length > 0 ? JSON.stringify(trigger) : null,
+          aiResearchCache: Object.keys(research).length > 0 ? JSON.stringify(research) : null,
+          rawData: Object.keys(rawData).length > 0 ? rawData : null,
         };
+        // Never overwrite existing values with null when Clay sent nothing for that field.
+        for (const k of Object.keys(accountData)) {
+          if (accountData[k] === null) delete accountData[k];
+        }
 
         if (existing) {
           // Update existing account

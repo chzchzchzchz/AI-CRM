@@ -4,13 +4,31 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AIAssistant } from "@/components/AIAssistant";
 import { trpc } from "@/lib/trpc";
-import { 
-  ArrowLeft, ExternalLink, Building2, Phone, Mail, MapPin, Linkedin, 
-  Sparkles, Copy, Check, User, TrendingUp, Loader2, RefreshCw, ChevronRight
+import {
+  ArrowLeft, ExternalLink, Building2, Phone, Mail, MapPin, Linkedin,
+  Sparkles, Copy, Check, User, Loader2, RefreshCw, ChevronRight, Flame
 } from "lucide-react";
 import { Link, useParams } from "wouter";
 import { SafeStreamdown } from "@/components/SafeStreamdown";
 import { toast } from "sonner";
+
+// Heat pairs a tinted colour with a word + shape so it never relies on colour alone.
+function heatMeta(score: number): { label: string; cls: string; hot: boolean } {
+  if (score >= 80) return { label: "Hot", cls: "text-critical", hot: true };
+  if (score >= 60) return { label: "Warm", cls: "text-caution", hot: false };
+  if (score >= 40) return { label: "Cool", cls: "text-accent", hot: false };
+  return { label: "Cold", cls: "text-ink-muted", hot: false };
+}
+
+function stageMeta(stage: string): { cls: string } {
+  switch (stage) {
+    case "Purchase": return { cls: "text-positive" };
+    case "Decision": return { cls: "text-accent" };
+    case "Consideration": return { cls: "text-caution" };
+    case "Awareness": return { cls: "text-ink-muted" };
+    default: return { cls: "text-ink-muted" };
+  }
+}
 
 export default function ContactDetail() {
   const { id } = useParams<{ id: string }>();
@@ -41,9 +59,9 @@ export default function ContactDetail() {
     }
     setIsGenerating(true);
     try {
-      const summary = await summaryMutation.mutateAsync({ 
+      const summary = await summaryMutation.mutateAsync({
         contactId: personId,
-        includeLinkedIn: true 
+        includeLinkedIn: true
       });
       setAiSummary(summary);
       toast.success("AI summary generated from LinkedIn!");
@@ -69,18 +87,14 @@ export default function ContactDetail() {
       .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
       .replace(/<strategy>[\s\S]*?<\/strategy>/gi, '')
       .replace(/<notes>[\s\S]*?<\/notes>/gi, '')
-      .replace(/---+/g, '')
+      // Only strip standalone horizontal rules. A bare /---+/ also ate the
+      // separator row of every markdown table (|---|---|), which silently
+      // disabled GFM table rendering across the app.
+      .replace(/^\s*-{3,}\s*$/gm, '')
       .trim();
     const outputMatch = clean.match(/OUTPUT[:\s]*([\s\S]*?)(?:$|---)/i);
     if (outputMatch) clean = outputMatch[1].trim();
     return clean;
-  };
-
-  const getIntentColor = (score: number) => {
-    if (score >= 80) return 'text-critical';
-    if (score >= 60) return 'text-caution';
-    if (score >= 40) return 'text-caution';
-    return 'text-ink-subtle';
   };
 
   // Loading state
@@ -90,9 +104,10 @@ export default function ContactDetail() {
         <div className="container py-6 max-w-5xl">
           <div className="animate-pulse space-y-4">
             <div className="h-8 w-64 bg-muted rounded" />
-            <div className="grid grid-cols-3 gap-4">
-              {[...Array(3)].map((_, i) => <div key={i} className="h-24 bg-muted rounded" />)}
+            <div className="grid md:grid-cols-2 gap-4">
+              {[...Array(2)].map((_, i) => <div key={i} className="h-40 bg-muted rounded" />)}
             </div>
+            <div className="h-56 bg-muted rounded" />
           </div>
         </div>
       </div>
@@ -113,30 +128,32 @@ export default function ContactDetail() {
   }
 
   const intentScore = account?.intentScore || 0;
+  const heat = heatMeta(intentScore);
+  const accountStage = (account as any)?.sixsenseBuyingStage as string | undefined;
+  const stage = stageMeta(accountStage || '');
 
   return (
     <div>
       <AIAssistant context={{ type: "contact", id: personId, name: contact.name || undefined }} />
 
       <div className="container py-1 space-y-5 max-w-5xl">
-        {/* Compact Header */}
-        <div className="flex items-center justify-between gap-4">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/contacts"><ArrowLeft className="h-5 w-5" /></Link>
             </Button>
+            {/* Contact avatar — purple is the identity accent */}
+            <div className="hidden sm:flex w-12 h-12 rounded-sm bg-accent-subtle border border-accent/30 items-center justify-center flex-shrink-0 text-accent font-semibold text-lg">
+              {(contact.name || '?').charAt(0).toUpperCase()}
+            </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold truncate">{contact.name}</h1>
-                {contact.title && (
-                  <Badge variant="outline" className="hidden sm:inline-flex">{contact.title}</Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                {contact.title && <span className="sm:hidden">{contact.title}</span>}
+              <h1 className="text-2xl font-semibold tracking-tight truncate">{contact.name}</h1>
+              <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-sm text-ink-muted mt-0.5">
+                {contact.title && <span className="text-ink-muted">{contact.title}</span>}
                 {contact.company && (
-                  <Link href={account ? `/accounts/${account.id}` : '#'} 
-                        className="flex items-center gap-1 hover:text-primary">
+                  <Link href={account ? `/accounts/${account.id}` : '#'}
+                        className="flex items-center gap-1 hover:text-accent transition-colors">
                     <Building2 className="h-3 w-3" />{contact.company}
                   </Link>
                 )}
@@ -148,14 +165,14 @@ export default function ContactDetail() {
               </div>
             </div>
           </div>
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 flex-shrink-0 flex-wrap">
             {contact.phone && (
               <Button size="sm" variant="outline" className="border-positive/30 text-positive" asChild>
                 <a href={`tel:${contact.phone}`}><Phone className="mr-1 h-4 w-4" />Call</a>
               </Button>
             )}
             {contact.email && (
-              <Button size="sm" className="text-foreground" asChild>
+              <Button size="sm" className="bg-accent text-foreground hover:bg-accent" asChild>
                 <a href={`mailto:${contact.email}`}><Mail className="mr-1 h-4 w-4" />Email</a>
               </Button>
             )}
@@ -177,47 +194,47 @@ export default function ContactDetail() {
         {/* Contact Info + Account Context Row */}
         <div className="grid md:grid-cols-2 gap-4">
           {/* Contact Details */}
-          <Card>
+          <Card className="border-border bg-card shadow-none">
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-sm flex items-center gap-2">
                 <User className="h-4 w-4 text-accent" />
                 Contact Details
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-4 pb-4 space-y-3">
+            <CardContent className="px-4 pb-4 divide-y divide-border">
               {contact.title && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Title</span>
-                  <span className="font-medium">{contact.title}</span>
+                <div className="flex justify-between items-center gap-3 py-2.5 first:pt-0">
+                  <span className="text-sm text-ink-muted">Title</span>
+                  <span className="font-medium text-sm text-right">{contact.title}</span>
                 </div>
               )}
               {contact.email && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Email</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">{contact.email}</span>
-                    <button onClick={() => copyToClipboard(contact.email!, 'email')} className="p-1 hover:bg-muted rounded">
-                      {copiedField === 'email' ? <Check className="h-3 w-3 text-positive" /> : <Copy className="h-3 w-3" />}
+                <div className="flex justify-between items-center gap-3 py-2.5 first:pt-0">
+                  <span className="text-sm text-ink-muted">Email</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-medium text-sm truncate">{contact.email}</span>
+                    <button onClick={() => copyToClipboard(contact.email!, 'email')} aria-label="Copy email address" className="p-1 hover:bg-muted rounded shrink-0">
+                      {copiedField === 'email' ? <Check className="h-3 w-3 text-positive" /> : <Copy className="h-3 w-3 text-ink-muted" />}
                     </button>
                   </div>
                 </div>
               )}
               {contact.phone && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Phone</span>
+                <div className="flex justify-between items-center gap-3 py-2.5 first:pt-0">
+                  <span className="text-sm text-ink-muted">Phone</span>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{contact.phone}</span>
-                    <button onClick={() => copyToClipboard(contact.phone!, 'phone')} className="p-1 hover:bg-muted rounded">
-                      {copiedField === 'phone' ? <Check className="h-3 w-3 text-positive" /> : <Copy className="h-3 w-3" />}
+                    <span className="font-mono tabular-nums text-sm">{contact.phone}</span>
+                    <button onClick={() => copyToClipboard(contact.phone!, 'phone')} aria-label="Copy phone number" className="p-1 hover:bg-muted rounded shrink-0">
+                      {copiedField === 'phone' ? <Check className="h-3 w-3 text-positive" /> : <Copy className="h-3 w-3 text-ink-muted" />}
                     </button>
                   </div>
                 </div>
               )}
               {contact.linkedinUrl && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">LinkedIn</span>
+                <div className="flex justify-between items-center gap-3 py-2.5 first:pt-0">
+                  <span className="text-sm text-ink-muted">LinkedIn</span>
                   <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer"
-                     className="flex items-center gap-1 text-accent hover:underline text-sm">
+                     className="flex items-center gap-1 text-accent hover:text-accent text-sm">
                     View Profile <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
@@ -225,8 +242,8 @@ export default function ContactDetail() {
             </CardContent>
           </Card>
 
-          {/* Account Context */}
-          <Card>
+          {/* Account Context — a compact echo of the account signal card */}
+          <Card className="border-border bg-card shadow-none">
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-sm flex items-center justify-between">
                 <span className="flex items-center gap-2">
@@ -234,7 +251,7 @@ export default function ContactDetail() {
                   Account Context
                 </span>
                 {account && (
-                  <Link href={`/accounts/${account.id}`} className="text-xs text-primary hover:underline flex items-center gap-1">
+                  <Link href={`/accounts/${account.id}`} className="text-xs text-accent hover:text-accent flex items-center gap-1">
                     View Account <ChevronRight className="h-3 w-3" />
                   </Link>
                 )}
@@ -243,53 +260,75 @@ export default function ContactDetail() {
             <CardContent className="px-4 pb-4">
               {account ? (
                 <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Company</span>
-                    <span className="font-medium">{account.name}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Intent Score</span>
-                    <span className={`font-bold text-lg ${getIntentColor(intentScore)}`}>
-                      {intentScore}
-                      <span className="text-xs ml-1">
-                        
-                      </span>
+                  {/* Intent — cyan mono, with heat glyph + word */}
+                  <div className="flex items-end justify-between gap-3 rounded-sm bg-muted p-3">
+                    <div>
+                      <div className="text-xs text-ink-muted">Intent score</div>
+                      <div className="flex items-end gap-1.5">
+                        <span className="font-mono tabular-nums text-2xl font-semibold leading-none text-accent">{intentScore}</span>
+                        <span className="mb-0.5 font-mono text-xs text-ink-muted">/ 100</span>
+                      </div>
+                    </div>
+                    <span className={`inline-flex items-center gap-1.5 rounded-sm bg-surface-raised px-2.5 py-1 text-xs font-medium ${heat.cls}`}>
+                      {heat.hot
+                        ? <Flame className="h-3 w-3" />
+                        : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+                      {heat.label}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Buying Stage</span>
-                    <Badge variant="outline">{(account as any).buyingStage || 'Unknown'}</Badge>
+                  <div className="flex justify-between items-center gap-3">
+                    <span className="text-sm text-ink-muted">Company</span>
+                    <span className="font-medium text-sm text-right">{account.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center gap-3">
+                    <span className="text-sm text-ink-muted">Buying Stage</span>
+                    {accountStage ? (
+                      <span className={`inline-flex items-center gap-1.5 rounded-sm bg-muted px-2.5 py-1 text-xs font-medium ${stage.cls}`}>
+                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                        {accountStage}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-ink-muted">Unknown</span>
+                    )}
                   </div>
                   {account.industry && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Industry</span>
-                      <span className="font-medium">{account.industry}</span>
+                    <div className="flex justify-between items-center gap-3">
+                      <span className="text-sm text-ink-muted">Industry</span>
+                      <span className="font-medium text-sm text-right">{account.industry}</span>
                     </div>
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No linked account</p>
+                <p className="text-sm text-ink-muted">No linked account</p>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* AI Summary with LinkedIn */}
-        <Card>
-          <CardHeader className="py-3 px-4">
-            <CardTitle className="text-sm flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-caution" />
-                AI Contact Brief
-                {contact.linkedinUrl && (
-                  <Badge variant="outline" className="text-xs gap-1">
-                    <Linkedin className="h-3 w-3" /> LinkedIn Available
-                  </Badge>
-                )}
+        {/* AI Contact Brief */}
+        <Card className="border-border bg-card shadow-none">
+          <CardHeader className="px-6 pt-1">
+            <CardTitle className="flex items-start justify-between gap-3">
+              <span className="min-w-0">
+                <span className="flex items-center gap-2 text-base font-semibold">
+                  <Sparkles className="h-4 w-4 text-accent" />
+                  AI Contact Brief
+                  {contact.linkedinUrl && (
+                    <Badge variant="outline" className="text-[11px] font-normal gap-1 border-border-strong text-ink-muted">
+                      <Linkedin className="h-3 w-3 text-accent" /> LinkedIn available
+                    </Badge>
+                  )}
+                </span>
+                <span className="mt-1 block text-xs font-normal text-ink-muted">
+                  {contact.linkedinUrl
+                    ? "Synthesised from this contact's role and LinkedIn profile."
+                    : "Add a LinkedIn profile to enrich this brief."}
+                </span>
               </span>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 variant="outline"
+                className="shrink-0"
                 onClick={handleGenerateSummary}
                 disabled={isGenerating}
               >
@@ -302,23 +341,32 @@ export default function ContactDetail() {
               </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-4 pb-4">
+          <CardContent className="px-6">
             {isGenerating ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {contact.linkedinUrl ? 'Analyzing LinkedIn profile...' : 'Generating summary...'}
+              <div className="space-y-2.5 py-1">
+                <div className="flex items-center gap-2 text-sm text-ink-muted">
+                  <Loader2 className="h-4 w-4 animate-spin text-accent" />
+                  {contact.linkedinUrl ? 'Analyzing LinkedIn profile…' : 'Generating summary…'}
+                </div>
+                <div className="animate-pulse space-y-2 pt-1">
+                  <div className="h-3 w-11/12 rounded bg-muted" />
+                  <div className="h-3 w-full rounded bg-muted" />
+                  <div className="h-3 w-8/12 rounded bg-muted" />
+                </div>
               </div>
             ) : aiSummary ? (
-              <div className="prose prose-sm dark:prose-invert max-w-none">
+              <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-accent">
                 <SafeStreamdown>{extractFinalOutput(aiSummary)}</SafeStreamdown>
               </div>
             ) : (
-              <div className="text-center py-6 text-muted-foreground">
-                <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Click "Generate Brief" to create an AI-powered summary</p>
-                {contact.linkedinUrl && (
-                  <p className="text-xs mt-1">Will include insights from LinkedIn profile</p>
-                )}
+              <div className="rounded-sm border border-dashed border-border py-8 text-center">
+                <Sparkles className="h-7 w-7 mx-auto mb-2 text-ink-subtle" />
+                <p className="text-sm text-ink-muted">No brief generated yet</p>
+                <p className="text-xs mt-1 text-ink-subtle">
+                  {contact.linkedinUrl
+                    ? 'Generate one to pull in insights from the LinkedIn profile.'
+                    : 'A LinkedIn profile is needed to generate a brief.'}
+                </p>
               </div>
             )}
           </CardContent>

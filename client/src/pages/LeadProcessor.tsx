@@ -127,11 +127,14 @@ export default function LeadProcessor() {
   };
 
   return (
+    <div className="text-foreground">
     <div className="container py-1 max-w-4xl">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <Zap className="size-5 shrink-0 text-ink-faint" />
+          <div className="p-2 bg-muted border border-border-strong rounded-md">
+            <Zap className="h-6 w-6 text-accent" />
+          </div>
           <h1 className="text-xl font-semibold">Intelligent Lead Processor</h1>
         </div>
         <p className="text-muted-foreground">
@@ -157,7 +160,7 @@ export default function LeadProcessor() {
               onChange={handleFileSelect}
               className="hidden"
             />
-            <Upload className="h-12 w-12 mx-auto mb-4 text-ink-subtle" />
+            <Upload className="h-12 w-12 mx-auto mb-4 text-ink-muted" />
             <p className="font-semibold text-lg mb-1">Drag & Drop Your Lead Files Here</p>
             <p className="text-sm text-muted-foreground">
               Accepts <span className="text-positive font-medium">.xlsx</span> or{' '}
@@ -230,7 +233,7 @@ export default function LeadProcessor() {
       <Button
         onClick={processFiles}
         disabled={files.length === 0 || isProcessing}
-        className="w-full bg-accent py-6 text-lg"
+        className="w-full bg-accent text-foreground hover:bg-accent py-6 text-lg"
       >
         {isProcessing ? (
           <>
@@ -313,6 +316,7 @@ export default function LeadProcessor() {
       <p className="text-xs text-center text-muted-foreground mt-6">
         All processing uses AI to intelligently clean and standardize your data.
       </p>
+    </div>
     </div>
   );
 }

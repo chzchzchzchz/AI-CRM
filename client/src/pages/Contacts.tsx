@@ -1,13 +1,12 @@
-import { useState, useMemo, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { Link, useLocation } from "wouter";
 import {
-  User, Mail, Linkedin, MapPin, Building2, Search,
-  Filter, ArrowUpDown, ExternalLink, Briefcase, Eye, Users, Sparkles, Phone, TrendingUp
+  User, Mail, Linkedin, MapPin, Building2, Search, ArrowUpDown, ExternalLink,
+  Briefcase, Users, Sparkles, Phone, TrendingUp, Flame, Snowflake, ChevronRight, Target
 } from "lucide-react";
 import { ContextualAI } from "@/components/ContextualAI";
 import {
@@ -17,8 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
-import { useRep, REP_OPTIONS } from "@/contexts/RepContext";
+import { useRep } from "@/contexts/RepContext";
 import { RepSwitcher } from "@/components/RepSwitcher";
 
 type SortField = "name" | "title" | "company";
@@ -26,8 +24,8 @@ type SortOrder = "asc" | "desc";
 
 export default function ContactsEnhanced() {
   const [, navigate] = useLocation();
-  const { selectedRep, repInfo, matchesTerritory, isRepMode } = useRep();
-  
+  const { repInfo, matchesTerritory, isRepMode } = useRep();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [titleFilter, setTitleFilter] = useState<string>("all");
@@ -38,9 +36,18 @@ export default function ContactsEnhanced() {
   const [currentPage, setCurrentPage] = useState(1);
   const CONTACTS_PER_PAGE = 50;
 
-  const { data: contacts, isLoading } = trpc.people.list.useQuery(undefined, {
-    staleTime: 3 * 60 * 1000
-  });
+  // Debounce the search so typing queries the server across ALL contacts (not just the
+  // bounded first page), without a request per keystroke.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const { data: contacts, isLoading } = trpc.people.list.useQuery(
+    { search: debouncedSearch || undefined },
+    { staleTime: 3 * 60 * 1000 }
+  );
 
   // Get accounts for territory filtering
   const { data: accounts } = trpc.accounts.list.useQuery(undefined, {
@@ -103,7 +110,7 @@ export default function ContactsEnhanced() {
   const mfaProviders = useMemo(() => {
     if (!accounts) return [];
     const foundProviders = new Set<string>();
-    
+
     accounts.forEach((account: any) => {
       if (account.techStack) {
         const techLower = String(account.techStack).toLowerCase();
@@ -116,7 +123,7 @@ export default function ContactsEnhanced() {
         });
       }
     });
-    
+
     return Array.from(foundProviders).sort((a, b) => a.localeCompare(b));
   }, [accounts]);
 
@@ -140,17 +147,17 @@ export default function ContactsEnhanced() {
 
     let filtered = sourceContacts.filter((contact: any) => {
       // Territory filter - only show contacts from accounts in rep's territory
-      const matchesTerritory = !territoryAccountIds || 
+      const matchesTerritory = !territoryAccountIds ||
         territoryAccountIds.has(contact.company?.toLowerCase() || '');
-      
-      const matchesSearch = !searchQuery || 
+
+      const matchesSearch = !searchQuery ||
         (contact.name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
         (contact.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
         (contact.company?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
         (contact.email?.toLowerCase() || "").includes(searchQuery.toLowerCase());
 
       const matchesCompany = companyFilter === "all" || contact.company === companyFilter;
-      const matchesTitle = titleFilter === "all" || 
+      const matchesTitle = titleFilter === "all" ||
         contact.title?.toLowerCase().includes(titleFilter.toLowerCase());
 
       // MFA Provider filter - check if contact's company uses the selected MFA provider
@@ -218,19 +225,30 @@ export default function ContactsEnhanced() {
     setCurrentPage(1);
   }, []);
 
+  const isDecisionMaker = (title?: string | null) =>
+    !!title?.toLowerCase().match(/\b(ceo|cto|cfo|cio|vp|svp|evp|director|head)\b/);
+
+  // Intent heat: tinted text + glyph + word, never color alone.
+  const getHeat = (score: number) => {
+    if (score >= 70) return { label: "Hot", Icon: Flame, text: "text-critical" };
+    if (score >= 40) return { label: "Warm", Icon: TrendingUp, text: "text-caution" };
+    return { label: "Cold", Icon: Snowflake, text: "text-accent" };
+  };
+
   // Loading state
   if (isLoading) {
     return (
       <div>
-        <div className="container py-1 space-y-5 max-w-7xl">
-          <div className="space-y-4">
-            <div className="h-12 w-96 skeleton" />
-            <div className="h-6 w-64 skeleton" />
+        <div className="container py-10 space-y-6 max-w-7xl">
+          <div className="space-y-3">
+            <div className="h-9 w-72 skeleton" />
+            <div className="h-5 w-56 skeleton" />
           </div>
-          <div className="h-32 skeleton rounded-md" />
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-48 skeleton rounded-md" />
+          <div className="h-20 skeleton rounded-md" />
+          <div className="h-16 skeleton rounded-md" />
+          <div className="rounded-md border border-border/60 divide-y divide-border/50 overflow-hidden">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="h-16 skeleton rounded-none" />
             ))}
           </div>
         </div>
@@ -238,37 +256,41 @@ export default function ContactsEnhanced() {
     );
   }
 
+  const decisionMakerCount = filteredContacts.filter((c: any) => isDecisionMaker(c.title)).length;
+
+  const stats: { key: string; label: string; value: number; Icon: any; text: string; hint: string }[] = [
+    { key: "contacts", label: "Contacts", value: filteredContacts.length, Icon: Users, text: "text-foreground", hint: "In current view" },
+    { key: "companies", label: "Companies", value: companies.length, Icon: Building2, text: "text-foreground", hint: "Unique accounts" },
+    { key: "dm", label: "Decision makers", value: decisionMakerCount, Icon: Briefcase, text: "text-accent", hint: "C-level & VPs" },
+  ];
+
   return (
     <div>
 
-      <div className="container py-1 space-y-5 max-w-7xl">
+      <div className="container py-10 space-y-6 max-w-7xl">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <Users className="size-5 shrink-0 text-ink-faint" />
-              <div>
-                <h1 className="text-xl font-semibold tracking-tight">Contacts</h1>
-                <p className="text-ink-muted text-sm mt-0.5">
-                  {filteredContacts.length} of {contacts?.length || 0} contacts
-                  {repInfo && <span className="ml-2 text-sm">• {repInfo.label} territory</span>}
-                </p>
-              </div>
-            </div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-xl sm:text-xl font-semibold tracking-tight">Contacts</h1>
+            <p className="mt-1 text-sm text-ink-muted">
+              <span className="font-mono text-ink-muted">{filteredContacts.length}</span> of{" "}
+              <span className="font-mono text-ink-muted">{contacts?.length || 0}</span> contacts
+              {repInfo && <> · {repInfo.label} territory</>}
+            </p>
           </div>
-          <div className="flex gap-3 items-center">
+          <div className="flex items-center gap-3">
             <RepSwitcher />
             <Button
               onClick={() => setShowAIPriority(!showAIPriority)}
-              variant={showAIPriority ? "default" : "outline"}
-              className={showAIPriority ? "text-foreground" : ""}
+              variant="outline"
+              className={showAIPriority ? "border-accent/30 bg-accent-subtle text-accent hover:bg-accent-subtle" : ""}
             >
               <Sparkles className="mr-2 h-4 w-4" />
-              {showAIPriority ? "AI Priority On" : "AI Priority Off"}
+              {showAIPriority ? (isPrioritizing ? "Prioritizing…" : "AI Priority On") : "AI Priority Off"}
             </Button>
-            <Button asChild className="text-foreground shadow-lg hover:shadow-xl">
+            <Button asChild className="bg-accent text-foreground hover:bg-accent font-medium">
               <Link href="/outreach">
-                <Mail className="mr-2 h-5 w-5" />
+                <Mail className="mr-2 h-4 w-4" />
                 Generate Outreach
               </Link>
             </Button>
@@ -278,60 +300,28 @@ export default function ContactsEnhanced() {
         {/* AI Assistant Bar */}
         <ContextualAI context="contacts" placeholder="Ask AI: Who are the key decision makers?" />
 
-        {/* Quick Stats */}
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Users className="h-4 w-4 text-accent" />
-                Total Contacts
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-semibold">{filteredContacts.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">Active contacts</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-accent" />
-                Companies
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-semibold">{companies.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">Unique companies</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Briefcase className="h-4 w-4 text-accent" />
-                Decision Makers
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-semibold">
-                {filteredContacts.filter((c: any) => 
-                  c.title?.toLowerCase().match(/\b(ceo|cto|cfo|cio|vp|svp|evp|director|head)\b/)
-                ).length}
+        {/* Quick Stats - segmented readout */}
+        <div className="grid grid-cols-3 rounded-md border border-border/60 bg-card divide-x divide-border/50 overflow-hidden">
+          {stats.map((s) => (
+            <div key={s.key} className="px-4 py-4 sm:px-5">
+              <div className="flex items-center gap-2 text-xs font-medium text-ink-muted">
+                <s.Icon className={`h-3.5 w-3.5 ${s.text === "text-foreground" ? "text-ink-muted" : s.text}`} />
+                {s.label}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">C-level & VPs</p>
-            </CardContent>
-          </Card>
+              <div className={`mt-1.5 font-mono text-2xl font-semibold tabular-nums ${s.text}`}>{s.value}</div>
+              <div className="mt-0.5 text-[11px] text-ink-subtle">{s.hint}</div>
+            </div>
+          ))}
         </div>
 
         {/* Filters */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="grid md:grid-cols-5 gap-4">
+        <div className="rounded-md border border-border/60 bg-card">
+          <div className="p-4 sm:p-5">
+            <div className="grid md:grid-cols-5 gap-3">
               {/* Search */}
               <div className="md:col-span-2">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" />
                   <Input
                     placeholder="Search contacts..."
                     value={searchQuery}
@@ -381,8 +371,8 @@ export default function ContactsEnhanced() {
             </div>
 
             {/* Sort Controls */}
-            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border/50">
-              <span className="text-sm text-muted-foreground">Sort by:</span>
+            <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border/50">
+              <span className="text-xs font-medium text-ink-muted">Sort by</span>
               <Button
                 variant={sortField === "name" ? "default" : "outline"}
                 size="sm"
@@ -413,124 +403,151 @@ export default function ContactsEnhanced() {
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 )}
               </Button>
+              {showAIPriority && (
+                <span className="ml-1 flex items-center gap-1 text-xs text-accent">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Ordered by AI priority
+                </span>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Contacts Grid */}
+        {/* Contacts List */}
         {filteredContacts.length === 0 ? (
           <Card>
             <CardContent className="py-16 text-center">
               <Users className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
               <h3 className="text-xl font-semibold mb-2">No contacts found</h3>
-              <p className="text-muted-foreground">Try adjusting your filters</p>
+              <p className="text-ink-muted">Try adjusting your filters</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {paginatedContacts.map((contact: any) => (
-                <Card
+          <div className="rounded-md border border-border/60 bg-card divide-y divide-border/50 overflow-hidden">
+            {paginatedContacts.map((contact: any) => {
+              const intentRaw = (contact as any).accountIntentScore;
+              const numScore = intentRaw != null ? parseInt(String(intentRaw)) : NaN;
+              const hasScore = !Number.isNaN(numScore) && numScore > 0;
+              const heat = getHeat(numScore);
+              const HeatIcon = heat.Icon;
+              const dm = isDecisionMaker(contact.title);
+              const industry = (contact as any).accountIndustry;
+              const phone = contact.phone || (contact as any).mobilePhone || (contact as any).directPhone;
+
+              return (
+                <div
                   key={contact.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => navigate(`/contacts/${contact.id}`)}
-                  className="hover:scale-[1.02] transition-all cursor-pointer group h-full">
-                  <CardHeader>
-                    <div className="flex items-start gap-3">
-                      <User className="size-5 shrink-0 text-ink-faint" />
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-xl group-hover:text-primary transition-colors line-clamp-1">
-                          {contact.name}
-                        </CardTitle>
-                        <CardDescription className="mt-1 line-clamp-1">
-                          {contact.title || "No title"}
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Company with Intent Score */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 text-sm flex-1 min-w-0">
-                        <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <span className="line-clamp-1 font-medium">{contact.company}</span>
-                      </div>
-                      {(contact as any).accountIntentScore && (
-                        <Badge variant={Number((contact as any).accountIntentScore) >= 70 ? "default" : Number((contact as any).accountIntentScore) >= 40 ? "secondary" : "outline"} className={Number((contact as any).accountIntentScore) >= 70 ? "bg-critical" : Number((contact as any).accountIntentScore) >= 40 ? "bg-caution" : ""}>
-                          {(contact as any).accountIntentScore}%
-                        </Badge>
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigate(`/contacts/${contact.id}`);
+                    }
+                  }}
+                  className="group flex items-center gap-4 px-4 py-3 cursor-pointer transition-colors hover:bg-surface/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+                >
+                  {/* Avatar */}
+                  <div className="w-9 h-9 rounded-sm bg-muted border border-border/60 flex items-center justify-center flex-shrink-0">
+                    <User className="h-4 w-4 text-accent" />
+                  </div>
+
+                  {/* Identity */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-[15px] text-foreground truncate group-hover:text-accent transition-colors">
+                        {contact.name}
+                      </span>
+                      {dm && (
+                        <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-medium text-ink-muted bg-muted rounded px-1.5 py-0.5 flex-shrink-0">
+                          <Target className="h-2.5 w-2.5" />
+                          Decision maker
+                        </span>
                       )}
                     </div>
+                    <div className="mt-0.5 text-xs text-ink-muted truncate">
+                      {contact.title || "No title"}
+                    </div>
+                  </div>
 
-                    {/* Department & Industry */}
-                    <div className="flex flex-wrap gap-2">
+                  {/* Company + tags */}
+                  <div className="hidden md:block w-48 flex-shrink-0 min-w-0">
+                    <div className="flex items-center gap-1.5 text-sm text-ink-muted truncate">
+                      <Building2 className="h-3.5 w-3.5 text-ink-subtle flex-shrink-0" />
+                      <span className="truncate">{contact.company}</span>
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap gap-1">
                       {contact.department && (
-                        <Badge variant="outline" className="text-xs">
-                          {contact.department}
-                        </Badge>
+                        <span className="text-[10px] text-ink-muted bg-muted rounded px-1.5 py-0.5">{contact.department}</span>
                       )}
-                      {(contact as any).accountIndustry && (contact as any).accountIndustry !== "Unknown" && (
-                        <Badge variant="outline" className="text-xs">
-                          {(contact as any).accountIndustry}
-                        </Badge>
+                      {industry && industry !== "Unknown" && (
+                        <span className="text-[10px] text-ink-muted bg-muted rounded px-1.5 py-0.5">{industry}</span>
                       )}
                     </div>
+                  </div>
 
-                    {/* Email */}
-                    {contact.email && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail className="h-4 w-4 flex-shrink-0" />
-                        <span className="line-clamp-1">{contact.email}</span>
-                      </div>
+                  {/* Channels */}
+                  <div className="hidden xl:flex items-center gap-1.5 w-56 flex-shrink-0 text-xs text-ink-muted min-w-0">
+                    {contact.email ? (
+                      <>
+                        <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span className="truncate">{contact.email}</span>
+                      </>
+                    ) : (
+                      <span className="text-ink-subtle">No email</span>
                     )}
+                  </div>
 
-                    {/* Phone */}
-                    {(contact.phone || (contact as any).mobilePhone || (contact as any).directPhone) && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="h-4 w-4 flex-shrink-0" />
-                        <span className="line-clamp-1">{contact.phone || (contact as any).mobilePhone || (contact as any).directPhone}</span>
-                      </div>
+                  {/* Quick channel affordances */}
+                  <div className="hidden sm:flex items-center gap-1 flex-shrink-0 text-ink-subtle">
+                    {phone && (
+                      <span className="p-1.5" title={phone}>
+                        <Phone className="h-3.5 w-3.5" />
+                      </span>
                     )}
-
-                    {/* LinkedIn */}
-                    {contact.linkedinUrl && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Linkedin className="h-4 w-4 flex-shrink-0" />
-                        <a 
-                          href={contact.linkedinUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="hover:text-primary transition-colors line-clamp-1"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          LinkedIn Profile
-                          <ExternalLink className="inline h-3 w-3 ml-1" />
-                        </a>
-                      </div>
-                    )}
-
-                    {/* Location */}
                     {contact.location && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MapPin className="h-4 w-4 flex-shrink-0" />
-                        <span className="line-clamp-1">{contact.location}</span>
-                      </div>
+                      <span className="p-1.5" title={contact.location}>
+                        <MapPin className="h-3.5 w-3.5" />
+                      </span>
                     )}
+                    {contact.linkedinUrl && (
+                      <button
+                        type="button"
+                        aria-label="Open LinkedIn profile"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          window.open(contact.linkedinUrl, "_blank", "noopener,noreferrer");
+                        }}
+                        className="p-1.5 rounded hover:bg-muted hover:text-accent transition-colors"
+                      >
+                        <Linkedin className="h-3.5 w-3.5" />
+                        <ExternalLink className="hidden" />
+                      </button>
+                    )}
+                  </div>
 
-
-                    {/* Action Button */}
-                    <Button 
-                      variant="outline" 
-                      className="w-full group-hover:border-primary group-hover:text-primary mt-2"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        window.location.href = `/contacts/${contact.id}`;
-                      }}
-                    >
-                      View Profile
-                      <Eye className="ml-2 h-4 w-4" />
-                    </Button>
-                  </CardContent>
-                </Card>
-            ))}
+                  {/* Account intent */}
+                  <div className="flex items-center gap-3 flex-shrink-0 pl-1">
+                    <div className="text-right w-14">
+                      {hasScore ? (
+                        <>
+                          <div className="font-mono text-lg leading-none tabular-nums text-accent">{numScore}</div>
+                          <div className={`mt-1 flex items-center justify-end gap-1 text-[11px] font-medium ${heat.text}`}>
+                            <HeatIcon className="h-3 w-3" />
+                            {heat.label}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="font-mono text-lg leading-none text-ink-subtle">—</div>
+                      )}
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-ink-subtle group-hover:text-ink-muted transition-colors" />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -553,8 +570,10 @@ export default function ContactsEnhanced() {
             >
               Previous
             </Button>
-            <span className="px-4 py-2 text-sm text-muted-foreground">
-              Page {currentPage} of {totalPages} ({filteredContacts.length} contacts)
+            <span className="px-4 py-2 text-sm text-ink-muted">
+              Page <span className="font-mono text-ink-muted">{currentPage}</span> of{" "}
+              <span className="font-mono text-ink-muted">{totalPages}</span>
+              {" "}(<span className="font-mono text-ink-muted">{filteredContacts.length}</span> contacts)
             </span>
             <Button
               variant="outline"

@@ -1,27 +1,12 @@
 import { memo, useMemo, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge, StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ScoreBar } from "@/components/ui/charts";
-import { MetricGrid } from "@/components/ui/metric";
-import { EmptyState } from "@/components/ui/empty-state";
-import { CompanyLogo } from "@/components/ui/company-logo";
-import { StatCard } from "@/components/StatCard";
-import { PageHeader } from "@/components/app-shell/PageHeader";
 import { trpc } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import {
-  ArrowUpDown, Building2, ChevronRight, Flame, Mail, Search, TrendingUp,
+  Building2, Users, MapPin, TrendingUp, Search, ArrowUpDown, Flame,
+  Mail, Snowflake, Clock, Activity, ChevronRight
 } from "lucide-react";
 import { ContextualAI } from "@/components/ContextualAI";
 import {
@@ -46,10 +31,9 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   const [techFilter, setTechFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("intentScore");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
-  
+
   // Get rep context for territory filtering
   const { matchesTerritory, repInfo, isRepMode } = useRep();
-  const [, setLocation] = useLocation();
 
   const { data: accounts, isLoading } = trpc.accounts.list.useQuery(undefined, {
     staleTime: 3 * 60 * 1000
@@ -84,7 +68,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   const mfaProviders = useMemo(() => {
     if (!accounts) return [];
     const foundProviders = new Set<string>();
-    
+
     accounts.forEach((account: any) => {
       if (account.techStack) {
         const techLower = String(account.techStack).toLowerCase();
@@ -98,32 +82,32 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
         });
       }
     });
-    
+
     // Return sorted list of found providers
     return Array.from(foundProviders).sort((a, b) => a.localeCompare(b));
   }, [accounts]);
 
   const industries = ["AI", "Software", "Finance", "Manufacturing", "Other"];
-  
+
   const normalizeIndustry = (industry: string | null | undefined): string => {
     if (!industry) return "Other";
     const lower = industry.toLowerCase().trim();
-    
-    if (lower === "ai" || lower === "artificial intelligence" || lower === "machine learning" || 
+
+    if (lower === "ai" || lower === "artificial intelligence" || lower === "machine learning" ||
         lower === "ai/ml" || lower.startsWith("ai ") || lower.endsWith(" ai")) return "AI";
-    
-    if (lower === "software" || lower === "saas" || lower === "technology" || 
-        lower === "software development" || lower === "enterprise software" || 
+
+    if (lower === "software" || lower === "saas" || lower === "technology" ||
+        lower === "software development" || lower === "enterprise software" ||
         lower.includes("software") && !lower.includes("services")) return "Software";
-    
-    if (lower === "finance" || lower === "banking" || lower === "fintech" || 
-        lower === "financial services" || lower.includes("bank") || 
+
+    if (lower === "finance" || lower === "banking" || lower === "fintech" ||
+        lower === "financial services" || lower.includes("bank") ||
         lower.includes("financial")) return "Finance";
-    
-    if (lower === "manufacturing" || lower === "industrial" || 
-        lower.includes("manufacturing") || lower.includes("production") || 
+
+    if (lower === "manufacturing" || lower === "industrial" ||
+        lower.includes("manufacturing") || lower.includes("production") ||
         lower.includes("factory")) return "Manufacturing";
-    
+
     return "Other";
   };
 
@@ -136,8 +120,8 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
       const employeeCount = parseInt(String(account.employeeCount || '0').replace(/[^0-9]/g, '') || '0');
       const matchesRepTerritory = matchesTerritory(account.region || '', employeeCount);
       if (!matchesRepTerritory) return false;
-      
-      const matchesSearch = !searchQuery || 
+
+      const matchesSearch = !searchQuery ||
         account.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         account.domain?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         account.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -201,6 +185,13 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     return filtered;
   }, [accounts, searchQuery, regionFilter, industryFilter, relationshipFilter, intentFilter, techFilter, sortField, sortOrder]);
 
+  // Intent heat: tinted text + glyph + word, never color alone.
+  const getHeat = (score: number) => {
+    if (score >= 70) return { label: "Hot", Icon: Flame, text: "text-critical" };
+    if (score >= 40) return { label: "Warm", Icon: TrendingUp, text: "text-caution" };
+    return { label: "Cold", Icon: Snowflake, text: "text-accent" };
+  };
+
   const handleToggleSort = useCallback((field: SortField) => {
     if (sortField === field) {
       setSortOrder(order => order === "asc" ? "desc" : "asc");
@@ -213,14 +204,20 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="container max-w-[1500px] space-y-5 py-1">
-        <div className="space-y-2">
-          <div className="skeleton h-6 w-56" />
-          <div className="skeleton h-4 w-40" />
+      <div>
+        <div className="container py-10 space-y-6 max-w-7xl">
+          <div className="space-y-3">
+            <div className="h-9 w-80 skeleton" />
+            <div className="h-5 w-56 skeleton" />
+          </div>
+          <div className="h-20 skeleton rounded-md" />
+          <div className="h-16 skeleton rounded-md" />
+          <div className="rounded-md border border-border/60 divide-y divide-border/50 overflow-hidden">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="h-16 skeleton rounded-none" />
+            ))}
+          </div>
         </div>
-        <div className="skeleton h-11 w-full" />
-        <div className="skeleton h-20 w-full" />
-        <div className="skeleton h-[420px] w-full" />
       </div>
     );
   }
@@ -231,277 +228,294 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     return score >= 40 && score < 70;
   }).length;
 
-  const filtersActive =
-    searchQuery !== "" ||
-    regionFilter !== "all" ||
-    industryFilter !== "all" ||
-    relationshipFilter !== "all" ||
-    intentFilter !== "all" ||
-    techFilter !== "all";
-
-  const resetFilters = () => {
-    setSearchQuery("");
-    setRegionFilter("all");
-    setIndustryFilter("all");
-    setRelationshipFilter("all");
-    setIntentFilter("all");
-    setTechFilter("all");
-  };
+  const stats: { key: string; label: string; value: number; Icon: any; text: string; hint: string; filter: string }[] = [
+    { key: "hot", label: "Hot leads", value: hotCount, Icon: Flame, text: "text-critical", hint: "Intent 70+", filter: "hot" },
+    { key: "warm", label: "Warm leads", value: warmCount, Icon: TrendingUp, text: "text-caution", hint: "Intent 40–69", filter: "warm" },
+    { key: "all", label: "Total accounts", value: filteredAccounts.length, Icon: Building2, text: "text-foreground", hint: "Reset intent filter", filter: "all" },
+  ];
 
   return (
-    <div className="container max-w-[1500px] space-y-5 py-1">
-      <PageHeader
-        title="Target Accounts"
-        description={
-          isRepMode
-            ? `${filteredAccounts.length} accounts in the ${repInfo?.region} territory`
-            : `${filteredAccounts.length} accounts across all territories`
-        }
-        actions={
-          <>
+    <div>
+
+      <div className="container py-10 space-y-6 max-w-7xl">
+        {/* Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-xl sm:text-xl font-semibold tracking-tight">Target Accounts</h1>
+            <p className="mt-1 text-sm text-ink-muted">
+              <span className="font-mono text-ink-muted">{filteredAccounts.length}</span> accounts
+              {isRepMode && <> · {repInfo?.region} territory</>}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
             <RepSwitcher />
-            <Button asChild>
+            <Button asChild className="bg-accent text-foreground hover:bg-accent font-medium">
               <Link href="/outreach">
-                <Mail className="size-4" />
-                Generate outreach
+                <Mail className="mr-2 h-4 w-4" />
+                Generate Outreach
               </Link>
             </Button>
-          </>
-        }
-      />
-
-      <ContextualAI
-        context="accounts"
-        placeholder="Ask about these accounts…"
-      />
-
-      {/* Intent split — each tile is a filter. */}
-      <MetricGrid>
-        <StatCard
-          title="Hot"
-          value={hotCount}
-          subtitle="Intent 70+"
-          icon={Flame}
-          tone="critical"
-          onClick={() => setIntentFilter(intentFilter === "hot" ? "all" : "hot")}
-          className={intentFilter === "hot" ? "bg-muted" : undefined}
-        />
-        <StatCard
-          title="Warm"
-          value={warmCount}
-          subtitle="Intent 40–69"
-          icon={TrendingUp}
-          tone="caution"
-          onClick={() => setIntentFilter(intentFilter === "warm" ? "all" : "warm")}
-          className={intentFilter === "warm" ? "bg-muted" : undefined}
-        />
-        <StatCard
-          title="In view"
-          value={filteredAccounts.length}
-          subtitle={filtersActive ? "Filtered" : "All accounts"}
-          icon={Building2}
-          onClick={resetFilters}
-        />
-      </MetricGrid>
-
-      {/* Filter bar */}
-      <Card variant="sunken">
-        <CardContent className="flex flex-wrap items-center gap-2 p-2.5">
-          <div className="relative min-w-52 flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-ink-faint" />
-            <Input
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search accounts…"
-              className="pl-8"
-            />
           </div>
+        </div>
 
-          <Select value={regionFilter} onValueChange={setRegionFilter}>
-            <SelectTrigger className="h-8 w-auto min-w-28 text-xs"><SelectValue placeholder="Region" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All regions</SelectItem>
-              {regions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-            </SelectContent>
-          </Select>
+        {/* AI Assistant Bar */}
+        <ContextualAI context="accounts" placeholder="Ask AI: Which accounts have the highest intent?" />
 
-          <Select value={industryFilter} onValueChange={setIndustryFilter}>
-            <SelectTrigger className="h-8 w-auto min-w-28 text-xs"><SelectValue placeholder="Industry" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All industries</SelectItem>
-              {industries.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
-            </SelectContent>
-          </Select>
+        {/* Quick Stats - segmented, clickable intent filters */}
+        <div className="grid grid-cols-3 rounded-md border border-border/60 bg-card divide-x divide-border/50 overflow-hidden">
+          {stats.map((s) => {
+            const active = intentFilter === s.filter;
+            return (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => setIntentFilter(s.filter)}
+                aria-pressed={active}
+                className={`text-left px-4 py-4 sm:px-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${active ? "bg-surface/[0.04]" : "hover:bg-surface/[0.025]"}`}
+              >
+                <div className="flex items-center gap-2 text-xs font-medium text-ink-muted">
+                  <s.Icon className={`h-3.5 w-3.5 ${s.text}`} />
+                  {s.label}
+                </div>
+                <div className={`mt-1.5 font-mono text-2xl font-semibold tabular-nums ${s.text}`}>{s.value}</div>
+                <div className="mt-0.5 text-[11px] text-ink-subtle">{s.hint}{active ? " · active" : ""}</div>
+              </button>
+            );
+          })}
+        </div>
 
-          <Select value={relationshipFilter} onValueChange={setRelationshipFilter}>
-            <SelectTrigger className="h-8 w-auto min-w-24 text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              <SelectItem value="Customer">Customer</SelectItem>
-              <SelectItem value="Prospect">Prospect</SelectItem>
-              <SelectItem value="Opportunity">Opportunity</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Filters */}
+        <div className="rounded-md border border-border/60 bg-card">
+          <div className="p-4 sm:p-5">
+            <div className="grid md:grid-cols-7 gap-3">
+              {/* Search */}
+              <div className="md:col-span-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" />
+                  <Input
+                    placeholder="Search accounts..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
 
-          {mfaProviders.length > 0 && (
-            <Select value={techFilter} onValueChange={setTechFilter}>
-              <SelectTrigger className="h-8 w-auto min-w-24 text-xs"><SelectValue placeholder="Identity" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Any identity stack</SelectItem>
-                {mfaProviders.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          )}
+              <Select value={regionFilter} onValueChange={setRegionFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Regions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Regions</SelectItem>
+                  {regions.map((region: string) => (
+                    <SelectItem key={region} value={region!}>{region}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-          {filtersActive && (
-            <Button variant="ghost" size="sm" onClick={resetFilters}>
-              Clear
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+              <Select value={industryFilter} onValueChange={setIndustryFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Industries" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Industries</SelectItem>
+                  {industries.map(industry => (
+                    <SelectItem key={industry} value={industry}>{industry}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-      {/* Accounts table */}
-      <Card className="overflow-hidden">
+              <Select value={relationshipFilter} onValueChange={setRelationshipFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Relationship" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="Prospect">Prospects</SelectItem>
+                  <SelectItem value="Customer">Customers</SelectItem>
+                  <SelectItem value="Partner">Partners</SelectItem>
+                  <SelectItem value="POV">POVs</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={intentFilter} onValueChange={setIntentFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Intent" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Intent</SelectItem>
+                  <SelectItem value="hot">Hot (70+)</SelectItem>
+                  <SelectItem value="warm">Warm (40-69)</SelectItem>
+                  <SelectItem value="cold">Cold (&lt;40)</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={techFilter} onValueChange={setTechFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="MFA Provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All MFA</SelectItem>
+                  {mfaProviders.map((provider: string) => (
+                    <SelectItem key={provider} value={provider}>{provider}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sort Controls */}
+            <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border/50">
+              <span className="text-xs font-medium text-ink-muted">Sort by</span>
+              <Button
+                variant={sortField === "intentScore" ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleToggleSort("intentScore")}
+              >
+                Intent Score
+                {sortField === "intentScore" && (
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                variant={sortField === "name" ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleToggleSort("name")}
+              >
+                Name
+                {sortField === "name" && (
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                variant={sortField === "employees" ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleToggleSort("employees")}
+              >
+                Size
+                {sortField === "employees" && (
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Accounts List */}
         {filteredAccounts.length === 0 ? (
-          <EmptyState
-            icon={Building2}
-            title="No accounts match these filters"
-            description="Widen the search or clear the filters to see the full list."
-            action={<Button variant="outline" size="sm" onClick={resetFilters}>Clear filters</Button>}
-          />
+          <Card>
+            <CardContent className="py-16 text-center">
+              <Building2 className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+              <h3 className="text-xl font-semibold mb-2">No accounts found</h3>
+              <p className="text-ink-muted">Try adjusting your filters</p>
+            </CardContent>
+          </Card>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <SortableHead field="name" label="Account" sortField={sortField} sortOrder={sortOrder} onSort={handleToggleSort} />
-                <SortableHead field="intentScore" label="Intent" sortField={sortField} sortOrder={sortOrder} onSort={handleToggleSort} className="w-40" />
-                <TableHead className="hidden md:table-cell">Stage</TableHead>
-                <SortableHead field="industry" label="Industry" sortField={sortField} sortOrder={sortOrder} onSort={handleToggleSort} className="hidden lg:table-cell" />
-                <SortableHead field="employees" label="Employees" sortField={sortField} sortOrder={sortOrder} onSort={handleToggleSort} className="hidden lg:table-cell text-right" />
-                <TableHead className="hidden xl:table-cell">Region</TableHead>
-                <TableHead className="hidden xl:table-cell">Activity</TableHead>
-                <TableHead className="w-8" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAccounts.map((account: any) => {
-                const score = parseInt(String(account.intentScore || "0"));
-                const raw = (account.rawData as Record<string, any>) || {};
-                const days = raw.daysSinceLastEngagement ?? raw.lastSalesActivityDays;
-                const stage = account.sixsenseBuyingStage || account.relationship;
+          <div className="rounded-md border border-border/60 bg-card divide-y divide-border/50 overflow-hidden">
+            {filteredAccounts.map((account: any) => {
+              const numScore = parseInt(String(account.intentScore || "0"));
+              const hasScore = !!account.intentScore && numScore > 0;
+              const heat = getHeat(numScore);
+              const HeatIcon = heat.Icon;
 
-                return (
-                  <TableRow
-                    key={account.id}
-                    className="group cursor-pointer"
-                    onClick={() => setLocation(`/accounts/${account.id}`)}
-                  >
-                    <TableCell>
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <CompanyLogo name={account.name} website={account.domain} size="md" />
-                        <div className="min-w-0">
-                          <div className="truncate font-medium group-hover:text-accent">
-                            {account.name}
-                          </div>
-                          <div className="truncate text-2xs text-ink-faint">
-                            {account.domain}
-                          </div>
-                        </div>
+              const rawData = (account.rawData as Record<string, any>) || {};
+              const daysSinceActivity = rawData.daysSinceLastEngagement ?? rawData.lastSalesActivityDays;
+              const salesActivities = rawData.salesActivities || 0;
+
+              const freshText =
+                daysSinceActivity == null ? "" :
+                daysSinceActivity <= 7 ? "text-positive" :
+                daysSinceActivity <= 30 ? "text-caution" : "text-critical";
+
+              return (
+                <Link key={account.id} href={`/accounts/${account.id}`}>
+                  <div className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-surface/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent">
+                    {/* Company Logo */}
+                    <div className="w-9 h-9 rounded-sm bg-muted border border-border/60 flex-shrink-0 overflow-hidden">
+                      <img
+                        src={`https://logo.clearbit.com/${account.domain}`}
+                        alt={`${account.name} logo`}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-muted text-accent font-semibold text-sm">${account.name.charAt(0)}</div>`;
+                        }}
+                      />
+                    </div>
+
+                    {/* Identity + meta */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-[15px] text-foreground truncate group-hover:text-accent transition-colors">
+                          {account.name}
+                        </span>
+                        {account.relationship && (
+                          <span className="hidden sm:inline text-[10px] font-medium uppercase tracking-wide text-ink-muted bg-muted rounded px-1.5 py-0.5 flex-shrink-0">
+                            {account.relationship}
+                          </span>
+                        )}
                       </div>
-                    </TableCell>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-ink-muted">
+                        <span className="truncate">{account.domain}</span>
+                        {account.industry && (
+                          <span className="flex items-center gap-1 before:content-['·'] before:text-ink-subtle">
+                            <Building2 className="h-3 w-3" />{account.industry}
+                          </span>
+                        )}
+                        {account.employeeCount && (
+                          <span className="flex items-center gap-1 before:content-['·'] before:text-ink-subtle">
+                            <Users className="h-3 w-3" />{account.employeeCount}
+                          </span>
+                        )}
+                        {account.region && (
+                          <span className="flex items-center gap-1 before:content-['·'] before:text-ink-subtle">
+                            <MapPin className="h-3 w-3" />{account.region}
+                          </span>
+                        )}
+                      </div>
+                    </div>
 
-                    <TableCell>
-                      <ScoreBar score={score} />
-                    </TableCell>
-
-                    <TableCell className="hidden md:table-cell">
-                      {stage ? (
-                        <Badge variant="secondary">{stage}</Badge>
-                      ) : (
-                        <span className="text-ink-faint">—</span>
+                    {/* Freshness signals */}
+                    <div className="hidden lg:flex items-center gap-4 flex-shrink-0 text-xs">
+                      {daysSinceActivity != null && (
+                        <span className={`flex items-center gap-1 ${freshText}`}>
+                          <Clock className="h-3.5 w-3.5" />
+                          <span className="font-mono tabular-nums">{daysSinceActivity}d</span>
+                        </span>
                       )}
-                    </TableCell>
-
-                    <TableCell className="hidden max-w-40 truncate text-ink-muted lg:table-cell">
-                      {account.industry || "—"}
-                    </TableCell>
-
-                    <TableCell data-numeric className="hidden text-right text-ink-muted tabular-nums lg:table-cell">
-                      {account.employeeCount
-                        ? Number(String(account.employeeCount).replace(/[^0-9]/g, "")).toLocaleString()
-                        : "—"}
-                    </TableCell>
-
-                    <TableCell className="hidden text-ink-muted xl:table-cell">
-                      {account.region || "—"}
-                    </TableCell>
-
-                    <TableCell className="hidden xl:table-cell">
-                      {days === null || days === undefined ? (
-                        <span className="text-ink-faint">—</span>
-                      ) : (
-                        <StatusDot
-                          tone={days <= 7 ? "positive" : days <= 30 ? "caution" : "critical"}
-                          className="text-ink-muted"
-                        >
-                          {days}d ago
-                        </StatusDot>
+                      {salesActivities > 0 && (
+                        <span className="flex items-center gap-1 text-ink-muted">
+                          <Activity className="h-3.5 w-3.5" />
+                          <span className="font-mono tabular-nums">{salesActivities}</span>
+                        </span>
                       )}
-                    </TableCell>
+                    </div>
 
-                    <TableCell>
-                      <ChevronRight className="size-4 text-ink-faint transition-colors group-hover:text-foreground" />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                    {/* Intent score + heat */}
+                    <div className="flex items-center gap-3 flex-shrink-0 pl-1">
+                      <div className="text-right w-16">
+                        <div className="font-mono text-lg leading-none tabular-nums text-accent">
+                          {hasScore ? numScore : <span className="text-ink-subtle">—</span>}
+                        </div>
+                        {hasScore && (
+                          <div className={`mt-1 flex items-center justify-end gap-1 text-[11px] font-medium ${heat.text}`}>
+                            <HeatIcon className="h-3 w-3" />
+                            {heat.label}
+                          </div>
+                        )}
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-ink-subtle group-hover:text-ink-muted transition-colors" />
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 });
-
-/** Header cell that toggles sort and shows the current direction. */
-function SortableHead({
-  field,
-  label,
-  sortField,
-  sortOrder,
-  onSort,
-  className,
-}: {
-  field: SortField;
-  label: string;
-  sortField: SortField;
-  sortOrder: SortOrder;
-  onSort: (f: SortField) => void;
-  className?: string;
-}) {
-  const active = sortField === field;
-  return (
-    <TableHead className={className}>
-      <button
-        onClick={e => {
-          e.stopPropagation();
-          onSort(field);
-        }}
-        className="inline-flex items-center gap-1 uppercase transition-colors hover:text-foreground"
-      >
-        {label}
-        <ArrowUpDown
-          className={cn(
-            "size-3 transition-opacity",
-            active ? "opacity-100 text-accent" : "opacity-0"
-          )}
-        />
-        {active && <span className="sr-only">{sortOrder === "asc" ? "ascending" : "descending"}</span>}
-      </button>
-    </TableHead>
-  );
-}
 
 export default function Accounts() {
   return <AccountsEnhanced />;

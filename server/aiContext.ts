@@ -4,9 +4,13 @@ import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
+// Real intent-spike detection, computed from the intentScores time series — so the AI
+// assistant reports actual spikes instead of always answering "none detected".
+import { detectIntentSpikes } from "./intel/spikes";
 
-// Stub for intent spike tracking (removed to fix TS errors)
-async function getRecentIntentSpikes(limit: number = 10): Promise<any[]> { return []; }
+async function getRecentIntentSpikes(limit: number = 10): Promise<any[]> {
+  return detectIntentSpikes({ limit });
+}
 
 /**
  * Centralized AI Context Management
@@ -14,7 +18,7 @@ async function getRecentIntentSpikes(limit: number = 10): Promise<any[]> { retur
  */
 
 export interface ContextEntry {
-  type: 'account_insight' | 'contact_insight' | 'call_analysis' | 'user_interaction' | 'search_pattern' | 'recommendation' | 'learning';
+  type: 'account_insight' | 'contact_insight' | 'call_analysis' | 'user_interaction' | 'search_pattern' | 'recommendation' | 'learning' | 'account_brief' | 'company_brain';
   key: string;
   value: string;
   metadata?: any;
@@ -119,7 +123,14 @@ export async function conversationWithMemory(params: {
   const { query, accountId, contactId, userId, conversationHistory = [] } = params;
 
   // Build context from storage
-  const storedContext = await buildAIContext({ accountId, contactId, includeHistory: true });
+  let storedContext = await buildAIContext({ accountId, contactId, includeHistory: true });
+
+  // Prepend the continuously-learning workspace brain (verified snapshot + accumulated
+  // lessons) so chat answers draw on the whole portfolio's knowledge.
+  try {
+    const { getBrainDigest, brainContextBlock } = await import("./intel/brain");
+    storedContext = `${brainContextBlock(await getBrainDigest())}\n${storedContext}`;
+  } catch { /* brain unavailable → chat still works */ }
 
   // Check for intent spike queries
   let intentSpikeContext = '';

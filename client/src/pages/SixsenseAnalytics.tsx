@@ -2,19 +2,19 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { 
-  Target, 
-  Eye, 
-  Brain, 
-  ShoppingCart, 
+import {
+  Target,
+  Eye,
+  Brain,
+  ShoppingCart,
   CheckCircle,
-  TrendingUp,
-  Users,
   Activity,
+  Users,
   AlertTriangle,
   Clock,
-  Zap
+  Hash,
+  BarChart3,
+  Zap,
 } from "lucide-react";
 
 function formatDate(date: Date | string | null | undefined): string {
@@ -23,406 +23,357 @@ function formatDate(date: Date | string | null | undefined): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+const CARD = "bg-card border-border shadow-none";
+
+// Sequential cyan ramp: deeper cyan = closer to purchase. Signal-Cyan is the data voice.
+const stageBar: Record<string, string> = {
+  Target: "bg-surface-raised",
+  Awareness: "bg-accent",
+  Consideration: "bg-accent",
+  Decision: "bg-accent",
+  Purchase: "bg-accent",
+};
+
 export default function SixsenseAnalytics() {
   const { data: summary, isLoading: summaryLoading } = trpc.sixsenseAnalytics.getSummary.useQuery();
-  const { data: buyingStages, isLoading: stagesLoading } = trpc.sixsenseAnalytics.getBuyingStages.useQuery();
-  const { data: engagement, isLoading: engagementLoading } = trpc.sixsenseAnalytics.getEngagement.useQuery();
-  const { data: keywords, isLoading: keywordsLoading } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 50 });
-  const { data: performance, isLoading: perfLoading } = trpc.sixsenseAnalytics.get6QAPerformance.useQuery();
+  const { data: buyingStages } = trpc.sixsenseAnalytics.getBuyingStages.useQuery();
+  const { data: engagement } = trpc.sixsenseAnalytics.getEngagement.useQuery();
+  const { data: keywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 50 });
+  const { data: performance } = trpc.sixsenseAnalytics.get6QAPerformance.useQuery();
 
   const stageIcons: Record<string, React.ReactNode> = {
-    Target: <Target className="w-4 h-4" />,
-    Awareness: <Eye className="w-4 h-4" />,
-    Consideration: <Brain className="w-4 h-4" />,
-    Decision: <ShoppingCart className="w-4 h-4" />,
-    Purchase: <CheckCircle className="w-4 h-4" />,
-  };
-
-  const stageColors: Record<string, string> = {
-    Target: "bg-muted",
-    Awareness: "bg-accent",
-    Consideration: "bg-caution",
-    Decision: "bg-caution",
-    Purchase: "bg-positive",
-  };
-
-  const categoryColors: Record<string, string> = {
-    product: "bg-accent-subtle text-accent border-accent/30",
-    threat: "bg-critical-subtle text-critical border-critical/30",
-    competitor: "bg-accent-subtle text-accent border-accent/30",
-    compliance: "bg-caution-subtle text-caution border-caution/30",
-    brand: "bg-positive-subtle text-positive border-positive/30",
-    event: "bg-critical-subtle text-critical border-critical/30",
-    general: "bg-muted text-ink-muted border-border",
+    Target: <Target className="w-4 h-4 text-ink-muted" />,
+    Awareness: <Eye className="w-4 h-4 text-ink-muted" />,
+    Consideration: <Brain className="w-4 h-4 text-ink-muted" />,
+    Decision: <ShoppingCart className="w-4 h-4 text-accent" />,
+    Purchase: <CheckCircle className="w-4 h-4 text-accent" />,
   };
 
   if (summaryLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent/30"></div>
+      <div>
+        <div className="container py-1 flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent/30" />
+        </div>
       </div>
     );
   }
 
+  const workedPct = summary?.sixQA?.workedPercent || 0;
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">6sense Analytics</h1>
-          <p className="text-muted-foreground">
-            Intent signals and buying stage insights
-            {summary?.dataAsOf && (
-              <span className="ml-2 text-xs text-muted-foreground/60">
-                (as of {formatDate(summary.dataAsOf)})
-              </span>
-            )}
+    <div>
+      <div className="container py-1">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">6sense Analytics</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            Intent signals and buying-stage insights, computed from live 6sense data.
+            {summary?.dataAsOf && <span className="ml-1 text-ink-subtle">As of {formatDate(summary.dataAsOf)}.</span>}
           </p>
         </div>
-      </div>
 
-      {/* 6QA Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Zap className="w-4 h-4 text-accent" />
-              Total 6QAs
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">{summary?.sixQA?.total || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">Qualified accounts</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-positive" />
-              Worked
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold text-positive">{summary?.sixQA?.worked || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {summary?.sixQA?.workedPercent || 0}% of 6QAs
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-critical" />
-              Unworked
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold text-critical">{summary?.sixQA?.unworked || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {100 - (summary?.sixQA?.workedPercent || 0)}% opportunity gap
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-caution" />
-              Decision + Purchase
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold text-caution">
+        {/* 6QA headline funnel row: total → worked → gap → ready-to-buy (tonal grid, no colored stripes) */}
+        <div className="mb-8 grid grid-cols-2 md:grid-cols-4 gap-px bg-muted rounded-sm overflow-hidden border border-border">
+          <div className="bg-card p-4">
+            <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
+              <Zap className="h-3.5 w-3.5 text-accent" /> Total 6QAs
+            </div>
+            <div className="mt-2 font-mono tabular-nums text-2xl text-accent">{summary?.sixQA?.total || 0}</div>
+            <div className="mt-1 text-xs text-ink-muted">qualified accounts</div>
+          </div>
+          <div className="bg-card p-4">
+            <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
+              <span aria-hidden className="text-positive">▲</span> Worked
+            </div>
+            <div className="mt-2 font-mono tabular-nums text-2xl text-positive">{summary?.sixQA?.worked || 0}</div>
+            <div className="mt-1 text-xs text-ink-muted">{workedPct}% of 6QAs</div>
+          </div>
+          <div className="bg-card p-4">
+            <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
+              <span aria-hidden className="text-caution">●</span> Unworked gap
+            </div>
+            <div className="mt-2 font-mono tabular-nums text-2xl text-caution">{summary?.sixQA?.unworked || 0}</div>
+            <div className="mt-1 text-xs text-ink-muted">{100 - workedPct}% opportunity gap</div>
+          </div>
+          <div className="bg-card p-4">
+            <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
+              <ShoppingCart className="h-3.5 w-3.5 text-accent" /> Decision + purchase
+            </div>
+            <div className="mt-2 font-mono tabular-nums text-2xl text-foreground">
               {(summary?.buyingStages?.decision || 0) + (summary?.buyingStages?.purchase || 0)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Ready to buy</p>
-          </CardContent>
-        </Card>
-      </div>
+            <div className="mt-1 text-xs text-ink-muted">ready to buy</div>
+          </div>
+        </div>
 
-      <Tabs defaultValue="funnel" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="funnel">Buying Funnel</TabsTrigger>
-          <TabsTrigger value="engagement">Engagement</TabsTrigger>
-          <TabsTrigger value="keywords">Keywords</TabsTrigger>
-          <TabsTrigger value="performance">6QA Performance</TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="funnel" className="space-y-6">
+          <TabsList className="bg-card border border-border">
+            <TabsTrigger value="funnel" className="gap-2 data-[state=active]:bg-accent-subtle data-[state=active]:text-accent">
+              <Target className="h-4 w-4" /> Buying funnel
+            </TabsTrigger>
+            <TabsTrigger value="engagement" className="gap-2 data-[state=active]:bg-accent-subtle data-[state=active]:text-accent">
+              <Activity className="h-4 w-4" /> Engagement
+            </TabsTrigger>
+            <TabsTrigger value="keywords" className="gap-2 data-[state=active]:bg-accent-subtle data-[state=active]:text-accent">
+              <Hash className="h-4 w-4" /> Keywords
+            </TabsTrigger>
+            <TabsTrigger value="performance" className="gap-2 data-[state=active]:bg-accent-subtle data-[state=active]:text-accent">
+              <BarChart3 className="h-4 w-4" /> 6QA performance
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Buying Funnel Tab */}
-        <TabsContent value="funnel" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Buying Stage Funnel</CardTitle>
-              <CardDescription>
-                {buyingStages?.timeframe || "Recent"} 
-                {buyingStages?.dataAsOf && ` (as of ${formatDate(buyingStages.dataAsOf)})`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {buyingStages?.stages?.map((stage) => {
-                  const percentage = buyingStages.totalAccounts 
-                    ? Math.round((stage.accounts / buyingStages.totalAccounts) * 100) 
-                    : 0;
-                  return (
-                    <div key={stage.stage} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {stageIcons[stage.stage]}
-                          <span className="font-medium">{stage.stage}</span>
+          {/* Buying Funnel Tab */}
+          <TabsContent value="funnel" className="space-y-4">
+            <Card className={CARD}>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                  <Target className="h-4 w-4 text-accent" />
+                  Buying-stage funnel
+                </CardTitle>
+                <CardDescription className="text-ink-muted">
+                  {buyingStages?.timeframe || "Recent"}
+                  {buyingStages?.dataAsOf && ` · as of ${formatDate(buyingStages.dataAsOf)}`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {buyingStages?.stages?.map((stage) => {
+                    const percentage = buyingStages.totalAccounts
+                      ? Math.round((stage.accounts / buyingStages.totalAccounts) * 100)
+                      : 0;
+                    return (
+                      <div key={stage.stage}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2">
+                            {stageIcons[stage.stage]}
+                            <span className="text-sm text-ink-muted">{stage.stage}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono tabular-nums text-xs text-ink-muted">{percentage}%</span>
+                            <span className="font-mono tabular-nums text-sm text-foreground w-12 text-right">{stage.accounts}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-sm text-muted-foreground">{percentage}%</span>
-                          <span className="font-bold w-16 text-right">{stage.accounts}</span>
+                        <div className="h-3 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${stageBar[stage.stage] || "bg-surface-raised"} rounded-sm motion-safe:transition-all motion-safe:duration-500`}
+                            style={{ width: `${Math.max(percentage, 2)}%` }}
+                          />
                         </div>
                       </div>
-                      <div className="h-3 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full ${stageColors[stage.stage]} transition-all duration-500`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-6 pt-4 border-t border-border flex items-center justify-between">
+                  <span className="text-sm text-ink-muted">Total accounts in funnel</span>
+                  <span className="font-mono tabular-nums text-2xl text-foreground">{buyingStages?.totalAccounts || 0}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Engagement Tab */}
+          <TabsContent value="engagement" className="space-y-6">
+            <Card className={CARD}>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                  <Activity className="h-4 w-4 text-accent" />
+                  Engagement breakdown
+                </CardTitle>
+                <CardDescription className="text-ink-muted">
+                  {engagement?.timeWindow || "Recent"}
+                  {engagement?.dataAsOf && ` · as of ${formatDate(engagement.dataAsOf)}`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {engagement?.metrics?.map((metric) => (
+                    <div key={metric.state} className="p-4 rounded-sm bg-muted border border-border">
+                      <div className="text-xs text-ink-muted">{metric.state}</div>
+                      <div className="mt-1 font-mono tabular-nums text-2xl text-foreground">{metric.accounts}</div>
                     </div>
-                  );
-                })}
-              </div>
-              <div className="mt-6 pt-4 border-t">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Total Accounts in Funnel</span>
-                  <span className="font-bold">{buyingStages?.totalAccounts || 0}</span>
+                  ))}
+                  {(!engagement?.metrics || engagement.metrics.length === 0) && (
+                    <div className="col-span-full py-8 text-center text-sm text-ink-muted">No engagement data available</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Engagement Gap Alert — amber tint, 1px border (no accent stripe), glyph + word */}
+            <div className="rounded-sm bg-caution/[0.08] border border-caution/30 p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 shrink-0 text-caution" />
+                <div>
+                  <div className="text-sm font-medium text-caution flex items-center gap-1.5">
+                    <span aria-hidden>●</span> Engagement gap
+                  </div>
+                  <p className="mt-1 text-sm text-ink-muted">
+                    <span className="font-mono tabular-nums text-foreground">{summary?.engagement?.noEngagement || 0}</span> accounts
+                    showing intent signals have zero engagement with marketing or sales — warm prospects going cold.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Badge variant="outline" className="border-border-strong text-ink-muted font-mono tabular-nums">
+                      {summary?.engagement?.intent || 0} with intent
+                    </Badge>
+                    <Badge variant="outline" className="border-positive/30 text-positive font-mono tabular-nums">
+                      {summary?.engagement?.knownEngagement || 0} engaged
+                    </Badge>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            </div>
+          </TabsContent>
 
-        {/* Engagement Tab */}
-        <TabsContent value="engagement" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Engagement Breakdown</CardTitle>
-              <CardDescription>
-                {engagement?.timeWindow || "Recent"}
-                {engagement?.dataAsOf && ` (as of ${formatDate(engagement.dataAsOf)})`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {engagement?.metrics?.map((metric) => (
-                  <div key={metric.state} className="p-4 rounded-sm bg-muted/50">
-                    <div className="text-sm text-muted-foreground">{metric.state}</div>
-                    <div className="text-2xl font-bold mt-1">{metric.accounts}</div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Engagement Insights */}
-          <Card className="border-caution/30 bg-caution-subtle">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-caution">
-                <AlertTriangle className="w-5 h-5" />
-                Engagement Gap Alert
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                <strong className="text-foreground">{summary?.engagement?.noEngagement || 0} accounts</strong> showing 
-                intent signals have <strong className="text-critical">zero engagement</strong> with your marketing or sales. 
-                These are warm prospects going cold.
-              </p>
-              <div className="mt-4 flex gap-2">
-                <Badge variant="outline" className="border-caution/30 text-caution">
-                  {summary?.engagement?.intent || 0} with intent
-                </Badge>
-                <Badge variant="outline" className="border-positive/30 text-positive">
-                  {summary?.engagement?.knownEngagement || 0} engaged
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Keywords Tab */}
-        <TabsContent value="keywords" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Intent Keywords</CardTitle>
-              <CardDescription>
-                Top keywords by account volume
-                {keywords?.dataAsOf && ` (as of ${formatDate(keywords.dataAsOf)})`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {keywords?.categories?.map((category) => (
-                  <div key={category}>
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                      {category}
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {keywords.byCategory?.[category]?.slice(0, 10).map((kw) => (
-                        <Badge 
-                          key={kw.keyword} 
-                          variant="outline"
-                          className={`${categoryColors[category] || categoryColors.general} cursor-default`}
-                        >
-                          {kw.keyword}
-                          <span className="ml-2 opacity-60">{kw.totalAccounts}</span>
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Top Keywords Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Keyword Performance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 px-2">Keyword</th>
-                      <th className="text-right py-2 px-2">Accounts</th>
-                      <th className="text-right py-2 px-2">Web Visits</th>
-                      <th className="text-right py-2 px-2">6QAs</th>
-                      <th className="text-right py-2 px-2">Opps</th>
-                      <th className="text-left py-2 px-2">Category</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {keywords?.keywords?.slice(0, 20).map((kw) => (
-                      <tr key={kw.keyword} className="border-b border-muted/50 hover:bg-muted/30">
-                        <td className="py-2 px-2 font-medium">{kw.keyword}</td>
-                        <td className="py-2 px-2 text-right">{kw.totalAccounts}</td>
-                        <td className="py-2 px-2 text-right">{kw.accountsWithWebVisits}</td>
-                        <td className="py-2 px-2 text-right">{kw.accountsWith6QA}</td>
-                        <td className="py-2 px-2 text-right">{kw.accountsWithOpportunities}</td>
-                        <td className="py-2 px-2">
-                          <Badge 
-                            variant="outline" 
-                            className={categoryColors[kw.category || "general"]}
+          {/* Keywords Tab */}
+          <TabsContent value="keywords" className="space-y-6">
+            <Card className={CARD}>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                  <Hash className="h-4 w-4 text-accent" />
+                  Intent keywords
+                </CardTitle>
+                <CardDescription className="text-ink-muted">
+                  Top keywords by account volume
+                  {keywords?.dataAsOf && ` · as of ${formatDate(keywords.dataAsOf)}`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {keywords?.categories?.map((category) => (
+                    <div key={category}>
+                      <h3 className="mb-3 text-sm font-semibold text-foreground capitalize">{category}</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {keywords.byCategory?.[category]?.slice(0, 10).map((kw) => (
+                          <span
+                            key={kw.keyword}
+                            className="inline-flex items-center gap-2 rounded-sm bg-muted border border-border-strong px-3 py-1 text-sm text-foreground"
                           >
-                            {kw.category}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* 6QA Performance Tab */}
-        <TabsContent value="performance" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>6QA Performance Metrics</CardTitle>
-              <CardDescription>
-                Latest performance data
-                {performance?.dataAsOf && ` (as of ${formatDate(performance.dataAsOf)})`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {performance?.latest && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 rounded-sm bg-muted/50">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Activity className="w-4 h-4" />
-                      Avg Sales Activities
-                    </div>
-                    <div className="text-2xl font-bold mt-1">
-                      {Number(performance.latest.avgSalesActivities || 0).toFixed(1)}
-                    </div>
-                    <p className="text-xs text-muted-foreground">per worked account</p>
-                  </div>
-
-                  <div className="p-4 rounded-sm bg-muted/50">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Users className="w-4 h-4" />
-                      Avg Contacts Reached
-                    </div>
-                    <div className="text-2xl font-bold mt-1">
-                      {Number(performance.latest.avgContactsReached || 0).toFixed(1)}
-                    </div>
-                    <p className="text-xs text-muted-foreground">per worked account</p>
-                  </div>
-
-                  <div className="p-4 rounded-sm bg-muted/50">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="w-4 h-4" />
-                      Days to First Activity
-                    </div>
-                    <div className="text-2xl font-bold mt-1">
-                      {Number(performance.latest.avgDaysToFirstActivity || 0).toFixed(1)}
-                    </div>
-                    <p className="text-xs text-muted-foreground">average</p>
-                  </div>
-
-                  <div className="p-4 rounded-sm bg-muted/50">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="w-4 h-4" />
-                      Days Since Last Activity
-                    </div>
-                    <div className="text-2xl font-bold mt-1">
-                      {Number(performance.latest.avgDaysSinceLastActivity || 0).toFixed(1)}
-                    </div>
-                    <p className="text-xs text-muted-foreground">average</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Trend Chart Placeholder */}
-              <div className="mt-6 pt-4 border-t">
-                <h4 className="font-medium mb-4">6QA Trend (Last 10 Days)</h4>
-                <div className="space-y-2">
-                  {performance?.trend?.slice(-10).map((day) => (
-                    <div key={String(day.day)} className="flex items-center gap-4">
-                      <span className="text-sm text-muted-foreground w-24">
-                        {new Date(day.day!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                      </span>
-                      <div className="flex-1 flex items-center gap-2">
-                        <div className="flex-1 h-4 bg-muted rounded-sm overflow-hidden flex">
-                          <div 
-                            className="h-full bg-positive"
-                            style={{ width: `${((day.worked || 0) / (day.total6QAs || 1)) * 100}%` }}
-                          />
-                          <div 
-                            className="h-full bg-critical"
-                            style={{ width: `${((day.unworked || 0) / (day.total6QAs || 1)) * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-muted-foreground w-16 text-right">
-                          {day.worked}/{day.total6QAs}
-                        </span>
+                            {kw.keyword}
+                            <span className="font-mono tabular-nums text-xs text-accent">{kw.totalAccounts}</span>
+                          </span>
+                        ))}
                       </div>
                     </div>
                   ))}
+                  {(!keywords?.categories || keywords.categories.length === 0) && (
+                    <div className="py-8 text-center text-sm text-ink-muted">No keyword data available</div>
+                  )}
                 </div>
-                <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-positive rounded" /> Worked
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-critical rounded" /> Unworked
-                  </span>
+              </CardContent>
+            </Card>
+
+            {/* Keyword Performance Table */}
+            <Card className={CARD}>
+              <CardHeader>
+                <CardTitle className="text-base text-foreground">Keyword performance</CardTitle>
+                <CardDescription className="text-ink-muted">Web visits, 6QAs and opportunities per keyword</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-3 px-3 text-xs font-semibold tracking-wide text-ink-muted">Keyword</th>
+                        <th className="text-right py-3 px-3 text-xs font-semibold tracking-wide text-ink-muted">Accounts</th>
+                        <th className="text-right py-3 px-3 text-xs font-semibold tracking-wide text-ink-muted">Web visits</th>
+                        <th className="text-right py-3 px-3 text-xs font-semibold tracking-wide text-ink-muted">6QAs</th>
+                        <th className="text-right py-3 px-3 text-xs font-semibold tracking-wide text-ink-muted">Opps</th>
+                        <th className="text-left py-3 px-3 text-xs font-semibold tracking-wide text-ink-muted">Category</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {keywords?.keywords?.slice(0, 20).map((kw) => (
+                        <tr key={kw.keyword} className="border-b border-border hover:bg-muted transition-colors">
+                          <td className="py-3 px-3 font-medium text-foreground">{kw.keyword}</td>
+                          <td className="py-3 px-3 text-right font-mono tabular-nums text-ink-muted">{kw.totalAccounts}</td>
+                          <td className="py-3 px-3 text-right font-mono tabular-nums text-accent">{kw.accountsWithWebVisits}</td>
+                          <td className="py-3 px-3 text-right font-mono tabular-nums text-positive">{kw.accountsWith6QA}</td>
+                          <td className="py-3 px-3 text-right font-mono tabular-nums text-caution">{kw.accountsWithOpportunities}</td>
+                          <td className="py-3 px-3">
+                            <Badge variant="outline" className="border-border-strong text-ink-muted capitalize">
+                              {kw.category}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* 6QA Performance Tab */}
+          <TabsContent value="performance" className="space-y-4">
+            <Card className={CARD}>
+              <CardHeader>
+                <CardTitle className="text-base text-foreground">6QA performance metrics</CardTitle>
+                <CardDescription className="text-ink-muted">
+                  Latest performance data
+                  {performance?.dataAsOf && ` · as of ${formatDate(performance.dataAsOf)}`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {performance?.latest && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { icon: Activity, label: "Avg sales activities", value: performance.latest.avgSalesActivities, note: "per worked account" },
+                      { icon: Users, label: "Avg contacts reached", value: performance.latest.avgContactsReached, note: "per worked account" },
+                      { icon: Clock, label: "Days to first activity", value: performance.latest.avgDaysToFirstActivity, note: "average" },
+                      { icon: Clock, label: "Days since last activity", value: performance.latest.avgDaysSinceLastActivity, note: "average" },
+                    ].map((m) => {
+                      const Icon = m.icon;
+                      return (
+                        <div key={m.label} className="p-4 rounded-sm bg-muted border border-border">
+                          <div className="flex items-center gap-1.5 text-xs text-ink-muted">
+                            <Icon className="h-3.5 w-3.5" /> {m.label}
+                          </div>
+                          <div className="mt-1 font-mono tabular-nums text-2xl text-foreground">
+                            {Number(m.value || 0).toFixed(1)}
+                          </div>
+                          <div className="mt-0.5 text-xs text-ink-muted">{m.note}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 6QA Trend */}
+                <div className="mt-6 pt-4 border-t border-border">
+                  <h4 className="mb-4 text-sm font-semibold text-foreground">6QA trend · last 10 days</h4>
+                  <div className="space-y-2">
+                    {performance?.trend?.slice(-10).map((day) => (
+                      <div key={String(day.day)} className="flex items-center gap-4">
+                        <span className="w-24 font-mono tabular-nums text-xs text-ink-muted">
+                          {new Date(day.day!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        </span>
+                        <div className="flex-1 flex items-center gap-2">
+                          <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden flex">
+                            <div className="h-full bg-positive" style={{ width: `${((day.worked || 0) / (day.total6QAs || 1)) * 100}%` }} />
+                            <div className="h-full bg-caution" style={{ width: `${((day.unworked || 0) / (day.total6QAs || 1)) * 100}%` }} />
+                          </div>
+                          <span className="w-16 text-right font-mono tabular-nums text-xs text-ink-muted">
+                            {day.worked}/{day.total6QAs}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex gap-4 text-xs text-ink-muted">
+                    <span className="flex items-center gap-1.5">
+                      <span aria-hidden className="text-positive">▲</span> Worked
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span aria-hidden className="text-caution">●</span> Unworked
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

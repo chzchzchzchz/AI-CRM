@@ -60,7 +60,9 @@ export default function Integrations() {
     <div>
       <div className="container py-1 space-y-5 max-w-6xl">
         <div className="flex items-center gap-3">
-          <Plug className="size-5 shrink-0 text-ink-faint" />
+          <div className="p-2 rounded-sm bg-muted border border-border-strong">
+            <Plug className="h-5 w-5 text-accent" />
+          </div>
           <div>
             <h1 className="text-2xl font-semibold">Integrations</h1>
             <p className="text-sm text-muted-foreground">

@@ -1,16 +1,14 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { 
-  Sparkles, Loader2, Copy, CheckCircle2, 
-  FileText, Mail, Share2, Video, Mic, BookOpen,
+import {
+  Sparkles, Loader2, Copy, CheckCircle2,
+  FileText, Mail, Video, Mic, BookOpen,
   Upload, Brain, Zap, MessageSquare, Target
 } from "lucide-react";
 
@@ -31,6 +29,23 @@ export default function ContentStudio() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const kbInputRef = useRef<HTMLInputElement>(null);
+  const uploadDocMutation = trpc.tools.uploadDocument.useMutation({
+    onSuccess: (_r, vars) => toast.success(`Added "${vars.fileName}" to the knowledge base`),
+    onError: (e) => toast.error(e.message || "Upload failed"),
+  });
+  const handleKbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
+    if (!file) return;
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    if (!["txt", "md", "csv", "json", "html"].includes(ext)) {
+      toast.error("Text documents only (.txt, .md, .csv, .json, .html).");
+      return;
+    }
+    const content = await file.text();
+    uploadDocMutation.mutate({ fileName: file.name, content, mimeType: file.type || "text/plain", category: "general" });
+  };
   const [ragSources, setRagSources] = useState<string[]>([]);
 
   const generateMutation = trpc.tools.generateWebinarContent.useMutation();
@@ -107,21 +122,22 @@ export default function ContentStudio() {
   };
 
   return (
-    <div className="container py-1 max-w-6xl">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Sparkles className="size-5 shrink-0 text-ink-faint" />
+    <div>
+      <div className="container py-1 space-y-5 max-w-6xl">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-sm bg-muted border border-border-strong">
+            <Sparkles className="h-5 w-5 text-accent" />
+          </div>
           <div>
-            <h1 className="text-xl font-semibold">Content Studio</h1>
-            <p className="text-muted-foreground">
-              AI-powered content generation with knowledge base context
+            <h1 className="text-2xl font-semibold">Content Studio</h1>
+            <p className="text-sm text-muted-foreground">
+              AI-powered content generation grounded in your knowledge base.
             </p>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Input Section */}
         <div className="lg:col-span-2 space-y-6">
           {/* Content Type Selection */}
@@ -135,7 +151,7 @@ export default function ContentStudio() {
                   <button
                     key={type.value}
                     onClick={() => setContentType(type.value as ContentType)}
-                    className={`p-3 rounded-sm border text-center transition-all ${contentType === type.value ? 'border-positive/30 bg-positive-subtle text-positive' : 'border-border hover:border-positive/30 hover:bg-positive-subtle'}`}
+                    className={`p-3 rounded-sm border text-center transition-all ${contentType === type.value ? 'border-accent/30 bg-accent-subtle text-accent' : 'border-border-strong text-muted-foreground hover:border-accent/30 hover:bg-muted'}`}
                   >
                     <div className="flex justify-center mb-1">{type.icon}</div>
                     <p className="text-xs font-medium">{type.label}</p>
@@ -149,7 +165,7 @@ export default function ContentStudio() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-positive" />
+                <FileText className="h-5 w-5 text-muted-foreground" />
                 Context & Instructions
               </CardTitle>
               <CardDescription>
@@ -207,14 +223,16 @@ export default function ContentStudio() {
           </Card>
 
           <Button
+            variant="signal"
+            size="lg"
             onClick={handleGenerate}
             disabled={!context.trim() || isGenerating}
-            className="w-full bg-positive py-6 text-lg"
+            className="w-full"
           >
             {isGenerating ? (
               <>
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                Generating...
+                Generating…
               </>
             ) : (
               <>
@@ -284,9 +302,10 @@ export default function ContentStudio() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full" onClick={() => toast.info('Knowledge base upload coming soon!')}>
+              <input ref={kbInputRef} type="file" accept=".txt,.md,.csv,.json,.html" className="hidden" onChange={handleKbUpload} />
+              <Button variant="outline" className="w-full" disabled={uploadDocMutation.isPending} onClick={() => kbInputRef.current?.click()}>
                 <Upload className="h-4 w-4 mr-2" />
-                Upload Documents
+                {uploadDocMutation.isPending ? "Uploading…" : "Upload Documents"}
               </Button>
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>Supported formats:</p>
@@ -302,7 +321,7 @@ export default function ContentStudio() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Zap className="h-4 w-4 text-caution" />
+                <Zap className="h-4 w-4 text-muted-foreground" />
                 AI Capabilities
               </CardTitle>
             </CardHeader>
@@ -325,7 +344,7 @@ export default function ContentStudio() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Target className="h-4 w-4 text-critical" />
+                <Target className="h-4 w-4 text-muted-foreground" />
                 Quick Templates
               </CardTitle>
             </CardHeader>
@@ -351,6 +370,7 @@ export default function ContentStudio() {
               ))}
             </CardContent>
           </Card>
+        </div>
         </div>
       </div>
     </div>

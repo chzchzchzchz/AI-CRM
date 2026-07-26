@@ -267,7 +267,7 @@ export default function AdminApproval() {
                                 <span>{u.email}</span>
                               </div>
                             </div>
-                            <p className="text-xs text-ink-subtle mt-3">
+                            <p className="text-xs text-ink-muted mt-3">
                               Registered {new Date(u.createdAt).toLocaleDateString()}
                             </p>
                           </div>
@@ -366,7 +366,7 @@ export default function AdminApproval() {
                             )}
                           </div>
 
-                          <p className="text-xs text-ink-subtle mt-3">
+                          <p className="text-xs text-ink-muted mt-3">
                             Requested {new Date(request.createdAt).toLocaleDateString()}
                           </p>
                         </div>
@@ -458,7 +458,7 @@ export default function AdminApproval() {
                             )}
                           </div>
                           <p className="text-sm text-ink-muted">{u.email}</p>
-                          <p className="text-xs text-ink-subtle mt-1">
+                          <p className="text-xs text-ink-muted mt-1">
                             {u.loginMethod} • Last sign in: {u.lastSignedIn ? new Date(u.lastSignedIn).toLocaleDateString() : 'Never'}
                           </p>
                         </div>

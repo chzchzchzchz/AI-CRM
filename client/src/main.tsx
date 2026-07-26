@@ -1,7 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { httpBatchLink, TRPCClientError } from "@trpc/client";
+import { httpBatchLink, httpLink, splitLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
@@ -55,17 +55,40 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 //   }
 // });
 
+// Routers whose procedures call an LLM and can take tens of seconds. Batching these with
+// ordinary data queries makes the whole batch wait on the slowest member, so a single
+// account brief would stall the intent signals, contacts and pipeline cards behind it.
+// These travel on their own unbatched requests instead.
+const SLOW_AI_ROUTERS = [
+  "ai.",
+  "intel.",
+  "deepThink.",
+  "bulkInsights.",
+  "outreach.",
+  "tools.",
+  "gemini.",
+  "dust.",
+];
+
+const withCredentials = (input: RequestInfo | URL, init?: RequestInit) =>
+  globalThis.fetch(input, { ...(init ?? {}), credentials: "include" });
+
 const trpcClient = trpc.createClient({
   links: [
-    httpBatchLink({
-      url: "/api/trpc",
-      transformer: superjson,
-      fetch(input, init) {
-        return globalThis.fetch(input, {
-          ...(init ?? {}),
-          credentials: "include",
-        });
-      },
+    splitLink({
+      condition: (op) => SLOW_AI_ROUTERS.some((prefix) => op.path.startsWith(prefix)),
+      // Slow AI work: one request each, so it never blocks anything else.
+      true: httpLink({
+        url: "/api/trpc",
+        transformer: superjson,
+        fetch: withCredentials,
+      }),
+      // Everything else keeps the batching win.
+      false: httpBatchLink({
+        url: "/api/trpc",
+        transformer: superjson,
+        fetch: withCredentials,
+      }),
     }),
   ],
 });

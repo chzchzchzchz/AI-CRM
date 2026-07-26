@@ -87,7 +87,8 @@ ${context}`;
       } catch (error) {
         console.error('[Gemini Research] Error:', error);
         
-        // Return helpful error message
+        // Return a clean failure the UI can show, rather than throwing a 500 or (worse)
+        // presenting an "unavailable" string as if it were real research.
         if (error instanceof Error && error.message.includes('authentication')) {
           return {
             success: false,
@@ -96,8 +97,13 @@ ${context}`;
             research: undefined,
           };
         }
-        
-        throw error;
+
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Gemini research is unavailable.',
+          accountName: account.name,
+          research: undefined,
+        };
       }
     }),
 });
