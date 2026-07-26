@@ -35,7 +35,8 @@ connector is a thin, real HTTP client against the vendor's documented API
 | **PagerDuty** | `integrations.pagerdutyTrigger` | Trigger an alert (Events API v2) | `PAGERDUTY_ROUTING_KEY` |
 | **Zapier / Make / n8n** | `integrations.sendWebhook` (out) · `zapier.webhook` (in) | Any HTTP endpoint, both directions | `ZAPIER_WEBHOOK_SECRET` (inbound) |
 | **Clay** | `clay.receiveAccount` / `clay.receiveContact` (in) · `clayPull.triggerEnrichment` (out) | Enrichment in/out | `CLAY_WEBHOOK_SECRET`, `CLAY_WEBHOOK_URL` |
-| **6sense** | `intentScores.create` / `.list` | Store intent scores per account | `SIXSENSE_API_KEY` |
+| **6sense** | `sixsense.syncAllAccounts` / `.syncAccountByDomain` / `.identifyByIP` · `intentScores.create` / `.list` | Live pull from the Company Identification API v3 (buying stage, intent score, firmographics), plus stored intent history. **No CSV required.** | `SIXSENSE_API_KEY` |
+| **ZoomInfo** | `integrations.zoominfoEnrichCompany` / `.zoominfoSearchContacts` / `.zoominfoEnrichContact` | Company enrichment, contact discovery by company, contact enrichment by email (Enterprise API; JWT handled internally) | `ZOOMINFO_USERNAME` + `ZOOMINFO_PASSWORD`, or `ZOOMINFO_CLIENT_ID` + `ZOOMINFO_PRIVATE_KEY` |
 | **Salesforce** | `salesforce.testConnection` / `.fullSync` | Account/contact OAuth sync | `SALESFORCE_CLIENT_ID/SECRET/INSTANCE_URL` |
 | **Gong** | `calls.create` / `calls.list` | Store & surface call intelligence | `GONG_API_KEY` |
 
