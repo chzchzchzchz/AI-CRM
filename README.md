@@ -168,6 +168,11 @@ TargetDash includes an **MCP (Model Context Protocol) server**, meaning ANY AI a
 
 ---
 
+> **Setting it up?** Run `pnpm doctor` — it reads your `.env` and tells you
+> exactly which integrations are ready, which are half configured, and which
+> are set but wrong (a placeholder, a quoted value, a webhook URL pointed at
+> the wrong vendor). It catches the mistakes that otherwise fail silently.
+
 > **Working on the code?** [`docs/ARCHITECTURE.md`](https://www.google.com/search?q=docs/ARCHITECTURE.md) covers repo layout, the app shell and nav model, the design-system tokens, the bundle splits, and how to add a page. [`DESIGN.md`](https://www.google.com/search?q=DESIGN.md) covers the visual language.
 
 ---

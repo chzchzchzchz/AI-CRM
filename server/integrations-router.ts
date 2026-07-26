@@ -18,6 +18,7 @@ import {
   salesloftCreatePerson, outreachCreateProspect, calendlyGetAccount,
   asanaCreateTask, clickupCreateTask, pagerdutyTrigger,
 } from "./integrations/connectors";
+import { buildReport } from "./integrations/preflight";
 import {
   isZoomInfoConfigured,
   zoominfoEnrichCompany,
@@ -27,6 +28,13 @@ import {
 
 // ---- Native SaaS connectors (Slack, Discord, Teams, HubSpot, Notion, Linear, Intercom, webhooks) ----
 export const integrationsRouter = router({
+  /**
+   * Full setup diagnosis: per-connector severity plus the exact reason.
+   * `status` below stays for the simple configured/not badge; this is what the
+   * Integrations page uses to tell someone *why* a key isn't working.
+   */
+  preflight: protectedProcedure.query(() => buildReport()),
+
   // Which connectors are configured (by env) — shown in the app's Integrations settings.
   status: protectedProcedure.query(() => ({
     slack: !!process.env.SLACK_WEBHOOK_URL,
