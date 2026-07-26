@@ -9,6 +9,7 @@ import { Link } from "wouter";
 import { ContextualAI } from "@/components/ContextualAI";
 import { useRep } from "@/contexts/RepContext";
 import { RepSwitcher } from "@/components/RepSwitcher";
+import { CompanyLogo } from "@/components/ui/company-logo";
 
 type FilterType = "intent" | "industry" | "region" | "buyingStage" | "keyword" | null;
 
@@ -239,11 +240,11 @@ export default function Insights() {
             <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
               <h2 className="text-sm font-semibold text-accent">
                 Workspace Brain
-                <span className="ml-2 font-mono text-xs text-ink-muted">
+                <span className="ml-2 tabular-nums text-xs text-ink-muted">
                   cycle {brain.cycles}{brain.learning ? " · learning…" : ""}
                 </span>
               </h2>
-              <span className="font-mono text-xs text-ink-muted">
+              <span className="tabular-nums text-xs text-ink-muted">
                 {brain.snapshot.totals.accounts} accts · ${brain.snapshot.totals.openPipeline.toLocaleString()} open · {brain.snapshot.totals.hotAccounts} hot
               </span>
             </div>
@@ -303,7 +304,7 @@ export default function Insights() {
                 <span className="text-foreground text-sm">
                   Filtering by {activeFilter.type}: <span className="text-accent font-medium">{activeFilter.label}</span>
                 </span>
-                <Badge variant="outline" className="border-accent/30 text-accent font-mono tabular-nums">
+                <Badge variant="outline" className="border-accent/30 text-accent tabular-nums">
                   {filteredAccounts.length} accounts
                 </Badge>
               </div>
@@ -346,7 +347,7 @@ export default function Insights() {
                     Hot leads right now
                   </div>
                   <div className="mt-3 flex items-baseline gap-3">
-                    <span className="font-mono tabular-nums text-5xl font-semibold text-accent leading-none">
+                    <span className="tabular-nums text-5xl font-semibold text-accent leading-none">
                       {intentBuckets.hot}
                     </span>
                     <span className="inline-flex items-center gap-1 text-sm font-medium text-positive">
@@ -354,7 +355,7 @@ export default function Insights() {
                     </span>
                   </div>
                   <p className="mt-2 text-sm text-ink-muted">
-                    Accounts at intent <span className="font-mono">70+</span> — the queue to work before a competitor does.
+                    Accounts at intent <span className="tabular-nums">70+</span> — the queue to work before a competitor does.
                   </p>
                 </div>
 
@@ -363,7 +364,7 @@ export default function Insights() {
                     <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
                       <Building2 className="h-3.5 w-3.5" /> Accounts
                     </div>
-                    <div className="mt-2 font-mono tabular-nums text-2xl text-foreground">
+                    <div className="mt-2 tabular-nums text-2xl text-foreground">
                       {activeFilter ? filteredAccounts.length : totalAccounts}
                     </div>
                     <div className="text-xs text-ink-muted mt-1">
@@ -374,7 +375,7 @@ export default function Insights() {
                     <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
                       <Users className="h-3.5 w-3.5" /> Key contacts
                     </div>
-                    <div className="mt-2 font-mono tabular-nums text-2xl text-foreground">
+                    <div className="mt-2 tabular-nums text-2xl text-foreground">
                       {totalContacts.toLocaleString()}
                     </div>
                     <div className="text-xs text-ink-muted mt-1">decision makers</div>
@@ -383,7 +384,7 @@ export default function Insights() {
                     <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
                       <Activity className="h-3.5 w-3.5" /> Avg intent
                     </div>
-                    <div className="mt-2 font-mono tabular-nums text-2xl text-accent">
+                    <div className="mt-2 tabular-nums text-2xl text-accent">
                       {avgIntent.toFixed(0)}
                     </div>
                     <div className="text-xs text-ink-muted mt-1">
@@ -427,7 +428,7 @@ export default function Insights() {
                               <span aria-hidden>{meta.glyph}</span> {b.label}
                               <span className="text-ink-muted font-normal">· {b.range}</span>
                             </span>
-                            <span className="font-mono tabular-nums text-lg text-foreground">{b.count}</span>
+                            <span className="tabular-nums text-lg text-foreground">{b.count}</span>
                           </div>
                           <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
                             <div className={`h-full ${meta.bar} rounded-sm`} style={{ width: `${pct}%` }} />
@@ -463,7 +464,7 @@ export default function Insights() {
                           >
                             <div className="flex justify-between items-center mb-1.5">
                               <span className="text-sm text-ink-muted truncate max-w-[150px]">{industry}</span>
-                              <span className="font-mono tabular-nums text-sm text-foreground">{count as number}</span>
+                              <span className="tabular-nums text-sm text-foreground">{count as number}</span>
                             </div>
                             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                               <div
@@ -502,7 +503,7 @@ export default function Insights() {
                           >
                             <div className="flex justify-between items-center mb-1.5">
                               <span className="text-sm text-ink-muted">{region}</span>
-                              <span className="font-mono tabular-nums text-sm text-foreground">{count as number}</span>
+                              <span className="tabular-nums text-sm text-foreground">{count as number}</span>
                             </div>
                             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                               <div
@@ -544,7 +545,7 @@ export default function Insights() {
                           <div className="flex-1 h-6 rounded-md bg-muted overflow-hidden">
                             <div className={`h-full ${bar} rounded-md`} style={{ width: `${Math.max(pct, 3)}%` }} />
                           </div>
-                          <span className="w-12 shrink-0 text-right font-mono tabular-nums text-sm text-foreground">
+                          <span className="w-12 shrink-0 text-right tabular-nums text-sm text-foreground">
                             {count as number}
                           </span>
                         </div>
@@ -593,9 +594,7 @@ export default function Insights() {
                             <tr key={account.id} className="border-b border-border hover:bg-muted transition-colors">
                               <td className="py-3 px-4">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-md bg-muted border border-border-strong flex items-center justify-center text-foreground font-semibold text-sm">
-                                    {account.name?.charAt(0) || "?"}
-                                  </div>
+                                  <CompanyLogo name={account.name} website={account.domain} size="md" />
                                   <div>
                                     <div className="font-medium text-foreground">{account.name}</div>
                                     <div className="text-xs text-ink-muted">{account.domain}</div>
@@ -610,11 +609,11 @@ export default function Insights() {
                                 </Badge>
                               </td>
                               <td className="py-3 px-4 text-right">
-                                <span className={`inline-flex items-center gap-1.5 font-mono tabular-nums ${meta.text}`}>
+                                <span className={`inline-flex items-center gap-1.5 tabular-nums ${meta.text}`}>
                                   <span aria-hidden>{meta.glyph}</span>{account.intentScore || 0}
                                 </span>
                               </td>
-                              <td className="py-3 px-4 text-right font-mono tabular-nums text-sm text-ink-muted">
+                              <td className="py-3 px-4 text-right tabular-nums text-sm text-ink-muted">
                                 {account.employeeCount?.toLocaleString() || "—"}
                               </td>
                               <td className="py-3 px-4 text-right">
@@ -703,19 +702,19 @@ export default function Insights() {
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div className="bg-muted rounded-md p-2">
                             <div className="text-ink-muted text-xs">Accounts</div>
-                            <div className="text-foreground font-mono tabular-nums">{kw.totalAccounts}</div>
+                            <div className="text-foreground tabular-nums">{kw.totalAccounts}</div>
                           </div>
                           <div className="bg-muted rounded-md p-2">
                             <div className="text-ink-muted text-xs">Web visits</div>
-                            <div className="text-accent font-mono tabular-nums">{kw.accountsWithWebVisits}</div>
+                            <div className="text-accent tabular-nums">{kw.accountsWithWebVisits}</div>
                           </div>
                           <div className="bg-muted rounded-md p-2">
                             <div className="text-ink-muted text-xs">6QA</div>
-                            <div className="text-positive font-mono tabular-nums">{kw.accountsWith6QA}</div>
+                            <div className="text-positive tabular-nums">{kw.accountsWith6QA}</div>
                           </div>
                           <div className="bg-muted rounded-md p-2">
                             <div className="text-ink-muted text-xs">Opps</div>
-                            <div className="text-caution font-mono tabular-nums">{kw.accountsWithOpportunities}</div>
+                            <div className="text-caution tabular-nums">{kw.accountsWithOpportunities}</div>
                           </div>
                         </div>
                       </div>
@@ -770,9 +769,7 @@ export default function Insights() {
                             <tr key={account.id} className="border-b border-border hover:bg-muted transition-colors">
                               <td className="py-3 px-4">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-md bg-muted border border-border-strong flex items-center justify-center text-foreground font-semibold text-sm">
-                                    {account.name?.charAt(0) || "?"}
-                                  </div>
+                                  <CompanyLogo name={account.name} website={account.domain} size="md" />
                                   <div>
                                     <div className="font-medium text-foreground">{account.name}</div>
                                     <div className="text-xs text-ink-muted">{account.domain}</div>
@@ -786,7 +783,7 @@ export default function Insights() {
                                 </Badge>
                               </td>
                               <td className="py-3 px-4 text-right">
-                                <span className={`inline-flex items-center gap-1.5 font-mono tabular-nums ${meta.text}`}>
+                                <span className={`inline-flex items-center gap-1.5 tabular-nums ${meta.text}`}>
                                   <span aria-hidden>{meta.glyph}</span>{account.intentScore || 0}
                                 </span>
                               </td>
@@ -851,11 +848,11 @@ export default function Insights() {
                       <div key={idx} className="p-4 rounded-sm bg-muted border border-border">
                         <div className="flex items-center justify-between gap-3">
                           <span className="font-medium text-foreground">{metric.state}</span>
-                          <span className="font-mono tabular-nums text-lg text-accent">{metric.accounts}</span>
+                          <span className="tabular-nums text-lg text-accent">{metric.accounts}</span>
                         </div>
                         {metric.amount && (
                           <div className="mt-1 text-sm text-ink-muted">
-                            Pipeline <span className="text-positive font-mono tabular-nums">${Number(metric.amount).toLocaleString()}</span>
+                            Pipeline <span className="text-positive tabular-nums">${Number(metric.amount).toLocaleString()}</span>
                           </div>
                         )}
                       </div>
@@ -888,9 +885,9 @@ export default function Insights() {
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="text-sm text-ink-muted">{stage.stage}</span>
                             <div className="flex items-center gap-3">
-                              <span className="font-mono tabular-nums text-sm text-foreground">{stage.accounts}</span>
+                              <span className="tabular-nums text-sm text-foreground">{stage.accounts}</span>
                               {Number(stage.newPipeline) > 0 && (
-                                <span className="text-xs text-positive font-mono tabular-nums">
+                                <span className="text-xs text-positive tabular-nums">
                                   +${(Number(stage.newPipeline) / 1000).toFixed(0)}k
                                 </span>
                               )}
@@ -910,7 +907,7 @@ export default function Insights() {
                     <div className="mt-6 pt-4 border-t border-border">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-ink-muted">Total in pipeline</span>
-                        <span className="font-mono tabular-nums text-2xl text-foreground">{buyingStages.totalAccounts}</span>
+                        <span className="tabular-nums text-2xl text-foreground">{buyingStages.totalAccounts}</span>
                       </div>
                     </div>
                   )}
@@ -939,7 +936,7 @@ export default function Insights() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-muted rounded-sm overflow-hidden">
                       <div className="bg-card p-4">
                         <div className="text-xs font-semibold tracking-wide text-ink-muted">Total 6QA</div>
-                        <div className="mt-2 font-mono tabular-nums text-2xl text-accent">
+                        <div className="mt-2 tabular-nums text-2xl text-accent">
                           {sixQAPerformance.latest.total6QAs || 0}
                         </div>
                       </div>
@@ -947,7 +944,7 @@ export default function Insights() {
                         <div className="text-xs font-semibold tracking-wide text-ink-muted flex items-center gap-1.5">
                           <span aria-hidden className="text-positive">▲</span> Worked
                         </div>
-                        <div className="mt-2 font-mono tabular-nums text-2xl text-positive">
+                        <div className="mt-2 tabular-nums text-2xl text-positive">
                           {sixQAPerformance.latest.worked || 0}
                         </div>
                       </div>
@@ -955,13 +952,13 @@ export default function Insights() {
                         <div className="text-xs font-semibold tracking-wide text-ink-muted flex items-center gap-1.5">
                           <span aria-hidden className="text-caution">●</span> Unworked gap
                         </div>
-                        <div className="mt-2 font-mono tabular-nums text-2xl text-caution">
+                        <div className="mt-2 tabular-nums text-2xl text-caution">
                           {sixQAPerformance.latest.unworked || 0}
                         </div>
                       </div>
                       <div className="bg-card p-4">
                         <div className="text-xs font-semibold tracking-wide text-ink-muted">Work rate</div>
-                        <div className="mt-2 font-mono tabular-nums text-2xl text-foreground">
+                        <div className="mt-2 tabular-nums text-2xl text-foreground">
                           {sixQAPerformance.latest.workedPercent}%
                         </div>
                       </div>
@@ -977,7 +974,7 @@ export default function Insights() {
                       ].map((m) => (
                         <div key={m.label} className="p-4 rounded-sm bg-muted border border-border">
                           <div className="text-xs text-ink-muted">{m.label}</div>
-                          <div className="mt-1 font-mono tabular-nums text-xl text-foreground">
+                          <div className="mt-1 tabular-nums text-xl text-foreground">
                             {m.value ?? "—"}
                           </div>
                         </div>
@@ -991,7 +988,7 @@ export default function Insights() {
                           <Zap className="h-5 w-5 text-positive shrink-0" />
                           <div>
                             <div className="text-foreground font-medium">
-                              <span className="font-mono tabular-nums">+{sixQAPerformance.latest.new6QAs}</span> new 6QAs
+                              <span className="tabular-nums">+{sixQAPerformance.latest.new6QAs}</span> new 6QAs
                             </div>
                             <div className="text-sm text-ink-muted">
                               Added on {new Date(sixQAPerformance.latest.day).toLocaleDateString()}

@@ -13,6 +13,7 @@ import {
 import { Link, useParams } from "wouter";
 import { SafeStreamdown } from "@/components/SafeStreamdown";
 import { toast } from "sonner";
+import { CompanyLogo } from "@/components/ui/company-logo";
 
 // --- Signal helpers -------------------------------------------------------
 // Heat pairs a tinted color with a word + shape/glyph so it survives greyscale
@@ -179,18 +180,7 @@ export default function AccountDetailEnhanced() {
               <Link href="/accounts"><ArrowLeft className="h-5 w-5" /></Link>
             </Button>
             {/* Company Logo */}
-            <div className="w-12 h-12 rounded-sm bg-card border border-border flex-shrink-0 overflow-hidden">
-              <img
-                src={`https://logo.clearbit.com/${account.domain}`}
-                alt={`${account.name} logo`}
-                className="w-full h-full object-contain"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-accent-subtle text-accent font-bold text-xl">${account.name.charAt(0)}</div>`;
-                }}
-              />
-            </div>
+            <CompanyLogo name={account.name} website={account.domain} size="xl" />
             <div className="min-w-0">
               <div className="flex items-center gap-2.5">
                 <h1 className="text-2xl font-semibold tracking-tight truncate">{account.name}</h1>
@@ -209,7 +199,7 @@ export default function AccountDetailEnhanced() {
                 )}
                 {account.industry && <span>{account.industry}</span>}
                 {account.employeeCount && (
-                  <span><span className="font-mono tabular-nums text-ink-muted">{Number(account.employeeCount).toLocaleString()}</span> employees</span>
+                  <span><span className="tabular-nums text-ink-muted">{Number(account.employeeCount).toLocaleString()}</span> employees</span>
                 )}
                 {accountOwner && <span>Owner: {accountOwner}</span>}
               </div>
@@ -243,8 +233,8 @@ export default function AccountDetailEnhanced() {
                 <div>
                   <div className="text-xs text-ink-muted">Intent score</div>
                   <div className="flex items-end gap-2">
-                    <span className="font-mono tabular-nums text-6xl font-semibold leading-none text-accent">{intentScore}</span>
-                    <span className="mb-1 font-mono text-sm text-ink-muted">/ 100</span>
+                    <span className="tabular-nums text-6xl font-semibold leading-none text-accent">{intentScore}</span>
+                    <span className="mb-1 tabular-nums text-sm text-ink-muted">/ 100</span>
                   </div>
                   <div className="mt-2 flex items-center gap-2">
                     <span className={`inline-flex items-center gap-1.5 rounded-sm bg-muted px-2.5 py-1 text-xs font-medium ${heat.cls}`}>
@@ -255,7 +245,7 @@ export default function AccountDetailEnhanced() {
                     </span>
                     {intentTrend !== null && (
                       <span
-                        className={`inline-flex items-center gap-0.5 font-mono text-xs ${ intentTrend > 0 ? 'text-positive' : intentTrend < 0 ? 'text-critical' : 'text-ink-muted' }`}
+                        className={`inline-flex items-center gap-0.5 tabular-nums text-xs ${ intentTrend > 0 ? 'text-positive' : intentTrend < 0 ? 'text-critical' : 'text-ink-muted' }`}
                         title="Change vs. the previous recorded signal"
                       >
                         {intentTrend > 0 ? <ArrowUpRight className="h-3 w-3" /> : intentTrend < 0 ? <ArrowDownRight className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
@@ -290,17 +280,17 @@ export default function AccountDetailEnhanced() {
                   </div>
                   <div className="bg-card p-3">
                     <div className="text-xs text-ink-muted">Contacts</div>
-                    <div className="mt-1 font-mono tabular-nums text-lg font-semibold text-accent">{people?.length || 0}</div>
+                    <div className="mt-1 tabular-nums text-lg font-semibold text-accent">{people?.length || 0}</div>
                   </div>
                   <div className="bg-card p-3">
                     <div className="text-xs text-ink-muted">Pipeline</div>
                     {pipelineValue > 0 ? (
                       <>
-                        <div className="mt-1 font-mono tabular-nums text-lg font-semibold text-positive">
+                        <div className="mt-1 tabular-nums text-lg font-semibold text-positive">
                           ${pipelineValue.toLocaleString()}
                         </div>
                         <div className="text-[11px] text-ink-muted">
-                          <span className="font-mono tabular-nums">{openDeals}</span> open
+                          <span className="tabular-nums">{openDeals}</span> open
                         </div>
                       </>
                     ) : (
@@ -330,7 +320,7 @@ export default function AccountDetailEnhanced() {
                     Active Deals
                   </span>
                   {openDeals > 0 && (
-                    <span className="font-mono tabular-nums text-xs text-ink-muted">{openDeals}</span>
+                    <span className="tabular-nums text-xs text-ink-muted">{openDeals}</span>
                   )}
                 </CardTitle>
               </CardHeader>
@@ -346,13 +336,13 @@ export default function AccountDetailEnhanced() {
                       </span>
                     </div>
                     <div className="flex justify-between items-center gap-2">
-                      <span className="font-mono tabular-nums text-sm font-semibold text-positive">
+                      <span className="tabular-nums text-sm font-semibold text-positive">
                         ${Number(opp.amount).toLocaleString()}
                       </span>
                       <div className="flex items-center gap-2.5">
                         {/* The CRM's own probability — distinct from the AI prediction beside it. */}
                         {opp.probability != null && (
-                          <span className="font-mono tabular-nums text-[11px] text-ink-muted" title="Probability recorded in the CRM">
+                          <span className="tabular-nums text-[11px] text-ink-muted" title="Probability recorded in the CRM">
                             {opp.probability}% CRM
                           </span>
                         )}
@@ -362,7 +352,7 @@ export default function AccountDetailEnhanced() {
                             title="AI-predicted likelihood of winning — not the CRM probability"
                           >
                             <BrainCircuit className="h-3 w-3 text-accent" />
-                            <span className="font-mono tabular-nums text-[11px] font-semibold text-accent">
+                            <span className="tabular-nums text-[11px] font-semibold text-accent">
                               {opp.aiSuccessScore}% AI
                             </span>
                           </div>
@@ -391,7 +381,7 @@ export default function AccountDetailEnhanced() {
                         {new Date(s.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         {s.category ? ` · ${s.category}` : ''}
                       </span>
-                      <span className={`font-mono tabular-nums font-semibold ${getIntentColor(s.score)}`}>{s.score}</span>
+                      <span className={`tabular-nums font-semibold ${getIntentColor(s.score)}`}>{s.score}</span>
                     </div>
                   ))}
                 </CardContent>
@@ -405,7 +395,7 @@ export default function AccountDetailEnhanced() {
                   <span className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-accent" />
                     Key Contacts
-                    <span className="font-mono tabular-nums text-xs font-normal text-ink-muted">{people?.length || 0}</span>
+                    <span className="tabular-nums text-xs font-normal text-ink-muted">{people?.length || 0}</span>
                   </span>
                   <Link href={`/contacts?account=${accountId}`} className="text-xs text-accent hover:text-accent">
                     View all
@@ -514,7 +504,7 @@ export default function AccountDetailEnhanced() {
                   <span className="flex items-center gap-2 shrink-0">
                     {overviewQuery.data?.cached && (
                       <span className="rounded-sm bg-muted px-2.5 py-1 text-[11px] text-ink-muted">
-                        Updated <span className="font-mono tabular-nums">{overviewQuery.data.cacheAge}m</span> ago
+                        Updated <span className="tabular-nums">{overviewQuery.data.cacheAge}m</span> ago
                       </span>
                     )}
                     <Button

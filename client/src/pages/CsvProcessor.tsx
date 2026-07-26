@@ -305,7 +305,7 @@ export default function CsvProcessor() {
             return (
               <div key={s} className="flex items-center">
                 <div className={`flex items-center gap-2 px-4 py-2 rounded-sm text-sm font-medium ${ isCurrent ? "bg-accent text-foreground" : isDone ? "bg-muted text-accent" : "bg-muted text-ink-muted" }`}>
-                  <span className="capitalize"><span className="font-mono">{i + 1}.</span> {s}</span>
+                  <span className="capitalize"><span className="tabular-nums">{i + 1}.</span> {s}</span>
                 </div>
                 {i < 4 && <ArrowRight className="h-4 w-4 mx-2 text-ink-subtle" />}
               </div>
@@ -361,7 +361,7 @@ export default function CsvProcessor() {
                 {uploadedFiles.length > 0 && (
                   <div className="space-y-3">
                     <h3 className="font-semibold text-foreground">
-                      Uploaded Files (<span className="font-mono">{uploadedFiles.length}</span>)
+                      Uploaded Files (<span className="tabular-nums">{uploadedFiles.length}</span>)
                     </h3>
                     {uploadedFiles.map((file, i) => (
                       <div key={i} className="flex items-center justify-between p-3 bg-muted rounded-sm">
@@ -370,8 +370,8 @@ export default function CsvProcessor() {
                           <div>
                             <p className="font-medium text-foreground">{file.name}</p>
                             <p className="text-sm text-ink-muted">
-                              <span className="font-mono text-ink-muted">{file.rowCount}</span> rows •{" "}
-                              <span className="font-mono text-ink-muted">{file.headers.length}</span> columns
+                              <span className="tabular-nums text-ink-muted">{file.rowCount}</span> rows •{" "}
+                              <span className="tabular-nums text-ink-muted">{file.headers.length}</span> columns
                             </p>
                           </div>
                         </div>
@@ -444,9 +444,9 @@ export default function CsvProcessor() {
                   <AlertCircle className="h-4 w-4 text-accent" />
                   <AlertTitle className="text-foreground">Data Summary</AlertTitle>
                   <AlertDescription className="text-ink-muted">
-                    <span className="font-mono text-ink-muted">{combinedData?.rows.length}</span> total rows from{" "}
-                    <span className="font-mono text-ink-muted">{uploadedFiles.length}</span> file(s) •{" "}
-                    <span className="font-mono text-ink-muted">{combinedData?.headers.length}</span> columns detected
+                    <span className="tabular-nums text-ink-muted">{combinedData?.rows.length}</span> total rows from{" "}
+                    <span className="tabular-nums text-ink-muted">{uploadedFiles.length}</span> file(s) •{" "}
+                    <span className="tabular-nums text-ink-muted">{combinedData?.headers.length}</span> columns detected
                   </AlertDescription>
                 </Alert>
 
@@ -495,7 +495,7 @@ export default function CsvProcessor() {
                   <div>
                     <h3 className="font-semibold text-foreground">Field Mappings</h3>
                     <p className="text-sm text-ink-muted">
-                      AI confidence: <span className="font-mono text-accent">{Math.round(confidence * 100)}%</span> • Review and adjust as needed
+                      AI confidence: <span className="tabular-nums text-accent">{Math.round(confidence * 100)}%</span> • Review and adjust as needed
                     </p>
                   </div>
                   <Button variant="outline" size="sm" onClick={runAIMapping} className="border-border-strong text-foreground hover:bg-muted hover:text-foreground">
@@ -571,7 +571,7 @@ export default function CsvProcessor() {
                       Processing Complete
                     </h3>
                     <p className="text-sm text-ink-muted">
-                      <span className="font-mono text-ink-muted">{combinedData?.rows.length}</span> rows transformed • Preview first 5 rows below
+                      <span className="tabular-nums text-ink-muted">{combinedData?.rows.length}</span> rows transformed • Preview first 5 rows below
                     </p>
                   </div>
                 </div>

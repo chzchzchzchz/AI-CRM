@@ -223,7 +223,7 @@ export default function ContactDetail() {
                 <div className="flex justify-between items-center gap-3 py-2.5 first:pt-0">
                   <span className="text-sm text-ink-muted">Phone</span>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono tabular-nums text-sm">{contact.phone}</span>
+                    <span className="tabular-nums text-sm">{contact.phone}</span>
                     <button onClick={() => copyToClipboard(contact.phone!, 'phone')} aria-label="Copy phone number" className="p-1 hover:bg-muted rounded shrink-0">
                       {copiedField === 'phone' ? <Check className="h-3 w-3 text-positive" /> : <Copy className="h-3 w-3 text-ink-muted" />}
                     </button>
@@ -265,8 +265,8 @@ export default function ContactDetail() {
                     <div>
                       <div className="text-xs text-ink-muted">Intent score</div>
                       <div className="flex items-end gap-1.5">
-                        <span className="font-mono tabular-nums text-2xl font-semibold leading-none text-accent">{intentScore}</span>
-                        <span className="mb-0.5 font-mono text-xs text-ink-muted">/ 100</span>
+                        <span className="tabular-nums text-2xl font-semibold leading-none text-accent">{intentScore}</span>
+                        <span className="mb-0.5 tabular-nums text-xs text-ink-muted">/ 100</span>
                       </div>
                     </div>
                     <span className={`inline-flex items-center gap-1.5 rounded-sm bg-surface-raised px-2.5 py-1 text-xs font-medium ${heat.cls}`}>

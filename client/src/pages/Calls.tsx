@@ -89,9 +89,9 @@ export default function Calls() {
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-foreground">Gong Calls</h1>
             <p className="text-ink-muted mt-1 text-sm">
-              <span className="font-mono text-foreground">{totalCalls.toLocaleString()}</span> recorded{" "}
+              <span className="tabular-nums text-foreground">{totalCalls.toLocaleString()}</span> recorded{" "}
               {totalCalls === 1 ? "call" : "calls"} across{" "}
-              <span className="font-mono text-foreground">{totalPages || 1}</span>{" "}
+              <span className="tabular-nums text-foreground">{totalPages || 1}</span>{" "}
               {totalPages === 1 ? "page" : "pages"}.
             </p>
           </div>
@@ -109,9 +109,9 @@ export default function Calls() {
         {/* Pagination Controls */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
           <p className="text-sm text-ink-muted">
-            Showing <span className="font-mono text-foreground">{firstOnPage}</span>–
-            <span className="font-mono text-foreground">{lastOnPage}</span> of{" "}
-            <span className="font-mono text-foreground">{totalCalls.toLocaleString()}</span>
+            Showing <span className="tabular-nums text-foreground">{firstOnPage}</span>–
+            <span className="tabular-nums text-foreground">{lastOnPage}</span> of{" "}
+            <span className="tabular-nums text-foreground">{totalCalls.toLocaleString()}</span>
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -125,8 +125,8 @@ export default function Calls() {
               Previous
             </Button>
             <span className="text-sm px-3 text-ink-muted">
-              Page <span className="font-mono text-foreground">{currentPage}</span> of{" "}
-              <span className="font-mono text-foreground">{totalPages || 1}</span>
+              Page <span className="tabular-nums text-foreground">{currentPage}</span> of{" "}
+              <span className="tabular-nums text-foreground">{totalPages || 1}</span>
             </span>
             <Button
               variant="outline"
@@ -180,7 +180,7 @@ export default function Calls() {
                             {call.duration && (
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                <span className="font-mono text-ink-muted">{call.duration}</span>
+                                <span className="tabular-nums text-ink-muted">{call.duration}</span>
                               </span>
                             )}
                             {call.accountId && (
@@ -273,8 +273,8 @@ export default function Calls() {
                 size="sm"
                 onClick={() => setCurrentPage(pageNum)}
                 className={active
-                  ? "font-mono"
-                  : "border-border-strong text-ink-muted hover:bg-muted hover:text-foreground font-mono"}
+                  ? "tabular-nums"
+                  : "border-border-strong text-ink-muted hover:bg-muted hover:text-foreground tabular-nums"}
               >
                 {pageNum}
               </Button>

@@ -968,7 +968,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
             placeholder="Paste transcript here... (e.g., [Speaker 1]: Hello...)"
             value={transcript}
             onChange={(e) => setTranscript(e.target.value)}
-            className="min-h-[300px] font-mono text-sm"
+            className="min-h-[300px] tabular-nums text-sm"
           />
 
           {/* Analyze Button */}
@@ -1009,7 +1009,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
                 placeholder="Paste first transcript..."
                 value={transcript}
                 onChange={(e) => setTranscript(e.target.value)}
-                className="min-h-[250px] font-mono text-sm"
+                className="min-h-[250px] tabular-nums text-sm"
               />
             </CardContent>
           </Card>
@@ -1025,7 +1025,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
                 placeholder="Paste second transcript..."
                 value={transcript2}
                 onChange={(e) => setTranscript2(e.target.value)}
-                className="min-h-[250px] font-mono text-sm"
+                className="min-h-[250px] tabular-nums text-sm"
               />
             </CardContent>
           </Card>
@@ -1061,7 +1061,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
                 placeholder="Paste a transcript and click Add to Batch..."
                 value={transcript}
                 onChange={(e) => setTranscript(e.target.value)}
-                className="min-h-[200px] font-mono text-sm"
+                className="min-h-[200px] tabular-nums text-sm"
               />
               <div className="flex gap-2">
                 <Button variant="outline" onClick={addBulkTranscript} className="flex-1">
@@ -1133,19 +1133,19 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center p-3 bg-muted rounded-sm">
-                    <p className="text-2xl font-mono font-semibold text-critical">{bulkResults.reduce((acc, r) => acc + r.topRisks.length, 0)}</p>
+                    <p className="text-2xl tabular-nums font-semibold text-critical">{bulkResults.reduce((acc, r) => acc + r.topRisks.length, 0)}</p>
                     <p className="text-xs text-muted-foreground">Total Risks</p>
                   </div>
                   <div className="text-center p-3 bg-muted rounded-sm">
-                    <p className="text-2xl font-mono font-semibold text-caution">{bulkResults.reduce((acc, r) => acc + r.topChallenges.length, 0)}</p>
+                    <p className="text-2xl tabular-nums font-semibold text-caution">{bulkResults.reduce((acc, r) => acc + r.topChallenges.length, 0)}</p>
                     <p className="text-xs text-muted-foreground">Total Challenges</p>
                   </div>
                   <div className="text-center p-3 bg-muted rounded-sm">
-                    <p className="text-2xl font-mono font-semibold text-accent">{bulkResults.reduce((acc, r) => acc + r.nextSteps.length, 0)}</p>
+                    <p className="text-2xl tabular-nums font-semibold text-accent">{bulkResults.reduce((acc, r) => acc + r.nextSteps.length, 0)}</p>
                     <p className="text-xs text-muted-foreground">Action Items</p>
                   </div>
                   <div className="text-center p-3 bg-muted rounded-sm">
-                    <p className="text-2xl font-mono font-semibold text-positive">{bulkResults.filter(r => r.betaInterest.interestLevel.toLowerCase().includes('high')).length}</p>
+                    <p className="text-2xl tabular-nums font-semibold text-positive">{bulkResults.filter(r => r.betaInterest.interestLevel.toLowerCase().includes('high')).length}</p>
                     <p className="text-xs text-muted-foreground">High Interest</p>
                   </div>
                 </div>
@@ -1259,7 +1259,7 @@ function DataProcessorTool() {
                 <FileIcon className="w-8 h-8 text-accent flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="font-medium text-foreground truncate">{file.name}</p>
-                  <p className="text-xs text-muted-foreground font-mono">
+                  <p className="text-xs text-muted-foreground tabular-nums">
                     {(file.size / 1024).toFixed(1)} KB
                     {rowCount !== null && ` · ${rowCount} rows`}
                   </p>

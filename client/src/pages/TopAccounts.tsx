@@ -30,14 +30,14 @@ function AccountRow({ account, index }: { account: any; index: number }) {
   return (
     <Link href={`/accounts/${account.id}`}>
       <div className="flex items-center gap-3 rounded-sm px-2 py-2 transition-colors hover:bg-muted cursor-pointer group">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted border border-border-strong font-mono tabular-nums text-xs text-ink-muted">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted border border-border-strong tabular-nums text-xs text-ink-muted">
           {index + 1}
         </span>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm text-foreground truncate group-hover:text-accent transition-colors">{account.name}</p>
           <p className="text-xs text-ink-muted truncate">{account.industry || "Unknown"}</p>
         </div>
-        <span className={`inline-flex items-center gap-1 font-mono tabular-nums text-sm shrink-0 ${meta.text}`}>
+        <span className={`inline-flex items-center gap-1 tabular-nums text-sm shrink-0 ${meta.text}`}>
           <span aria-hidden>{meta.glyph}</span>{account.intentScoreNum}
         </span>
       </div>
@@ -103,16 +103,16 @@ export default function TopAccounts() {
     return (
       <Link key={account.id} href={`/accounts/${account.id}`}>
         <div className="flex items-center gap-4 rounded-sm px-3 py-3 transition-colors hover:bg-muted cursor-pointer group">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted border border-border-strong font-mono tabular-nums text-sm text-ink-muted">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted border border-border-strong tabular-nums text-sm text-ink-muted">
             {index + 1}
           </span>
           <div className="flex-1 min-w-0">
             <h4 className="font-semibold text-foreground truncate group-hover:text-accent transition-colors">{account.name}</h4>
             <p className="text-sm text-ink-muted truncate">
-              {account.industry || "Unknown"} · <span className="font-mono tabular-nums">{account.employeeCount?.toLocaleString() || "?"}</span> employees
+              {account.industry || "Unknown"} · <span className="tabular-nums">{account.employeeCount?.toLocaleString() || "?"}</span> employees
             </p>
           </div>
-          <span className={`inline-flex items-center gap-1.5 font-mono tabular-nums text-sm shrink-0 ${meta.text}`}>
+          <span className={`inline-flex items-center gap-1.5 tabular-nums text-sm shrink-0 ${meta.text}`}>
             <span aria-hidden>{meta.glyph}</span>{account.intentScoreNum}
             <span className="text-xs font-sans font-medium">{meta.label}</span>
           </span>
@@ -191,7 +191,7 @@ export default function TopAccounts() {
                           <MapPin className="h-4 w-4 text-accent" />
                           {region}
                         </CardTitle>
-                        <Badge variant="outline" className="border-border-strong text-ink-muted font-mono tabular-nums">
+                        <Badge variant="outline" className="border-border-strong text-ink-muted tabular-nums">
                           {accountsByRegion[region]?.length || 0}
                         </Badge>
                       </div>
@@ -221,7 +221,7 @@ export default function TopAccounts() {
                       <MapPin className="h-4 w-4 text-accent" />
                       {selectedRegion} region · top 15
                     </CardTitle>
-                    <Badge variant="outline" className="border-border-strong text-ink-muted font-mono tabular-nums">
+                    <Badge variant="outline" className="border-border-strong text-ink-muted tabular-nums">
                       {accountsByRegion[selectedRegion]?.length || 0}
                     </Badge>
                   </div>
@@ -273,7 +273,7 @@ export default function TopAccounts() {
                               {ae.region} · {ae.size} employees
                             </CardDescription>
                           </div>
-                          <Badge variant="outline" className="border-border-strong text-ink-muted font-mono tabular-nums">
+                          <Badge variant="outline" className="border-border-strong text-ink-muted tabular-nums">
                             {aeAccounts.length}
                           </Badge>
                         </div>
@@ -315,18 +315,18 @@ export default function TopAccounts() {
                       </CardDescription>
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                      <Badge variant="outline" className="border-border-strong text-ink-muted font-mono tabular-nums">
+                      <Badge variant="outline" className="border-border-strong text-ink-muted tabular-nums">
                         {getAEAccounts(selectedAE).length} accounts
                       </Badge>
                       {repStats && (
                         <div className="flex gap-3 text-xs">
                           <span className="inline-flex items-center gap-1 font-medium text-positive">
                             <span aria-hidden>▲</span>
-                            <span className="font-mono tabular-nums">{repStats.hotLeads}</span> hot
+                            <span className="tabular-nums">{repStats.hotLeads}</span> hot
                           </span>
                           <span className="inline-flex items-center gap-1 font-medium text-caution">
                             <span aria-hidden>●</span>
-                            <span className="font-mono tabular-nums">{repStats.warmLeads}</span> warm
+                            <span className="tabular-nums">{repStats.warmLeads}</span> warm
                           </span>
                         </div>
                       )}

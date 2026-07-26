@@ -79,28 +79,28 @@ export default function SixsenseAnalytics() {
             <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
               <Zap className="h-3.5 w-3.5 text-accent" /> Total 6QAs
             </div>
-            <div className="mt-2 font-mono tabular-nums text-2xl text-accent">{summary?.sixQA?.total || 0}</div>
+            <div className="mt-2 tabular-nums text-2xl text-accent">{summary?.sixQA?.total || 0}</div>
             <div className="mt-1 text-xs text-ink-muted">qualified accounts</div>
           </div>
           <div className="bg-card p-4">
             <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
               <span aria-hidden className="text-positive">▲</span> Worked
             </div>
-            <div className="mt-2 font-mono tabular-nums text-2xl text-positive">{summary?.sixQA?.worked || 0}</div>
+            <div className="mt-2 tabular-nums text-2xl text-positive">{summary?.sixQA?.worked || 0}</div>
             <div className="mt-1 text-xs text-ink-muted">{workedPct}% of 6QAs</div>
           </div>
           <div className="bg-card p-4">
             <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
               <span aria-hidden className="text-caution">●</span> Unworked gap
             </div>
-            <div className="mt-2 font-mono tabular-nums text-2xl text-caution">{summary?.sixQA?.unworked || 0}</div>
+            <div className="mt-2 tabular-nums text-2xl text-caution">{summary?.sixQA?.unworked || 0}</div>
             <div className="mt-1 text-xs text-ink-muted">{100 - workedPct}% opportunity gap</div>
           </div>
           <div className="bg-card p-4">
             <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
               <ShoppingCart className="h-3.5 w-3.5 text-accent" /> Decision + purchase
             </div>
-            <div className="mt-2 font-mono tabular-nums text-2xl text-foreground">
+            <div className="mt-2 tabular-nums text-2xl text-foreground">
               {(summary?.buyingStages?.decision || 0) + (summary?.buyingStages?.purchase || 0)}
             </div>
             <div className="mt-1 text-xs text-ink-muted">ready to buy</div>
@@ -150,8 +150,8 @@ export default function SixsenseAnalytics() {
                             <span className="text-sm text-ink-muted">{stage.stage}</span>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className="font-mono tabular-nums text-xs text-ink-muted">{percentage}%</span>
-                            <span className="font-mono tabular-nums text-sm text-foreground w-12 text-right">{stage.accounts}</span>
+                            <span className="tabular-nums text-xs text-ink-muted">{percentage}%</span>
+                            <span className="tabular-nums text-sm text-foreground w-12 text-right">{stage.accounts}</span>
                           </div>
                         </div>
                         <div className="h-3 bg-muted rounded-full overflow-hidden">
@@ -166,7 +166,7 @@ export default function SixsenseAnalytics() {
                 </div>
                 <div className="mt-6 pt-4 border-t border-border flex items-center justify-between">
                   <span className="text-sm text-ink-muted">Total accounts in funnel</span>
-                  <span className="font-mono tabular-nums text-2xl text-foreground">{buyingStages?.totalAccounts || 0}</span>
+                  <span className="tabular-nums text-2xl text-foreground">{buyingStages?.totalAccounts || 0}</span>
                 </div>
               </CardContent>
             </Card>
@@ -190,7 +190,7 @@ export default function SixsenseAnalytics() {
                   {engagement?.metrics?.map((metric) => (
                     <div key={metric.state} className="p-4 rounded-sm bg-muted border border-border">
                       <div className="text-xs text-ink-muted">{metric.state}</div>
-                      <div className="mt-1 font-mono tabular-nums text-2xl text-foreground">{metric.accounts}</div>
+                      <div className="mt-1 tabular-nums text-2xl text-foreground">{metric.accounts}</div>
                     </div>
                   ))}
                   {(!engagement?.metrics || engagement.metrics.length === 0) && (
@@ -209,14 +209,14 @@ export default function SixsenseAnalytics() {
                     <span aria-hidden>●</span> Engagement gap
                   </div>
                   <p className="mt-1 text-sm text-ink-muted">
-                    <span className="font-mono tabular-nums text-foreground">{summary?.engagement?.noEngagement || 0}</span> accounts
+                    <span className="tabular-nums text-foreground">{summary?.engagement?.noEngagement || 0}</span> accounts
                     showing intent signals have zero engagement with marketing or sales — warm prospects going cold.
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Badge variant="outline" className="border-border-strong text-ink-muted font-mono tabular-nums">
+                    <Badge variant="outline" className="border-border-strong text-ink-muted tabular-nums">
                       {summary?.engagement?.intent || 0} with intent
                     </Badge>
-                    <Badge variant="outline" className="border-positive/30 text-positive font-mono tabular-nums">
+                    <Badge variant="outline" className="border-positive/30 text-positive tabular-nums">
                       {summary?.engagement?.knownEngagement || 0} engaged
                     </Badge>
                   </div>
@@ -250,7 +250,7 @@ export default function SixsenseAnalytics() {
                             className="inline-flex items-center gap-2 rounded-sm bg-muted border border-border-strong px-3 py-1 text-sm text-foreground"
                           >
                             {kw.keyword}
-                            <span className="font-mono tabular-nums text-xs text-accent">{kw.totalAccounts}</span>
+                            <span className="tabular-nums text-xs text-accent">{kw.totalAccounts}</span>
                           </span>
                         ))}
                       </div>
@@ -286,10 +286,10 @@ export default function SixsenseAnalytics() {
                       {keywords?.keywords?.slice(0, 20).map((kw) => (
                         <tr key={kw.keyword} className="border-b border-border hover:bg-muted transition-colors">
                           <td className="py-3 px-3 font-medium text-foreground">{kw.keyword}</td>
-                          <td className="py-3 px-3 text-right font-mono tabular-nums text-ink-muted">{kw.totalAccounts}</td>
-                          <td className="py-3 px-3 text-right font-mono tabular-nums text-accent">{kw.accountsWithWebVisits}</td>
-                          <td className="py-3 px-3 text-right font-mono tabular-nums text-positive">{kw.accountsWith6QA}</td>
-                          <td className="py-3 px-3 text-right font-mono tabular-nums text-caution">{kw.accountsWithOpportunities}</td>
+                          <td className="py-3 px-3 text-right tabular-nums text-ink-muted">{kw.totalAccounts}</td>
+                          <td className="py-3 px-3 text-right tabular-nums text-accent">{kw.accountsWithWebVisits}</td>
+                          <td className="py-3 px-3 text-right tabular-nums text-positive">{kw.accountsWith6QA}</td>
+                          <td className="py-3 px-3 text-right tabular-nums text-caution">{kw.accountsWithOpportunities}</td>
                           <td className="py-3 px-3">
                             <Badge variant="outline" className="border-border-strong text-ink-muted capitalize">
                               {kw.category}
@@ -329,7 +329,7 @@ export default function SixsenseAnalytics() {
                           <div className="flex items-center gap-1.5 text-xs text-ink-muted">
                             <Icon className="h-3.5 w-3.5" /> {m.label}
                           </div>
-                          <div className="mt-1 font-mono tabular-nums text-2xl text-foreground">
+                          <div className="mt-1 tabular-nums text-2xl text-foreground">
                             {Number(m.value || 0).toFixed(1)}
                           </div>
                           <div className="mt-0.5 text-xs text-ink-muted">{m.note}</div>
@@ -345,7 +345,7 @@ export default function SixsenseAnalytics() {
                   <div className="space-y-2">
                     {performance?.trend?.slice(-10).map((day) => (
                       <div key={String(day.day)} className="flex items-center gap-4">
-                        <span className="w-24 font-mono tabular-nums text-xs text-ink-muted">
+                        <span className="w-24 tabular-nums text-xs text-ink-muted">
                           {new Date(day.day!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                         </span>
                         <div className="flex-1 flex items-center gap-2">
@@ -353,7 +353,7 @@ export default function SixsenseAnalytics() {
                             <div className="h-full bg-positive" style={{ width: `${((day.worked || 0) / (day.total6QAs || 1)) * 100}%` }} />
                             <div className="h-full bg-caution" style={{ width: `${((day.unworked || 0) / (day.total6QAs || 1)) * 100}%` }} />
                           </div>
-                          <span className="w-16 text-right font-mono tabular-nums text-xs text-ink-muted">
+                          <span className="w-16 text-right tabular-nums text-xs text-ink-muted">
                             {day.worked}/{day.total6QAs}
                           </span>
                         </div>

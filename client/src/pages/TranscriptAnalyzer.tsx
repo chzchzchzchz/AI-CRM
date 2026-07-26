@@ -277,7 +277,7 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
                     placeholder="Paste transcript here... (e.g., [Speaker 1]: Hello...)"
                     value={transcript}
                     onChange={(e) => setTranscript(e.target.value)}
-                    className="min-h-[300px] font-mono text-sm"
+                    className="min-h-[300px] tabular-nums text-sm"
                     disabled={analyzeMutation.isPending}
                   />
                   <div className="flex justify-end">
