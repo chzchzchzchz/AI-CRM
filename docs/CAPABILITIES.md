@@ -8,12 +8,12 @@ Every backend capability, and whether anything in the product actually reaches i
 
 | | Count |
 |---|---|
-| Procedures total | 176 |
-| Reachable from the UI | 91 |
+| Procedures total | 177 |
+| Reachable from the UI | 95 |
 | External by design (webhooks, probes, connector actions) | 28 |
-| **Built but not routed anywhere** | **57** |
+| **Built but not routed anywhere** | **54** |
 | ↳ of those, called only by unreachable client code | 5 |
-| App routes | 32 |
+| App routes | 33 |
 | Client modules unreachable from `main.tsx` | 19 |
 | Integration connectors | 24 |
 
@@ -69,9 +69,6 @@ Real, working code with no path to it from the product. Each line is either some
 | `people.getByCompany` | protected | `server/routers.ts` | — |
 | `people.getByAccountId` | protected | `server/routers.ts` | — |
 | `priorityActions.getRepTerritory` | protected | `server/priority-actions-router.ts` | — |
-| `sequences.list` | protected | `server/sequences.ts` | — |
-| `sequences.save` | protected | `server/sequences.ts` | — |
-| `sequences.delete` | protected | `server/sequences.ts` | — |
 | `sixsense.syncAccountByDomain` | protected | `server/sixsense-router.ts` | — |
 | `sixsense.identifyByIP` | protected | `server/sixsense-router.ts` | — |
 | `sixsense.detectIntentSpikes` | protected | `server/sixsense-router.ts` | — |
@@ -186,6 +183,10 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `salesforce.syncAccounts` | `components/SalesforceSync.tsx` |
 | `salesforce.syncContacts` | `components/SalesforceSync.tsx` |
 | `salesforce.fullSync` | `components/SalesforceSync.tsx` |
+| `sequences.list` | `pages/Sequences.tsx` |
+| `sequences.save` | `pages/Sequences.tsx` |
+| `sequences.duplicate` | `pages/Sequences.tsx` |
+| `sequences.delete` | `pages/Sequences.tsx` |
 | `sixsense.syncAllAccounts` | `pages/SixsenseSync.tsx` |
 | `sixsense.getSyncStatus` | `pages/SixsenseSync.tsx` |
 | `sixsense.getRecentSpikes` | `components/WhatChanged.tsx` |
@@ -198,7 +199,7 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `tools.getDocuments` | `components/KnowledgeBase.tsx` |
 | `tools.deleteDocument` | `components/KnowledgeBase.tsx` |
 | `tools.searchKnowledge` | `components/KnowledgeBase.tsx` |
-| `tools.generateContent` | `pages/AITools.tsx`, `pages/ContentStudio.tsx` |
+| `tools.generateContent` | `pages/AITools.tsx`, `pages/ContentStudio.tsx`, `pages/Sequences.tsx` |
 | `tools.processLeads` | `pages/DataHub.tsx`, `pages/LeadProcessor.tsx` |
 | `tools.generateWebinarContent` | `pages/WebinarGenerator.tsx` |
 | `tools.analyzeTranscript` | `pages/AITools.tsx`, `pages/TranscriptAnalyzer.tsx` |
@@ -264,6 +265,7 @@ Not called by our UI, and should not be — these are entry points for other sys
 | `/calls` | `Calls` |
 | `/insights` | `Insights` |
 | `/outreach` | `Outreach` |
+| `/sequences` | `Sequences` |
 | `/rfps` | `RFPs` |
 | `/integrations` | `Integrations` |
 | `/admin` | `Admin` |
