@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
 import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
-import { getPingAccountSummaryPrompt } from "./sequences/ping-context";
 import { invokeLLM } from "./_core/llm";
 import { getCompanyConfig } from "./config";
 
@@ -18,12 +17,12 @@ import { getCompanyConfig } from "./config";
  * - Engagement strategy
  * 
  * This summary is used to deeply personalize email outreach and other communications.
- * Supports multiple sequences (Ping, Silverfort, AI, SDO, etc.)
+ * The prompt is built from the deployer's own company config (see config.ts).
  */
 
 export async function generateAccountSummary(
   accountId: number,
-  sequence: "ping" | "silverfort" | "ai" | "sdo" | "default" = "default"
+  _sequence: "default" = "default"
 ): Promise<string> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -42,26 +41,15 @@ export async function generateAccountSummary(
 
   const companyName = getCompanyConfig().companyName;
 
-  // Get sequence-specific system prompt
-  let systemPrompt: string;
-
-  if (sequence === "ping") {
-    systemPrompt = getPingAccountSummaryPrompt({
-      name: account.name || "Unknown",
-      industry: account.industry || undefined,
-      employees: account.employees || undefined,
-      techStack: account.techStack ? JSON.parse(account.techStack) : undefined,
-    });
-  } else {
-    // Default prompt for other sequences (to be implemented)
-    systemPrompt = `You are an elite Enterprise Account Executive and strategic advisor for ${companyName}.
+  // Generic, config-driven system prompt (no vendor/prior-employer specifics).
+  const systemPrompt = `You are an elite Enterprise Account Executive and strategic advisor for ${companyName}.
 
 Your task is to generate a comprehensive, data-driven account brief for ${account.name || "this company"}.
 
 ACCOUNT DETAILS:
 - Company: ${account.name}
 - Industry: ${account.industry || "Unknown"}
-- Employees: ${account.employees || "Unknown"}
+- Employees: ${account.employeeCount || "Unknown"}
 - Tech Stack: ${account.techStack || "Unknown"}
 
 Generate a structured brief with these sections:
@@ -73,7 +61,6 @@ Generate a structured brief with these sections:
 - PAIN POINTS
 - RECOMMENDED TALKING POINTS
 - ENGAGEMENT STRATEGY`;
-  }
 
   // Prepare context for LLM
   const userMessage = `Generate an account brief for ${account.name}. Include all relevant information about their business, technology, and how ${companyName} can help.`;

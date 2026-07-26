@@ -32,8 +32,27 @@ export default function DataHub() {
   const [result, setResult] = useState<ProcessingResult | null>(null);
   const [detectedType, setDetectedType] = useState<DataType>('auto');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const kbInputRef = useRef<HTMLInputElement>(null);
 
   const processLeadsMutation = trpc.tools.processLeads.useMutation();
+  const uploadDocMutation = trpc.tools.uploadDocument.useMutation({
+    onSuccess: (_r, vars) => toast.success(`Added "${vars.fileName}" to the knowledge base`),
+    onError: (e) => toast.error(e.message || "Upload failed"),
+  });
+
+  // Knowledge-base upload: read a text document and index it for AI context.
+  const handleKbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
+    if (!file) return;
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    if (!["txt", "md", "csv", "json", "html"].includes(ext)) {
+      toast.error("Text documents only (.txt, .md, .csv, .json, .html).");
+      return;
+    }
+    const content = await file.text();
+    uploadDocMutation.mutate({ fileName: file.name, content, mimeType: file.type || "text/plain", category: "general" });
+  };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -183,11 +202,14 @@ export default function DataHub() {
   };
 
   return (
+    <div className="text-foreground">
     <div className="container py-1 max-w-6xl">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <Brain className="size-5 shrink-0 text-ink-faint" />
+          <div className="p-2 bg-muted border border-border-strong rounded-md">
+            <Brain className="h-6 w-6 text-accent" />
+          </div>
           <div>
             <h1 className="text-xl font-semibold">AI Data Hub</h1>
             <p className="text-muted-foreground">
@@ -276,7 +298,7 @@ export default function DataHub() {
                 <Button
                   onClick={processFiles}
                   disabled={files.length === 0 || status === 'processing' || status === 'analyzing'}
-                  className="flex-1 bg-accent"
+                  className="flex-1 bg-accent text-foreground hover:bg-accent"
                 >
                   {status === 'processing' || status === 'analyzing' ? (
                     <>
@@ -411,9 +433,10 @@ export default function DataHub() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full" onClick={() => toast.info('Knowledge base upload coming soon!')}>
+              <input ref={kbInputRef} type="file" accept=".txt,.md,.csv,.json,.html" className="hidden" onChange={handleKbUpload} />
+              <Button variant="outline" className="w-full" disabled={uploadDocMutation.isPending} onClick={() => kbInputRef.current?.click()}>
                 <Upload className="h-4 w-4 mr-2" />
-                Upload Documents
+                {uploadDocMutation.isPending ? "Uploading…" : "Upload Documents"}
               </Button>
               <p className="text-xs text-muted-foreground mt-2">
                 Battle cards, playbooks, and product docs will be used to enrich AI outputs
@@ -422,6 +445,7 @@ export default function DataHub() {
           </Card>
         </div>
       </div>
+    </div>
     </div>
   );
 }

@@ -40,7 +40,7 @@ pnpm dev
 ```bash
 pnpm type-check
 pnpm lint
-pnpm test  # if tests exist
+pnpm test    # 88 tests (vitest)
 ```
 
 ### 6. Commit & Push

@@ -12,15 +12,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `version:` here on purpose. package.json declares
+      # "packageManager": "pnpm@10.33.0", and specifying the version in both
+      # places makes action-setup fail with ERR_PNPM_BAD_PM_VERSION.
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # vite 7 and vitest 4 require ^20.19 || >=22.12; pin to 22 rather
+          # than tracking whatever "20" resolves to.
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies

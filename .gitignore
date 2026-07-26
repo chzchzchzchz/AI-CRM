@@ -128,3 +128,4 @@ scripts/*import*.json
 SFDC-*.csv
 Find-people-*.csv
 .worktrees/
+demo-db.test.json

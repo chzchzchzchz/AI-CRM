@@ -120,5 +120,9 @@
       "body-parser@<1.20.6": "^1.20.6",
       "body-parser@>=2.0.0 <2.3.0": "^2.3.0"
     }
-  }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.33.0"
 }

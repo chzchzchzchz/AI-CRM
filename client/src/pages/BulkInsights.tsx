@@ -27,6 +27,7 @@ export default function BulkInsights() {
   };
 
   return (
+    <div className="text-foreground">
     <div className="container mx-auto py-8">
       <div className="mb-8">
         <h1 className="text-xl font-semibold mb-2">Bulk AI Insights Generation</h1>
@@ -183,6 +184,7 @@ export default function BulkInsights() {
           </Card>
         )}
       </div>
+    </div>
     </div>
   );
 }

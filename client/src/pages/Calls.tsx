@@ -1,22 +1,13 @@
-import { useState, useMemo, useCallback } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState, useMemo } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import {
   Phone, Calendar, Clock, Building2, Search,
-  ArrowUpDown, ExternalLink, PlayCircle,
-  ChevronDown, ChevronUp, MessageSquare, ChevronLeft, ChevronRight
+  PlayCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 
 const CALLS_PER_PAGE = 50;
@@ -37,11 +28,26 @@ export default function Calls() {
   const totalPages = Math.ceil(totalCalls / CALLS_PER_PAGE);
 
   // Client-side search filter (on current page only)
+  // keyTopics / actionItems are stored as JSON strings (or arrays). Parse defensively.
+  const parseList = (v: any): string[] => {
+    if (!v) return [];
+    if (Array.isArray(v)) return v.map(String);
+    try { const p = JSON.parse(v); return Array.isArray(p) ? p.map(String) : []; } catch { return [String(v)]; }
+  };
+
   const filteredCalls = useMemo(() => {
     if (!searchQuery) return calls;
+    const q = searchQuery.toLowerCase();
     return calls.filter((call: any) => {
-      return call.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        call.summary?.toLowerCase().includes(searchQuery.toLowerCase());
+      // Search the real columns (title, sentiment, and the topics/action-items that Gong
+      // actually populates) — the old code searched call.summary, which is not a column.
+      const haystack = [
+        call.title,
+        call.sentiment,
+        ...parseList(call.keyTopics),
+        ...parseList(call.actionItems),
+      ].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(q);
     });
   }, [calls, searchQuery]);
 
@@ -60,12 +66,9 @@ export default function Calls() {
   // Loading state
   if (isLoading && !data) {
     return (
-      <div>
-        <div className="container py-1 space-y-5 max-w-6xl">
+      <div className="text-foreground">
+        <div className="container mx-auto py-8 px-4 space-y-6 max-w-6xl">
           <div className="h-10 w-48 skeleton rounded" />
-          <div className="grid gap-4 md:grid-cols-3">
-            {[1, 2, 3].map(i => <div key={i} className="h-24 skeleton rounded-sm" />)}
-          </div>
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-32 skeleton rounded-sm" />)}
           </div>
@@ -74,72 +77,41 @@ export default function Calls() {
     );
   }
 
-  return (
-    <div>
+  const firstOnPage = totalCalls === 0 ? 0 : ((currentPage - 1) * CALLS_PER_PAGE) + 1;
+  const lastOnPage = Math.min(currentPage * CALLS_PER_PAGE, totalCalls);
 
-      <div className="container py-1 space-y-5 max-w-6xl">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+  return (
+    <div className="text-foreground">
+
+      <div className="container mx-auto py-8 px-4 space-y-6 max-w-6xl">
+        {/* Header — lead with what matters: the corpus size, then how to move through it. */}
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold">Gong Calls</h1>
-            <p className="text-muted-foreground">
-              {totalCalls.toLocaleString()} total calls
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">Gong Calls</h1>
+            <p className="text-ink-muted mt-1 text-sm">
+              <span className="font-mono text-foreground">{totalCalls.toLocaleString()}</span> recorded{" "}
+              {totalCalls === 1 ? "call" : "calls"} across{" "}
+              <span className="font-mono text-foreground">{totalPages || 1}</span>{" "}
+              {totalPages === 1 ? "page" : "pages"}.
             </p>
+          </div>
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" />
+            <Input
+              placeholder="Search this page…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 bg-muted border-border-strong text-foreground placeholder:text-ink-muted"
+            />
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Phone className="h-8 w-8 text-accent" />
-                <div>
-                  <p className="text-2xl font-bold">{totalCalls.toLocaleString()}</p>
-                  <p className="text-sm text-muted-foreground">Total Calls</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Calendar className="h-8 w-8 text-accent" />
-                <div>
-                  <p className="text-2xl font-bold">Page {currentPage}</p>
-                  <p className="text-sm text-muted-foreground">of {totalPages} pages</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Clock className="h-8 w-8 text-accent" />
-                <div>
-                  <p className="text-2xl font-bold">{CALLS_PER_PAGE}</p>
-                  <p className="text-sm text-muted-foreground">Per page</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search this page..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-
         {/* Pagination Controls */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {((currentPage - 1) * CALLS_PER_PAGE) + 1} - {Math.min(currentPage * CALLS_PER_PAGE, totalCalls)} of {totalCalls.toLocaleString()}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+          <p className="text-sm text-ink-muted">
+            Showing <span className="font-mono text-foreground">{firstOnPage}</span>–
+            <span className="font-mono text-foreground">{lastOnPage}</span> of{" "}
+            <span className="font-mono text-foreground">{totalCalls.toLocaleString()}</span>
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -147,18 +119,21 @@ export default function Calls() {
               size="sm"
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
+              className="border-border-strong text-ink-muted hover:bg-muted hover:text-foreground"
             >
               <ChevronLeft className="h-4 w-4" />
               Previous
             </Button>
-            <span className="text-sm px-3">
-              Page {currentPage} of {totalPages}
+            <span className="text-sm px-3 text-ink-muted">
+              Page <span className="font-mono text-foreground">{currentPage}</span> of{" "}
+              <span className="font-mono text-foreground">{totalPages || 1}</span>
             </span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage >= totalPages}
+              className="border-border-strong text-ink-muted hover:bg-muted hover:text-foreground"
             >
               Next
               <ChevronRight className="h-4 w-4" />
@@ -168,29 +143,34 @@ export default function Calls() {
 
         {/* Calls List */}
         {filteredCalls.length === 0 ? (
-          <Card>
+          <Card className="bg-card border-border shadow-none">
             <CardContent className="py-12 text-center">
-              <Phone className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-              <h3 className="text-lg font-semibold">No calls found</h3>
-              <p className="text-muted-foreground text-sm">Try a different search</p>
+              <Phone className="h-12 w-12 mx-auto text-ink-subtle mb-3" />
+              <h3 className="text-lg font-semibold text-foreground">No calls found</h3>
+              <p className="text-ink-muted text-sm">Try a different search</p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-3">
             {filteredCalls.map((call: any) => {
               const isExpanded = expandedCalls.has(call.id);
-              
+
               return (
-                <Card key={call.id} className="hover:bg-muted/30 transition-colors">
+                <Card
+                  key={call.id}
+                  className="bg-card border-border shadow-none transition-colors hover:border-accent/30"
+                >
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <Phone className="size-5 shrink-0 text-ink-faint" />
+                        <div className="p-2 bg-muted rounded-sm">
+                          <Phone className="h-4 w-4 text-accent" />
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium line-clamp-1">
+                          <h3 className="font-medium text-foreground line-clamp-1">
                             {call.title || "Untitled Call"}
                           </h3>
-                          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
+                          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-ink-muted">
                             {call.callDate && (
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
@@ -200,11 +180,11 @@ export default function Calls() {
                             {call.duration && (
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                {call.duration}
+                                <span className="font-mono text-ink-muted">{call.duration}</span>
                               </span>
                             )}
                             {call.accountId && (
-                              <Link href={`/accounts/${call.accountId}`} className="flex items-center gap-1 hover:text-foreground">
+                              <Link href={`/accounts/${call.accountId}`} className="flex items-center gap-1 text-ink-muted hover:text-accent">
                                 <Building2 className="h-3 w-3" />
                                 Account #{call.accountId}
                               </Link>
@@ -214,7 +194,12 @@ export default function Calls() {
                       </div>
                       <div className="flex gap-2 flex-shrink-0">
                         {call.recordingUrl && (
-                          <Button variant="outline" size="sm" asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                            className="border-border-strong text-ink-muted hover:bg-muted hover:text-foreground"
+                          >
                             <a href={call.recordingUrl} target="_blank" rel="noopener noreferrer">
                               <PlayCircle className="mr-1 h-3 w-3" />
                               Gong
@@ -224,9 +209,21 @@ export default function Calls() {
                       </div>
                     </div>
 
-                    {call.summary && (
-                      <div className="mt-3 p-3 rounded bg-muted/50 text-sm">
-                        {call.summary.slice(0, 200)}{call.summary.length > 200 ? '...' : ''}
+                    {parseList(call.keyTopics).length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {parseList(call.keyTopics).map((topic: string, i: number) => (
+                          <span key={i} className="px-2 py-0.5 rounded-sm bg-muted text-xs text-ink-muted">{topic}</span>
+                        ))}
+                      </div>
+                    )}
+                    {parseList(call.actionItems).length > 0 && (
+                      <div className="mt-2 p-3 rounded-sm bg-muted text-sm text-foreground">
+                        <div className="text-xs text-ink-muted mb-1">Action items</div>
+                        <ul className="list-disc list-inside space-y-0.5">
+                          {parseList(call.actionItems).map((item: string, i: number) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
                       </div>
                     )}
 
@@ -235,15 +232,15 @@ export default function Calls() {
                         variant="ghost"
                         size="sm"
                         onClick={() => toggleExpanded(call.id)}
-                        className="mt-2 w-full justify-between text-xs"
+                        className="mt-2 w-full justify-between text-xs text-ink-muted hover:bg-muted hover:text-foreground"
                       >
                         <span>View Transcript</span>
                         {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                       </Button>
                     )}
-                    
+
                     {isExpanded && call.transcriptUrl && (
-                      <div className="mt-2 p-3 rounded bg-muted/50 text-xs text-muted-foreground whitespace-pre-wrap max-h-64 overflow-y-auto">
+                      <div className="mt-2 p-3 rounded-sm bg-muted text-xs text-ink-muted whitespace-pre-wrap max-h-64 overflow-y-auto">
                         {call.transcriptUrl}
                       </div>
                     )}
@@ -261,18 +258,23 @@ export default function Calls() {
             size="sm"
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
+            className="border-border-strong text-ink-muted hover:bg-muted hover:text-foreground"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           {[...Array(Math.min(5, totalPages))].map((_, i) => {
             const pageNum = currentPage <= 3 ? i + 1 : currentPage - 2 + i;
             if (pageNum > totalPages || pageNum < 1) return null;
+            const active = pageNum === currentPage;
             return (
               <Button
                 key={pageNum}
-                variant={pageNum === currentPage ? "default" : "outline"}
+                variant={active ? "signal" : "outline"}
                 size="sm"
                 onClick={() => setCurrentPage(pageNum)}
+                className={active
+                  ? "font-mono"
+                  : "border-border-strong text-ink-muted hover:bg-muted hover:text-foreground font-mono"}
               >
                 {pageNum}
               </Button>
@@ -283,6 +285,7 @@ export default function Calls() {
             size="sm"
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage >= totalPages}
+            className="border-border-strong text-ink-muted hover:bg-muted hover:text-foreground"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>

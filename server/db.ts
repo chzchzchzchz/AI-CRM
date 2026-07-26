@@ -11,7 +11,11 @@ import path from 'path';
 let _db: any = null;
 let _pool: mysql.Pool | null = null;
 
-const DEMO_DB_PATH = path.join(process.cwd(), 'demo-db.json');
+// Overridable so tests (and anyone running several instances) get their own store instead
+// of mutating the demo dataset the product ships with.
+const DEMO_DB_PATH = process.env.DEMO_DB_PATH
+  ? path.resolve(process.env.DEMO_DB_PATH)
+  : path.join(process.cwd(), 'demo-db.json');
 // Pristine, version-controlled seed. Copied to DEMO_DB_PATH on first boot so a fresh
 // clone gets the full demo dataset (16 accounts, 40 contacts, etc.) while the working
 // demo-db.json stays gitignored and mutable at runtime.
@@ -250,17 +254,36 @@ function loadDemoDb(): any {
     return initial;
   }
   try {
-    const data = fs.readFileSync(DEMO_DB_PATH, 'utf-8');
-    return JSON.parse(data);
+    // mtime-validated in-memory cache: a dashboard page fires many batched queries, and
+    // re-reading + re-parsing the whole JSON store for each one dominated request time.
+    // The mtime check keeps the cache correct when another process (tests, scripts)
+    // rewrites the file.
+    const mtime = fs.statSync(DEMO_DB_PATH).mtimeMs;
+    if (demoDbCache && demoDbCacheMtime === mtime && demoDbCachePath === DEMO_DB_PATH) {
+      return demoDbCache;
+    }
+    const data = JSON.parse(fs.readFileSync(DEMO_DB_PATH, 'utf-8'));
+    demoDbCache = data;
+    demoDbCacheMtime = mtime;
+    demoDbCachePath = DEMO_DB_PATH;
+    return data;
   } catch (e) {
     console.error("[Database] Error reading demo-db.json", e);
     return getInitialDemoData();
   }
 }
 
+let demoDbCache: any = null;
+let demoDbCacheMtime = 0;
+let demoDbCachePath = "";
+
 function saveDemoDb(data: any): void {
   try {
     fs.writeFileSync(DEMO_DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    // Keep the read cache coherent with what we just wrote.
+    demoDbCache = data;
+    demoDbCacheMtime = fs.statSync(DEMO_DB_PATH).mtimeMs;
+    demoDbCachePath = DEMO_DB_PATH;
   } catch (e) {
     console.error("[Database] Error saving demo-db.json", e);
   }
@@ -271,7 +294,7 @@ class MockDrizzleQueryBuilder {
   private operation: 'select' | 'insert' | 'update' | 'delete';
   private tableName: string = '';
   private tableSchema: any = null;
-  private filters: Array<{ field: string; value: any; op?: string }> = [];
+  private filters: Array<{ field: string; value: any; op?: string; values?: any[] }> = [];
   private limitCount: number = 0;
   private offsetCount: number = 0;
   private insertValues: any = null;
@@ -310,12 +333,28 @@ class MockDrizzleQueryBuilder {
 
       // Simple binary operator condition
       const column = condition.queryChunks.find((chunk: any) => chunk && chunk.table && chunk.name);
-      const param = condition.queryChunks.find((chunk: any) => chunk && !Array.isArray(chunk.value) && 'value' in chunk);
-      
+      // A scalar param is a Param object (has `.value`) that is NOT itself an array and is
+      // NOT a StringChunk (whose `.value` is an array like [""] / [" in "]).
+      const scalarParam = condition.queryChunks.find(
+        (chunk: any) => chunk && !Array.isArray(chunk) && 'value' in chunk && !Array.isArray(chunk.value)
+      );
+      // inArray(col, [...]) renders as: col, " in ", [Param, Param, ...]. The values live in a
+      // nested Array of Param objects. Support it so multi-id fetches (e.g.
+      // outreach.generateEmail) work in demo mode instead of silently matching nothing.
+      const inValues = condition.queryChunks.find((chunk: any) => Array.isArray(chunk));
+
       if (column) {
         const field = column.name;
-        const value = param ? param.value : null;
-        this.filters.push({ field, value });
+        if (inValues) {
+          this.filters.push({
+            field,
+            value: null,
+            op: 'in',
+            values: inValues.map((p: any) => (p && typeof p === 'object' && 'value' in p ? p.value : p)),
+          });
+        } else {
+          this.filters.push({ field, value: scalarParam ? scalarParam.value : null });
+        }
       }
     } else {
       const sqlStr = String(condition);
@@ -380,6 +419,9 @@ class MockDrizzleQueryBuilder {
       for (const filter of this.filters) {
         if (filter.op === 'is_not_null') {
           results = results.filter((item: any) => item[filter.field] !== null && item[filter.field] !== undefined);
+        } else if (filter.op === 'in') {
+          const set = new Set((filter.values || []).map((v: any) => String(v)));
+          results = results.filter((item: any) => set.has(String(item[filter.field])));
         } else if (filter.value !== undefined) {
           results = results.filter((item: any) => String(item[filter.field]) === String(filter.value));
         }
@@ -1106,10 +1148,20 @@ export async function getGongCallsByCompany(companyName: string) {
     console.warn("[Database] Cannot get calls: database not available");
     return [];
   }
-
-  // Company column doesn't exist - this function is deprecated
-  // Use getGongCallsByAccountId instead
-  return [];
+  // Calls have no company column, so resolve the company name to its account(s) and return
+  // their calls. Previously this returned [] unconditionally, so gong.getByCompany was dead.
+  if (!companyName) return [];
+  const matched = await db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(eq(accounts.name, companyName));
+  const ids = (matched as any[]).map((a) => a.id);
+  if (ids.length === 0) return [];
+  const all: any[] = [];
+  for (const id of ids) {
+    all.push(...(await getGongCallsByAccountId(id)));
+  }
+  return all;
 }
 
 export async function getGongCallsByAccountId(accountId: number) {
@@ -1257,20 +1309,22 @@ export async function bulkUpsertContactsFromSalesforce(contactsData: Array<{
       
       // Check if contact exists by sfdcContactId
       const existing = await db
-        .select({ id: contacts.id })
+        .select({ id: contacts.id, linkedinUrl: contacts.linkedinUrl })
         .from(contacts)
         .where(eq(contacts.sfdcContactId, contact.sfdcContactId))
         .limit(1);
 
       if (existing.length > 0) {
-        // Update existing
+        // Update existing. Salesforce's SOQL does not fetch LinkedIn, so contact.linkedinUrl
+        // is always null here — writing it blindly would wipe a URL enriched from Clay or
+        // entered by hand. Only overwrite when Salesforce actually supplies a value.
         await db.update(contacts)
           .set({
             name: contact.name,
             email: contact.email,
             title: contact.title,
             phone: contact.phone,
-            linkedinUrl: contact.linkedinUrl,
+            linkedinUrl: contact.linkedinUrl ?? (existing[0] as any).linkedinUrl ?? null,
             location: contact.location,
             accountId: accountId || null,
             updatedAt: new Date(),

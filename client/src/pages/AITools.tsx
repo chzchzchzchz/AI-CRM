@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,8 @@ import {
   Save, Building2, Zap, MessageSquare, Clock, Target,
   TrendingUp, Lightbulb, Send, X, ExternalLink,
   FileSearch, Brain, Users, Briefcase, AlertCircle,
-  Layers, PenTool, BarChart3, ArrowLeft, Eye
+  Layers, PenTool, BarChart3, ArrowLeft, Eye,
+  File as FileIcon
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 
@@ -100,8 +101,8 @@ export default function AITools() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-12 h-12 rounded-md bg-accent flex items-center justify-center">
-            <Brain className="w-6 h-6 text-foreground" />
+          <div className="w-12 h-12 rounded-md bg-muted border border-border-strong flex items-center justify-center">
+            <Brain className="w-6 h-6 text-accent" />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-foreground">AI Tools</h1>
@@ -114,7 +115,7 @@ export default function AITools() {
           <Button
             variant={activeTool === 'analyzer' ? 'default' : 'ghost'}
             onClick={() => setActiveTool('analyzer')}
-            className={activeTool === 'analyzer' ? 'bg-accent hover:bg-accent' : ''}
+            className={activeTool === 'analyzer' ? 'bg-accent text-foreground hover:bg-accent' : ''}
           >
             <Mic className="w-4 h-4 mr-2" />
             Call Analyzer
@@ -122,7 +123,7 @@ export default function AITools() {
           <Button
             variant={activeTool === 'processor' ? 'default' : 'ghost'}
             onClick={() => setActiveTool('processor')}
-            className={activeTool === 'processor' ? 'bg-accent hover:bg-accent' : ''}
+            className={activeTool === 'processor' ? 'bg-accent text-foreground hover:bg-accent' : ''}
           >
             <BarChart3 className="w-4 h-4 mr-2" />
             Data Processor
@@ -130,7 +131,7 @@ export default function AITools() {
           <Button
             variant={activeTool === 'content' ? 'default' : 'ghost'}
             onClick={() => setActiveTool('content')}
-            className={activeTool === 'content' ? 'bg-positive hover:bg-positive' : ''}
+            className={activeTool === 'content' ? 'bg-accent text-foreground hover:bg-accent' : ''}
           >
             <PenTool className="w-4 h-4 mr-2" />
             Content Studio
@@ -166,7 +167,29 @@ function CallAnalyzerTool({ sharedReportId }: { sharedReportId: string | null })
   const [showSavedReports, setShowSavedReports] = useState(false);
   const [viewingReport, setViewingReport] = useState<SavedReport | null>(null);
   const [copied, setCopied] = useState(false);
-  
+  const transcriptFileRef = useRef<HTMLInputElement>(null);
+
+  const handleTranscriptFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!['txt', 'vtt', 'srt'].includes(ext || '')) {
+      toast.error('Unsupported file. Use .txt, .vtt, or .srt');
+      if (transcriptFileRef.current) transcriptFileRef.current.value = '';
+      return;
+    }
+    try {
+      const text = await file.text();
+      setTranscript(text);
+      setViewingReport(null);
+      setResult(null);
+      toast.success(`Loaded ${file.name}`);
+    } catch {
+      toast.error('Could not read that file');
+    }
+    if (transcriptFileRef.current) transcriptFileRef.current.value = '';
+  };
+
   const analyzeMutation = trpc.tools.analyzeTranscript.useMutation({
     onSuccess: (data) => {
       setResult(data);
@@ -412,8 +435,8 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm bg-accent flex items-center justify-center">
-              <Brain className="w-5 h-5 text-foreground" />
+            <div className="w-10 h-10 rounded-sm bg-muted border border-border-strong flex items-center justify-center">
+              <Brain className="w-5 h-5 text-accent" />
             </div>
             <div>
               <h2 className="text-xl font-semibold text-foreground">
@@ -628,9 +651,23 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-xs text-muted-foreground">Interest Level</p>
-                  <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${ result.betaInterest.interestLevel.toLowerCase().includes('high') ? 'bg-positive-subtle text-positive' : result.betaInterest.interestLevel.toLowerCase().includes('medium') ? 'bg-caution-subtle text-caution' : 'bg-muted text-ink-muted' }`}>
-                    {result.betaInterest.interestLevel}
-                  </span>
+                  {(() => {
+                    const level = result.betaInterest.interestLevel.toLowerCase();
+                    const isHigh = level.includes('high');
+                    const isMed = level.includes('medium');
+                    const glyph = isHigh ? '▲' : isMed ? '●' : '▽';
+                    const tone = isHigh
+                      ? 'bg-muted text-positive'
+                      : isMed
+                      ? 'bg-muted text-caution'
+                      : 'bg-muted text-ink-muted';
+                    return (
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-sm text-xs font-medium ${tone}`}>
+                        <span aria-hidden="true">{glyph}</span>
+                        {result.betaInterest.interestLevel}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Apprehensions</p>
@@ -656,7 +693,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               <CardContent>
                 <div className="space-y-3">
                   {result.topQuotes.map((quote, i) => (
-                    <p key={i} className="text-sm text-foreground italic border-l-2 border-critical/30 pl-3">
+                    <p key={i} className="text-sm text-foreground italic border-l border-border-strong pl-3">
                       "{quote}"
                     </p>
                   ))}
@@ -839,8 +876,8 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
     <div className="space-y-8">
       {/* Hero Section */}
       <div className="text-center space-y-4">
-        <div className="w-16 h-16 rounded-md bg-accent flex items-center justify-center mx-auto">
-          <Brain className="w-8 h-8 text-foreground" />
+        <div className="w-16 h-16 rounded-md bg-muted border border-border-strong flex items-center justify-center mx-auto">
+          <Brain className="w-8 h-8 text-accent" />
         </div>
         <h2 className="text-xl font-semibold text-foreground">
           {analyzerMode === 'single' && 'Turn Transcripts into Actionable Insights'}
@@ -860,7 +897,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           variant={analyzerMode === 'single' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setAnalyzerMode('single')}
-          className={analyzerMode === 'single' ? 'bg-accent hover:bg-accent' : ''}
+          className={analyzerMode === 'single' ? 'bg-accent text-foreground hover:bg-accent' : ''}
         >
           <FileText className="w-4 h-4 mr-2" />
           Single Analysis
@@ -869,7 +906,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           variant={analyzerMode === 'compare' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setAnalyzerMode('compare')}
-          className={analyzerMode === 'compare' ? 'bg-accent hover:bg-accent' : ''}
+          className={analyzerMode === 'compare' ? 'bg-accent text-foreground hover:bg-accent' : ''}
         >
           <Layers className="w-4 h-4 mr-2" />
           Compare
@@ -878,7 +915,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           variant={analyzerMode === 'bulk' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setAnalyzerMode('bulk')}
-          className={analyzerMode === 'bulk' ? 'bg-positive hover:bg-positive' : ''}
+          className={analyzerMode === 'bulk' ? 'bg-accent text-foreground hover:bg-accent' : ''}
         >
           <Users className="w-4 h-4 mr-2" />
           Bulk
@@ -908,10 +945,21 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
         </CardHeader>
         <CardContent className="space-y-4">
           {/* File Upload */}
-          <div className="border-2 border-dashed border-border rounded-sm p-6 text-center hover:border-accent/30 transition-colors cursor-pointer">
-            <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+          <input
+            type="file"
+            ref={transcriptFileRef}
+            onChange={handleTranscriptFile}
+            accept=".txt,.vtt,.srt"
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => transcriptFileRef.current?.click()}
+            className="w-full border-2 border-dashed border-border-strong rounded-sm p-6 text-center hover:border-accent/30 transition-colors cursor-pointer"
+          >
+            <Upload className="w-8 h-8 text-accent mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">Drop a file or click to upload (.txt, .vtt, .srt)</p>
-          </div>
+          </button>
 
           <div className="text-center text-sm text-muted-foreground">— or paste directly —</div>
 
@@ -924,8 +972,8 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           />
 
           {/* Analyze Button */}
-          <Button 
-            className="w-full bg-accent"
+          <Button
+            className="w-full bg-accent text-foreground hover:bg-accent"
             size="lg"
             onClick={handleAnalyze}
             disabled={analyzeMutation.isPending || transcript.length < 100}
@@ -983,7 +1031,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           </Card>
           <div className="lg:col-span-2">
             <Button
-              className="w-full bg-accent"
+              className="w-full bg-accent text-foreground hover:bg-accent"
               size="lg"
               onClick={handleCompareAnalyze}
               disabled={analyzeMutation.isPending}
@@ -1065,7 +1113,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           )}
 
           <Button
-            className="w-full bg-positive"
+            className="w-full bg-accent text-foreground hover:bg-accent"
             size="lg"
             onClick={handleBulkAnalyze}
             disabled={bulkProcessing || bulkTranscripts.length === 0}
@@ -1084,20 +1132,20 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-3 bg-critical-subtle rounded-sm">
-                    <p className="text-2xl font-bold text-critical">{bulkResults.reduce((acc, r) => acc + r.topRisks.length, 0)}</p>
+                  <div className="text-center p-3 bg-muted rounded-sm">
+                    <p className="text-2xl font-mono font-semibold text-critical">{bulkResults.reduce((acc, r) => acc + r.topRisks.length, 0)}</p>
                     <p className="text-xs text-muted-foreground">Total Risks</p>
                   </div>
-                  <div className="text-center p-3 bg-caution-subtle rounded-sm">
-                    <p className="text-2xl font-bold text-caution">{bulkResults.reduce((acc, r) => acc + r.topChallenges.length, 0)}</p>
+                  <div className="text-center p-3 bg-muted rounded-sm">
+                    <p className="text-2xl font-mono font-semibold text-caution">{bulkResults.reduce((acc, r) => acc + r.topChallenges.length, 0)}</p>
                     <p className="text-xs text-muted-foreground">Total Challenges</p>
                   </div>
-                  <div className="text-center p-3 bg-accent-subtle rounded-sm">
-                    <p className="text-2xl font-bold text-accent">{bulkResults.reduce((acc, r) => acc + r.nextSteps.length, 0)}</p>
+                  <div className="text-center p-3 bg-muted rounded-sm">
+                    <p className="text-2xl font-mono font-semibold text-accent">{bulkResults.reduce((acc, r) => acc + r.nextSteps.length, 0)}</p>
                     <p className="text-xs text-muted-foreground">Action Items</p>
                   </div>
-                  <div className="text-center p-3 bg-accent-subtle rounded-sm">
-                    <p className="text-2xl font-bold text-accent">{bulkResults.filter(r => r.betaInterest.interestLevel.toLowerCase().includes('high')).length}</p>
+                  <div className="text-center p-3 bg-muted rounded-sm">
+                    <p className="text-2xl font-mono font-semibold text-positive">{bulkResults.filter(r => r.betaInterest.interestLevel.toLowerCase().includes('high')).length}</p>
                     <p className="text-xs text-muted-foreground">High Interest</p>
                   </div>
                 </div>
@@ -1122,7 +1170,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           { icon: AlertTriangle, title: 'Risk Extraction', desc: 'Identifies top security risks and compliance concerns mentioned by the prospect.', color: 'text-critical' },
           { icon: MessageSquare, title: 'Feedback Summaries', desc: 'Condenses product feedback and feature requests into actionable bullet points.', color: 'text-accent' },
           { icon: Check, title: 'Fact-Based Only', desc: 'Strictly pulls from the transcript. No hallucinations or assumptions added.', color: 'text-positive' },
-          { icon: Link2, title: 'Auto-Link Accounts', desc: 'Automatically matches prospects to your 722 accounts for instant context.', color: 'text-accent' },
+          { icon: Link2, title: 'Auto-Link Accounts', desc: 'Automatically matches prospects to your accounts for instant context.', color: 'text-accent' },
           { icon: Quote, title: 'Key Quotes', desc: 'Extracts the most important quotes for follow-up emails and proposals.', color: 'text-critical' },
           { icon: ChevronRight, title: 'Next Steps', desc: 'Clear action items extracted from the conversation for immediate follow-up.', color: 'text-caution' },
         ].map((feature, i) => (
@@ -1141,18 +1189,51 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
 // ============ DATA PROCESSOR TOOL ============
 function DataProcessorTool() {
   const [file, setFile] = useState<File | null>(null);
-  const [processing, setProcessing] = useState(false);
+  const [rowCount, setRowCount] = useState<number | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const ext = f.name.split('.').pop()?.toLowerCase();
+    if (ext !== 'csv') {
+      toast.error('Please choose a .csv file');
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+    if (f.size > 10 * 1024 * 1024) {
+      toast.error('File exceeds the 10MB limit');
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+    setFile(f);
+    try {
+      const text = await f.text();
+      // Count non-empty lines minus the header row.
+      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+      setRowCount(Math.max(0, lines.length - 1));
+    } catch {
+      setRowCount(null);
+    }
+    toast.success(`Selected ${f.name}`);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const clearFile = () => {
+    setFile(null);
+    setRowCount(null);
+  };
 
   return (
     <div className="space-y-8">
       {/* Hero Section */}
       <div className="text-center space-y-4">
-        <div className="w-16 h-16 rounded-md bg-accent flex items-center justify-center mx-auto">
-          <BarChart3 className="w-8 h-8 text-foreground" />
+        <div className="w-16 h-16 rounded-md bg-muted border border-border-strong flex items-center justify-center mx-auto">
+          <BarChart3 className="w-8 h-8 text-accent" />
         </div>
         <h2 className="text-xl font-semibold text-foreground">Process & Enrich Your Data</h2>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Upload CSV files to clean, deduplicate, and enrich your account and contact data with AI-powered insights.
+          Upload a CSV to clean, deduplicate, and enrich your account and contact data. The full mapping pipeline runs in the CSV Processor.
         </p>
       </div>
 
@@ -1165,11 +1246,45 @@ function DataProcessorTool() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="border-2 border-dashed border-border rounded-sm p-12 text-center hover:border-accent/30 transition-colors cursor-pointer">
-            <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-lg font-medium text-foreground mb-2">Drop your CSV file here</p>
-            <p className="text-sm text-muted-foreground">or click to browse (max 10MB)</p>
-          </div>
+          <input
+            type="file"
+            ref={fileRef}
+            onChange={handleFile}
+            accept=".csv"
+            className="hidden"
+          />
+          {file ? (
+            <div className="flex items-center justify-between gap-4 rounded-sm border border-border-strong bg-muted p-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <FileIcon className="w-8 h-8 text-accent flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground truncate">{file.name}</p>
+                  <p className="text-xs text-muted-foreground font-mono">
+                    {(file.size / 1024).toFixed(1)} KB
+                    {rowCount !== null && ` · ${rowCount} rows`}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <Button variant="ghost" size="sm" onClick={() => fileRef.current?.click()}>
+                  Replace
+                </Button>
+                <Button variant="ghost" size="sm" onClick={clearFile}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="w-full border-2 border-dashed border-border-strong rounded-sm p-12 text-center hover:border-accent/30 transition-colors cursor-pointer"
+            >
+              <Upload className="w-12 h-12 text-accent mx-auto mb-4" />
+              <p className="text-lg font-medium text-foreground mb-2">Drop your CSV file here</p>
+              <p className="text-sm text-muted-foreground">or click to browse (max 10MB)</p>
+            </button>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
@@ -1177,7 +1292,7 @@ function DataProcessorTool() {
               { title: 'Enrich Data', desc: 'Add missing company info and contact details', icon: Sparkles },
               { title: 'Validate', desc: 'Verify emails, domains, and company info', icon: Check },
             ].map((feature, i) => (
-              <div key={i} className="p-4 bg-card rounded-sm border border-border">
+              <div key={i} className="p-4 bg-muted rounded-sm border border-border-strong">
                 <feature.icon className="w-6 h-6 text-accent mb-2" />
                 <h3 className="font-medium text-foreground text-sm">{feature.title}</h3>
                 <p className="text-xs text-muted-foreground">{feature.desc}</p>
@@ -1185,23 +1300,24 @@ function DataProcessorTool() {
             ))}
           </div>
 
-          <Button 
-            className="w-full bg-accent"
+          {/* The multi-step mapping/transform pipeline lives on the dedicated
+              CSV Processor page — hand off there rather than faking processing here. */}
+          <Button
+            asChild
+            className="w-full bg-accent text-foreground hover:bg-accent"
             size="lg"
-            disabled={!file || processing}
           >
-            {processing ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-5 h-5 mr-2" />
-                Process Data
-              </>
-            )}
+            <Link href="/csv-processor">
+              <Sparkles className="w-5 h-5 mr-2" />
+              Continue in CSV Processor
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Link>
           </Button>
+          <p className="text-xs text-muted-foreground text-center">
+            {file
+              ? 'Re-select your file in the CSV Processor to map fields and run clean, dedupe, and enrich.'
+              : 'Field mapping, clean, dedupe, and enrich run in the full CSV Processor.'}
+          </p>
         </CardContent>
       </Card>
     </div>
@@ -1234,16 +1350,19 @@ function ContentStudioTool() {
     { id: 'blog_post', name: 'Blog Post Outline', desc: 'Structured outline for thought leadership', icon: FileText },
     { id: 'ad_copy', name: 'Ad Copy Variants', desc: 'Multiple ad variations for campaigns', icon: Target },
     { id: 'campaign_brief', name: 'Campaign Brief', desc: 'Full campaign strategy document', icon: Briefcase },
-    { id: 'case_study', name: 'Case Study Outline', desc: 'Customer success story structure', icon: TrendingUp },
+    { id: 'case_study_outline', name: 'Case Study Outline', desc: 'Customer success story structure', icon: TrendingUp },
     { id: 'event_followup', name: 'Event Follow-up', desc: 'Post-event nurture sequence', icon: MessageSquare },
   ];
 
   const handleGenerate = () => {
     setGenerating(true);
+    // Fold the user's ideas/suggestions into the context — they were collected and dropped.
+    const mergedContext = [context, suggestions.trim() ? `Ideas & suggestions to include: ${suggestions.trim()}` : ""]
+      .filter(Boolean).join("\n\n");
     generateMutation.mutate({
       contentType,
       accountId: selectedAccount ? parseInt(selectedAccount) : undefined,
-      context
+      context: mergedContext
     });
     setGenerating(false);
   };
@@ -1252,8 +1371,8 @@ function ContentStudioTool() {
     <div className="space-y-8">
       {/* Hero Section */}
       <div className="text-center space-y-4">
-        <div className="w-16 h-16 rounded-md bg-positive flex items-center justify-center mx-auto">
-          <PenTool className="w-8 h-8 text-foreground" />
+        <div className="w-16 h-16 rounded-md bg-muted border border-border-strong flex items-center justify-center mx-auto">
+          <PenTool className="w-8 h-8 text-accent" />
         </div>
         <h2 className="text-xl font-semibold text-foreground">AI Content Studio</h2>
         <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -1275,9 +1394,9 @@ function ContentStudioTool() {
                   <button
                     key={type.id}
                     onClick={() => setContentType(type.id as typeof contentType)}
-                    className={`p-4 rounded-sm border text-left transition-all ${ contentType === type.id ? 'border-positive/30 bg-positive-subtle' : 'border-border hover:border-positive/30' }`}
+                    className={`p-4 rounded-sm border text-left transition-all ${ contentType === type.id ? 'border-accent/30 bg-accent-subtle' : 'border-border-strong hover:border-accent/30' }`}
                   >
-                    <type.icon className={`w-5 h-5 mb-2 ${contentType === type.id ? 'text-positive' : 'text-muted-foreground'}`} />
+                    <type.icon className={`w-5 h-5 mb-2 ${contentType === type.id ? 'text-accent' : 'text-muted-foreground'}`} />
                     <h3 className="font-medium text-foreground text-sm">{type.name}</h3>
                     <p className="text-xs text-muted-foreground">{type.desc}</p>
                   </button>
@@ -1300,7 +1419,7 @@ function ContentStudioTool() {
                 <option value="">No account selected</option>
                 {accountsQuery.data?.map((account: any) => (
                   <option key={account.id} value={account.id}>
-                    {account.name} (Intent: {account.intentScore || 0})
+                    {account.name} — Intent {account.intentScore || 0}
                   </option>
                 ))}
               </select>
@@ -1337,8 +1456,8 @@ function ContentStudioTool() {
             </CardContent>
           </Card>
 
-          <Button 
-            className="w-full bg-positive"
+          <Button
+            className="w-full bg-accent text-foreground hover:bg-accent"
             size="lg"
             onClick={handleGenerate}
             disabled={generating || generateMutation.isPending}

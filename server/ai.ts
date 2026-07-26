@@ -258,8 +258,115 @@ Examples:
     }
   });
 
-  const content = response.choices[0].message.content;
-  return JSON.parse(typeof content === 'string' ? content : JSON.stringify(content));
+  // Interpret the query. Tolerate a degraded/unavailable model — we still search.
+  let interp: { intent: string; filters: Record<string, any>; sortBy: string; explanation: string } = {
+    intent: "account_search", filters: {}, sortBy: "relevance", explanation: "",
+  };
+  try {
+    const content = response.choices[0].message.content;
+    const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
+    if (parsed && typeof parsed === "object" && !("available" in parsed)) interp = { ...interp, ...parsed };
+  } catch { /* fall back to text-only search below */ }
+
+  // Actually run the search against real data — the whole point the page was missing.
+  const { results, resultType } = runSearch(query, interp, accounts, people);
+  if (!interp.explanation) {
+    interp.explanation = `Interpreted as a ${resultType} search. ${results.length} match${results.length === 1 ? "" : "es"} found.`;
+  }
+  return { ...interp, resultType, resultCount: results.length, results };
+}
+
+/**
+ * Deterministically apply an interpreted query to real accounts/contacts and rank matches.
+ * Works from both the model's structured filters and the raw query text, so results appear
+ * even when the model is unavailable.
+ */
+function runSearch(
+  query: string,
+  interp: { intent: string; filters: Record<string, any> },
+  accounts: any[],
+  people: any[]
+): { results: any[]; resultType: "account" | "contact" } {
+  const q = (query || "").toLowerCase();
+  const f = interp.filters || {};
+
+  const firstStr = (...vals: any[]) => vals.find((v) => typeof v === "string" && v.trim());
+  const firstNum = (...vals: any[]) => vals.map(Number).find((n) => Number.isFinite(n));
+
+  // ---- resolve constraints from filters OR query text ------------------------------
+  // Match the query against industry/region values actually present in the data, so text
+  // queries filter correctly even when the model returned no structured filters.
+  const matchFromData = (values: string[]) => {
+    const known = Array.from(new Set(values.map((v) => (v || "").toLowerCase()).filter(Boolean)));
+    return known.find((val) => q.includes(val) || val.split(/[\s&/,-]+/).some((w) => w.length > 3 && q.includes(w)));
+  };
+  const industry = (firstStr(f.industry, f.sector, f.vertical) || matchFromData(accounts.map((a) => a.industry)) || "").toLowerCase();
+  const region = (firstStr(f.region, f.geo, f.location) || matchFromData(accounts.map((a) => a.region)) || "").toLowerCase();
+  let minIntent = firstNum(f.minIntentScore, f.minIntent, f.intentScore, f.intent_min);
+  if (minIntent == null && /(high|strong)\s*intent|ready to buy|hot/.test(q)) minIntent = 70;
+  const minEmployees = firstNum(f.minEmployees, f.employeeMin, f.min_employees);
+  const empMatch = q.match(/(\d[\d,]{2,})\s*\+?\s*(employees|people|staff)/);
+  const minEmpFromText = empMatch ? Number(empMatch[1].replace(/,/g, "")) : undefined;
+  const employeeFloor = minEmployees ?? minEmpFromText;
+
+  let stages = Array.isArray(f.buyingStage) ? f.buyingStage.map(String)
+    : firstStr(f.buyingStage, f.stage) ? [String(firstStr(f.buyingStage, f.stage))] : [];
+  if (!stages.length && /ready to buy|purchase|closing/.test(q)) stages = ["Purchase", "Decision"];
+  const stageSet = new Set(stages.map((s) => s.toLowerCase()));
+
+  const titleKeywords: string[] = [];
+  for (const kw of ["ciso", "cto", "cio", "ceo", "cfo", "vp", "director", "head of", "security", "sales", "marketing", "engineering"]) {
+    if (q.includes(kw) || (firstStr(f.title) || "").toLowerCase().includes(kw)) titleKeywords.push(kw);
+  }
+
+  const wantsContacts =
+    interp.intent === "contact_search" ||
+    /\b(who|contact|contacts|person|people|ciso|cto|cfo|ceo|decision maker)\b/.test(q);
+
+  // ---- contact search --------------------------------------------------------------
+  if (wantsContacts) {
+    const accById = new Map(accounts.map((a) => [a.id, a]));
+    const scored = people
+      .map((p) => {
+        const acc = p.accountId != null ? accById.get(p.accountId) : null;
+        const title = (p.title || "").toLowerCase();
+        let score = 0;
+        const titleHit = titleKeywords.some((k) => title.includes(k));
+        if (titleKeywords.length) { if (!titleHit) return null; score += 40; }
+        if (industry && acc) { if (!(acc.industry || "").toLowerCase().includes(industry)) return null; score += 20; }
+        if (employeeFloor != null && acc) { if ((acc.employeeCount || 0) < employeeFloor) return null; score += 10; }
+        if (acc) score += (acc.intentScore || 0) * 0.2;
+        // text relevance
+        const hay = `${p.name} ${p.title} ${p.company || ""} ${acc?.name || ""}`.toLowerCase();
+        if (q.split(/\s+/).some((w) => w.length > 3 && hay.includes(w))) score += 5;
+        return { ...p, accountName: acc?.name, _score: Math.round(score) };
+      })
+      .filter(Boolean) as any[];
+    scored.sort((a, b) => b._score - a._score);
+    return { results: scored.slice(0, 25), resultType: "contact" };
+  }
+
+  // ---- account search --------------------------------------------------------------
+  const scored = accounts
+    .map((a) => {
+      let score = 0;
+      if (industry) { if (!(a.industry || "").toLowerCase().includes(industry)) return null; score += 25; }
+      if (region) { if (!(a.region || "").toLowerCase().includes(region)) return null; score += 15; }
+      if (minIntent != null) { if ((a.intentScore || 0) < minIntent) return null; score += 15; }
+      if (employeeFloor != null) { if ((a.employeeCount || 0) < employeeFloor) return null; score += 10; }
+      if (stageSet.size) { if (!stageSet.has((a.sixsenseBuyingStage || "").toLowerCase())) return null; score += 20; }
+      score += (a.intentScore || 0) * 0.5;
+      const hay = `${a.name} ${a.industry || ""} ${a.region || ""} ${a.description || ""} ${a.techStack || ""}`.toLowerCase();
+      if (q.split(/\s+/).some((w) => w.length > 3 && hay.includes(w))) score += 8;
+      return {
+        id: a.id, name: a.name, domain: a.domain, industry: a.industry, region: a.region,
+        employeeCount: a.employeeCount, intentScore: a.intentScore,
+        buyingStage: a.sixsenseBuyingStage, relationship: a.relationship, _score: Math.round(score),
+      };
+    })
+    .filter(Boolean) as any[];
+  scored.sort((a, b) => b._score - a._score);
+  return { results: scored.slice(0, 25), resultType: "account" };
 }
 
 /**

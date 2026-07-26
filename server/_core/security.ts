@@ -159,22 +159,57 @@ export function loginRateLimiter(req: Request, res: Response, next: NextFunction
 export function recordFailedLogin(clientIP: string): void {
   const now = Date.now();
   const record = loginAttemptStore.get(clientIP);
-  
-  if (!record || record.lockUntil < now) {
-    // Start fresh count
-    loginAttemptStore.set(clientIP, {
-      count: 1,
-      lockUntil: 0,
-    });
+
+  // Start fresh only when there is no record, or a PRIOR lockout has since expired.
+  // (The old check `record.lockUntil < now` was always true while lockUntil was 0, so the
+  // counter reset to 1 on every failure and the lockout never triggered.)
+  if (!record || (record.lockUntil > 0 && record.lockUntil <= now)) {
+    loginAttemptStore.set(clientIP, { count: 1, lockUntil: 0 });
     return;
   }
-  
+
   record.count++;
-  
+
   if (record.count >= LOGIN_MAX_ATTEMPTS) {
     record.lockUntil = now + LOGIN_LOCKOUT_MS;
     console.warn(`[Security] IP ${clientIP} locked out after ${record.count} failed login attempts`);
   }
+}
+
+// Per-key send cooldown (e.g. verification / reset emails) to stop an attacker using a
+// configured mailer to bomb a victim's inbox. In-memory is fine for a single instance.
+const sendCooldownStore = new Map<string, number>();
+const SEND_COOLDOWN_MS = 60 * 1000;
+
+/**
+ * Throws if `key` (e.g. "verify:<email>") was used within the cooldown window; otherwise
+ * records "now" and returns. Call before dispatching a verification/reset email.
+ */
+export function enforceSendCooldown(key: string, cooldownMs = SEND_COOLDOWN_MS): void {
+  const now = Date.now();
+  const last = sendCooldownStore.get(key);
+  if (last && now - last < cooldownMs) {
+    const wait = Math.ceil((cooldownMs - (now - last)) / 1000);
+    throw new Error(`Please wait ${wait}s before requesting another code.`);
+  }
+  sendCooldownStore.set(key, now);
+  if (sendCooldownStore.size > 5000) {
+    for (const [k, t] of sendCooldownStore) if (now - t > cooldownMs) sendCooldownStore.delete(k);
+  }
+}
+
+/**
+ * Whether an IP is currently locked out from logging in, with the remaining seconds.
+ * The tRPC login path calls this to ENFORCE the lockout — the express loginRateLimiter
+ * only guards express routes, not the tRPC endpoint.
+ */
+export function getLoginLockout(clientIP: string): { locked: boolean; retryAfterSeconds: number } {
+  const record = loginAttemptStore.get(clientIP);
+  const now = Date.now();
+  if (record && record.lockUntil > now) {
+    return { locked: true, retryAfterSeconds: Math.ceil((record.lockUntil - now) / 1000) };
+  }
+  return { locked: false, retryAfterSeconds: 0 };
 }
 
 /**

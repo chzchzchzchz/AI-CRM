@@ -6,8 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Loader2, Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-
-import { BrandLockup } from "@/components/app-shell/Brand";
+import { APP_LOGO } from "@/const";
 
 export default function ForgotPassword() {
   const [, navigate] = useLocation();
@@ -71,10 +70,10 @@ export default function ForgotPassword() {
 
   return (
     <div className="grid min-h-screen place-items-center bg-canvas p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md bg-card border-border">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <BrandLockup />
+            <img src={APP_LOGO} alt="Logo" className="h-8" />
           </div>
           <CardTitle className="text-2xl text-foreground">Reset Password</CardTitle>
           <CardDescription className="text-ink-muted">
@@ -91,7 +90,7 @@ export default function ForgotPassword() {
                 <label className="block text-sm font-medium text-foreground mb-2">Email</label>
                 <Input
                   type="email"
-                  placeholder="mohssinechazi@gmail.com"
+                  placeholder="you@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-muted border-border-strong text-foreground placeholder:text-ink-faint"

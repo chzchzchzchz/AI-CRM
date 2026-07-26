@@ -46,7 +46,7 @@ export const bulkInsightsRouter = router({
               name: account.name,
               domain: account.domain,
               intentScore: account.intentScore,
-              buyingStage: (account as any).buyingStage || 'Unknown',
+              buyingStage: (account as any).sixsenseBuyingStage || 'Unknown',
               relationship: account.relationship,
               industry: account.industry,
               employeeCount: account.employeeCount,
@@ -145,16 +145,6 @@ CRITICAL RULES:
         results
       };
     }),
-
-  getProgress: protectedProcedure
-    .query(async () => {
-      // This would track progress in a real implementation
-      // For now, just return a placeholder
-      return {
-        total: 0,
-        processed: 0,
-        failed: 0,
-        inProgress: false
-      };
-    })
+  // (Removed getProgress: it returned hardcoded zeros, tracked no real job, and had no
+  // caller. Bulk generation is synchronous — the generate mutation returns the full result.)
 });

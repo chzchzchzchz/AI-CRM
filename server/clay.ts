@@ -231,7 +231,34 @@ export const clayRouter = router({
             contactId: existingContact.id,
           };
         } else {
-          // Insert new contact
+          // Resolve the contact's account by company name (creating a stub account when the
+          // company isn't known yet) so contacts are never orphaned under a non-existent
+          // account 0. accountId is nullable, so a failed resolution falls back to null.
+          let accountId: number | null = null;
+          if (input.company) {
+            const existingAccount = await db
+              .select({ id: accounts.id })
+              .from(accounts)
+              .where(eq(accounts.name, input.company))
+              .limit(1);
+            if (existingAccount[0]) {
+              accountId = existingAccount[0].id;
+            } else {
+              const domain = input.email?.includes("@") ? input.email.split("@")[1] : null;
+              const inserted: any = await db.insert(accounts).values({
+                name: input.company,
+                domain: domain || null,
+              });
+              // Drizzle returns insertId on MySQL; the demo shim returns the row.
+              accountId = inserted?.insertId ?? inserted?.[0]?.insertId ?? null;
+              if (accountId == null) {
+                const created = await db.select({ id: accounts.id }).from(accounts)
+                  .where(eq(accounts.name, input.company)).limit(1);
+                accountId = created[0]?.id ?? null;
+              }
+            }
+          }
+
           await db.insert(contacts).values({
             clayRecordId: input.clayId || null,
             name: input.name,
@@ -239,12 +266,13 @@ export const clayRouter = router({
             email: input.email || null,
             linkedinUrl: input.linkedin || null,
             location: input.location || null,
-            accountId: 0, // TODO: Need to match company to account
+            accountId,
           });
 
           return {
             success: true,
             action: "created",
+            accountId,
           };
         }
       } catch (error) {

@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getCompanyByDomain, getCompanyByIP, enrichAccount } from "./sixsense";
-// Intent spike tracking functions (stubbed)
-async function detectAndNotifyIntentSpikes() { return []; }
-async function getRecentIntentSpikes(limit: number = 10) { return []; }
+// Real intent-spike detection, computed from the intentScores time series.
+import { detectIntentSpikes } from "./intel/spikes";
+const detectAndNotifyIntentSpikes = () => detectIntentSpikes();
+const getRecentIntentSpikes = (limit: number = 10) => detectIntentSpikes({ limit });
 import { getDb } from "./db";
 import { accounts } from "../drizzle/schema";
 import { eq } from "drizzle-orm";

@@ -4,15 +4,37 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AIAssistant } from "@/components/AIAssistant";
 import { trpc } from "@/lib/trpc";
-import { 
-  ArrowLeft, ExternalLink, Users, Phone, TrendingUp, MapPin, Building2, 
-  Sparkles, Copy, Check, Flame, Target, Mail, Linkedin, Globe, 
-  Loader2, ChevronRight, Shield, AlertTriangle, Zap, RefreshCw, BrainCircuit
+import {
+  ArrowLeft, ExternalLink, Users, TrendingUp, Building2,
+  Sparkles, Copy, Check, Flame, Mail, Linkedin, Globe,
+  Loader2, ChevronRight, Shield, AlertTriangle, RefreshCw, BrainCircuit,
+  ArrowUpRight, ArrowDownRight, Minus
 } from "lucide-react";
 import { Link, useParams } from "wouter";
 import { SafeStreamdown } from "@/components/SafeStreamdown";
-import { CompanyLogo } from "@/components/ui/company-logo";
 import { toast } from "sonner";
+
+// --- Signal helpers -------------------------------------------------------
+// Heat pairs a tinted color with a word + shape/glyph so it survives greyscale
+// and colour blindness (never colour alone).
+function heatMeta(score: number): { label: string; cls: string; hot: boolean } {
+  if (score >= 80) return { label: "Hot", cls: "text-critical", hot: true };
+  if (score >= 60) return { label: "Warm", cls: "text-caution", hot: false };
+  if (score >= 40) return { label: "Cool", cls: "text-accent", hot: false };
+  return { label: "Cold", cls: "text-ink-muted", hot: false };
+}
+
+// Buying-stage colour is a status, not a signal — cyan stays reserved for the
+// AI/intent voice, so stages map to the status ramp instead.
+function stageMeta(stage: string): { cls: string } {
+  switch (stage) {
+    case "Purchase": return { cls: "text-positive" };
+    case "Decision": return { cls: "text-accent" };
+    case "Consideration": return { cls: "text-caution" };
+    case "Awareness": return { cls: "text-ink-muted" };
+    default: return { cls: "text-ink-muted" };
+  }
+}
 
 export default function AccountDetailEnhanced() {
   const { id } = useParams<{ id: string }>();
@@ -28,10 +50,6 @@ export default function AccountDetailEnhanced() {
   // AI Intelligence queries — deferred until the account has loaded so they don't
   // join the initial request batch and block the core page render on slow LLM calls.
   const overviewQuery = trpc.ai.compileOverview.useQuery({ accountId }, { enabled: accountId > 0 && !!account });
-  const insightsQuery = trpc.ai.generateStrategicInsights.useQuery(
-    { accountId, forceRefresh: false },
-    { enabled: accountId > 0 && !!account }
-  );
   const { data: salesforceInstanceUrl } = trpc.salesforce.getInstanceUrl.useQuery();
   const { data: accountOpportunities } = trpc.opportunities.getByAccountId.useQuery({ accountId }, { enabled: accountId > 0 });
   const { data: intentSignals } = trpc.intentScores.list.useQuery({ accountId }, { enabled: accountId > 0 && !!account });
@@ -54,18 +72,8 @@ export default function AccountDetailEnhanced() {
   const getIntentColor = (score: number) => {
     if (score >= 80) return 'text-critical';
     if (score >= 60) return 'text-caution';
-    if (score >= 40) return 'text-caution';
-    return 'text-ink-subtle';
-  };
-
-  const getBuyingStageColor = (stage: string) => {
-    switch (stage) {
-      case 'Purchase': return 'bg-positive-subtle text-positive border-positive/30';
-      case 'Decision': return 'bg-accent-subtle text-accent border-accent/30';
-      case 'Consideration': return 'bg-caution-subtle text-caution border-caution/30';
-      case 'Awareness': return 'bg-caution-subtle text-caution border-caution/30';
-      default: return 'bg-muted text-ink-muted border-border';
-    }
+    if (score >= 40) return 'text-accent';
+    return 'text-ink-muted';
   };
 
   // Loading state
@@ -75,10 +83,11 @@ export default function AccountDetailEnhanced() {
         <div className="container py-6 max-w-7xl">
           <div className="animate-pulse space-y-4">
             <div className="h-8 w-64 bg-muted rounded" />
-            <div className="grid grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-muted rounded" />)}
+            <div className="h-40 bg-muted rounded" />
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="h-96 bg-muted rounded md:col-span-1" />
+              <div className="h-96 bg-muted rounded md:col-span-2" />
             </div>
-            <div className="h-96 bg-muted rounded" />
           </div>
         </div>
       </div>
@@ -99,12 +108,44 @@ export default function AccountDetailEnhanced() {
   }
 
   const intentScore = account.intentScore || 0;
-  const buyingStage = (account as any).buyingStage || (
+  // Prefer the real 6sense stage (column: sixsenseBuyingStage); fall back to an intent-band
+  // inference only when it is genuinely absent. Reading `.buyingStage` — which is not a
+  // column — meant the real stage was never shown and every account looked "Inferred".
+  const realBuyingStage = (account as any).sixsenseBuyingStage as string | null | undefined;
+  const buyingStage = realBuyingStage || (
     intentScore >= 86 ? 'Purchase' :
     intentScore >= 70 ? 'Decision' :
     intentScore >= 50 ? 'Consideration' :
     intentScore >= 20 ? 'Awareness' : 'Target'
   );
+
+  const heat = heatMeta(intentScore);
+  const stage = stageMeta(buyingStage);
+  const profileFit = (account as any).sixsenseProfileFit as string | undefined;
+
+  // Intent trend: compare the two most recent signals. Real numbers only — null
+  // when there isn't enough history to compute a delta.
+  const intentTrend =
+    intentSignals && intentSignals.length >= 2
+      ? intentSignals[0].score - intentSignals[1].score
+      : null;
+
+  // Pipeline is summed from real opportunity amounts.
+  const openDeals = accountOpportunities?.length || 0;
+  const pipelineValue = accountOpportunities?.reduce((sum: number, o: any) => sum + Number(o.amount || 0), 0) || 0;
+
+  // "Why now" is composed strictly from fields we actually have. If nothing is
+  // recorded we say so plainly rather than inventing a narrative.
+  const whyNowParts: string[] = [];
+  whyNowParts.push(`${buyingStage} stage${realBuyingStage ? '' : ' (inferred from intent)'}`);
+  if (profileFit) whyNowParts.push(`${profileFit} profile fit`);
+  if (intentSignals && intentSignals.length > 0) {
+    const latest = intentSignals[0];
+    const d = new Date(latest.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    whyNowParts.push(`latest signal ${d}${latest.category ? ` · ${latest.category}` : ''}`);
+  }
+  const whyNow = whyNowParts.join(' · ');
+  const hasSignalActivity = !!(intentSignals && intentSignals.length > 0);
 
   // Extract final AI output (hide reasoning)
   const extractFinalOutput = (text: string | null | undefined): string => {
@@ -115,7 +156,10 @@ export default function AccountDetailEnhanced() {
       .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
       .replace(/<strategy>[\s\S]*?<\/strategy>/gi, '')
       .replace(/<notes>[\s\S]*?<\/notes>/gi, '')
-      .replace(/---+/g, '')
+      // Only strip standalone horizontal rules. A bare /---+/ also ate the
+      // separator row of every markdown table (|---|---|), which silently
+      // disabled GFM table rendering across the app.
+      .replace(/^\s*-{3,}\s*$/gm, '')
       .trim();
     // If there's an OUTPUT section, extract just that
     const outputMatch = clean.match(/OUTPUT[:\s]*([\s\S]*?)(?:$|---)/i);
@@ -128,33 +172,51 @@ export default function AccountDetailEnhanced() {
       <AIAssistant context={{ type: 'account', id: accountId, name: account.name }} />
 
       <div className="container py-1 space-y-5 max-w-7xl">
-        {/* Compact Header */}
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/accounts"><ArrowLeft className="h-5 w-5" /></Link>
             </Button>
-            <CompanyLogo name={account.name} website={account.domain} size="xl" />
+            {/* Company Logo */}
+            <div className="w-12 h-12 rounded-sm bg-card border border-border flex-shrink-0 overflow-hidden">
+              <img
+                src={`https://logo.clearbit.com/${account.domain}`}
+                alt={`${account.name} logo`}
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-accent-subtle text-accent font-bold text-xl">${account.name.charAt(0)}</div>`;
+                }}
+              />
+            </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold truncate">{account.name}</h1>
-                <Badge className={getBuyingStageColor(buyingStage)}>{buyingStage}</Badge>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-semibold tracking-tight truncate">{account.name}</h1>
+                {/* Stage badge: colour + word + shape */}
+                <span className={`inline-flex items-center gap-1.5 rounded-sm bg-muted px-2.5 py-1 text-xs font-medium ${stage.cls}`}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  {buyingStage}
+                </span>
               </div>
-              <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-sm text-ink-muted mt-0.5">
                 {account.domain && (
-                  <a href={`https://${account.domain}`} target="_blank" rel="noopener noreferrer" 
-                     className="flex items-center gap-1 hover:text-primary">
+                  <a href={`https://${account.domain}`} target="_blank" rel="noopener noreferrer"
+                     className="flex items-center gap-1 hover:text-accent transition-colors">
                     <Globe className="h-3 w-3" />{account.domain}
                   </a>
                 )}
                 {account.industry && <span>{account.industry}</span>}
-                {account.employeeCount && <span>{account.employeeCount} employees</span>}
+                {account.employeeCount && (
+                  <span><span className="font-mono tabular-nums text-ink-muted">{Number(account.employeeCount).toLocaleString()}</span> employees</span>
+                )}
                 {accountOwner && <span>Owner: {accountOwner}</span>}
               </div>
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0 flex-wrap">
-            <Button size="sm" className="text-foreground" asChild>
+            <Button size="sm" className="bg-accent text-foreground hover:bg-accent" asChild>
               <Link href="/outreach"><Mail className="mr-1 h-4 w-4" />Outreach</Link>
             </Button>
             {account.linkedinUrl && (
@@ -172,92 +234,164 @@ export default function AccountDetailEnhanced() {
           </div>
         </div>
 
-        {/* Key Metrics Row - Dense */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <Card className="p-4">
-            <div className="text-xs text-muted-foreground mb-1">Intent Score</div>
-            <div className={`text-3xl font-bold ${getIntentColor(intentScore)}`}>{intentScore}</div>
-            <div className="text-xs text-muted-foreground">
-              {intentScore >= 80 ? 'Hot' : intentScore >= 60 ? 'Warm' : 'Cold'}
+        {/* Signature Account Signal band — the one clear read, evidence a glance away */}
+        <Card className="border-border bg-card shadow-none">
+          <CardContent className="px-6">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,auto)_1fr]">
+              {/* Intent score — the signal, in cyan mono */}
+              <div className="flex items-start gap-5 lg:border-r lg:border-border lg:pr-8">
+                <div>
+                  <div className="text-xs text-ink-muted">Intent score</div>
+                  <div className="flex items-end gap-2">
+                    <span className="font-mono tabular-nums text-6xl font-semibold leading-none text-accent">{intentScore}</span>
+                    <span className="mb-1 font-mono text-sm text-ink-muted">/ 100</span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className={`inline-flex items-center gap-1.5 rounded-sm bg-muted px-2.5 py-1 text-xs font-medium ${heat.cls}`}>
+                      {heat.hot
+                        ? <Flame className="h-3 w-3" />
+                        : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+                      {heat.label}
+                    </span>
+                    {intentTrend !== null && (
+                      <span
+                        className={`inline-flex items-center gap-0.5 font-mono text-xs ${ intentTrend > 0 ? 'text-positive' : intentTrend < 0 ? 'text-critical' : 'text-ink-muted' }`}
+                        title="Change vs. the previous recorded signal"
+                      >
+                        {intentTrend > 0 ? <ArrowUpRight className="h-3 w-3" /> : intentTrend < 0 ? <ArrowDownRight className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                        {intentTrend > 0 ? '+' : ''}{intentTrend}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 text-[11px] text-ink-muted">
+                    {realBuyingStage ? '6sense' : 'Inferred from intent band'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Why now + supporting facts */}
+              <div className="min-w-0 space-y-4">
+                <div>
+                  <div className="text-xs text-ink-muted mb-1">Why now</div>
+                  {hasSignalActivity ? (
+                    <p className="text-sm text-foreground leading-relaxed">{whyNow}</p>
+                  ) : (
+                    <p className="text-sm text-ink-muted leading-relaxed">
+                      {whyNow}. No 6sense signal activity recorded yet.
+                    </p>
+                  )}
+                </div>
+
+                {/* Fact strip — hairline-separated, differentiated by value type */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-px overflow-hidden rounded-sm bg-muted">
+                  <div className="bg-card p-3">
+                    <div className="text-xs text-ink-muted">Profile fit</div>
+                    <div className="mt-1 text-base font-medium text-foreground">{profileFit || 'Unknown'}</div>
+                  </div>
+                  <div className="bg-card p-3">
+                    <div className="text-xs text-ink-muted">Contacts</div>
+                    <div className="mt-1 font-mono tabular-nums text-lg font-semibold text-accent">{people?.length || 0}</div>
+                  </div>
+                  <div className="bg-card p-3">
+                    <div className="text-xs text-ink-muted">Pipeline</div>
+                    {pipelineValue > 0 ? (
+                      <>
+                        <div className="mt-1 font-mono tabular-nums text-lg font-semibold text-positive">
+                          ${pipelineValue.toLocaleString()}
+                        </div>
+                        <div className="text-[11px] text-ink-muted">
+                          <span className="font-mono tabular-nums">{openDeals}</span> open
+                        </div>
+                      </>
+                    ) : (
+                      <div className="mt-1 text-base font-medium text-ink-muted">None</div>
+                    )}
+                  </div>
+                  <div className="bg-card p-3">
+                    <div className="text-xs text-ink-muted">Relationship</div>
+                    <div className="mt-1 text-base font-medium text-foreground">{account.relationship || 'Prospect'}</div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-xs text-muted-foreground mb-1">Buying Stage</div>
-            <div className="text-xl font-semibold">{buyingStage}</div>
-            <div className="text-xs text-muted-foreground">
-              {(account as any).buyingStage ? '6sense' : 'Inferred'}
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-xs text-muted-foreground mb-1">Profile Fit</div>
-            <div className="text-xl font-semibold">{(account as any).sixsenseProfileFit || 'Unknown'}</div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-xs text-muted-foreground mb-1">Contacts</div>
-            <div className="text-2xl font-semibold text-accent">{people?.length || 0}</div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-xs text-muted-foreground mb-1">Relationship</div>
-            <div className="text-xl font-semibold">{account.relationship || 'Prospect'}</div>
-          </Card>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Two Column Layout */}
         <div className="grid md:grid-cols-3 gap-6">
-          {/* Left Column - Contacts & Security Intel */}
+          {/* Left Column - Deals, Signals, Contacts, Security */}
           <div className="md:col-span-1 space-y-4">
             {/* Active Deals */}
-            <Card>
+            <Card className="border-border bg-card shadow-none">
               <CardHeader className="py-3 px-4">
                 <CardTitle className="text-sm flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-accent" />
+                    <TrendingUp className="h-4 w-4 text-positive" />
                     Active Deals
                   </span>
+                  {openDeals > 0 && (
+                    <span className="font-mono tabular-nums text-xs text-ink-muted">{openDeals}</span>
+                  )}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="px-4 pb-4 space-y-3">
-                {accountOpportunities?.map((opp: any) => (
-                  <div key={opp.id} className="p-3 rounded bg-card border border-border">
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="text-xs font-bold truncate">{opp.name}</span>
-                      <Badge variant="outline" className="text-[9px] uppercase">
+              <CardContent className="px-4 pb-4 space-y-2">
+                {!accountOpportunities || accountOpportunities.length === 0 ? (
+                  <p className="text-sm text-ink-muted">No open opportunities</p>
+                ) : accountOpportunities.map((opp: any) => (
+                  <div key={opp.id} className="p-3 rounded-sm bg-muted">
+                    <div className="flex justify-between items-start gap-2 mb-2">
+                      <span className="text-sm font-medium truncate">{opp.name}</span>
+                      <span className="shrink-0 rounded-sm bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
                         {opp.stage}
-                      </Badge>
+                      </span>
                     </div>
-                    <div className="flex justify-between items-center mt-2">
-                      <span className="text-xs font-mono text-positive">
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="font-mono tabular-nums text-sm font-semibold text-positive">
                         ${Number(opp.amount).toLocaleString()}
                       </span>
-                      <div className="flex items-center gap-1">
-                        <BrainCircuit className="h-3 w-3 text-accent" />
-                        <span className="text-[10px] font-bold text-accent">
-                          {opp.aiSuccessScore}%
-                        </span>
+                      <div className="flex items-center gap-2.5">
+                        {/* The CRM's own probability — distinct from the AI prediction beside it. */}
+                        {opp.probability != null && (
+                          <span className="font-mono tabular-nums text-[11px] text-ink-muted" title="Probability recorded in the CRM">
+                            {opp.probability}% CRM
+                          </span>
+                        )}
+                        {opp.aiSuccessScore != null && (
+                          <div
+                            className="flex items-center gap-1"
+                            title="AI-predicted likelihood of winning — not the CRM probability"
+                          >
+                            <BrainCircuit className="h-3 w-3 text-accent" />
+                            <span className="font-mono tabular-nums text-[11px] font-semibold text-accent">
+                              {opp.aiSuccessScore}% AI
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
                 ))}
               </CardContent>
             </Card>
+
             {/* Intent Signals (6sense) */}
             {intentSignals && intentSignals.length > 0 && (
-              <Card>
+              <Card className="border-border bg-card shadow-none">
                 <CardHeader className="py-3 px-4">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Flame className="h-4 w-4 text-caution" />
                     Intent Signals
-                    <span className="text-xs font-normal text-muted-foreground">({intentSignals[0].source})</span>
+                    <span className="text-xs font-normal text-ink-muted">{intentSignals[0].source}</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-4 pb-4 space-y-2">
+                <CardContent className="px-4 pb-4 space-y-1">
                   {intentSignals.slice(0, 4).map((s: any) => (
-                    <div key={s.id} className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">
+                    <div key={s.id} className="flex items-center justify-between gap-2 py-1 text-sm">
+                      <span className="text-ink-muted truncate">
                         {new Date(s.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         {s.category ? ` · ${s.category}` : ''}
                       </span>
-                      <span className={`font-semibold ${getIntentColor(s.score)}`}>{s.score}</span>
+                      <span className={`font-mono tabular-nums font-semibold ${getIntentColor(s.score)}`}>{s.score}</span>
                     </div>
                   ))}
                 </CardContent>
@@ -265,30 +399,31 @@ export default function AccountDetailEnhanced() {
             )}
 
             {/* Key Contacts */}
-            <Card>
+            <Card className="border-border bg-card shadow-none">
               <CardHeader className="py-3 px-4">
                 <CardTitle className="text-sm flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-accent" />
-                    Key Contacts ({people?.length || 0})
+                    Key Contacts
+                    <span className="font-mono tabular-nums text-xs font-normal text-ink-muted">{people?.length || 0}</span>
                   </span>
-                  <Link href={`/contacts?account=${accountId}`} className="text-xs text-primary hover:underline">
+                  <Link href={`/contacts?account=${accountId}`} className="text-xs text-accent hover:text-accent">
                     View all
                   </Link>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="px-4 pb-4 space-y-2">
+              <CardContent className="px-4 pb-4 space-y-1">
                 {!people || people.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No contacts found</p>
+                  <p className="text-sm text-ink-muted">No contacts found</p>
                 ) : (
                   people.slice(0, 5).map((person: any) => (
                     <Link key={person.id} href={`/contacts/${person.id}`}>
-                      <div className="flex items-center justify-between p-2 rounded hover:bg-muted/50 cursor-pointer group">
+                      <div className="flex items-center justify-between p-2 rounded-sm hover:bg-muted cursor-pointer group transition-colors">
                         <div className="min-w-0">
-                          <div className="font-medium text-sm truncate group-hover:text-primary">
+                          <div className="font-medium text-sm truncate group-hover:text-accent transition-colors">
                             {person.name}
                           </div>
-                          <div className="text-xs text-muted-foreground truncate">
+                          <div className="text-xs text-ink-muted truncate">
                             {person.title || 'No title'}
                           </div>
                         </div>
@@ -301,12 +436,13 @@ export default function AccountDetailEnhanced() {
                             </button>
                           )}
                           {person.email && (
-                            <button onClick={(e) => { e.preventDefault(); copyToClipboard(person.email!, 'email'); }}
-                                    className="p-1 hover:bg-muted rounded">
-                              {copiedField === 'email' ? <Check className="h-3 w-3 text-positive" /> : <Copy className="h-3 w-3" />}
+                            <button onClick={(e) => { e.preventDefault(); copyToClipboard(person.email!, `email-${person.id}`); }}
+                                    aria-label="Copy email address"
+                                    className="p-1 hover:bg-surface-raised rounded">
+                              {copiedField === `email-${person.id}` ? <Check className="h-3 w-3 text-positive" /> : <Copy className="h-3 w-3 text-ink-muted" />}
                             </button>
                           )}
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          <ChevronRight className="h-4 w-4 text-ink-subtle" />
                         </div>
                       </div>
                     </Link>
@@ -316,10 +452,8 @@ export default function AccountDetailEnhanced() {
             </Card>
 
             {/* Security Intelligence */}
-
-            {/* Security Intelligence */}
             {(ssoProvider || mfaSolution || securityIncidents || competitorIntent) && (
-              <Card>
+              <Card className="border-border bg-card shadow-none">
                 <CardHeader className="py-3 px-4">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Shield className="h-4 w-4 text-accent" />
@@ -328,33 +462,33 @@ export default function AccountDetailEnhanced() {
                 </CardHeader>
                 <CardContent className="px-4 pb-4 space-y-3">
                   {ssoProvider && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">SSO</span>
+                    <div className="flex justify-between items-center gap-2 text-sm">
+                      <span className="text-ink-muted">SSO</span>
                       <span className="font-medium">{ssoProvider}</span>
                     </div>
                   )}
                   {mfaSolution && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">MFA</span>
+                    <div className="flex justify-between items-center gap-2 text-sm">
+                      <span className="text-ink-muted">MFA</span>
                       <span className="font-medium">{mfaSolution}</span>
                     </div>
                   )}
                   {competitorIntent && (
-                    <div className="p-2 rounded bg-caution-subtle border border-caution/30">
-                      <div className="flex items-center gap-1 text-xs text-caution mb-1">
+                    <div className="rounded-sm bg-caution-subtle border border-caution/30 p-2.5">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-caution mb-1">
                         <AlertTriangle className="h-3 w-3" />
                         Competitor Intent
                       </div>
-                      <p className="text-xs">{competitorIntent}</p>
+                      <p className="text-xs text-foreground">{competitorIntent}</p>
                     </div>
                   )}
                   {securityIncidents && (
-                    <div className="p-2 rounded bg-critical-subtle border border-critical/30">
-                      <div className="flex items-center gap-1 text-xs text-critical mb-1">
+                    <div className="rounded-sm bg-critical-subtle border border-critical/30 p-2.5">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-critical mb-1">
                         <AlertTriangle className="h-3 w-3" />
                         Security Incidents
                       </div>
-                      <p className="text-xs">{String(securityIncidents).slice(0, 200)}</p>
+                      <p className="text-xs text-foreground">{String(securityIncidents).slice(0, 200)}</p>
                     </div>
                   )}
                 </CardContent>
@@ -364,67 +498,69 @@ export default function AccountDetailEnhanced() {
 
           {/* Right Column - AI Intelligence */}
           <div className="md:col-span-2 space-y-4">
-            {/* AI Overview */}
-            <Card>
-              <CardHeader className="py-3 px-4">
-                <CardTitle className="text-sm flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-caution" />
-                    AI Account Brief
+            {/* AI Account Brief — the trustworthy centrepiece */}
+            <Card className="border-border bg-card shadow-none">
+              <CardHeader className="px-6 pt-1">
+                <CardTitle className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2 text-base font-semibold">
+                      <Sparkles className="h-4 w-4 text-accent" />
+                      AI Account Brief
+                    </span>
+                    <span className="mt-1 block text-xs font-normal text-ink-muted">
+                      Computed from this account's own signals, deals, and contacts.
+                    </span>
                   </span>
-                  {overviewQuery.data?.cached && (
-                    <Badge variant="outline" className="text-xs">
-                      Updated {overviewQuery.data.cacheAge}m ago
-                    </Badge>
-                  )}
+                  <span className="flex items-center gap-2 shrink-0">
+                    {overviewQuery.data?.cached && (
+                      <span className="rounded-sm bg-muted px-2.5 py-1 text-[11px] text-ink-muted">
+                        Updated <span className="font-mono tabular-nums">{overviewQuery.data.cacheAge}m</span> ago
+                      </span>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Regenerate brief"
+                      onClick={() => overviewQuery.refetch()}
+                      disabled={overviewQuery.isFetching}
+                    >
+                      <RefreshCw className={`h-4 w-4 ${overviewQuery.isFetching ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="px-4 pb-4">
+              <CardContent className="px-6">
                 {overviewQuery.isLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Generating overview...
+                  <div className="space-y-2.5 py-1">
+                    <div className="flex items-center gap-2 text-sm text-ink-muted">
+                      <Loader2 className="h-4 w-4 animate-spin text-accent" />
+                      Generating brief…
+                    </div>
+                    <div className="animate-pulse space-y-2 pt-1">
+                      <div className="h-3 w-11/12 rounded bg-muted" />
+                      <div className="h-3 w-full rounded bg-muted" />
+                      <div className="h-3 w-9/12 rounded bg-muted" />
+                    </div>
                   </div>
                 ) : overviewQuery.data?.summary ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-accent">
                     <SafeStreamdown>{extractFinalOutput(overviewQuery.data.summary)}</SafeStreamdown>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No overview available</p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Strategic Insights */}
-            <Card>
-              <CardHeader className="py-3 px-4">
-                <CardTitle className="text-sm flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-accent" />
-                    Strategic Insights
-                  </span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => insightsQuery.refetch()}
-                    disabled={insightsQuery.isFetching}
-                  >
-                    <RefreshCw className={`h-4 w-4 ${insightsQuery.isFetching ? 'animate-spin' : ''}`} />
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-4">
-                {insightsQuery.isLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Generating insights...
+                  <div className="rounded-sm border border-dashed border-border py-8 text-center">
+                    <Sparkles className="h-7 w-7 mx-auto mb-2 text-ink-subtle" />
+                    <p className="text-sm text-ink-muted">No brief available yet</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => overviewQuery.refetch()}
+                      disabled={overviewQuery.isFetching}
+                    >
+                      <RefreshCw className={`mr-1 h-4 w-4 ${overviewQuery.isFetching ? 'animate-spin' : ''}`} />
+                      Generate brief
+                    </Button>
                   </div>
-                ) : insightsQuery.data?.recommendations ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <SafeStreamdown>{extractFinalOutput(insightsQuery.data.recommendations)}</SafeStreamdown>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No insights available</p>
                 )}
               </CardContent>
             </Card>
