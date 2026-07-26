@@ -51,31 +51,64 @@ function balanced(src: string, openIdx: number): string {
 
 type Proc = { router: string; name: string; kind: string; file: string };
 
+const PROC_KINDS = "protectedProcedure|publicProcedure|adminProcedure";
+
+/** Pull `name: xProcedure` entries sitting at exactly `indent` spaces inside `body`. */
+function proceduresIn(body: string, indent: number, router: string, file: string): Proc[] {
+  const re = new RegExp(`^ {${indent}}(\\w+)\\s*:\\s*(${PROC_KINDS})`, "gm");
+  const out: Proc[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(body))) {
+    out.push({ router, name: m[1], kind: m[2].replace("Procedure", ""), file });
+  }
+  return out;
+}
+
 function collectProcedures(): Map<string, Proc[]> {
   const byRouter = new Map<string, Proc[]>();
   for (const file of walk(path.join(ROOT, "server"), [".ts"])) {
     if (/\.(test|spec)\.ts$/.test(file)) continue;
     const src = fs.readFileSync(file, "utf8");
+    const rel = path.relative(ROOT, file);
     const re = /export const (\w+Router)\s*=\s*router\(\s*\{/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(src))) {
       const routerName = m[1];
       const body = balanced(src, src.indexOf("{", m.index + m[0].length - 1));
-      const procRe = /^\s{2}(\w+)\s*:\s*(protectedProcedure|publicProcedure|adminProcedure)/gm;
-      let p: RegExpExecArray | null;
       const list = byRouter.get(routerName) ?? [];
-      while ((p = procRe.exec(body))) {
-        list.push({
-          router: routerName,
-          name: p[1],
-          kind: p[2].replace("Procedure", ""),
-          file: path.relative(ROOT, file),
-        });
-      }
+      list.push(...proceduresIn(body, 2, routerName, rel));
       byRouter.set(routerName, list);
     }
   }
   return byRouter;
+}
+
+/**
+ * Sub-routers declared inline on appRouter rather than as their own exported
+ * `xRouter` constant — `accounts: router({ ... })`.
+ *
+ * Nine of them hold 48 procedures, including the whole auth and accounts surface.
+ * Matching only `export const xRouter = router({...})` meant none of it was ever
+ * counted, so the inventory under-reported by a third while looking complete.
+ */
+function collectInlineRouters(): Map<string, Proc[]> {
+  const file = path.join(ROOT, "server", "routers.ts");
+  const rel = path.relative(ROOT, file);
+  const src = fs.readFileSync(file, "utf8");
+  const out = new Map<string, Proc[]>();
+
+  const appIdx = src.search(/export const appRouter\s*=\s*router\(\s*\{/);
+  if (appIdx === -1) return out;
+  const appBody = balanced(src, src.indexOf("{", appIdx + "export const appRouter = router(".length - 1));
+
+  const re = /^ {2}(\w+)\s*:\s*router\(\s*\{/gm;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(appBody))) {
+    const key = m[1];
+    const body = balanced(appBody, appBody.indexOf("{", m.index + m[0].length - 1));
+    out.set(key, proceduresIn(body, 4, key, rel));
+  }
+  return out;
 }
 
 /** routerKey (as mounted on appRouter) -> routerName */
@@ -88,22 +121,105 @@ function collectMounts(): Map<string, string> {
   return mounts;
 }
 
-/** "router.procedure" -> the client files that call it */
-function collectClientCalls(): Map<string, string[]> {
-  const calls = new Map<string, string[]>();
-  for (const file of walk(path.join(ROOT, "client", "src"), [".ts", ".tsx"])) {
+/* -------------------------------------------------------------------------- */
+/* client reachability                                                         */
+/* -------------------------------------------------------------------------- */
+
+const CLIENT_SRC = path.join(ROOT, "client", "src");
+const CLIENT_ENTRY = path.join(CLIENT_SRC, "main.tsx");
+
+/** Resolve an import specifier to a file on disk, or null if it isn't ours. */
+function resolveImport(fromFile: string, spec: string): string | null {
+  let base: string;
+  if (spec.startsWith("@/")) base = path.join(CLIENT_SRC, spec.slice(2));
+  else if (spec.startsWith("@shared/")) base = path.join(ROOT, "shared", spec.slice(8));
+  else if (spec.startsWith(".")) base = path.resolve(path.dirname(fromFile), spec);
+  else return null; // bare package specifier
+
+  const candidates = [
+    base,
+    `${base}.ts`,
+    `${base}.tsx`,
+    path.join(base, "index.ts"),
+    path.join(base, "index.tsx"),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c) && fs.statSync(c).isFile()) return c;
+  }
+  return null;
+}
+
+/**
+ * Every module actually reachable from the browser entry point.
+ *
+ * Grepping for `trpc.foo.bar` across the client answers "does any file mention this",
+ * which is not the same question as "can a user get to it". Four account tab components
+ * referenced real procedures while nothing rendered the components — so the procedures
+ * counted as wired and the orphans stayed invisible. Walking the import graph from
+ * main.tsx is what makes the difference detectable.
+ */
+function collectReachableModules(): Set<string> {
+  const seen = new Set<string>();
+  if (!fs.existsSync(CLIENT_ENTRY)) return seen;
+
+  const queue = [CLIENT_ENTRY];
+  // Matches static imports, `export ... from`, and dynamic import() — the last one
+  // matters because route-level code splitting is done with React.lazy.
+  const importRe =
+    /(?:import|export)\s[\s\S]*?from\s*["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)|import\s*["']([^"']+)["']/g;
+
+  while (queue.length) {
+    const file = queue.pop()!;
+    if (seen.has(file)) continue;
+    seen.add(file);
+
     const src = fs.readFileSync(file, "utf8");
+    let m: RegExpExecArray | null;
+    importRe.lastIndex = 0;
+    while ((m = importRe.exec(src))) {
+      const spec = m[1] || m[2] || m[3];
+      if (!spec) continue;
+      const resolved = resolveImport(file, spec);
+      if (resolved && !seen.has(resolved)) queue.push(resolved);
+    }
+  }
+  return seen;
+}
+
+type ClientCalls = {
+  /** "router.procedure" -> reachable client files that call it */
+  live: Map<string, string[]>;
+  /** "router.procedure" -> orphaned client files that call it */
+  orphaned: Map<string, string[]>;
+};
+
+function collectClientCalls(reachable: Set<string>): ClientCalls {
+  const live = new Map<string, string[]>();
+  const orphaned = new Map<string, string[]>();
+
+  for (const file of walk(CLIENT_SRC, [".ts", ".tsx"])) {
+    const src = fs.readFileSync(file, "utf8");
+    const target = reachable.has(file) ? live : orphaned;
     const re = /trpc\.(\w+)\.(\w+)\b/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(src))) {
       const key = `${m[1]}.${m[2]}`;
-      const rel = path.relative(path.join(ROOT, "client", "src"), file);
-      const arr = calls.get(key) ?? [];
+      const rel = path.relative(CLIENT_SRC, file);
+      const arr = target.get(key) ?? [];
       if (!arr.includes(rel)) arr.push(rel);
-      calls.set(key, arr);
+      target.set(key, arr);
     }
   }
-  return calls;
+  return { live, orphaned };
+}
+
+/** Client modules that exist but nothing imports, directly or transitively. */
+function collectOrphanedModules(reachable: Set<string>): string[] {
+  return walk(CLIENT_SRC, [".ts", ".tsx"])
+    .filter(f => !reachable.has(f))
+    .filter(f => !/\.(test|spec|d)\.tsx?$/.test(f))
+    .map(f => path.relative(CLIENT_SRC, f))
+    .sort();
 }
 
 function collectRoutes(): { path: string; component: string }[] {
@@ -145,21 +261,45 @@ function externalReason(key: string): string | null {
 function main() {
   const procs = collectProcedures();
   const mounts = collectMounts();
-  const calls = collectClientCalls();
+  const inline = collectInlineRouters();
+  const reachable = collectReachableModules();
+  const calls = collectClientCalls(reachable);
+  const orphanedModules = collectOrphanedModules(reachable);
   const routes = collectRoutes();
 
-  type Row = Proc & { key: string; callers: string[]; external: string | null };
+  type Row = Proc & {
+    key: string;
+    callers: string[];
+    /** Files that call it but which the product cannot reach. */
+    deadCallers: string[];
+    external: string | null;
+  };
+  // Named routers mounted by reference, plus routers declared inline on appRouter.
+  const mounted: Array<[string, Proc[]]> = [
+    ...[...mounts].map(([k, name]) => [k, procs.get(name) ?? []] as [string, Proc[]]),
+    ...[...inline],
+  ].sort((a, b) => a[0].localeCompare(b[0]));
+
   const rows: Row[] = [];
-  for (const [mountKey, routerName] of [...mounts].sort()) {
-    for (const p of procs.get(routerName) ?? []) {
+  for (const [mountKey, list] of mounted) {
+    for (const p of list) {
       const key = `${mountKey}.${p.name}`;
-      rows.push({ ...p, key, callers: calls.get(key) ?? [], external: externalReason(key) });
+      rows.push({
+        ...p,
+        key,
+        callers: calls.live.get(key) ?? [],
+        deadCallers: calls.orphaned.get(key) ?? [],
+        external: externalReason(key),
+      });
     }
   }
 
   const wired = rows.filter(r => r.callers.length > 0);
   const external = rows.filter(r => !r.callers.length && r.external);
   const unrouted = rows.filter(r => !r.callers.length && !r.external);
+  // Called only from code the product can't reach — the most misleading state, because
+  // a plain grep reports these as wired.
+  const strandedOnly = unrouted.filter(r => r.deadCallers.length > 0);
 
   const L: string[] = [];
   L.push("# Capabilities");
@@ -180,8 +320,17 @@ function main() {
   L.push(`| Reachable from the UI | ${wired.length} |`);
   L.push(`| External by design (webhooks, probes, connector actions) | ${external.length} |`);
   L.push(`| **Built but not routed anywhere** | **${unrouted.length}** |`);
+  L.push(`| ↳ of those, called only by unreachable client code | ${strandedOnly.length} |`);
   L.push(`| App routes | ${routes.length} |`);
+  L.push(`| Client modules unreachable from \`main.tsx\` | ${orphanedModules.length} |`);
   L.push(`| Integration connectors | ${CONNECTORS.length} |`);
+  L.push("");
+  L.push(
+    "\"Reachable\" is decided by walking the import graph from `client/src/main.tsx`, " +
+      "not by grepping for the procedure name. The difference is not academic: a component " +
+      "can call a procedure perfectly while nothing in the product renders that component, " +
+      "in which case the procedure is dead and a text search says otherwise."
+  );
   L.push("");
 
   if (unrouted.length) {
@@ -193,10 +342,58 @@ function main() {
         "indefinitely."
     );
     L.push("");
-    L.push("| Procedure | Access | Defined in |");
-    L.push("|---|---|---|");
-    for (const r of unrouted) L.push(`| \`${r.key}\` | ${r.kind} | \`${r.file}\` |`);
+    L.push("| Procedure | Access | Defined in | Called by (unreachable) |");
+    L.push("|---|---|---|---|");
+    for (const r of unrouted) {
+      const dead = r.deadCallers.length ? r.deadCallers.map(c => `\`${c}\``).join(", ") : "—";
+      L.push(`| \`${r.key}\` | ${r.kind} | \`${r.file}\` | ${dead} |`);
+    }
     L.push("");
+  }
+
+  if (orphanedModules.length) {
+    // A design-system primitive with no current consumer is a library component waiting
+    // for one. A feature component with no consumer is work the product lost. Listing
+    // them together makes the second kind invisible.
+    const isPrimitive = (m: string) => m.startsWith("components/ui/") || m.startsWith("hooks/");
+    const strandedFeatures = orphanedModules.filter(m => !isPrimitive(m));
+    const unusedPrimitives = orphanedModules.filter(isPrimitive);
+
+    L.push("## Unreachable client modules");
+    L.push("");
+    L.push(
+      "These files compile and typecheck, but no import chain leads to them from " +
+        "`main.tsx`, so no user can reach them. They are the reason a procedure can look " +
+        "wired while being dead."
+    );
+    L.push("");
+
+    if (strandedFeatures.length) {
+      L.push(`### Stranded features (${strandedFeatures.length})`);
+      L.push("");
+      L.push("Built to do something, currently doing nothing. Wire or retire.");
+      L.push("");
+      for (const m of strandedFeatures) {
+        const procs = [...calls.orphaned.entries()]
+          .filter(([, files]) => files.includes(m))
+          .map(([key]) => `\`${key}\``);
+        L.push(`- \`${m}\`${procs.length ? ` — strands ${procs.join(", ")}` : ""}`);
+      }
+      L.push("");
+    }
+
+    if (unusedPrimitives.length) {
+      L.push(`### Unused primitives (${unusedPrimitives.length})`);
+      L.push("");
+      L.push(
+        "Design-system parts with no current consumer. Not drift — a library is allowed " +
+          "to be wider than today's screens — but nothing here is exercised, so treat it " +
+          "as untested until something imports it."
+      );
+      L.push("");
+      for (const m of unusedPrimitives) L.push(`- \`${m}\``);
+      L.push("");
+    }
   }
 
   L.push("## Reachable from the UI");
@@ -246,8 +443,9 @@ function main() {
   console.log(`  procedures     : ${rows.length}`);
   console.log(`  reachable      : ${wired.length}`);
   console.log(`  external       : ${external.length}`);
-  console.log(`  NOT ROUTED     : ${unrouted.length}`);
+  console.log(`  NOT ROUTED     : ${unrouted.length} (${strandedOnly.length} called only by dead code)`);
   console.log(`  routes         : ${routes.length}`);
+  console.log(`  orphan modules : ${orphanedModules.length}`);
   console.log(`  connectors     : ${CONNECTORS.length}`);
 }
 

@@ -943,6 +943,7 @@ Or go to the Admin Panel: /admin/approval`
             : 0;
           return {
             summary: brief.markdown,
+            judgement: brief.judgement,
             cached: brief.cached,
             cacheAge,
             metrics: brief.metrics,

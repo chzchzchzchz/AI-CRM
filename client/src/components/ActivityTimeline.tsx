@@ -180,7 +180,9 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
               <div key={dateKey}>
                 {/* Date header */}
                 <div className="flex flex-wrap items-center gap-3 mb-4">
-                  <div className="w-10 h-6 flex items-center justify-center bg-muted rounded text-xs font-medium text-muted-foreground">
+                  {/* Auto width, not w-10: the label is a phrase ("3 weeks ago"), and a
+                      40px box broke it across three lines. */}
+                  <div className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded bg-muted px-2 text-xs font-medium text-muted-foreground">
                     {formatRelativeDate(dateActivities[0].date)}
                   </div>
                   <span className="text-xs text-muted-foreground">{dateKey}</span>
