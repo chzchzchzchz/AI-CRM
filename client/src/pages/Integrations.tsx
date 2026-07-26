@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Plug, CheckCircle2, Circle, Send } from "lucide-react";
+import { Plug, CheckCircle2, Circle, Send, AlertTriangle } from "lucide-react";
 
 type StatusKey =
   | "slack" | "discord" | "teams" | "googleChat" | "hubspot" | "notion"
@@ -38,6 +38,9 @@ const CONNECTORS: { key: StatusKey; name: string; blurb: string; env: string; we
 
 export default function Integrations() {
   const { data: status, isLoading } = trpc.integrations.status.useQuery();
+  // Preflight explains *why* a connector isn't working, rather than leaving a
+  // grey dot that looks identical for "no key" and "wrong key".
+  const { data: preflight } = trpc.integrations.preflight.useQuery();
   const slack = trpc.integrations.slackNotify.useMutation();
   const discord = trpc.integrations.discordNotify.useMutation();
   const teams = trpc.integrations.teamsNotify.useMutation();
@@ -76,19 +79,47 @@ export default function Integrations() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {CONNECTORS.map((c) => {
             const configured = !!status?.[c.key];
+            const diag = preflight?.connectors.find(d => d.key === c.key);
+            const severity = diag?.severity;
+            const badge =
+              severity === "invalid"
+                ? { variant: "critical" as const, label: "Misconfigured" }
+                : severity === "incomplete"
+                  ? { variant: "caution" as const, label: "Incomplete" }
+                  : configured || severity === "ready"
+                    ? { variant: "positive" as const, label: "Connected" }
+                    : { variant: "outline" as const, label: "Not configured" };
             return (
               <Card key={c.key} className="flex flex-col">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{c.name}</CardTitle>
-                    <Badge variant={configured ? "default" : "outline"} className="gap-1">
-                      {configured ? <CheckCircle2 className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
-                      {isLoading ? "…" : configured ? "Connected" : "Not configured"}
+                    <Badge variant={badge.variant} className="gap-1">
+                      {badge.label === "Connected" ? (
+                        <CheckCircle2 className="h-3 w-3" />
+                      ) : badge.label === "Misconfigured" ? (
+                        <AlertTriangle className="h-3 w-3" />
+                      ) : (
+                        <Circle className="h-3 w-3" />
+                      )}
+                      {isLoading ? "…" : badge.label}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">{c.blurb}</p>
                 </CardHeader>
                 <CardContent className="mt-auto space-y-2">
+                  {/* The specific reason, when there is one worth acting on. */}
+                  {diag && (severity === "invalid" || severity === "incomplete") && (
+                    <p
+                      className={
+                        severity === "invalid"
+                          ? "rounded-sm border border-critical/25 bg-critical-subtle px-2 py-1.5 text-2xs text-critical"
+                          : "rounded-sm border border-caution/30 bg-caution-subtle px-2 py-1.5 text-2xs text-caution"
+                      }
+                    >
+                      {diag.summary}
+                    </p>
+                  )}
                   <p className="text-[11px] text-muted-foreground tabular-nums">{c.env}</p>
                   {c.webhook ? (
                     <div className="flex gap-2">

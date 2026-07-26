@@ -37,6 +37,36 @@ Set a hosted gateway key and the app uses it instead of Ollama automatically:
 BUILT_IN_FORGE_API_KEY=...    # Manus Forge gateway (gemini-2.5-flash)
 ```
 
+## Check your setup — `pnpm doctor`
+
+Before trusting a deployment, run:
+
+```bash
+pnpm doctor
+```
+
+It reads your `.env` and prints one line per integration: **ready**, **half
+configured** (naming exactly which variable is still missing), **set but
+wrong**, or **off**. It exits non-zero only for things that will actually break
+the app, so it is safe to run in CI or a deploy step.
+
+It is built to catch the failures that are otherwise silent — a key that is
+present but wrong looks identical to a key that is right until a sync quietly
+returns nothing hours later:
+
+- a placeholder someone forgot to replace
+- a value pasted with surrounding quotes, or trailing whitespace
+- a Discord webhook URL sitting in the Slack slot
+- a token with the wrong vendor prefix (`sk-…` where HubSpot wants `pat-…`)
+- a Pipedrive domain pasted as a full URL instead of the bare subdomain
+- a phone number that isn't E.164
+- a truncated key
+- `DEMO_MODE=false` with no `DATABASE_URL`
+- a weak or missing `JWT_SECRET` (which silently logs everyone out on restart)
+
+The same diagnosis appears in-app on the **Integrations** page, so whoever is
+doing the setup sees the reason next to the connector rather than a grey dot.
+
 ## (Optional) Live integrations — for real data instead of demo
 Each is independent; the app runs fine without any of them (demo mode).
 | Integration | Env var(s) | Used for |
