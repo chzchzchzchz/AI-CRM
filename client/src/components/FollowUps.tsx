@@ -19,8 +19,10 @@ import { CalendarCheck, CheckCircle2, Clock } from "lucide-react";
  */
 export function FollowUps({ limit = 8 }: { limit?: number }) {
   const utils = trpc.useUtils();
+  const [view, setView] = useState<"due" | "upcoming">("due");
+
   const { data, isLoading } = trpc.followUps.list.useQuery(
-    { window: "due", limit },
+    { window: view, limit },
     { refetchOnWindowFocus: false }
   );
 
@@ -36,26 +38,48 @@ export function FollowUps({ limit = 8 }: { limit?: number }) {
           <CardTitle className="flex flex-wrap items-center gap-2">
             <CalendarCheck className="size-4 text-accent" />
             Your follow-ups
-            {!isLoading && !!data?.dueCount && (
+            {!isLoading && !!data?.dueCount && view === "due" && (
               <span data-numeric className="tabular-nums text-sm font-normal text-ink-muted">
                 {data.dueCount}
               </span>
             )}
-            {!!data?.overdueCount && (
+            {!!data?.overdueCount && view === "due" && (
               <Badge variant="critical" size="sm">
                 <span className="tabular-nums">{data.overdueCount}</span> overdue
               </Badge>
             )}
           </CardTitle>
           <CardDescription>
-            What you said you&apos;d do, due today or earlier
-            {!!data?.upcomingCount && (
-              <>
-                {" "}
-                · <span className="tabular-nums">{data.upcomingCount}</span> still ahead
-              </>
-            )}
+            {view === "due"
+              ? "What you said you'd do, due today or earlier"
+              : "Scheduled ahead — nothing to do about these yet"}
           </CardDescription>
+
+          {/* The upcoming count used to be stated and unreachable: the card said
+              "3 still ahead" with no way to see which three. */}
+          {!!data?.upcomingCount || view === "upcoming" ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {(["due", "upcoming"] as const).map(v => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setView(v)}
+                  aria-pressed={view === v}
+                  className={cn(
+                    "rounded-sm border px-2.5 py-1 text-2xs font-medium transition-colors",
+                    view === v
+                      ? "border-accent/30 bg-accent-subtle text-accent"
+                      : "border-border text-ink-muted hover:bg-muted"
+                  )}
+                >
+                  {v === "due" ? "Due" : "Upcoming"}{" "}
+                  <span className="tabular-nums">
+                    {v === "due" ? (data?.dueCount ?? 0) : (data?.upcomingCount ?? 0)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
         </CardHeader>
 
         <CardContent className="p-0">
@@ -68,11 +92,13 @@ export function FollowUps({ limit = 8 }: { limit?: number }) {
           ) : !data?.items.length ? (
             <EmptyState
               icon={CheckCircle2}
-              title="Nothing due"
+              title={view === "due" ? "Nothing due" : "Nothing scheduled"}
               description={
-                data?.upcomingCount
-                  ? `Clear for today. ${data.upcomingCount} follow-up${data.upcomingCount === 1 ? "" : "s"} scheduled ahead.`
-                  : "No follow-ups logged. Add one from any account or contact."
+                view === "upcoming"
+                  ? "No follow-ups dated in the future."
+                  : data?.upcomingCount
+                    ? `Clear for today. ${data.upcomingCount} follow-up${data.upcomingCount === 1 ? "" : "s"} scheduled ahead.`
+                    : "No follow-ups logged. Add one from any account or contact."
               }
               compact
             />
