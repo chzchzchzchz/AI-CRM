@@ -631,7 +631,7 @@ export default function Insights() {
                     {filteredAccounts.length > 20 && (
                       <div className="text-center py-4 text-sm text-ink-muted">
                         Showing 20 of {filteredAccounts.length} accounts.
-                        <Link href="/accounts" className="text-accent hover:underline ml-1">View all in Accounts</Link>
+                        <Link href="/accounts" className="text-accent underline underline-offset-2 ml-1">View all in Accounts</Link>
                       </div>
                     )}
                   </div>
@@ -809,7 +809,7 @@ export default function Insights() {
                     {filteredAccounts.length > 25 && (
                       <div className="text-center py-4 text-sm text-ink-muted">
                         Showing 25 of {filteredAccounts.length} accounts.
-                        <Link href="/accounts" className="text-accent hover:underline ml-1">View all in Accounts</Link>
+                        <Link href="/accounts" className="text-accent underline underline-offset-2 ml-1">View all in Accounts</Link>
                       </div>
                     )}
                   </div>

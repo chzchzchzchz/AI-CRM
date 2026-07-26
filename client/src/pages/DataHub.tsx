@@ -1,16 +1,16 @@
-import { useState, useCallback, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
+import { useState, useCallback, useRef } from"react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from"@/components/ui/card";
+import { Button } from"@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from"@/components/ui/tabs";
+import { Badge } from"@/components/ui/badge";
+import { Progress } from"@/components/ui/progress";
+import { trpc } from"@/lib/trpc";
+import { toast } from"sonner";
 import { 
   Upload, FileSpreadsheet, Sparkles, Loader2, Download, 
   CheckCircle2, XCircle, AlertTriangle, Database, 
   Users, Building2, Phone, Mail, Zap, Brain, FileText
-} from "lucide-react";
+} from"lucide-react";
 
 type DataType = 'auto' | 'leads' | 'accounts' | 'contacts' | 'enrichment';
 type ProcessingStatus = 'idle' | 'uploading' | 'analyzing' | 'processing' | 'complete' | 'error';
@@ -36,22 +36,22 @@ export default function DataHub() {
 
   const processLeadsMutation = trpc.tools.processLeads.useMutation();
   const uploadDocMutation = trpc.tools.uploadDocument.useMutation({
-    onSuccess: (_r, vars) => toast.success(`Added "${vars.fileName}" to the knowledge base`),
-    onError: (e) => toast.error(e.message || "Upload failed"),
+    onSuccess: (_r, vars) => toast.success(`Added"${vars.fileName}" to the knowledge base`),
+    onError: (e) => toast.error(e.message ||"Upload failed"),
   });
 
   // Knowledge-base upload: read a text document and index it for AI context.
   const handleKbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (e.target) e.target.value = "";
+    if (e.target) e.target.value ="";
     if (!file) return;
-    const ext = file.name.split(".").pop()?.toLowerCase() || "";
-    if (!["txt", "md", "csv", "json", "html"].includes(ext)) {
+    const ext = file.name.split(".").pop()?.toLowerCase() ||"";
+    if (!["txt","md","csv","json","html"].includes(ext)) {
       toast.error("Text documents only (.txt, .md, .csv, .json, .html).");
       return;
     }
     const content = await file.text();
-    uploadDocMutation.mutate({ fileName: file.name, content, mimeType: file.type || "text/plain", category: "general" });
+    uploadDocMutation.mutate({ fileName: file.name, content, mimeType: file.type ||"text/plain", category:"general" });
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -298,7 +298,7 @@ export default function DataHub() {
                 <Button
                   onClick={processFiles}
                   disabled={files.length === 0 || status === 'processing' || status === 'analyzing'}
-                  className="flex-1 bg-accent text-foreground hover:bg-accent"
+                  className="flex-1"
                 >
                   {status === 'processing' || status === 'analyzing' ? (
                     <>
@@ -424,7 +424,7 @@ export default function DataHub() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex flex-wrap items-center gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
                 <FileText className="h-4 w-4 text-accent" />
                 Knowledge Base
               </CardTitle>
@@ -436,7 +436,7 @@ export default function DataHub() {
               <input ref={kbInputRef} type="file" accept=".txt,.md,.csv,.json,.html" className="hidden" onChange={handleKbUpload} />
               <Button variant="outline" className="w-full" disabled={uploadDocMutation.isPending} onClick={() => kbInputRef.current?.click()}>
                 <Upload className="h-4 w-4 mr-2" />
-                {uploadDocMutation.isPending ? "Uploading…" : "Upload Documents"}
+                {uploadDocMutation.isPending ?"Uploading…" :"Upload Documents"}
               </Button>
               <p className="text-xs text-muted-foreground mt-2">
                 Battle cards, playbooks, and product docs will be used to enrich AI outputs

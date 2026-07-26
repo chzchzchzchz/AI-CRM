@@ -68,7 +68,7 @@ export default function Login() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="flex flex-wrap items-center gap-2 p-3 rounded-sm bg-destructive/10 text-destructive text-sm">
+                <div className="flex items-center gap-2 p-3 rounded-sm bg-destructive/10 text-destructive text-sm">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   {error}
                 </div>
@@ -89,7 +89,7 @@ export default function Login() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+                  <Link href="/forgot-password" className="text-xs text-accent underline underline-offset-2">
                     Forgot?
                   </Link>
                 </div>
@@ -125,13 +125,13 @@ export default function Login() {
         <div className="text-center space-y-2 text-sm">
           <p className="text-muted-foreground">
             Don't have an account?{" "}
-            <Link href="/signup" className="text-primary hover:underline">
+            <Link href="/signup" className="text-accent underline underline-offset-2">
               Sign up
             </Link>
           </p>
           <p className="text-muted-foreground">
             Need demo access?{" "}
-            <Link href="/request-access" className="text-primary hover:underline">
+            <Link href="/request-access" className="text-accent underline underline-offset-2">
               Request access
             </Link>
           </p>

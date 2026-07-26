@@ -3,9 +3,10 @@
 
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <!-- No maximum-scale: capping it blocks pinch-zoom, which people with low
+         vision rely on. Inputs are 16px below the md breakpoint, so iOS Safari
+         does not auto-zoom on focus and the cap is unnecessary anyway. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TargetDash</title>
   </head>
 

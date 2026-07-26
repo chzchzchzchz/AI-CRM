@@ -1,23 +1,23 @@
-import { toast } from "sonner";
-import { trpc } from "@/lib/trpc";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { BrainCircuit, Plus, CalendarDays } from "lucide-react";
-import { format } from "date-fns";
+import { toast } from"sonner";
+import { trpc } from"@/lib/trpc";
+import { Card, CardContent } from"@/components/ui/card";
+import { Button } from"@/components/ui/button";
+import { BrainCircuit, Plus, CalendarDays } from"lucide-react";
+import { format } from"date-fns";
 
-const STAGES = ["Discovery", "Validation", "Proposal", "Negotiation", "Closed Won", "Closed Lost"];
+const STAGES = ["Discovery","Validation","Proposal","Negotiation","Closed Won","Closed Lost"];
 
 // Status is color-coded, so it always carries a glyph + word (never color alone).
 function statusMeta(status: string) {
-  switch ((status || "").toLowerCase()) {
-    case "won":
-    case "closed won":
-      return { glyph: "✓", label: "Won", cls: "text-positive" };
-    case "lost":
-    case "closed lost":
-      return { glyph: "✕", label: "Lost", cls: "text-critical" };
+  switch ((status ||"").toLowerCase()) {
+    case"won":
+    case"closed won":
+      return { glyph:"✓", label:"Won", cls:"text-positive" };
+    case"lost":
+    case"closed lost":
+      return { glyph:"✕", label:"Lost", cls:"text-critical" };
     default:
-      return { glyph: "●", label: "Open", cls: "text-ink-muted" };
+      return { glyph:"●", label:"Open", cls:"text-ink-muted" };
   }
 }
 
@@ -25,9 +25,9 @@ const usd0 = (n: number) =>
   `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
 const usdCompact = new Intl.NumberFormat("en-US", {
-  notation: "compact",
-  style: "currency",
-  currency: "USD",
+  notation:"compact",
+  style:"currency",
+  currency:"USD",
   maximumFractionDigits: 1,
 });
 
@@ -37,26 +37,26 @@ export default function Opportunities() {
   const { data: accounts } = trpc.accounts.list.useQuery();
   const aiScoreMutation = trpc.opportunities.aiScore.useMutation({
     onSuccess: () => { utils.opportunities.list.invalidate(); },
-    onError: (e) => toast.error(e.message || "Failed to score opportunity"),
+    onError: (e) => toast.error(e.message ||"Failed to score opportunity"),
   });
   const upsertMutation = trpc.opportunities.upsert.useMutation({
     onSuccess: () => { utils.opportunities.list.invalidate(); toast.success("Opportunity created"); },
-    onError: (e) => toast.error(e.message || "Failed to create opportunity"),
+    onError: (e) => toast.error(e.message ||"Failed to create opportunity"),
   });
 
   // Minimal real create flow — the button previously had no handler at all.
   const handleNewOpportunity = () => {
     const name = window.prompt("Opportunity name?");
     if (!name?.trim()) return;
-    const accountName = window.prompt(`Account name? (e.g. ${accounts?.[0]?.name || "Acme"})`);
+    const accountName = window.prompt(`Account name? (e.g. ${accounts?.[0]?.name ||"Acme"})`);
     const account = (accounts || []).find(
-      (a: any) => a.name?.toLowerCase() === (accountName || "").trim().toLowerCase()
+      (a: any) => a.name?.toLowerCase() === (accountName ||"").trim().toLowerCase()
     );
-    if (!account) { toast.error(`No account named "${accountName}"`); return; }
-    const amountStr = window.prompt("Amount (USD)?", "0");
-    const amount = Number((amountStr || "0").replace(/[^0-9.]/g, "")) || 0;
+    if (!account) { toast.error(`No account named"${accountName}"`); return; }
+    const amountStr = window.prompt("Amount (USD)?","0");
+    const amount = Number((amountStr ||"0").replace(/[^0-9.]/g,"")) || 0;
     upsertMutation.mutate({
-      name: name.trim(), accountId: account.id, amount, stage: "Discovery", status: "Open", probability: 10,
+      name: name.trim(), accountId: account.id, amount, stage:"Discovery", status:"Open", probability: 10,
     } as any);
   };
 
@@ -64,7 +64,7 @@ export default function Opportunities() {
 
   const allOpps = opportunities || [];
   const openOpps = allOpps.filter(
-    (o: any) => !String(o.stage || "").toLowerCase().startsWith("closed")
+    (o: any) => !String(o.stage ||"").toLowerCase().startsWith("closed")
   );
   const openValue = openOpps.reduce((s: number, o: any) => s + (Number(o.amount) || 0), 0);
 
@@ -78,18 +78,18 @@ export default function Opportunities() {
               Active Pipeline
             </h1>
             <p className="text-ink-muted mt-1 text-sm">
-              AI-scored deals, grounded in stated win probability.{" "}
+              AI-scored deals, grounded in stated win probability.{""}
               <span className="text-ink-muted">
-                <span className="tabular-nums text-foreground">{usd0(openValue)}</span> across{" "}
-                <span className="tabular-nums text-foreground">{openOpps.length}</span> open{" "}
-                {openOpps.length === 1 ? "deal" : "deals"}.
+                <span className="tabular-nums text-foreground">{usd0(openValue)}</span> across{""}
+                <span className="tabular-nums text-foreground">{openOpps.length}</span> open{""}
+                {openOpps.length === 1 ?"deal" :"deals"}.
               </span>
             </p>
           </div>
           <Button
             onClick={handleNewOpportunity}
             disabled={upsertMutation.isPending}
-            className="bg-accent text-foreground hover:bg-accent font-semibold gap-2"
+            className="font-semibold gap-2"
           >
             <Plus className="h-4 w-4" /> New Opportunity
           </Button>
@@ -99,8 +99,8 @@ export default function Opportunities() {
           {STAGES.map((stage) => {
             const inStage = allOpps.filter((o: any) => o.stage === stage);
             const stageValue = inStage.reduce((s: number, o: any) => s + (Number(o.amount) || 0), 0);
-            const isWon = stage === "Closed Won";
-            const isLost = stage === "Closed Lost";
+            const isWon = stage ==="Closed Won";
+            const isLost = stage ==="Closed Lost";
 
             return (
               <div key={stage} className="w-[280px] shrink-0">
@@ -111,7 +111,7 @@ export default function Opportunities() {
                   </h3>
                   {stageValue > 0 && (
                     <span
-                      className={`tabular-nums text-xs shrink-0 ${ isWon ? "text-positive" : isLost ? "text-ink-muted" : "text-ink-muted" }`}
+                      className={`tabular-nums text-xs shrink-0 ${ isWon ?"text-positive" : isLost ?"text-ink-muted" :"text-ink-muted" }`}
                     >
                       {usdCompact.format(stageValue)}
                     </span>
@@ -127,7 +127,7 @@ export default function Opportunities() {
 
                   {inStage.map((opp: any) => {
                     const st = statusMeta(opp.status);
-                    const hasScore = opp.aiSuccessScore != null && opp.aiSuccessScore !== "";
+                    const hasScore = opp.aiSuccessScore != null && opp.aiSuccessScore !=="";
                     const score = hasScore ? Number(opp.aiSuccessScore) : null;
                     const probRaw = Number(opp.probability);
                     const prob = Number.isFinite(probRaw) ? probRaw : null;
@@ -157,8 +157,8 @@ export default function Opportunities() {
                             <CalendarDays className="h-3.5 w-3.5 shrink-0" />
                             <span>
                               {opp.expectedCloseDate
-                                ? `Close ${format(new Date(opp.expectedCloseDate), "MMM d, yyyy")}`
-                                : "Close date TBD"}
+                                ? `Close ${format(new Date(opp.expectedCloseDate),"MMM d, yyyy")}`
+                                :"Close date TBD"}
                             </span>
                           </div>
 
@@ -167,7 +167,7 @@ export default function Opportunities() {
                             <div className="flex flex-col gap-0.5">
                               <span className="text-[11px] text-ink-muted">CRM prob</span>
                               <span className="tabular-nums text-sm text-foreground">
-                                {prob != null ? `${prob}%` : "—"}
+                                {prob != null ? `${prob}%` :"—"}
                               </span>
                             </div>
                             <div className="flex flex-col gap-0.5">
@@ -175,7 +175,7 @@ export default function Opportunities() {
                                 <BrainCircuit className="h-3 w-3" /> AI score
                               </span>
                               <span className="tabular-nums text-sm text-accent">
-                                {score != null ? `${score}%` : "not scored"}
+                                {score != null ? `${score}%` :"not scored"}
                               </span>
                             </div>
                           </div>
@@ -204,7 +204,7 @@ export default function Opportunities() {
                               className="h-7 px-2 text-xs text-accent hover:text-accent hover:bg-muted"
                             >
                               <BrainCircuit className="h-3.5 w-3.5" />
-                              {isScoring ? "Scoring…" : hasScore ? "Re-score" : "Score with AI"}
+                              {isScoring ?"Scoring…" : hasScore ?"Re-score" :"Score with AI"}
                             </Button>
                           </div>
                         </CardContent>

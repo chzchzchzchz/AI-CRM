@@ -202,7 +202,7 @@ export function AIAssistant({ context }: AIAssistantProps) {
             </CardContent>
 
             <div className="flex-shrink-0 border-t border-border p-4">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex gap-2">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}

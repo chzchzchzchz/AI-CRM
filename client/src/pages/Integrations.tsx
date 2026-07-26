@@ -90,7 +90,7 @@ export default function Integrations() {
                 <CardContent className="mt-auto space-y-2">
                   <p className="text-[11px] text-muted-foreground tabular-nums">{c.env}</p>
                   {c.webhook ? (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex gap-2">
                       <Input
                         placeholder="Paste webhook URL to test…"
                         value={urls[c.key] || ""}

@@ -164,7 +164,7 @@ export default function ContentStudio() {
           {/* Context Input */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex flex-wrap items-center gap-2">
+              <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-muted-foreground" />
                 Context & Instructions
               </CardTitle>
@@ -293,7 +293,7 @@ export default function ContentStudio() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex flex-wrap items-center gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
                 <Brain className="h-4 w-4 text-accent" />
                 Knowledge Base
               </CardTitle>
@@ -343,7 +343,7 @@ export default function ContentStudio() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex flex-wrap items-center gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
                 <Target className="h-4 w-4 text-muted-foreground" />
                 Quick Templates
               </CardTitle>

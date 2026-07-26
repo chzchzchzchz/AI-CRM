@@ -1,38 +1,38 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { AIAssistant } from "@/components/AIAssistant";
-import { trpc } from "@/lib/trpc";
+import { useState } from"react";
+import { Card, CardContent, CardHeader, CardTitle } from"@/components/ui/card";
+import { Badge } from"@/components/ui/badge";
+import { Button } from"@/components/ui/button";
+import { AIAssistant } from"@/components/AIAssistant";
+import { trpc } from"@/lib/trpc";
 import {
   ArrowLeft, ExternalLink, Building2, Phone, Mail, MapPin, Linkedin,
   Sparkles, Copy, Check, User, Loader2, RefreshCw, ChevronRight, Flame
-} from "lucide-react";
-import { Link, useParams } from "wouter";
-import { SafeStreamdown } from "@/components/SafeStreamdown";
-import { toast } from "sonner";
+} from"lucide-react";
+import { Link, useParams } from"wouter";
+import { SafeStreamdown } from"@/components/SafeStreamdown";
+import { toast } from"sonner";
 
 // Heat pairs a tinted colour with a word + shape so it never relies on colour alone.
 function heatMeta(score: number): { label: string; cls: string; hot: boolean } {
-  if (score >= 80) return { label: "Hot", cls: "text-critical", hot: true };
-  if (score >= 60) return { label: "Warm", cls: "text-caution", hot: false };
-  if (score >= 40) return { label: "Cool", cls: "text-accent", hot: false };
-  return { label: "Cold", cls: "text-ink-muted", hot: false };
+  if (score >= 80) return { label:"Hot", cls:"text-critical", hot: true };
+  if (score >= 60) return { label:"Warm", cls:"text-caution", hot: false };
+  if (score >= 40) return { label:"Cool", cls:"text-accent", hot: false };
+  return { label:"Cold", cls:"text-ink-muted", hot: false };
 }
 
 function stageMeta(stage: string): { cls: string } {
   switch (stage) {
-    case "Purchase": return { cls: "text-positive" };
-    case "Decision": return { cls: "text-accent" };
-    case "Consideration": return { cls: "text-caution" };
-    case "Awareness": return { cls: "text-ink-muted" };
-    default: return { cls: "text-ink-muted" };
+    case"Purchase": return { cls:"text-positive" };
+    case"Decision": return { cls:"text-accent" };
+    case"Consideration": return { cls:"text-caution" };
+    case"Awareness": return { cls:"text-ink-muted" };
+    default: return { cls:"text-ink-muted" };
   }
 }
 
 export default function ContactDetail() {
   const { id } = useParams<{ id: string }>();
-  const personId = parseInt(id || "0");
+  const personId = parseInt(id ||"0");
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const { data: contact, isLoading } = trpc.people.getById.useQuery(
@@ -134,7 +134,7 @@ export default function ContactDetail() {
 
   return (
     <div>
-      <AIAssistant context={{ type: "contact", id: personId, name: contact.name || undefined }} />
+      <AIAssistant context={{ type:"contact", id: personId, name: contact.name || undefined }} />
 
       <div className="container py-1 space-y-5 max-w-5xl">
         {/* Header */}
@@ -172,7 +172,7 @@ export default function ContactDetail() {
               </Button>
             )}
             {contact.email && (
-              <Button size="sm" className="bg-accent text-foreground hover:bg-accent" asChild>
+              <Button size="sm" asChild>
                 <a href={`mailto:${contact.email}`}><Mail className="mr-1 h-4 w-4" />Email</a>
               </Button>
             )}
@@ -321,8 +321,8 @@ export default function ContactDetail() {
                 </span>
                 <span className="mt-1 block text-xs font-normal text-ink-muted">
                   {contact.linkedinUrl
-                    ? "Synthesised from this contact's role and LinkedIn profile."
-                    : "Add a LinkedIn profile to enrich this brief."}
+                    ?"Synthesised from this contact's role and LinkedIn profile."
+                    :"Add a LinkedIn profile to enrich this brief."}
                 </span>
               </span>
               <Button
@@ -344,7 +344,7 @@ export default function ContactDetail() {
           <CardContent className="px-6">
             {isGenerating ? (
               <div className="space-y-2.5 py-1">
-                <div className="flex flex-wrap items-center gap-2 text-sm text-ink-muted">
+                <div className="flex items-center gap-2 text-sm text-ink-muted">
                   <Loader2 className="h-4 w-4 animate-spin text-accent" />
                   {contact.linkedinUrl ? 'Analyzing LinkedIn profile…' : 'Generating summary…'}
                 </div>

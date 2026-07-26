@@ -150,7 +150,7 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
   return (
     <Card variant="sunken" className="mb-5">
       <CardContent className="p-2">
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex items-center gap-1.5">
           <input
             type="file"
             ref={fileInputRef}

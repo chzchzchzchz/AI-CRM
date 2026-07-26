@@ -165,9 +165,12 @@
   --popover-foreground: oklch(0.22 0.008 265);
 
   --foreground: oklch(0.22 0.008 265);
-  --ink-muted: oklch(0.505 0.011 265);
-  --ink-subtle: oklch(0.62 0.010 265);
-  --ink-faint: oklch(0.74 0.008 265);
+  /* Every step clears WCAG AA (4.5:1) against `surface-sunken`, the darkest
+     thing light-theme text sits on. `ink-faint` is the floor, not a licence to
+     go quieter — 11px labels are still real text. */
+  --ink-muted: oklch(0.475 0.011 265);
+  --ink-subtle: oklch(0.535 0.010 265);
+  --ink-faint: oklch(0.585 0.009 265);
   --muted: oklch(0.968 0.003 265);
 
   --border: oklch(0.905 0.004 265);
@@ -247,9 +250,11 @@
   --popover-foreground: oklch(0.945 0.003 265);
 
   --foreground: oklch(0.945 0.003 265);
-  --ink-muted: oklch(0.705 0.009 265);
-  --ink-subtle: oklch(0.585 0.010 265);
-  --ink-faint: oklch(0.475 0.009 265);
+  /* Same rule as light: all three clear AA against `sidebar`, the darkest
+     surface text lands on. The old `ink-faint` sat at 2.9:1. */
+  --ink-muted: oklch(0.755 0.009 265);
+  --ink-subtle: oklch(0.665 0.010 265);
+  --ink-faint: oklch(0.605 0.009 265);
   --muted: oklch(0.245 0.006 265);
 
   --border: oklch(0.288 0.007 265);
@@ -266,15 +271,15 @@
   --secondary: oklch(0.252 0.006 265);
   --secondary-foreground: oklch(0.90 0.004 265);
 
-  --positive: oklch(0.715 0.155 155);
+  --positive: oklch(0.760 0.145 155);
   --positive-foreground: oklch(0.16 0.03 155);
-  --positive-subtle: oklch(0.275 0.055 155);
-  --caution: oklch(0.775 0.150 72);
+  --positive-subtle: oklch(0.255 0.048 155);
+  --caution: oklch(0.815 0.140 72);
   --caution-foreground: oklch(0.18 0.04 72);
-  --caution-subtle: oklch(0.295 0.058 72);
-  --critical: oklch(0.655 0.192 24);
+  --caution-subtle: oklch(0.265 0.050 72);
+  --critical: oklch(0.735 0.165 24);
   --critical-foreground: oklch(0.16 0.03 24);
-  --critical-subtle: oklch(0.295 0.070 24);
+  --critical-subtle: oklch(0.255 0.058 24);
 
   --intent-1: oklch(0.66 0.095 240);
   --intent-2: oklch(0.72 0.110 205);

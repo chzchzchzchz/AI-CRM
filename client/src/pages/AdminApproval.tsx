@@ -462,7 +462,7 @@ export default function AdminApproval() {
                             {u.loginMethod} • Last sign in: {u.lastSignedIn ? new Date(u.lastSignedIn).toLocaleDateString() : 'Never'}
                           </p>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-3">
                           <Select
                             value={u.role}
                             onValueChange={(value: "user" | "admin") => 
@@ -470,7 +470,7 @@ export default function AdminApproval() {
                             }
                             disabled={u.id === user?.id}
                           >
-                            <SelectTrigger className="w-24 bg-muted border-border-strong text-foreground">
+                            <SelectTrigger aria-label="User role" className="w-24 bg-muted border-border-strong text-foreground">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-muted border-border-strong">

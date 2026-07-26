@@ -135,7 +135,7 @@ function SearchTrigger({ onClick }: { onClick: () => void }) {
     >
       <Search className="size-4 shrink-0" />
       <span className="hidden sm:inline">Search…</span>
-      <kbd className="ml-auto hidden shrink-0 items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 font-sans text-2xs text-ink-faint sm:inline-flex">
+      <kbd className="ml-auto hidden shrink-0 items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 font-sans text-2xs text-ink-muted sm:inline-flex">
         {isMac ? "⌘" : "Ctrl"} K
       </kbd>
     </button>

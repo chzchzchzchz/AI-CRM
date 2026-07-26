@@ -86,7 +86,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0 gap-0 bg-card border-border">
-        <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
           <Search className="h-5 w-5 text-ink-muted" />
           <Input
             placeholder="Search accounts, contacts, or calls..."

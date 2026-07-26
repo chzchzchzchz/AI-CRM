@@ -85,7 +85,7 @@ export default function Calls() {
 
       <div className="container mx-auto py-8 px-4 space-y-6 max-w-6xl">
         {/* Header — lead with what matters: the corpus size, then how to move through it. */}
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex items-end justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-foreground">Gong Calls</h1>
             <p className="text-ink-muted mt-1 text-sm">
