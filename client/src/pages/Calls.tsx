@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Navigation } from "@/components/Navigation";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import {
@@ -67,12 +66,11 @@ export default function Calls() {
   // Loading state
   if (isLoading && !data) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-50">
-        <Navigation />
+      <div className="text-foreground">
         <div className="container mx-auto py-8 px-4 space-y-6 max-w-6xl">
           <div className="h-10 w-48 skeleton rounded" />
           <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-32 skeleton rounded-lg" />)}
+            {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-32 skeleton rounded-sm" />)}
           </div>
         </div>
       </div>
@@ -83,60 +81,59 @@ export default function Calls() {
   const lastOnPage = Math.min(currentPage * CALLS_PER_PAGE, totalCalls);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
-      <Navigation />
+    <div className="text-foreground">
 
       <div className="container mx-auto py-8 px-4 space-y-6 max-w-6xl">
         {/* Header — lead with what matters: the corpus size, then how to move through it. */}
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-50">Gong Calls</h1>
-            <p className="text-slate-400 mt-1 text-sm">
-              <span className="font-mono text-slate-100">{totalCalls.toLocaleString()}</span> recorded{" "}
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">Gong Calls</h1>
+            <p className="text-ink-muted mt-1 text-sm">
+              <span className="tabular-nums text-foreground">{totalCalls.toLocaleString()}</span> recorded{" "}
               {totalCalls === 1 ? "call" : "calls"} across{" "}
-              <span className="font-mono text-slate-100">{totalPages || 1}</span>{" "}
+              <span className="tabular-nums text-foreground">{totalPages || 1}</span>{" "}
               {totalPages === 1 ? "page" : "pages"}.
             </p>
           </div>
           <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" />
             <Input
               placeholder="Search this page…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-400"
+              className="pl-10 bg-muted border-border-strong text-foreground placeholder:text-ink-muted"
             />
           </div>
         </div>
 
         {/* Pagination Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
-          <p className="text-sm text-slate-400">
-            Showing <span className="font-mono text-slate-200">{firstOnPage}</span>–
-            <span className="font-mono text-slate-200">{lastOnPage}</span> of{" "}
-            <span className="font-mono text-slate-200">{totalCalls.toLocaleString()}</span>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+          <p className="text-sm text-ink-muted">
+            Showing <span className="tabular-nums text-foreground">{firstOnPage}</span>–
+            <span className="tabular-nums text-foreground">{lastOnPage}</span> of{" "}
+            <span className="tabular-nums text-foreground">{totalCalls.toLocaleString()}</span>
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+              className="border-border-strong text-ink-muted hover:bg-muted hover:text-foreground"
             >
               <ChevronLeft className="h-4 w-4" />
               Previous
             </Button>
-            <span className="text-sm px-3 text-slate-400">
-              Page <span className="font-mono text-slate-200">{currentPage}</span> of{" "}
-              <span className="font-mono text-slate-200">{totalPages || 1}</span>
+            <span className="text-sm px-3 text-ink-muted">
+              Page <span className="tabular-nums text-foreground">{currentPage}</span> of{" "}
+              <span className="tabular-nums text-foreground">{totalPages || 1}</span>
             </span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage >= totalPages}
-              className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+              className="border-border-strong text-ink-muted hover:bg-muted hover:text-foreground"
             >
               Next
               <ChevronRight className="h-4 w-4" />
@@ -146,11 +143,11 @@ export default function Calls() {
 
         {/* Calls List */}
         {filteredCalls.length === 0 ? (
-          <Card className="bg-slate-900 border-slate-800 shadow-none">
+          <Card className="bg-card border-border shadow-none">
             <CardContent className="py-12 text-center">
-              <Phone className="h-12 w-12 mx-auto text-slate-600 mb-3" />
-              <h3 className="text-lg font-semibold text-slate-100">No calls found</h3>
-              <p className="text-slate-400 text-sm">Try a different search</p>
+              <Phone className="h-12 w-12 mx-auto text-ink-subtle mb-3" />
+              <h3 className="text-lg font-semibold text-foreground">No calls found</h3>
+              <p className="text-ink-muted text-sm">Try a different search</p>
             </CardContent>
           </Card>
         ) : (
@@ -161,33 +158,33 @@ export default function Calls() {
               return (
                 <Card
                   key={call.id}
-                  className="bg-slate-900 border-slate-800 shadow-none transition-colors hover:border-cyan-500/40"
+                  className="bg-card border-border shadow-none transition-colors hover:border-accent/30"
                 >
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <div className="p-2 bg-slate-800 rounded-lg">
-                          <Phone className="h-4 w-4 text-cyan-400" />
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="flex flex-wrap items-start gap-3 flex-1 min-w-0">
+                        <div className="p-2 bg-muted rounded-sm">
+                          <Phone className="h-4 w-4 text-accent" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-slate-100 line-clamp-1">
+                          <h3 className="font-medium text-foreground line-clamp-1">
                             {call.title || "Untitled Call"}
                           </h3>
-                          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-slate-400">
+                          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-ink-muted">
                             {call.callDate && (
-                              <span className="flex items-center gap-1">
+                              <span className="flex flex-wrap items-center gap-1">
                                 <Calendar className="h-3 w-3" />
                                 {new Date(call.callDate).toLocaleDateString()}
                               </span>
                             )}
                             {call.duration && (
-                              <span className="flex items-center gap-1">
+                              <span className="flex flex-wrap items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                <span className="font-mono text-slate-300">{call.duration}</span>
+                                <span className="tabular-nums text-ink-muted">{call.duration}</span>
                               </span>
                             )}
                             {call.accountId && (
-                              <Link href={`/accounts/${call.accountId}`} className="flex items-center gap-1 text-slate-400 hover:text-cyan-400">
+                              <Link href={`/accounts/${call.accountId}`} className="flex flex-wrap items-center gap-1 text-ink-muted hover:text-accent">
                                 <Building2 className="h-3 w-3" />
                                 Account #{call.accountId}
                               </Link>
@@ -195,13 +192,13 @@ export default function Calls() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-2 flex-shrink-0">
+                      <div className="flex flex-wrap gap-2 flex-shrink-0">
                         {call.recordingUrl && (
                           <Button
                             variant="outline"
                             size="sm"
                             asChild
-                            className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                            className="border-border-strong text-ink-muted hover:bg-muted hover:text-foreground"
                           >
                             <a href={call.recordingUrl} target="_blank" rel="noopener noreferrer">
                               <PlayCircle className="mr-1 h-3 w-3" />
@@ -215,13 +212,13 @@ export default function Calls() {
                     {parseList(call.keyTopics).length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         {parseList(call.keyTopics).map((topic: string, i: number) => (
-                          <span key={i} className="px-2 py-0.5 rounded-full bg-slate-800 text-xs text-slate-300">{topic}</span>
+                          <span key={i} className="px-2 py-0.5 rounded-sm bg-muted text-xs text-ink-muted">{topic}</span>
                         ))}
                       </div>
                     )}
                     {parseList(call.actionItems).length > 0 && (
-                      <div className="mt-2 p-3 rounded-lg bg-slate-800/60 text-sm text-slate-200">
-                        <div className="text-xs text-slate-400 mb-1">Action items</div>
+                      <div className="mt-2 p-3 rounded-sm bg-muted text-sm text-foreground">
+                        <div className="text-xs text-ink-muted mb-1">Action items</div>
                         <ul className="list-disc list-inside space-y-0.5">
                           {parseList(call.actionItems).map((item: string, i: number) => (
                             <li key={i}>{item}</li>
@@ -235,7 +232,7 @@ export default function Calls() {
                         variant="ghost"
                         size="sm"
                         onClick={() => toggleExpanded(call.id)}
-                        className="mt-2 w-full justify-between text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                        className="mt-2 w-full justify-between text-xs text-ink-muted hover:bg-muted hover:text-foreground"
                       >
                         <span>View Transcript</span>
                         {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -243,7 +240,7 @@ export default function Calls() {
                     )}
 
                     {isExpanded && call.transcriptUrl && (
-                      <div className="mt-2 p-3 rounded-lg bg-slate-800/60 text-xs text-slate-400 whitespace-pre-wrap max-h-64 overflow-y-auto">
+                      <div className="mt-2 p-3 rounded-sm bg-muted text-xs text-ink-muted whitespace-pre-wrap max-h-64 overflow-y-auto">
                         {call.transcriptUrl}
                       </div>
                     )}
@@ -255,13 +252,13 @@ export default function Calls() {
         )}
 
         {/* Bottom Pagination */}
-        <div className="flex items-center justify-center gap-2 pt-4">
+        <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+            className="border-border-strong text-ink-muted hover:bg-muted hover:text-foreground"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -276,8 +273,8 @@ export default function Calls() {
                 size="sm"
                 onClick={() => setCurrentPage(pageNum)}
                 className={active
-                  ? "font-mono"
-                  : "border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100 font-mono"}
+                  ? "tabular-nums"
+                  : "border-border-strong text-ink-muted hover:bg-muted hover:text-foreground tabular-nums"}
               >
                 {pageNum}
               </Button>
@@ -288,7 +285,7 @@ export default function Calls() {
             size="sm"
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage >= totalPages}
-            className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+            className="border-border-strong text-ink-muted hover:bg-muted hover:text-foreground"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>

@@ -19,8 +19,7 @@ export function RepSwitcher() {
           }
         }}
       >
-        <SelectTrigger className="w-[220px] bg-background/50 border-border/50">
-          <SelectValue placeholder="Select view" />
+        <SelectTrigger className="w-[220px] bg-background/50 border-border/50" aria-label="Select view"><SelectValue placeholder="Select view" />
         </SelectTrigger>
         <SelectContent>
           {REP_OPTIONS.map((option) => (

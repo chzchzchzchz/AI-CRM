@@ -153,6 +153,13 @@ TargetDash includes an **MCP (Model Context Protocol) server** — meaning ANY A
 
 ---
 
+> **Working on the code?** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) covers
+> repo layout, the app shell and nav model, the design-system tokens, the bundle
+> splits, and how to add a page. [`DESIGN.md`](DESIGN.md) covers the visual
+> language.
+
+---
+
 ## 🎯 Key Features
 
 ### 🔥 Priority Actions - "What Do I Do Today?"
@@ -194,8 +201,11 @@ Uses AI embeddings to score accounts by:
 - ✅ **No hardcoded secrets** (all in config/environment)
 - ✅ **Parameterized SQL** (Drizzle ORM, no injection vectors)
 - ✅ **Email/password + 2FA auth**, session cookies, audit logging (bypassed only when `DEMO_MODE=true`)
-- ✅ **CORS hardened**
+- ✅ **CORS hardened**; rate limiting scoped to `/api` so static assets can't exhaust a legitimate user's budget
+- ✅ **Session cookies negotiate `SameSite` per request** — `None; Secure` over HTTPS, `Lax` over plain HTTP (an invalid pairing is silently dropped by browsers)
+- ✅ **Weak/missing `JWT_SECRET` refuses to sign** in production
 - ✅ **XSS protected** (React sanitizes by default)
+- ✅ **Zero known dependency advisories** — `pnpm audit` is clean and CI keeps it that way
 - ⚠️ Audit logs and role-based access are in place as a foundation — not a certified SOC 2 posture
 
 ---

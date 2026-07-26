@@ -33,7 +33,7 @@ export default function SixsenseSync() {
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">6sense Integration</h1>
+        <h1 className="text-xl font-semibold mb-2">6sense Integration</h1>
         <p className="text-muted-foreground">
           Sync account data with 6sense Company Identification API to get real-time intent scores,
           buying stages, and firmographics.
@@ -49,18 +49,18 @@ export default function SixsenseSync() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-muted rounded-lg">
-                <div className="text-3xl font-bold">{syncStatus?.total || 0}</div>
+              <div className="text-center p-4 bg-muted rounded-sm">
+                <div className="text-2xl font-semibold">{syncStatus?.total || 0}</div>
                 <div className="text-sm text-muted-foreground">Total Accounts</div>
               </div>
-              <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+              <div className="text-center p-4 bg-positive dark:bg-positive rounded-sm">
+                <div className="text-2xl font-semibold text-positive dark:text-positive">
                   {syncStatus?.synced || 0}
                 </div>
                 <div className="text-sm text-muted-foreground">Synced</div>
               </div>
-              <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-                <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
+              <div className="text-center p-4 bg-caution dark:bg-caution rounded-sm">
+                <div className="text-2xl font-semibold text-caution dark:text-caution">
                   {syncStatus?.unsynced || 0}
                 </div>
                 <div className="text-sm text-muted-foreground">Unsynced</div>
@@ -78,7 +78,7 @@ export default function SixsenseSync() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               <Button
                 onClick={() => handleSyncAll(10)}
                 disabled={syncing}

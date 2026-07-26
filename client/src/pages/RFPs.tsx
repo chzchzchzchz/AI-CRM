@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,33 +59,32 @@ export default function RFPs() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <Navigation />
+    <div>
 
-      <div className="container py-8 space-y-6">
+      <div className="container py-1 space-y-5">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">RFP Monitor</h1>
-            <p className="text-slate-400">
+            <h1 className="text-xl font-semibold text-foreground mb-2">RFP Monitor</h1>
+            <p className="text-ink-muted">
               Track open government RFPs from SAM.gov
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {stats && (
-              <div className="flex items-center gap-4 px-4 py-2 bg-slate-900/50 border border-slate-800 rounded-lg">
+              <div className="flex flex-wrap items-center gap-4 px-4 py-2 bg-card border border-border rounded-sm">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-cyan-400">{stats.total}</div>
-                  <div className="text-xs text-slate-400">Total</div>
+                  <div className="text-2xl font-bold text-accent">{stats.total}</div>
+                  <div className="text-xs text-ink-muted">Total</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-400">{stats.open}</div>
-                  <div className="text-xs text-slate-400">Open</div>
+                  <div className="text-2xl font-bold text-positive">{stats.open}</div>
+                  <div className="text-xs text-ink-muted">Open</div>
                 </div>
               </div>
             )}
             <Button
               onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-              className="bg-cyan-600 hover:bg-cyan-700 gap-2"
+              className="bg-accent hover:bg-accent gap-2"
               disabled={scrapeMutation.isPending}
             >
               {scrapeMutation.isPending ? (
@@ -105,20 +103,20 @@ export default function RFPs() {
         </div>
 
         {showApiKeyInput && (
-          <Card className="card-elevated">
+          <Card>
             <CardContent className="p-6">
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm text-slate-400 mb-2 block">
+                  <label className="text-sm text-ink-muted mb-2 block">
                     SAM.gov API Key
                   </label>
-                  <p className="text-xs text-slate-400 mb-3">
+                  <p className="text-xs text-ink-muted mb-3">
                     Get your API key from{" "}
                     <a
                       href="https://sam.gov/content/system-accounts"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-cyan-400 hover:underline"
+                      className="text-accent underline underline-offset-2"
                     >
                       SAM.gov System Accounts
                     </a>
@@ -129,12 +127,12 @@ export default function RFPs() {
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
                       placeholder="Enter your SAM.gov API key"
-                      className="bg-slate-950 border-slate-700 text-white"
+                      className="bg-canvas border-border-strong text-foreground"
                     />
                     <Button
                       onClick={handleScrape}
                       disabled={!apiKey || scrapeMutation.isPending}
-                      className="bg-cyan-600 hover:bg-cyan-700"
+                      className="bg-accent hover:bg-accent"
                     >
                       Start Scraping
                     </Button>
@@ -147,16 +145,16 @@ export default function RFPs() {
 
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" />
             <Input
               placeholder="Search RFPs by title, agency, or keywords..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-slate-900/50 border-slate-800 text-white"
+              className="pl-10 bg-card border-border text-foreground"
             />
           </div>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-48 bg-slate-900/50 border-slate-800 text-white">
+            <SelectTrigger aria-label="Filter by category" className="w-48 bg-card border-border text-foreground">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -169,14 +167,14 @@ export default function RFPs() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-accent" />
           </div>
         ) : filteredRFPs.length === 0 ? (
-          <Card className="card-elevated">
+          <Card>
             <CardContent className="p-12 text-center">
-              <FileText className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400 mb-2">No RFPs found</p>
-              <p className="text-sm text-slate-400">
+              <FileText className="h-12 w-12 text-ink-subtle mx-auto mb-4" />
+              <p className="text-ink-muted mb-2">No RFPs found</p>
+              <p className="text-sm text-ink-muted">
                 {rfps.length === 0 
                   ? "Click 'Scrape SAM.gov' to fetch the latest opportunities"
                   : "Try adjusting your search or filters"}
@@ -189,44 +187,44 @@ export default function RFPs() {
               // keywords field removed from schema
               
               return (
-                <Card key={rfp.id} className="bg-slate-900/50 border-slate-800 hover:border-cyan-500/50 transition-all">
+                <Card key={rfp.id} className="bg-card border-border hover:border-accent/30 transition-all">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-white">{rfp.title}</h3>
+                        <div className="flex flex-wrap items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-foreground">{rfp.title}</h3>
                           <Badge 
                             variant="outline" 
-                            className="border-cyan-500/30 text-cyan-400"
+                            className="border-accent/30 text-accent"
                           >
                             RFP
                           </Badge>
                           {rfp.status === "open" && (
-                            <Badge variant="outline" className="border-green-500/30 text-green-400">
+                            <Badge variant="outline" className="border-positive/30 text-positive">
                               Open
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-slate-400 mb-3">
-                          <span className="flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-ink-muted mb-3">
+                          <span className="flex flex-wrap items-center gap-1">
                             <Building2 className="h-4 w-4" />
                             {rfp.agency}
                           </span>
                           {rfp.responseDeadline && (
-                            <span className="flex items-center gap-1">
+                            <span className="flex flex-wrap items-center gap-1">
                               <Calendar className="h-4 w-4" />
                               Deadline: {new Date(rfp.responseDeadline).toLocaleDateString()}
                             </span>
                           )}
                           {rfp.awardAmount && (
-                            <span className="flex items-center gap-1">
+                            <span className="flex flex-wrap items-center gap-1">
                               <DollarSign className="h-4 w-4" />
                               ${rfp.awardAmount.toLocaleString()}
                             </span>
                           )}
                         </div>
                         {rfp.description && (
-                          <p className="text-slate-300 text-sm mb-3 line-clamp-2">
+                          <p className="text-ink-muted text-sm mb-3 line-clamp-2">
                             {rfp.description}
                           </p>
                         )}
@@ -235,7 +233,7 @@ export default function RFPs() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                        className="border-accent/30 text-accent hover:bg-accent-subtle"
                         onClick={() => rfp.url && window.open(rfp.url, '_blank')}
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />

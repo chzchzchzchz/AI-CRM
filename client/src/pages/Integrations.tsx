@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,15 +57,14 @@ export default function Integrations() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="container py-6 space-y-6 max-w-6xl">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-slate-800 border border-slate-700">
-            <Plug className="h-5 w-5 text-purple-400" />
+    <div>
+      <div className="container py-1 space-y-5 max-w-6xl">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="p-2 rounded-sm bg-muted border border-border-strong">
+            <Plug className="h-5 w-5 text-accent" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Integrations</h1>
+            <h1 className="text-2xl font-semibold">Integrations</h1>
             <p className="text-sm text-muted-foreground">
               Native connectors to your stack. Add each tool's key in <code>.env</code> (see INTEGRATIONS.md); webhook
               tools can be tested right here.
@@ -90,7 +88,7 @@ export default function Integrations() {
                   <p className="text-xs text-muted-foreground">{c.blurb}</p>
                 </CardHeader>
                 <CardContent className="mt-auto space-y-2">
-                  <p className="text-[11px] text-muted-foreground font-mono">{c.env}</p>
+                  <p className="text-[11px] text-muted-foreground tabular-nums">{c.env}</p>
                   {c.webhook ? (
                     <div className="flex gap-2">
                       <Input

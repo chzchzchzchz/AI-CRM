@@ -5,55 +5,72 @@
 
 import { useAuth } from "@/_core/hooks/useAuth";
 import { SalesforceSync as SalesforceSyncComponent } from "@/components/SalesforceSync";
-import DashboardLayout from "@/components/DashboardLayout";
+import { PageHeader } from "@/components/app-shell/PageHeader";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Loader2, Lock } from "lucide-react";
+
+const SETUP_STEPS = [
+  { key: "SALESFORCE_CLIENT_ID", label: "Consumer Key" },
+  { key: "SALESFORCE_CLIENT_SECRET", label: "Consumer Secret" },
+  { key: "SALESFORCE_INSTANCE_URL", label: "Your Salesforce URL" },
+];
 
 export default function SalesforceSync() {
   const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </DashboardLayout>
+      <div className="flex min-h-[400px] items-center justify-center">
+        <Loader2 className="size-5 animate-spin text-ink-faint" />
+      </div>
     );
   }
 
   if (!user) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-muted-foreground">Please sign in to access this page.</p>
-        </div>
-      </DashboardLayout>
+      <EmptyState
+        icon={Lock}
+        title="Sign in required"
+        description="Sign in to connect a Salesforce org and sync accounts."
+      />
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="container py-8 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Salesforce Sync</h1>
-          <p className="text-muted-foreground mt-2">
-            Connect and sync your Salesforce accounts and contacts
+    <div className="container max-w-4xl space-y-5 py-1">
+      <PageHeader
+        title="Salesforce Sync"
+        description="Connect a Salesforce org and sync accounts and contacts."
+      />
+
+      <SalesforceSyncComponent />
+
+      <Card variant="sunken">
+        <CardHeader>
+          <CardTitle>Setup</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-xs text-ink-muted">
+          <p>
+            Add these secrets under Settings → Secrets, then run Test Connection
+            followed by Full Sync.
           </p>
-        </div>
-        
-        <SalesforceSyncComponent />
-        
-        <div className="text-sm text-muted-foreground">
-          <h3 className="font-medium mb-2">Setup Instructions:</h3>
-          <ol className="list-decimal list-inside space-y-1">
-            <li>Go to Settings → Secrets in the Management UI</li>
-            <li>Add <code className="bg-muted px-1 rounded">SALESFORCE_CLIENT_ID</code> (Consumer Key)</li>
-            <li>Add <code className="bg-muted px-1 rounded">SALESFORCE_CLIENT_SECRET</code> (Consumer Secret)</li>
-            <li>Add <code className="bg-muted px-1 rounded">SALESFORCE_INSTANCE_URL</code> (your Salesforce URL)</li>
-            <li>Click "Test Connection" to verify</li>
-            <li>Click "Full Sync" to import all accounts and contacts</li>
-          </ol>
-        </div>
-      </div>
-    </DashboardLayout>
+          <dl className="space-y-1.5">
+            {SETUP_STEPS.map(step => (
+              <div key={step.key} className="flex flex-wrap items-baseline gap-2">
+                <dt className="min-w-0">
+                  {/* These identifiers have no spaces, so they need an explicit
+                      break opportunity or they set the card's minimum width. */}
+                  <code className="rounded-xs bg-muted px-1.5 py-0.5 font-mono text-2xs break-all text-foreground">
+                    {step.key}
+                  </code>
+                </dt>
+                <dd>{step.label}</dd>
+              </div>
+            ))}
+          </dl>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

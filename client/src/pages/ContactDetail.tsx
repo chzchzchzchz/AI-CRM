@@ -1,39 +1,38 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Navigation } from "@/components/Navigation";
-import { AIAssistant } from "@/components/AIAssistant";
-import { trpc } from "@/lib/trpc";
+import { useState } from"react";
+import { Card, CardContent, CardHeader, CardTitle } from"@/components/ui/card";
+import { Badge } from"@/components/ui/badge";
+import { Button } from"@/components/ui/button";
+import { AIAssistant } from"@/components/AIAssistant";
+import { trpc } from"@/lib/trpc";
 import {
   ArrowLeft, ExternalLink, Building2, Phone, Mail, MapPin, Linkedin,
   Sparkles, Copy, Check, User, Loader2, RefreshCw, ChevronRight, Flame
-} from "lucide-react";
-import { Link, useParams } from "wouter";
-import { SafeStreamdown } from "@/components/SafeStreamdown";
-import { toast } from "sonner";
+} from"lucide-react";
+import { Link, useParams } from"wouter";
+import { SafeStreamdown } from"@/components/SafeStreamdown";
+import { toast } from"sonner";
 
 // Heat pairs a tinted colour with a word + shape so it never relies on colour alone.
 function heatMeta(score: number): { label: string; cls: string; hot: boolean } {
-  if (score >= 80) return { label: "Hot", cls: "text-red-400", hot: true };
-  if (score >= 60) return { label: "Warm", cls: "text-amber-400", hot: false };
-  if (score >= 40) return { label: "Cool", cls: "text-blue-400", hot: false };
-  return { label: "Cold", cls: "text-slate-400", hot: false };
+  if (score >= 80) return { label:"Hot", cls:"text-critical", hot: true };
+  if (score >= 60) return { label:"Warm", cls:"text-caution", hot: false };
+  if (score >= 40) return { label:"Cool", cls:"text-accent", hot: false };
+  return { label:"Cold", cls:"text-ink-muted", hot: false };
 }
 
 function stageMeta(stage: string): { cls: string } {
   switch (stage) {
-    case "Purchase": return { cls: "text-emerald-400" };
-    case "Decision": return { cls: "text-blue-400" };
-    case "Consideration": return { cls: "text-amber-400" };
-    case "Awareness": return { cls: "text-slate-300" };
-    default: return { cls: "text-slate-400" };
+    case"Purchase": return { cls:"text-positive" };
+    case"Decision": return { cls:"text-accent" };
+    case"Consideration": return { cls:"text-caution" };
+    case"Awareness": return { cls:"text-ink-muted" };
+    default: return { cls:"text-ink-muted" };
   }
 }
 
 export default function ContactDetail() {
   const { id } = useParams<{ id: string }>();
-  const personId = parseInt(id || "0");
+  const personId = parseInt(id ||"0");
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const { data: contact, isLoading } = trpc.people.getById.useQuery(
@@ -101,8 +100,7 @@ export default function ContactDetail() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
+      <div>
         <div className="container py-6 max-w-5xl">
           <div className="animate-pulse space-y-4">
             <div className="h-8 w-64 bg-muted rounded" />
@@ -119,9 +117,8 @@ export default function ContactDetail() {
   // Not found state
   if (!contact) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <div className="container py-12 max-w-2xl text-center">
+      <div>
+        <div className="container py-1 max-w-2xl text-center">
           <User className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
           <h3 className="text-2xl font-semibold mb-2">Contact not found</h3>
           <Button asChild><Link href="/contacts"><ArrowLeft className="mr-2 h-4 w-4" />Back</Link></Button>
@@ -136,33 +133,32 @@ export default function ContactDetail() {
   const stage = stageMeta(accountStage || '');
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <AIAssistant context={{ type: "contact", id: personId, name: contact.name || undefined }} />
+    <div>
+      <AIAssistant context={{ type:"contact", id: personId, name: contact.name || undefined }} />
 
-      <div className="container py-6 space-y-6 max-w-5xl">
+      <div className="container py-1 space-y-5 max-w-5xl">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex flex-wrap items-center gap-3 min-w-0">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/contacts"><ArrowLeft className="h-5 w-5" /></Link>
             </Button>
             {/* Contact avatar — purple is the identity accent */}
-            <div className="hidden sm:flex w-12 h-12 rounded-full bg-purple-500/10 border border-purple-500/25 items-center justify-center flex-shrink-0 text-purple-300 font-semibold text-lg">
+            <div className="hidden sm:flex w-12 h-12 rounded-sm bg-accent-subtle border border-accent/30 items-center justify-center flex-shrink-0 text-accent font-semibold text-lg">
               {(contact.name || '?').charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <h1 className="text-2xl font-bold tracking-tight truncate">{contact.name}</h1>
-              <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-sm text-slate-400 mt-0.5">
-                {contact.title && <span className="text-slate-300">{contact.title}</span>}
+              <h1 className="text-2xl font-semibold tracking-tight truncate">{contact.name}</h1>
+              <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-sm text-ink-muted mt-0.5">
+                {contact.title && <span className="text-ink-muted">{contact.title}</span>}
                 {contact.company && (
                   <Link href={account ? `/accounts/${account.id}` : '#'}
-                        className="flex items-center gap-1 hover:text-cyan-400 transition-colors">
+                        className="flex flex-wrap items-center gap-1 hover:text-accent transition-colors">
                     <Building2 className="h-3 w-3" />{contact.company}
                   </Link>
                 )}
                 {contact.location && (
-                  <span className="flex items-center gap-1">
+                  <span className="flex flex-wrap items-center gap-1">
                     <MapPin className="h-3 w-3" />{contact.location}
                   </span>
                 )}
@@ -171,12 +167,12 @@ export default function ContactDetail() {
           </div>
           <div className="flex gap-2 flex-shrink-0 flex-wrap">
             {contact.phone && (
-              <Button size="sm" variant="outline" className="border-emerald-500 text-emerald-400" asChild>
+              <Button size="sm" variant="outline" className="border-positive/30 text-positive" asChild>
                 <a href={`tel:${contact.phone}`}><Phone className="mr-1 h-4 w-4" />Call</a>
               </Button>
             )}
             {contact.email && (
-              <Button size="sm" className="bg-cyan-500 text-slate-950 hover:bg-blue-500" asChild>
+              <Button size="sm" asChild>
                 <a href={`mailto:${contact.email}`}><Mail className="mr-1 h-4 w-4" />Email</a>
               </Button>
             )}
@@ -186,7 +182,7 @@ export default function ContactDetail() {
               </Button>
             )}
             {(contact as any).sfdcContactId && (
-              <Button size="sm" variant="outline" className="border-blue-500 text-blue-400" asChild>
+              <Button size="sm" variant="outline" className="border-accent/30 text-accent" asChild>
                 <a href={`${salesforceInstanceUrl || 'https://login.salesforce.com'}/lightning/r/Contact/${(contact as any).sfdcContactId}/view`} target="_blank">
                   <ExternalLink className="mr-1 h-4 w-4" />Salesforce
                 </a>
@@ -198,47 +194,47 @@ export default function ContactDetail() {
         {/* Contact Info + Account Context Row */}
         <div className="grid md:grid-cols-2 gap-4">
           {/* Contact Details */}
-          <Card className="border-slate-800 bg-slate-900 shadow-none">
+          <Card className="border-border bg-card shadow-none">
             <CardHeader className="py-3 px-4">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <User className="h-4 w-4 text-purple-400" />
+              <CardTitle className="text-sm flex flex-wrap items-center gap-2">
+                <User className="h-4 w-4 text-accent" />
                 Contact Details
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-4 pb-4 divide-y divide-slate-800">
+            <CardContent className="px-4 pb-4 divide-y divide-border">
               {contact.title && (
-                <div className="flex justify-between items-center gap-3 py-2.5 first:pt-0">
-                  <span className="text-sm text-slate-400">Title</span>
+                <div className="flex flex-wrap justify-between items-center gap-3 py-2.5 first:pt-0">
+                  <span className="text-sm text-ink-muted">Title</span>
                   <span className="font-medium text-sm text-right">{contact.title}</span>
                 </div>
               )}
               {contact.email && (
-                <div className="flex justify-between items-center gap-3 py-2.5 first:pt-0">
-                  <span className="text-sm text-slate-400">Email</span>
-                  <div className="flex items-center gap-2 min-w-0">
+                <div className="flex flex-wrap justify-between items-center gap-3 py-2.5 first:pt-0">
+                  <span className="text-sm text-ink-muted">Email</span>
+                  <div className="flex flex-wrap items-center gap-2 min-w-0">
                     <span className="font-medium text-sm truncate">{contact.email}</span>
-                    <button onClick={() => copyToClipboard(contact.email!, 'email')} aria-label="Copy email address" className="p-1 hover:bg-slate-800 rounded shrink-0">
-                      {copiedField === 'email' ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3 text-slate-400" />}
+                    <button onClick={() => copyToClipboard(contact.email!, 'email')} aria-label="Copy email address" className="p-1 hover:bg-muted rounded shrink-0">
+                      {copiedField === 'email' ? <Check className="h-3 w-3 text-positive" /> : <Copy className="h-3 w-3 text-ink-muted" />}
                     </button>
                   </div>
                 </div>
               )}
               {contact.phone && (
-                <div className="flex justify-between items-center gap-3 py-2.5 first:pt-0">
-                  <span className="text-sm text-slate-400">Phone</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono tabular-nums text-sm">{contact.phone}</span>
-                    <button onClick={() => copyToClipboard(contact.phone!, 'phone')} aria-label="Copy phone number" className="p-1 hover:bg-slate-800 rounded shrink-0">
-                      {copiedField === 'phone' ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3 text-slate-400" />}
+                <div className="flex flex-wrap justify-between items-center gap-3 py-2.5 first:pt-0">
+                  <span className="text-sm text-ink-muted">Phone</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="tabular-nums text-sm">{contact.phone}</span>
+                    <button onClick={() => copyToClipboard(contact.phone!, 'phone')} aria-label="Copy phone number" className="p-1 hover:bg-muted rounded shrink-0">
+                      {copiedField === 'phone' ? <Check className="h-3 w-3 text-positive" /> : <Copy className="h-3 w-3 text-ink-muted" />}
                     </button>
                   </div>
                 </div>
               )}
               {contact.linkedinUrl && (
-                <div className="flex justify-between items-center gap-3 py-2.5 first:pt-0">
-                  <span className="text-sm text-slate-400">LinkedIn</span>
+                <div className="flex flex-wrap justify-between items-center gap-3 py-2.5 first:pt-0">
+                  <span className="text-sm text-ink-muted">LinkedIn</span>
                   <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer"
-                     className="flex items-center gap-1 text-blue-400 hover:text-blue-300 text-sm">
+                     className="flex flex-wrap items-center gap-1 text-accent hover:text-accent text-sm">
                     View Profile <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
@@ -247,15 +243,15 @@ export default function ContactDetail() {
           </Card>
 
           {/* Account Context — a compact echo of the account signal card */}
-          <Card className="border-slate-800 bg-slate-900 shadow-none">
+          <Card className="border-border bg-card shadow-none">
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-sm flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-purple-400" />
+                <span className="flex flex-wrap items-center gap-2">
+                  <Building2 className="h-4 w-4 text-accent" />
                   Account Context
                 </span>
                 {account && (
-                  <Link href={`/accounts/${account.id}`} className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
+                  <Link href={`/accounts/${account.id}`} className="text-xs text-accent hover:text-accent flex flex-wrap items-center gap-1">
                     View Account <ChevronRight className="h-3 w-3" />
                   </Link>
                 )}
@@ -265,68 +261,68 @@ export default function ContactDetail() {
               {account ? (
                 <div className="space-y-3">
                   {/* Intent — cyan mono, with heat glyph + word */}
-                  <div className="flex items-end justify-between gap-3 rounded-lg bg-slate-800/60 p-3">
+                  <div className="flex flex-wrap items-end justify-between gap-3 rounded-sm bg-muted p-3">
                     <div>
-                      <div className="text-xs text-slate-400">Intent score</div>
-                      <div className="flex items-end gap-1.5">
-                        <span className="font-mono tabular-nums text-3xl font-semibold leading-none text-cyan-400">{intentScore}</span>
-                        <span className="mb-0.5 font-mono text-xs text-slate-400">/ 100</span>
+                      <div className="text-xs text-ink-muted">Intent score</div>
+                      <div className="flex flex-wrap items-end gap-1.5">
+                        <span className="tabular-nums text-2xl font-semibold leading-none text-accent">{intentScore}</span>
+                        <span className="mb-0.5 tabular-nums text-xs text-ink-muted">/ 100</span>
                       </div>
                     </div>
-                    <span className={`inline-flex items-center gap-1.5 rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium ${heat.cls}`}>
+                    <span className={`inline-flex items-center gap-1.5 rounded-sm bg-surface-raised px-2.5 py-1 text-xs font-medium ${heat.cls}`}>
                       {heat.hot
                         ? <Flame className="h-3 w-3" />
                         : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
                       {heat.label}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center gap-3">
-                    <span className="text-sm text-slate-400">Company</span>
+                  <div className="flex flex-wrap justify-between items-center gap-3">
+                    <span className="text-sm text-ink-muted">Company</span>
                     <span className="font-medium text-sm text-right">{account.name}</span>
                   </div>
-                  <div className="flex justify-between items-center gap-3">
-                    <span className="text-sm text-slate-400">Buying Stage</span>
+                  <div className="flex flex-wrap justify-between items-center gap-3">
+                    <span className="text-sm text-ink-muted">Buying Stage</span>
                     {accountStage ? (
-                      <span className={`inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-2.5 py-1 text-xs font-medium ${stage.cls}`}>
+                      <span className={`inline-flex items-center gap-1.5 rounded-sm bg-muted px-2.5 py-1 text-xs font-medium ${stage.cls}`}>
                         <span className="h-1.5 w-1.5 rounded-full bg-current" />
                         {accountStage}
                       </span>
                     ) : (
-                      <span className="text-sm text-slate-400">Unknown</span>
+                      <span className="text-sm text-ink-muted">Unknown</span>
                     )}
                   </div>
                   {account.industry && (
-                    <div className="flex justify-between items-center gap-3">
-                      <span className="text-sm text-slate-400">Industry</span>
+                    <div className="flex flex-wrap justify-between items-center gap-3">
+                      <span className="text-sm text-ink-muted">Industry</span>
                       <span className="font-medium text-sm text-right">{account.industry}</span>
                     </div>
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-slate-400">No linked account</p>
+                <p className="text-sm text-ink-muted">No linked account</p>
               )}
             </CardContent>
           </Card>
         </div>
 
         {/* AI Contact Brief */}
-        <Card className="border-slate-800 bg-slate-900 shadow-none">
+        <Card className="border-border bg-card shadow-none">
           <CardHeader className="px-6 pt-1">
-            <CardTitle className="flex items-start justify-between gap-3">
+            <CardTitle className="flex flex-wrap items-start justify-between gap-3">
               <span className="min-w-0">
-                <span className="flex items-center gap-2 text-base font-semibold">
-                  <Sparkles className="h-4 w-4 text-cyan-400" />
+                <span className="flex flex-wrap items-center gap-2 text-base font-semibold">
+                  <Sparkles className="h-4 w-4 text-accent" />
                   AI Contact Brief
                   {contact.linkedinUrl && (
-                    <Badge variant="outline" className="text-[11px] font-normal gap-1 border-slate-700 text-slate-300">
-                      <Linkedin className="h-3 w-3 text-blue-400" /> LinkedIn available
+                    <Badge variant="outline" className="text-[11px] font-normal gap-1 border-border-strong text-ink-muted">
+                      <Linkedin className="h-3 w-3 text-accent" /> LinkedIn available
                     </Badge>
                   )}
                 </span>
-                <span className="mt-1 block text-xs font-normal text-slate-400">
+                <span className="mt-1 block text-xs font-normal text-ink-muted">
                   {contact.linkedinUrl
-                    ? "Synthesised from this contact's role and LinkedIn profile."
-                    : "Add a LinkedIn profile to enrich this brief."}
+                    ?"Synthesised from this contact's role and LinkedIn profile."
+                    :"Add a LinkedIn profile to enrich this brief."}
                 </span>
               </span>
               <Button
@@ -348,25 +344,25 @@ export default function ContactDetail() {
           <CardContent className="px-6">
             {isGenerating ? (
               <div className="space-y-2.5 py-1">
-                <div className="flex items-center gap-2 text-sm text-slate-400">
-                  <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                <div className="flex items-center gap-2 text-sm text-ink-muted">
+                  <Loader2 className="h-4 w-4 animate-spin text-accent" />
                   {contact.linkedinUrl ? 'Analyzing LinkedIn profile…' : 'Generating summary…'}
                 </div>
                 <div className="animate-pulse space-y-2 pt-1">
-                  <div className="h-3 w-11/12 rounded bg-slate-800" />
-                  <div className="h-3 w-full rounded bg-slate-800" />
-                  <div className="h-3 w-8/12 rounded bg-slate-800" />
+                  <div className="h-3 w-11/12 rounded bg-muted" />
+                  <div className="h-3 w-full rounded bg-muted" />
+                  <div className="h-3 w-8/12 rounded bg-muted" />
                 </div>
               </div>
             ) : aiSummary ? (
-              <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-cyan-400">
+              <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-accent">
                 <SafeStreamdown>{extractFinalOutput(aiSummary)}</SafeStreamdown>
               </div>
             ) : (
-              <div className="rounded-lg border border-dashed border-slate-800 py-8 text-center">
-                <Sparkles className="h-7 w-7 mx-auto mb-2 text-slate-600" />
-                <p className="text-sm text-slate-400">No brief generated yet</p>
-                <p className="text-xs mt-1 text-slate-500">
+              <div className="rounded-sm border border-dashed border-border py-8 text-center">
+                <Sparkles className="h-7 w-7 mx-auto mb-2 text-ink-subtle" />
+                <p className="text-sm text-ink-muted">No brief generated yet</p>
+                <p className="text-xs mt-1 text-ink-subtle">
                   {contact.linkedinUrl
                     ? 'Generate one to pull in insights from the LinkedIn profile.'
                     : 'A LinkedIn profile is needed to generate a brief.'}

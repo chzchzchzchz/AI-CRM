@@ -1,17 +1,16 @@
-import { useState, useCallback, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Navigation } from "@/components/Navigation";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
+import { useState, useCallback, useRef } from"react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from"@/components/ui/card";
+import { Button } from"@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from"@/components/ui/tabs";
+import { Badge } from"@/components/ui/badge";
+import { Progress } from"@/components/ui/progress";
+import { trpc } from"@/lib/trpc";
+import { toast } from"sonner";
 import { 
   Upload, FileSpreadsheet, Sparkles, Loader2, Download, 
   CheckCircle2, XCircle, AlertTriangle, Database, 
   Users, Building2, Phone, Mail, Zap, Brain, FileText
-} from "lucide-react";
+} from"lucide-react";
 
 type DataType = 'auto' | 'leads' | 'accounts' | 'contacts' | 'enrichment';
 type ProcessingStatus = 'idle' | 'uploading' | 'analyzing' | 'processing' | 'complete' | 'error';
@@ -37,22 +36,22 @@ export default function DataHub() {
 
   const processLeadsMutation = trpc.tools.processLeads.useMutation();
   const uploadDocMutation = trpc.tools.uploadDocument.useMutation({
-    onSuccess: (_r, vars) => toast.success(`Added "${vars.fileName}" to the knowledge base`),
-    onError: (e) => toast.error(e.message || "Upload failed"),
+    onSuccess: (_r, vars) => toast.success(`Added"${vars.fileName}" to the knowledge base`),
+    onError: (e) => toast.error(e.message ||"Upload failed"),
   });
 
   // Knowledge-base upload: read a text document and index it for AI context.
   const handleKbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (e.target) e.target.value = "";
+    if (e.target) e.target.value ="";
     if (!file) return;
-    const ext = file.name.split(".").pop()?.toLowerCase() || "";
-    if (!["txt", "md", "csv", "json", "html"].includes(ext)) {
+    const ext = file.name.split(".").pop()?.toLowerCase() ||"";
+    if (!["txt","md","csv","json","html"].includes(ext)) {
       toast.error("Text documents only (.txt, .md, .csv, .json, .html).");
       return;
     }
     const content = await file.text();
-    uploadDocMutation.mutate({ fileName: file.name, content, mimeType: file.type || "text/plain", category: "general" });
+    uploadDocMutation.mutate({ fileName: file.name, content, mimeType: file.type ||"text/plain", category:"general" });
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -194,26 +193,25 @@ export default function DataHub() {
 
   const getDataTypeColor = (type: DataType) => {
     switch (type) {
-      case 'leads': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
-      case 'accounts': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'contacts': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'enrichment': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      case 'leads': return 'bg-accent-subtle text-accent border-accent/30';
+      case 'accounts': return 'bg-accent-subtle text-accent border-accent/30';
+      case 'contacts': return 'bg-positive-subtle text-positive border-positive/30';
+      case 'enrichment': return 'bg-caution-subtle text-caution border-caution/30';
+      default: return 'bg-muted text-ink-muted border-border';
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
-      <Navigation />
-    <div className="container py-8 max-w-6xl">
+    <div className="text-foreground">
+    <div className="container py-1 max-w-6xl">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-slate-800 border border-slate-700 rounded-xl">
-            <Brain className="h-6 w-6 text-cyan-400" />
+        <div className="flex flex-wrap items-center gap-3 mb-2">
+          <div className="p-2 bg-muted border border-border-strong rounded-md">
+            <Brain className="h-6 w-6 text-accent" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold">AI Data Hub</h1>
+            <h1 className="text-xl font-semibold">AI Data Hub</h1>
             <p className="text-muted-foreground">
               Intelligent data processing that learns from your corrections
             </p>
@@ -226,8 +224,8 @@ export default function DataHub() {
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5 text-violet-500" />
+              <CardTitle className="flex flex-wrap items-center gap-2">
+                <Upload className="h-5 w-5 text-accent" />
                 Upload Data
               </CardTitle>
               <CardDescription>
@@ -239,12 +237,7 @@ export default function DataHub() {
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
                 onClick={() => fileInputRef.current?.click()}
-                className={`
-                  border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all
-                  ${files.length > 0 
-                    ? 'border-violet-500/50 bg-violet-500/5' 
-                    : 'border-border hover:border-violet-500/30 hover:bg-violet-500/5'}
-                `}
+                className={`border-2 border-dashed rounded-md p-8 text-center cursor-pointer transition-all ${files.length > 0 ? 'border-accent/30 bg-accent-subtle' : 'border-border hover:border-accent/30 hover:bg-accent-subtle'}`}
               >
                 <input
                   ref={fileInputRef}
@@ -257,7 +250,7 @@ export default function DataHub() {
                 
                 {files.length > 0 ? (
                   <div className="space-y-3">
-                    <FileSpreadsheet className="h-12 w-12 mx-auto text-violet-500" />
+                    <FileSpreadsheet className="h-12 w-12 mx-auto text-accent" />
                     <div>
                       <p className="font-medium">{files.length} file(s) selected</p>
                       <p className="text-sm text-muted-foreground">
@@ -288,7 +281,7 @@ export default function DataHub() {
               {status !== 'idle' && status !== 'complete' && (
                 <div className="mt-6 space-y-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2">
+                    <span className="flex flex-wrap items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       {status === 'uploading' && 'Uploading files...'}
                       {status === 'analyzing' && 'AI analyzing data structure...'}
@@ -301,11 +294,11 @@ export default function DataHub() {
               )}
 
               {/* Action Buttons */}
-              <div className="mt-6 flex gap-3">
+              <div className="mt-6 flex flex-wrap gap-3">
                 <Button
                   onClick={processFiles}
                   disabled={files.length === 0 || status === 'processing' || status === 'analyzing'}
-                  className="flex-1 bg-cyan-500 text-slate-950 hover:bg-blue-500"
+                  className="flex-1"
                 >
                   {status === 'processing' || status === 'analyzing' ? (
                     <>
@@ -334,31 +327,31 @@ export default function DataHub() {
           {result && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                <CardTitle className="flex flex-wrap items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-positive" />
                   Processing Complete
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="text-center p-4 bg-muted/50 rounded-lg">
-                    <p className="text-3xl font-bold text-violet-500">{result.originalCount}</p>
+                  <div className="text-center p-4 bg-muted/50 rounded-sm">
+                    <p className="text-2xl font-semibold text-accent">{result.originalCount}</p>
                     <p className="text-sm text-muted-foreground">Total Records</p>
                   </div>
-                  <div className="text-center p-4 bg-green-500/10 rounded-lg">
-                    <p className="text-3xl font-bold text-green-500">{result.cleanedCount}</p>
+                  <div className="text-center p-4 bg-positive-subtle rounded-sm">
+                    <p className="text-2xl font-semibold text-positive">{result.cleanedCount}</p>
                     <p className="text-sm text-muted-foreground">Cleaned</p>
                   </div>
-                  <div className="text-center p-4 bg-red-500/10 rounded-lg">
-                    <p className="text-3xl font-bold text-red-500">{result.removedCount}</p>
+                  <div className="text-center p-4 bg-critical-subtle rounded-sm">
+                    <p className="text-2xl font-semibold text-critical">{result.removedCount}</p>
                     <p className="text-sm text-muted-foreground">Removed</p>
                   </div>
                 </div>
 
                 {result.issues.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-sm font-medium flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    <p className="text-sm font-medium flex flex-wrap items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-caution" />
                       Issues Found ({result.issues.length})
                     </p>
                     <div className="max-h-40 overflow-y-auto space-y-1">
@@ -384,8 +377,8 @@ export default function DataHub() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Zap className="h-4 w-4 text-amber-500" />
+              <CardTitle className="text-base flex flex-wrap items-center gap-2">
+                <Zap className="h-4 w-4 text-caution" />
                 AI Processing Rules
               </CardTitle>
             </CardHeader>
@@ -398,8 +391,8 @@ export default function DataHub() {
                 { icon: <Database className="h-4 w-4" />, label: 'Field mapping & merging' },
                 { icon: <XCircle className="h-4 w-4" />, label: 'Personal email filtering' },
               ].map((rule, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm">
-                  <div className="text-green-500">{rule.icon}</div>
+                <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
+                  <div className="text-positive">{rule.icon}</div>
                   <span>{rule.label}</span>
                 </div>
               ))}
@@ -408,8 +401,8 @@ export default function DataHub() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Brain className="h-4 w-4 text-violet-500" />
+              <CardTitle className="text-base flex flex-wrap items-center gap-2">
+                <Brain className="h-4 w-4 text-accent" />
                 Learning from You
               </CardTitle>
               <CardDescription>
@@ -432,7 +425,7 @@ export default function DataHub() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4 text-blue-500" />
+                <FileText className="h-4 w-4 text-accent" />
                 Knowledge Base
               </CardTitle>
               <CardDescription>
@@ -443,7 +436,7 @@ export default function DataHub() {
               <input ref={kbInputRef} type="file" accept=".txt,.md,.csv,.json,.html" className="hidden" onChange={handleKbUpload} />
               <Button variant="outline" className="w-full" disabled={uploadDocMutation.isPending} onClick={() => kbInputRef.current?.click()}>
                 <Upload className="h-4 w-4 mr-2" />
-                {uploadDocMutation.isPending ? "Uploading…" : "Upload Documents"}
+                {uploadDocMutation.isPending ?"Uploading…" :"Upload Documents"}
               </Button>
               <p className="text-xs text-muted-foreground mt-2">
                 Battle cards, playbooks, and product docs will be used to enrich AI outputs
