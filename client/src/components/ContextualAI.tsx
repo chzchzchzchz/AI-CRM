@@ -148,75 +148,78 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
   const suggestions = contextSuggestions[context] || contextSuggestions.home;
 
   return (
-    <Card className="bg-gradient-to-r from-purple-900/20 to-pink-900/20 border-purple-500/30 mb-6">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg">
-            <Sparkles className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileSelect}
-                accept=".pdf,.docx,.pptx,.txt,.md,.csv"
-                multiple
-                className="hidden"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => fileInputRef.current?.click()}
-                className="text-purple-400 hover:text-purple-300"
-                title="Attach files (PDF, DOCX, PPTX)"
-              >
-                <Paperclip className="h-4 w-4" />
-              </Button>
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleAsk()}
-                placeholder={placeholder || "Ask AI anything about this page..."}
-                className="bg-slate-900/50 border-purple-500/30 focus:border-purple-500"
-              />
-              <Button
-                onClick={() => handleAsk()}
-                disabled={isLoading || !query.trim()}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-              >
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="text-purple-400"
-              >
-                {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
-            </div>
-
-            {/* Attached Files */}
-            {attachedFiles.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {attachedFiles.map((file, i) => (
-                  <Badge key={i} variant="secondary" className="flex items-center gap-1 bg-purple-900/50">
-                    {getFileIcon(file.name)}
-                    <span className="max-w-[100px] truncate text-xs">{file.name}</span>
-                    <button onClick={() => removeFile(i)} className="ml-1 hover:text-red-400">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
+    <Card variant="sunken" className="mb-5">
+      <CardContent className="p-2">
+        <div className="flex items-center gap-1.5">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            accept=".pdf,.docx,.pptx,.txt,.md,.csv"
+            multiple
+            className="hidden"
+          />
+          <Sparkles className="ml-1.5 size-4 shrink-0 text-ink-faint" aria-hidden="true" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyPress={(e) => e.key === "Enter" && handleAsk()}
+            placeholder={placeholder || "Ask about this page…"}
+            className="h-8 border-0 bg-transparent shadow-none focus-visible:ring-0 hover:border-0"
+          />
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => fileInputRef.current?.click()}
+            title="Attach files (PDF, DOCX, PPTX, TXT, MD, CSV)"
+          >
+            <Paperclip className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            title={isExpanded ? "Hide suggestions" : "Show suggestions"}
+            aria-expanded={isExpanded}
+          >
+            {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => handleAsk()}
+            disabled={isLoading || !query.trim()}
+          >
+            {isLoading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Send className="size-4" />
             )}
-          </div>
+            <span className="sr-only">Ask</span>
+          </Button>
         </div>
+
+        {/* Attached Files */}
+        {attachedFiles.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5 px-1.5">
+            {attachedFiles.map((file, i) => (
+              <Badge key={i} variant="secondary" className="gap-1">
+                {getFileIcon(file.name)}
+                <span className="max-w-[120px] truncate">{file.name}</span>
+                <button
+                  onClick={() => removeFile(i)}
+                  className="ml-0.5 hover:text-critical"
+                  aria-label={`Remove ${file.name}`}
+                >
+                  <X className="size-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
 
         {/* Suggestions */}
         {isExpanded && !response && (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap gap-1.5 px-1.5 pb-1">
             {suggestions.map((s, i) => (
               <Button
                 key={i}
@@ -226,7 +229,6 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
                   setQuery(s);
                   handleAsk(s);
                 }}
-                className="text-xs border-purple-500/30 text-purple-300 hover:bg-purple-500/10"
               >
                 {s}
               </Button>
@@ -236,18 +238,18 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
 
         {/* Response */}
         {response && (
-          <div className="mt-4 p-4 bg-slate-900/50 rounded-lg border border-purple-500/20">
+          <div className="mt-4 p-4 bg-card rounded-sm border border-accent/30">
             {/* Cache indicator */}
             {response.cached && (
-              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-purple-500/10">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-[10px] font-medium">
+              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-accent/30">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-positive-subtle text-positive text-[10px] font-medium">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                   Instant response (cached)
                 </span>
                 {response.cacheHitCount && response.cacheHitCount > 1 && (
-                  <span className="text-[10px] text-slate-500">• Served {response.cacheHitCount} times</span>
+                  <span className="text-[10px] text-ink-subtle">• Served {response.cacheHitCount} times</span>
                 )}
               </div>
             )}
@@ -259,7 +261,7 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
                 variant="ghost"
                 size="sm"
                 onClick={() => setResponse(null)}
-                className="text-slate-400 hover:text-white flex-shrink-0"
+                className="text-ink-muted hover:text-foreground flex-shrink-0"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -267,20 +269,20 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
             
             {/* Optional Reasoning Dropdown */}
             {response.reasoning && (
-              <div className="mt-3 pt-3 border-t border-purple-500/10">
+              <div className="mt-3 pt-3 border-t border-accent/30">
                 <button
                   onClick={() => setShowReasoning(!showReasoning)}
-                  className="flex items-center gap-1 text-[10px] text-purple-400/60 hover:text-purple-400 transition-colors"
+                  className="flex items-center gap-1 text-[10px] text-accent/60 hover:text-accent transition-colors"
                 >
                   {showReasoning ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   <span>{showReasoning ? "Hide" : "View"} reasoning</span>
                 </button>
                 {showReasoning && (
-                  <div className="mt-2 bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden">
-                    <div className="px-2 py-1 bg-slate-800 text-[10px] text-slate-400 border-b border-slate-700">
+                  <div className="mt-2 bg-muted border border-border-strong rounded-sm overflow-hidden">
+                    <div className="px-2 py-1 bg-muted text-[10px] text-ink-muted border-b border-border-strong">
                       AI Reasoning
                     </div>
-                    <div className="p-2 text-[10px] text-slate-400 overflow-x-auto max-h-48 font-mono whitespace-pre-wrap break-all">
+                    <div className="p-2 text-[10px] text-ink-muted overflow-x-auto max-h-48 font-mono whitespace-pre-wrap break-all">
                       <code>{response.reasoning}</code>
                     </div>
                   </div>

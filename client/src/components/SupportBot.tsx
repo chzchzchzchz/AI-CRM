@@ -100,7 +100,7 @@ export function SupportBot() {
     return (
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 left-6 h-12 px-4 rounded-full shadow-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 z-50"
+        className="fixed bottom-6 right-24 z-40 h-10 rounded-sm border border-border bg-surface px-3 text-ink-muted shadow-md hover:bg-muted hover:text-foreground"
         aria-label="Get Help"
       >
         <HelpCircle className="h-5 w-5 mr-2" />
@@ -110,16 +110,14 @@ export function SupportBot() {
   }
 
   return (
-    <Card className="fixed bottom-6 left-6 w-96 max-h-[600px] shadow-2xl z-50 bg-slate-900 border-slate-700 flex flex-col">
-      <CardHeader className="flex-shrink-0 pb-2 border-b border-slate-800">
+    <Card className="fixed bottom-6 right-6 z-40 flex max-h-[600px] w-96 max-w-[calc(100vw-3rem)] flex-col border-border shadow-xl">
+      <CardHeader className="flex-shrink-0 pb-2 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
+            <Sparkles className="size-5 shrink-0 text-ink-faint" />
             <div>
               <CardTitle className="text-base">AI Help</CardTitle>
-              <p className="text-xs text-slate-400">Ask anything about the dashboard</p>
+              <p className="text-xs text-ink-muted">Ask anything about the dashboard</p>
             </div>
           </div>
           <Button variant="ghost" size="sm" onClick={() => setIsOpen(false)}>
@@ -132,19 +130,19 @@ export function SupportBot() {
         {/* Help Topics - Quick Start */}
         {showTopics && (
           <div className="space-y-2">
-            <p className="text-xs text-slate-500 mb-2">Quick questions:</p>
+            <p className="text-xs text-ink-subtle mb-2">Quick questions:</p>
             {helpTopics.map((topic, i) => (
               <button
                 key={i}
                 onClick={() => handleTopicClick(topic)}
-                className="w-full text-left p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 border border-slate-700 transition-all group"
+                className="w-full text-left p-3 rounded-sm bg-muted hover:bg-muted border border-border-strong transition-all group"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-sm text-white">{topic.title}</p>
-                    <p className="text-xs text-slate-400">{topic.description}</p>
+                    <p className="font-medium text-sm text-foreground">{topic.title}</p>
+                    <p className="text-xs text-ink-muted">{topic.description}</p>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-purple-400 transition-colors" />
+                  <ChevronRight className="h-4 w-4 text-ink-subtle group-hover:text-accent transition-colors" />
                 </div>
               </button>
             ))}
@@ -156,11 +154,7 @@ export function SupportBot() {
           <div key={i} className="space-y-1">
             {/* Main Message (Layer 2 Response) */}
             <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] rounded-lg p-3 text-sm ${
-                msg.role === "user"
-                  ? "bg-purple-600 text-white"
-                  : "bg-slate-800 text-slate-200"
-              }`}>
+              <div className={`max-w-[85%] rounded-sm p-3 text-sm ${ msg.role === "user" ? "bg-accent text-accent-foreground" : "bg-muted text-foreground" }`}>
                 <p className="whitespace-pre-wrap">{msg.content}</p>
               </div>
             </div>
@@ -170,17 +164,17 @@ export function SupportBot() {
               <div className="ml-0">
                 <button
                   onClick={() => toggleReasoning(i)}
-                  className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-400 transition-colors py-1"
+                  className="flex items-center gap-1 text-[10px] text-ink-subtle hover:text-ink-muted transition-colors py-1"
                 >
                   {expandedReasoning === i ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   <span>{expandedReasoning === i ? "Hide" : "View"} reasoning</span>
                 </button>
                 {expandedReasoning === i && (
-                  <div className="mt-1 bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden">
-                    <div className="px-2 py-1 bg-slate-800 text-[10px] text-slate-400 border-b border-slate-700">
+                  <div className="mt-1 bg-muted border border-border-strong rounded-sm overflow-hidden">
+                    <div className="px-2 py-1 bg-muted text-[10px] text-ink-muted border-b border-border-strong">
                       AI Reasoning
                     </div>
-                    <div className="p-2 text-[10px] text-slate-400 overflow-x-auto max-h-32 font-mono whitespace-pre-wrap break-all">
+                    <div className="p-2 text-[10px] text-ink-muted overflow-x-auto max-h-32 font-mono whitespace-pre-wrap break-all">
                       <code>{msg.reasoning}</code>
                     </div>
                   </div>
@@ -192,10 +186,10 @@ export function SupportBot() {
 
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-slate-800 rounded-lg p-3">
+            <div className="bg-muted rounded-sm p-3">
               <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
-                <span className="text-xs text-slate-400">Thinking...</span>
+                <Loader2 className="h-4 w-4 animate-spin text-accent" />
+                <span className="text-xs text-ink-muted">Thinking...</span>
               </div>
             </div>
           </div>
@@ -204,25 +198,25 @@ export function SupportBot() {
       </CardContent>
 
       {/* Input */}
-      <div className="flex-shrink-0 p-4 border-t border-slate-800">
+      <div className="flex-shrink-0 p-4 border-t border-border">
         <div className="flex gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && handleSend()}
             placeholder="Ask me anything..."
-            className="bg-slate-800 border-slate-700"
+            className="bg-muted border-border-strong"
           />
           <Button 
             onClick={() => handleSend()} 
             disabled={isLoading || !input.trim()} 
             size="icon"
-            className="bg-purple-600 hover:bg-purple-700"
+            className="bg-accent hover:bg-accent"
           >
             <Send className="h-4 w-4" />
           </Button>
         </div>
-        <p className="mt-2 text-center text-xs text-slate-500">
+        <p className="mt-2 text-center text-xs text-ink-subtle">
           Can't find what you need? Reach out to {SUPPORT_CONTACT}!
         </p>
       </div>

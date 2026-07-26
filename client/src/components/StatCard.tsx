@@ -1,26 +1,44 @@
 import { LucideIcon } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+
+/**
+ * A single figure in a panel. The old version painted a 4px left border in one
+ * of eight hues, which turned any row of stats into a rainbow. Tone is now
+ * carried by a small icon tint and nothing else — the number itself stays in
+ * foreground ink so a row of tiles reads as one instrument.
+ */
+type Tone = "neutral" | "accent" | "positive" | "caution" | "critical";
+
+/** Legacy colour names map onto the semantic tones they were standing in for. */
+const TONE_BY_LEGACY_COLOR: Record<string, Tone> = {
+  blue: "accent",
+  cyan: "accent",
+  purple: "accent",
+  pink: "accent",
+  green: "positive",
+  yellow: "caution",
+  orange: "caution",
+  red: "critical",
+};
+
+const TONE_CLASS: Record<Tone, string> = {
+  neutral: "text-ink-faint",
+  accent: "text-accent",
+  positive: "text-positive",
+  caution: "text-caution",
+  critical: "text-critical",
+};
 
 interface StatCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
   icon?: LucideIcon;
-  borderColor: "blue" | "red" | "orange" | "cyan" | "purple" | "yellow" | "green" | "pink";
+  borderColor?: keyof typeof TONE_BY_LEGACY_COLOR;
+  tone?: Tone;
   className?: string;
+  onClick?: () => void;
 }
-
-const borderColorClasses = {
-  blue: "border-l-[#3B82F6]",
-  red: "border-l-[#EF4444]",
-  orange: "border-l-[#F97316]",
-  cyan: "border-l-[#06B6D4]",
-  purple: "border-l-[#8B5CF6]",
-  yellow: "border-l-[#EAB308]",
-  green: "border-l-[#10B981]",
-  pink: "border-l-[#EC4899]",
-};
 
 export function StatCard({
   title,
@@ -28,28 +46,40 @@ export function StatCard({
   subtitle,
   icon: Icon,
   borderColor,
+  tone,
   className,
+  onClick,
 }: StatCardProps) {
+  const resolved: Tone =
+    tone ?? (borderColor ? TONE_BY_LEGACY_COLOR[borderColor] : undefined) ?? "neutral";
+
+  const Comp = onClick ? "button" : "div";
+
   return (
-    <Card
+    <Comp
+      onClick={onClick}
       className={cn(
-        "p-6 border-l-4",
-        borderColorClasses[borderColor],
+        "bg-card px-4 py-3.5 text-left",
+        onClick &&
+          "transition-colors hover:bg-muted/60 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         className
       )}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-            {Icon && <Icon className="h-4 w-4" />}
-            <span>{title}</span>
-          </div>
-          <div className="text-3xl font-bold mb-1">{value}</div>
-          {subtitle && (
-            <div className="text-sm text-muted-foreground">{subtitle}</div>
-          )}
-        </div>
+      <div className="flex items-center gap-1.5">
+        {Icon && <Icon className={cn("size-3.5 shrink-0", TONE_CLASS[resolved])} />}
+        <span className="truncate text-2xs font-medium tracking-wide text-ink-muted uppercase">
+          {title}
+        </span>
       </div>
-    </Card>
+
+      <div
+        data-numeric
+        className="mt-1.5 text-2xl leading-none font-semibold tracking-tight"
+      >
+        {value}
+      </div>
+
+      {subtitle && <div className="mt-1.5 text-2xs text-ink-faint">{subtitle}</div>}
+    </Comp>
   );
 }

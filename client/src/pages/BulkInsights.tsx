@@ -29,7 +29,7 @@ export default function BulkInsights() {
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Bulk AI Insights Generation</h1>
+        <h1 className="text-xl font-semibold mb-2">Bulk AI Insights Generation</h1>
         <p className="text-muted-foreground">
           Generate strategic recommendations for your top hot leads automatically
         </p>
@@ -39,7 +39,7 @@ export default function BulkInsights() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-500" />
+              <Sparkles className="h-5 w-5 text-accent" />
               Generate Insights for Top Hot Leads
             </CardTitle>
             <CardDescription>
@@ -105,7 +105,7 @@ export default function BulkInsights() {
               </div>
             )}
 
-            <div className="bg-muted p-4 rounded-lg space-y-2">
+            <div className="bg-muted p-4 rounded-sm space-y-2">
               <p className="text-sm font-medium">How It Works:</p>
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Selects accounts with intent score 70+ (hot leads)</li>
@@ -137,13 +137,13 @@ export default function BulkInsights() {
                   </Card>
                   <Card>
                     <CardContent className="pt-6">
-                      <div className="text-2xl font-bold text-green-600">{results.processed}</div>
+                      <div className="text-2xl font-bold text-positive">{results.processed}</div>
                       <p className="text-xs text-muted-foreground">Successful</p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="pt-6">
-                      <div className="text-2xl font-bold text-red-600">{results.failed}</div>
+                      <div className="text-2xl font-bold text-critical">{results.failed}</div>
                       <p className="text-xs text-muted-foreground">Failed</p>
                     </CardContent>
                   </Card>
@@ -155,17 +155,17 @@ export default function BulkInsights() {
                     {results.results.map((result: any, idx: number) => (
                       <div
                         key={idx}
-                        className="flex items-center gap-2 p-3 border rounded-lg"
+                        className="flex items-center gap-2 p-3 border rounded-sm"
                       >
                         {result.success ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
+                          <CheckCircle2 className="h-5 w-5 text-positive flex-shrink-0" />
                         ) : (
-                          <XCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                          <XCircle className="h-5 w-5 text-critical flex-shrink-0" />
                         )}
                         <div className="flex-1">
                           <p className="font-medium">{result.accountName}</p>
                           {!result.success && (
-                            <p className="text-sm text-red-600">{result.error}</p>
+                            <p className="text-sm text-critical">{result.error}</p>
                           )}
                         </div>
                       </div>
@@ -173,8 +173,8 @@ export default function BulkInsights() {
                   </div>
                 </div>
 
-                <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-                  <p className="text-sm text-green-800">
+                <div className="bg-positive border border-positive/30 p-4 rounded-sm">
+                  <p className="text-sm text-positive">
                     ✅ Insights have been cached and are now available on each account's AI Insights tab. Navigate to any of the processed accounts to view their strategic recommendations.
                   </p>
                 </div>

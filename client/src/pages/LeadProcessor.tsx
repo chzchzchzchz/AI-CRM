@@ -127,14 +127,12 @@ export default function LeadProcessor() {
   };
 
   return (
-    <div className="container py-8 max-w-4xl">
+    <div className="container py-1 max-w-4xl">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl">
-            <Zap className="h-6 w-6 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold">Intelligent Lead Processor</h1>
+          <Zap className="size-5 shrink-0 text-ink-faint" />
+          <h1 className="text-xl font-semibold">Intelligent Lead Processor</h1>
         </div>
         <p className="text-muted-foreground">
           AI-powered lead cleaning with 90+ rules. Drag, drop, and export clean data.
@@ -148,11 +146,7 @@ export default function LeadProcessor() {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${
-              isDragging 
-                ? 'border-indigo-500 bg-indigo-500/10' 
-                : 'border-slate-700 hover:border-slate-600'
-            }`}
+            className={`border-2 border-dashed rounded-md p-8 text-center transition-all cursor-pointer ${ isDragging ? 'border-accent/30 bg-accent-subtle' : 'border-border-strong hover:border-border-strong' }`}
             onClick={() => document.getElementById('file-input')?.click()}
           >
             <input
@@ -163,13 +157,13 @@ export default function LeadProcessor() {
               onChange={handleFileSelect}
               className="hidden"
             />
-            <Upload className="h-12 w-12 mx-auto mb-4 text-slate-500" />
+            <Upload className="h-12 w-12 mx-auto mb-4 text-ink-subtle" />
             <p className="font-semibold text-lg mb-1">Drag & Drop Your Lead Files Here</p>
             <p className="text-sm text-muted-foreground">
-              Accepts <span className="text-green-500 font-medium">.xlsx</span> or{' '}
-              <span className="text-blue-500 font-medium">.csv</span> files
+              Accepts <span className="text-positive font-medium">.xlsx</span> or{' '}
+              <span className="text-accent font-medium">.csv</span> files
             </p>
-            <Button variant="link" className="mt-2 text-indigo-400">
+            <Button variant="link" className="mt-2 text-accent">
               Or click to select files
             </Button>
           </div>
@@ -178,9 +172,9 @@ export default function LeadProcessor() {
           {files.length > 0 && (
             <div className="mt-4 space-y-2">
               {files.map((file, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                <div key={i} className="flex items-center justify-between p-3 bg-muted rounded-sm">
                   <div className="flex items-center gap-2">
-                    <FileSpreadsheet className="h-5 w-5 text-green-500" />
+                    <FileSpreadsheet className="h-5 w-5 text-positive" />
                     <span className="font-medium">{file.name}</span>
                     <span className="text-xs text-muted-foreground">
                       ({(file.size / 1024).toFixed(1)} KB)
@@ -200,7 +194,7 @@ export default function LeadProcessor() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Settings2 className="h-5 w-5 text-purple-500" />
+            <Settings2 className="h-5 w-5 text-accent" />
             AI Processing Rules
           </CardTitle>
           <CardDescription>
@@ -224,7 +218,7 @@ export default function LeadProcessor() {
               "Industry classification"
             ].map((rule, i) => (
               <div key={i} className="flex items-center gap-2 text-sm">
-                <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <CheckCircle2 className="h-4 w-4 text-positive flex-shrink-0" />
                 <span>{rule}</span>
               </div>
             ))}
@@ -236,7 +230,7 @@ export default function LeadProcessor() {
       <Button
         onClick={processFiles}
         disabled={files.length === 0 || isProcessing}
-        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 py-6 text-lg"
+        className="w-full bg-accent py-6 text-lg"
       >
         {isProcessing ? (
           <>
@@ -265,25 +259,25 @@ export default function LeadProcessor() {
 
       {/* Results */}
       {result && (
-        <Card className="mt-6 border-green-500/30">
+        <Card className="mt-6 border-positive/30">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-500">
+            <CardTitle className="flex items-center gap-2 text-positive">
               <CheckCircle2 className="h-5 w-5" />
               Processing Complete
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="text-center p-4 bg-slate-800/50 rounded-lg">
-                <p className="text-3xl font-bold text-blue-500">{result.originalCount}</p>
+              <div className="text-center p-4 bg-muted rounded-sm">
+                <p className="text-2xl font-semibold text-accent">{result.originalCount}</p>
                 <p className="text-sm text-muted-foreground">Original Records</p>
               </div>
-              <div className="text-center p-4 bg-slate-800/50 rounded-lg">
-                <p className="text-3xl font-bold text-green-500">{result.cleanedCount}</p>
+              <div className="text-center p-4 bg-muted rounded-sm">
+                <p className="text-2xl font-semibold text-positive">{result.cleanedCount}</p>
                 <p className="text-sm text-muted-foreground">Cleaned Records</p>
               </div>
-              <div className="text-center p-4 bg-slate-800/50 rounded-lg">
-                <p className="text-3xl font-bold text-red-500">{result.removedCount}</p>
+              <div className="text-center p-4 bg-muted rounded-sm">
+                <p className="text-2xl font-semibold text-critical">{result.removedCount}</p>
                 <p className="text-sm text-muted-foreground">Removed/Filtered</p>
               </div>
             </div>
@@ -291,7 +285,7 @@ export default function LeadProcessor() {
             {result.issues.length > 0 && (
               <div className="mb-6">
                 <p className="font-medium mb-2 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-yellow-500" />
+                  <AlertCircle className="h-4 w-4 text-caution" />
                   Issues Found:
                 </p>
                 <div className="space-y-1">

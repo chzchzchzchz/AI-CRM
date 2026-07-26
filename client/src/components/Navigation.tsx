@@ -40,7 +40,7 @@ export function Navigation({ onSearchClick }: NavigationProps) {
   ];
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-slate-800 bg-slate-950/95 backdrop-blur supports-[backdrop-filter]:bg-slate-950/80">
+    <nav className="sticky top-0 z-50 w-full border-b border-border bg-canvas backdrop-blur supports-[backdrop-filter]:bg-canvas">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-8">
           <Link href="/">
@@ -61,11 +61,7 @@ export function Navigation({ onSearchClick }: NavigationProps) {
               return (
                 <Link key={item.path} href={item.path}>
                   <span
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-                      isActive
-                        ? "bg-cyan-500/10 text-cyan-400"
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-sm text-sm font-medium transition-all cursor-pointer ${ isActive ? "bg-accent-subtle text-accent" : "text-ink-muted hover:text-foreground hover:bg-muted" }`}
                   >
                     <Icon className="h-4 w-4" />
                     {item.label}
@@ -80,26 +76,26 @@ export function Navigation({ onSearchClick }: NavigationProps) {
           <Button 
             variant="outline" 
             size="sm" 
-            className="gap-2 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800"
+            className="gap-2 border-border-strong text-ink-muted hover:text-foreground hover:bg-muted"
             onClick={onSearchClick}
           >
             <Search className="h-4 w-4" />
             <span className="hidden sm:inline">Search</span>
-            <span className="hidden sm:inline text-xs text-slate-500 ml-1">⌘K</span>
+            <span className="hidden sm:inline text-xs text-ink-subtle ml-1">⌘K</span>
           </Button>
           
           {user && (
-            <div className="flex items-center gap-2 pl-3 border-l border-slate-700">
+            <div className="flex items-center gap-2 pl-3 border-l border-border-strong">
               {user.email?.includes('demo') && (
-                <Badge variant="secondary" className="bg-purple-600/20 text-purple-300 border-purple-600/30">
+                <Badge variant="secondary" className="bg-accent-subtle text-accent border-accent/30">
                   🎭 Demo Mode
                 </Badge>
               )}
-              <span className="text-sm text-slate-400">{user.email}</span>
+              <span className="text-sm text-ink-muted">{user.email}</span>
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-2 text-slate-400 hover:text-white hover:bg-slate-800"
+                className="gap-2 text-ink-muted hover:text-foreground hover:bg-muted"
                 onClick={() => logoutMutation.mutate()}
                 disabled={logoutMutation.isPending}
               >

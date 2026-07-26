@@ -108,10 +108,10 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
     onRefresh?: () => void;
   }) => (
     <CollapsibleTrigger asChild>
-      <div className="flex items-center justify-between cursor-pointer hover:bg-muted/50 -mx-6 px-6 py-2 rounded-lg transition-colors">
+      <div className="flex items-center justify-between cursor-pointer hover:bg-muted/50 -mx-6 px-6 py-2 rounded-sm transition-colors">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${color}`}>
-            <Icon className="h-5 w-5 text-white" />
+          <div className={`p-2 rounded-sm ${color}`}>
+            <Icon className="h-5 w-5 text-foreground" />
           </div>
           <div>
             <h3 className="font-semibold">{title}</h3>
@@ -156,29 +156,29 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               icon={Database}
               title="6sense Intelligence"
               subtitle="Intent signals, buying stage, and competitive intelligence"
-              color="bg-gradient-to-br from-orange-500 to-red-500"
+              color="bg-caution"
             />
           </CardHeader>
           <CollapsibleContent>
             <CardContent className="space-y-6">
               {/* Key Metrics Row */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 rounded-lg bg-muted/50">
+                <div className="p-4 rounded-sm bg-muted/50">
                   <div className="text-sm text-muted-foreground mb-1">Intent Score</div>
                   <div className="text-2xl font-bold text-primary">{account.intentScore || 'N/A'}</div>
                 </div>
-                <div className="p-4 rounded-lg bg-muted/50">
+                <div className="p-4 rounded-sm bg-muted/50">
                   <div className="text-sm text-muted-foreground mb-1">Buying Stage</div>
                   <div className="text-xl font-semibold">{sixsenseData.buyingStage}</div>
                   {sixsenseData.buyingStageSource === 'inferred' && (
                     <div className="text-xs text-muted-foreground">Inferred from intent</div>
                   )}
                 </div>
-                <div className="p-4 rounded-lg bg-muted/50">
+                <div className="p-4 rounded-sm bg-muted/50">
                   <div className="text-sm text-muted-foreground mb-1">Profile Fit</div>
                   <div className="text-xl font-semibold">{sixsenseData.profileFit}</div>
                 </div>
-                <div className="p-4 rounded-lg bg-muted/50">
+                <div className="p-4 rounded-sm bg-muted/50">
                   <div className="text-sm text-muted-foreground mb-1">Relationship</div>
                   <div className="text-xl font-semibold">{account.relationship || 'Prospect'}</div>
                 </div>
@@ -188,24 +188,24 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               {(sixsenseData.mfaSolution || sixsenseData.ssoProvider || sixsenseData.complianceStatus) && (
                 <div className="space-y-3">
                   <h4 className="font-semibold flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-blue-500" />
+                    <Shield className="h-4 w-4 text-accent" />
                     Security Stack Intelligence
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {sixsenseData.mfaSolution && (
-                      <div className="p-3 rounded-lg border bg-card">
+                      <div className="p-3 rounded-sm border bg-card">
                         <div className="text-xs text-muted-foreground mb-1">MFA Solution</div>
                         <div className="font-medium">{sixsenseData.mfaSolution}</div>
                       </div>
                     )}
                     {sixsenseData.ssoProvider && (
-                      <div className="p-3 rounded-lg border bg-card">
+                      <div className="p-3 rounded-sm border bg-card">
                         <div className="text-xs text-muted-foreground mb-1">SSO Provider</div>
                         <div className="font-medium">{sixsenseData.ssoProvider}</div>
                       </div>
                     )}
                     {sixsenseData.complianceStatus && (
-                      <div className="p-3 rounded-lg border bg-card">
+                      <div className="p-3 rounded-sm border bg-card">
                         <div className="text-xs text-muted-foreground mb-1">Compliance</div>
                         <div className="font-medium">{sixsenseData.complianceStatus}</div>
                       </div>
@@ -218,10 +218,10 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               {sixsenseData.competitorIntent && (
                 <div className="space-y-2">
                   <h4 className="font-semibold flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                    <AlertTriangle className="h-4 w-4 text-caution" />
                     Competitor MFA Intent
                   </h4>
-                  <div className="p-3 rounded-lg border bg-yellow-500/10 border-yellow-500/30">
+                  <div className="p-3 rounded-sm border bg-caution-subtle border-caution/30">
                     <p className="text-sm">{sixsenseData.competitorIntent}</p>
                   </div>
                 </div>
@@ -231,10 +231,10 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               {sixsenseData.securityIncidents && (
                 <div className="space-y-2">
                   <h4 className="font-semibold flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                    <AlertTriangle className="h-4 w-4 text-critical" />
                     Recent Security Incidents
                   </h4>
-                  <div className="p-3 rounded-lg border bg-red-500/10 border-red-500/30">
+                  <div className="p-3 rounded-sm border bg-critical-subtle border-critical/30">
                     {(() => {
                       // Try to parse JSON if it's a JSON string
                       let incidents = sixsenseData.securityIncidents;
@@ -257,10 +257,10 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               {sixsenseData.cybersecurityInsights && (
                 <div className="space-y-2">
                   <h4 className="font-semibold flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-purple-500" />
+                    <Layers className="h-4 w-4 text-accent" />
                     Cybersecurity Insights
                   </h4>
-                  <div className="p-3 rounded-lg border bg-muted/50">
+                  <div className="p-3 rounded-sm border bg-muted/50">
                     <p className="text-sm whitespace-pre-wrap">{sixsenseData.cybersecurityInsights}</p>
                   </div>
                 </div>
@@ -270,10 +270,10 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               {sixsenseData.abmBrief && (
                 <div className="space-y-2">
                   <h4 className="font-semibold flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-cyan-500" />
+                    <Building2 className="h-4 w-4 text-accent" />
                     ABM Intelligence Brief
                   </h4>
-                  <div className="p-3 rounded-lg border bg-muted/50">
+                  <div className="p-3 rounded-sm border bg-muted/50">
                     <p className="text-sm whitespace-pre-wrap">{sixsenseData.abmBrief}</p>
                   </div>
                 </div>
@@ -283,7 +283,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               {sixsenseData.keywords && (
                 <div className="space-y-2">
                   <h4 className="font-semibold flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-amber-500" />
+                    <Zap className="h-4 w-4 text-caution" />
                     Intent Keywords
                   </h4>
                   <div className="flex flex-wrap gap-2">
@@ -310,7 +310,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               icon={Sparkles}
               title="Executive Summary"
               subtitle="AI-powered strategic analysis and opportunities"
-              color="bg-gradient-to-br from-primary to-purple-600"
+              color="bg-accent from-primary "
               isLoading={overviewQuery.isLoading}
               cached={overviewQuery.data?.cached}
               cacheAge={overviewQuery.data?.cacheAge}
@@ -330,7 +330,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
                   <div className="h-4 bg-muted rounded animate-pulse w-4/6" />
                 </div>
               ) : overviewQuery.isError ? (
-                <div className="text-red-500 flex items-center gap-2">
+                <div className="text-critical flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4" />
                   Failed to load summary. <Button variant="link" className="p-0 h-auto" onClick={() => overviewQuery.refetch()}>Retry</Button>
                 </div>
@@ -373,7 +373,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               icon={TrendingUp}
               title="Market Research"
               subtitle="Competitive intelligence, trigger events, and market insights"
-              color="bg-gradient-to-br from-cyan-500 to-blue-500"
+              color="bg-accent"
               isLoading={researchQuery.isLoading}
               cached={researchQuery.data?.cached}
               cacheAge={researchQuery.data?.cacheAge}
@@ -409,7 +409,7 @@ export function IntelligenceTab({ accountId, account }: IntelligenceTabProps) {
               icon={Target}
               title="Strategic Recommendations"
               subtitle="AI-powered buying signals and next best actions"
-              color="bg-gradient-to-br from-purple-500 to-pink-500"
+              color="bg-accent"
               isLoading={insightsQuery.isLoading || insightsQuery.isFetching}
               cached={insightsQuery.data?.cached}
               cacheAge={insightsQuery.data?.cacheAge}

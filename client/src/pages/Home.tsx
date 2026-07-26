@@ -37,18 +37,18 @@ export default function Home() {
   // Show login screen if not authenticated (after all hooks)
   if (!authLoading && !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
           <div className="flex flex-col items-center gap-6">
             <div className="relative">
               <img
                 src={APP_LOGO}
                 alt={APP_TITLE}
-                className="h-20 w-20 rounded-xl object-cover shadow"
+                className="h-20 w-20 rounded-md object-cover shadow"
               />
             </div>
             <div className="text-center space-y-2">
-              <h1 className="text-2xl font-bold tracking-tight">{APP_TITLE}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">{APP_TITLE}</h1>
               <p className="text-sm text-muted-foreground">
                 Your AI-powered sales intelligence command center
               </p>
@@ -81,8 +81,8 @@ export default function Home() {
   // Beautiful loading state
   if (accountsLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-        <div className="container py-12 space-y-8 max-w-7xl">
+      <div>
+        <div className="container py-1 space-y-5 max-w-7xl">
           {/* Hero skeleton */}
           <div className="space-y-4">
             <div className="h-12 w-96 skeleton" />
@@ -92,18 +92,18 @@ export default function Home() {
           {/* Stats skeleton */}
           <div className="grid gap-6 md:grid-cols-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 skeleton rounded-xl" />
+              <div key={i} className="h-32 skeleton rounded-md" />
             ))}
           </div>
 
           {/* Content skeleton */}
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-6">
-              <div className="h-96 skeleton rounded-xl" />
-              <div className="h-64 skeleton rounded-xl" />
+              <div className="h-96 skeleton rounded-md" />
+              <div className="h-64 skeleton rounded-md" />
             </div>
             <div className="space-y-6">
-              <div className="h-80 skeleton rounded-xl" />
+              <div className="h-80 skeleton rounded-md" />
             </div>
           </div>
         </div>
@@ -142,25 +142,23 @@ export default function Home() {
     ...action,
     priority: index === 0 ? "critical" : index === 1 ? "high" : "medium",
     icon: index === 0 ? Flame : index === 1 ? Zap : Linkedin,
-    gradient: index === 0 ? "from-red-600 to-orange-600" : index === 1 ? "from-amber-600 to-yellow-600" : "from-blue-600 to-cyan-600",
+    gradient: index === 0 ? " " : index === 1 ? " " : " ",
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+    <div>
       <DemoTour />
-      <div className="container py-12 space-y-8 max-w-7xl">
+      <div className="container py-1 space-y-5 max-w-7xl">
         {/* Hero Section */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl shadow-lg">
-                <Target className="h-8 w-8 text-white" />
-              </div>
+              <Target className="size-5 shrink-0 text-ink-faint" />
               <div>
-                <h1 className="text-5xl font-bold tracking-tight">
+                <h1 className="text-xl font-semibold tracking-tight">
                   Good morning{repName ? `, ${repName}` : ''} 👋
                 </h1>
-                <p className="text-muted-foreground text-lg mt-1">
+                <p className="text-ink-muted text-sm mt-0.5">
                   {isKnownRep ? (
                     <span className="flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
@@ -186,10 +184,10 @@ export default function Home() {
             <Card className="card-elevated border-l-4 border-l-indigo-500 cursor-pointer hover:scale-[1.02] transition-transform">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Total Accounts</CardTitle>
-                <Building2 className="h-5 w-5 text-indigo-500" />
+                <Building2 className="h-5 w-5 text-accent" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{totalAccounts}</div>
+                <div className="text-2xl font-semibold">{totalAccounts}</div>
                 <p className="text-xs text-muted-foreground mt-1">{isKnownRep ? `${repTerritory} territory` : 'Across all territories'}</p>
               </CardContent>
             </Card>
@@ -199,10 +197,10 @@ export default function Home() {
             <Card className="card-elevated border-l-4 border-l-red-500 cursor-pointer hover:scale-[1.02] transition-transform">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Hot Leads</CardTitle>
-                <Flame className="h-5 w-5 text-red-500" />
+                <Flame className="h-5 w-5 text-critical" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-red-600 dark:text-red-400">{hotLeads}</div>
+                <div className="text-2xl font-semibold text-critical dark:text-critical">{hotLeads}</div>
                 <p className="text-xs text-muted-foreground mt-1">Intent score 70+</p>
               </CardContent>
             </Card>
@@ -212,10 +210,10 @@ export default function Home() {
             <Card className="card-elevated border-l-4 border-l-orange-500 cursor-pointer hover:scale-[1.02] transition-transform">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Warm Leads</CardTitle>
-                <TrendingUp className="h-5 w-5 text-orange-500" />
+                <TrendingUp className="h-5 w-5 text-caution" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{warmLeads}</div>
+                <div className="text-2xl font-semibold text-caution dark:text-caution">{warmLeads}</div>
                 <p className="text-xs text-muted-foreground mt-1">Engagement, intent 70+, or calls</p>
               </CardContent>
             </Card>
@@ -225,10 +223,10 @@ export default function Home() {
             <Card className="card-elevated border-l-4 border-l-emerald-500 cursor-pointer hover:scale-[1.02] transition-transform">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Pipeline Revenue</CardTitle>
-                <DollarSign className="h-5 w-5 text-emerald-500" />
+                <DollarSign className="h-5 w-5 text-positive" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                <div className="text-2xl font-semibold text-positive dark:text-positive">
                   ${(opportunitiesData
                     ?.filter((opp: any) => String(opp.status ?? "Open").toLowerCase() === "open")
                     .reduce((sum: number, opp: any) => sum + (Number(opp.amount) || 0), 0) || 0).toLocaleString()}
@@ -242,10 +240,10 @@ export default function Home() {
             <Card className="card-elevated border-l-4 border-l-cyan-500 cursor-pointer hover:scale-[1.02] transition-transform">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">6QA Opportunity Gap</CardTitle>
-                <Target className="h-5 w-5 text-cyan-500" />
+                <Target className="h-5 w-5 text-accent" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-red-500">{sixsenseSummary?.sixQA?.unworked || 0}</div>
+                <div className="text-2xl font-semibold text-critical">{sixsenseSummary?.sixQA?.unworked || 0}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {sixsenseSummary?.sixQA?.total ? `${Math.round(((sixsenseSummary.sixQA.unworked || 0) / sixsenseSummary.sixQA.total) * 100)}%` : '0%'} unworked 6QAs
                 </p>
@@ -259,9 +257,7 @@ export default function Home() {
           <Link href="/outreach">
             <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg">
-                  <Mail className="h-5 w-5 text-white" />
-                </div>
+                <Mail className="size-5 shrink-0 text-ink-faint" />
                 <div>
                   <div className="font-semibold text-sm">Generate Outreach</div>
                   <div className="text-xs text-muted-foreground">AI-powered emails</div>
@@ -274,9 +270,7 @@ export default function Home() {
             <Link href="/calls">
               <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full">
                 <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg">
-                    <Phone className="h-5 w-5 text-white" />
-                  </div>
+                  <Phone className="size-5 shrink-0 text-ink-faint" />
                   <div>
                     <div className="font-semibold text-sm">Review Gong Calls</div>
                     <div className="text-xs text-muted-foreground">Latest conversations</div>
@@ -287,11 +281,9 @@ export default function Home() {
           )}
           */}
           <Link href="/top-accounts">
-            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full border-indigo-500/30">
+            <Card className="card-elevated cursor-pointer hover:scale-[1.02] transition-transform h-full border-accent/30">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg">
-                  <Target className="h-5 w-5 text-white" />
-                </div>
+                <Target className="size-5 shrink-0 text-ink-faint" />
                 <div>
                   <div className="font-semibold text-sm">Top 15 Accounts</div>
                   <div className="text-xs text-muted-foreground">By Region & AE</div>
@@ -309,8 +301,8 @@ export default function Home() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Flame className="h-6 w-6 text-red-500" />
-                  <h2 className="text-2xl font-bold">Priority Actions</h2>
+                  <Flame className="h-6 w-6 text-critical" />
+                  <h2 className="text-2xl font-semibold">Priority Actions</h2>
                 </div>
                 <Badge className="badge-danger">3 urgent</Badge>
               </div>
@@ -333,17 +325,17 @@ export default function Home() {
                   const triggerEvents = (action as any).triggerEvents;
                   
                   // Determine VECTOR tier color
-                  const tierColor = vectorScores?.tier === 1 ? 'text-green-500' : 
-                                   vectorScores?.tier === 2 ? 'text-emerald-500' : 
-                                   vectorScores?.tier === 3 ? 'text-yellow-500' : 
-                                   vectorScores?.tier === 4 ? 'text-orange-500' : 'text-red-500';
+                  const tierColor = vectorScores?.tier === 1 ? 'text-positive' : 
+                                   vectorScores?.tier === 2 ? 'text-positive' : 
+                                   vectorScores?.tier === 3 ? 'text-caution' : 
+                                   vectorScores?.tier === 4 ? 'text-caution' : 'text-critical';
                   
                   return (
                     <Card key={action.id} className="card-elevated hover:scale-[1.01] transition-transform cursor-pointer group">
                       <CardContent className="p-6">
                         <div className="flex items-start gap-4">
                           {/* Company Logo */}
-                          <div className="w-12 h-12 rounded-lg bg-card border border-border flex-shrink-0 overflow-hidden">
+                          <div className="w-12 h-12 rounded-sm bg-card border border-border flex-shrink-0 overflow-hidden">
                             <img
                               src={`https://logo.clearbit.com/${action.domain}`}
                               alt={`${action.name} logo`}
@@ -351,7 +343,7 @@ export default function Home() {
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
-                                target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br ${action.gradient} rounded-lg"><svg class="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>`;
+                                target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-accent ${action.gradient} rounded-lg"><svg class="h-6 w-6 text-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>`;
                               }}
                             />
                           </div>
@@ -367,7 +359,7 @@ export default function Home() {
                                     </Badge>
                                   )}
                                   {isLostOpp && (
-                                    <Badge variant="destructive" className="bg-orange-600 hover:bg-orange-700">
+                                    <Badge variant="destructive" className="bg-caution hover:bg-caution">
                                       ⚠️ LOST OPP
                                     </Badge>
                                   )}
@@ -379,30 +371,22 @@ export default function Home() {
                                 {/* Temperature & Activity Badges */}
                                 <div className="flex flex-wrap gap-2 mt-1">
                                   {temperature && (
-                                    <Badge className={`text-xs ${
-                                      temperature === 'Hot' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                                      temperature === 'Warm' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
-                                      'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                                    }`}>
+                                    <Badge className={`text-xs ${ temperature === 'Hot' ? 'bg-critical-subtle text-critical border-critical/30' : temperature === 'Warm' ? 'bg-caution-subtle text-caution border-caution/30' : 'bg-accent-subtle text-accent border-accent/30' }`}>
                                       {temperature === 'Hot' ? '🔥' : temperature === 'Warm' ? '🌡️' : '❄️'} {temperature}
                                     </Badge>
                                   )}
                                   {daysSinceLastEngagement !== null && daysSinceLastEngagement !== undefined && (
-                                    <Badge variant="outline" className={`text-xs ${
-                                      daysSinceLastEngagement <= 7 ? 'border-green-500 text-green-400' :
-                                      daysSinceLastEngagement <= 30 ? 'border-yellow-500 text-yellow-400' :
-                                      'border-red-500 text-red-400'
-                                    }`}>
+                                    <Badge variant="outline" className={`text-xs ${ daysSinceLastEngagement <= 7 ? 'border-positive/30 text-positive' : daysSinceLastEngagement <= 30 ? 'border-caution/30 text-caution' : 'border-critical/30 text-critical' }`}>
                                       {daysSinceLastEngagement}d since activity
                                     </Badge>
                                   )}
                                   {salesActivities > 0 && (
-                                    <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
+                                    <Badge variant="outline" className="text-xs border-accent/30 text-accent">
                                       {salesActivities} activities
                                     </Badge>
                                   )}
                                   {opportunityStatus && (
-                                    <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-400">
+                                    <Badge variant="outline" className="text-xs border-accent/30 text-accent">
                                       Opp: {opportunityStatus}
                                     </Badge>
                                   )}
@@ -417,9 +401,9 @@ export default function Home() {
 
                             {/* Primary Contact Highlight */}
                             {primaryContact && (
-                              <div className="p-2 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                              <div className="p-2 bg-accent-subtle border border-accent/30 rounded-sm">
                                 <p className="text-sm">
-                                  <span className="font-semibold text-purple-400">Contact:</span>{' '}
+                                  <span className="font-semibold text-accent">Contact:</span>{' '}
                                   <span className="font-medium">{primaryContact}</span>
                                 </p>
                               </div>
@@ -433,7 +417,7 @@ export default function Home() {
                                 </p>
                                 {action.topContacts.slice(0, 3).map((contact: any, idx: number) => (
                                   <p key={idx} className="text-sm">
-                                    • <span className={`font-medium ${contact.isKeyTitle ? 'text-purple-400' : ''}`}>{contact.name}</span>
+                                    • <span className={`font-medium ${contact.isKeyTitle ? 'text-accent' : ''}`}>{contact.name}</span>
                                     {contact.title && <span className="text-muted-foreground"> - {contact.title}</span>}
                                   </p>
                                 ))}
@@ -441,13 +425,13 @@ export default function Home() {
                             )}
 
                             {/* Why Now with VECTOR context */}
-                            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                              <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">Why Now:</p>
+                            <div className="p-3 bg-caution-subtle border border-caution/30 rounded-sm">
+                              <p className="text-xs font-semibold text-caution dark:text-caution mb-1">Why Now:</p>
                               <p className="text-sm text-foreground">{action.whyNow}</p>
                             </div>
 
                             {/* Next Best Action */}
-                            <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                            <div className="p-3 bg-primary/10 border border-primary/20 rounded-sm">
                               <p className="text-xs font-semibold text-primary mb-1">Next Best Action:</p>
                               <p className="text-sm text-foreground">{action.nextBestAction}</p>
                             </div>
@@ -459,11 +443,7 @@ export default function Home() {
                                 Last: {engagementMetrics?.lastCallFormatted || 'Never'}
                               </span>
                               {engagementMetrics?.daysSinceLastCall !== null && engagementMetrics?.daysSinceLastCall !== undefined && (
-                                <Badge variant="outline" className={`text-xs ${
-                                  engagementMetrics.daysSinceLastCall <= 7 ? 'border-green-500 text-green-500' :
-                                  engagementMetrics.daysSinceLastCall <= 30 ? 'border-yellow-500 text-yellow-500' :
-                                  'border-red-500 text-red-500'
-                                }`}>
+                                <Badge variant="outline" className={`text-xs ${ engagementMetrics.daysSinceLastCall <= 7 ? 'border-positive/30 text-positive' : engagementMetrics.daysSinceLastCall <= 30 ? 'border-caution/30 text-caution' : 'border-critical/30 text-critical' }`}>
                                   {engagementMetrics.daysSinceLastCall}d ago
                                 </Badge>
                               )}
@@ -476,16 +456,16 @@ export default function Home() {
                             {/* VECTOR Score Breakdown (compact) */}
                             {vectorScores && (
                               <div className="flex gap-2 text-xs">
-                                <span className="px-2 py-0.5 bg-blue-500/20 rounded" title="Engagement">
+                                <span className="px-2 py-0.5 bg-accent-subtle rounded" title="Engagement">
                                   E:{vectorScores.engagement}
                                 </span>
-                                <span className="px-2 py-0.5 bg-green-500/20 rounded" title="Conversion">
+                                <span className="px-2 py-0.5 bg-positive-subtle rounded" title="Conversion">
                                   C:{vectorScores.conversion}
                                 </span>
-                                <span className="px-2 py-0.5 bg-purple-500/20 rounded" title="Strategic">
+                                <span className="px-2 py-0.5 bg-accent-subtle rounded" title="Strategic">
                                   S:{vectorScores.strategic}
                                 </span>
-                                <span className="px-2 py-0.5 bg-orange-500/20 rounded" title="Timing">
+                                <span className="px-2 py-0.5 bg-caution-subtle rounded" title="Timing">
                                   T:{vectorScores.timing}
                                 </span>
                               </div>
@@ -534,8 +514,8 @@ export default function Home() {
 
                     return (
                       <Link key={account.id} href={`/accounts/${account.id}`}>
-                        <div className="flex items-center gap-4 p-4 rounded-xl border border-border/50 hover:border-primary/50 hover:bg-accent/50 transition-all cursor-pointer group">
-                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 text-white font-bold shadow-lg">
+                        <div className="flex items-center gap-4 p-4 rounded-md border border-border/50 hover:border-primary/50 hover:bg-accent/50 transition-all cursor-pointer group">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-sm bg-accent text-accent-foreground font-bold shadow-lg">
                             {index + 1}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -602,7 +582,7 @@ export default function Home() {
             <Card className="card-elevated border-l-4 border-l-cyan-500">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <TrendingUp className="h-5 w-5 text-cyan-500" />
+                  <TrendingUp className="h-5 w-5 text-accent" />
                   Trending Intent Keywords
                 </CardTitle>
                 <CardDescription className="text-xs">

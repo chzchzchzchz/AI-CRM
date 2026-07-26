@@ -45,7 +45,7 @@ export function AIInsightsTab({ accountId }: AIInsightsTabProps) {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-purple-500" />
+                <Target className="h-5 w-5 text-accent" />
                 Strategic Recommendations
               </CardTitle>
               <CardDescription>
@@ -88,7 +88,7 @@ export function AIInsightsTab({ accountId }: AIInsightsTabProps) {
               <SafeStreamdown>{data.recommendations}</SafeStreamdown>
             </div>
           ) : (
-            <div className="p-4 rounded-lg bg-muted/50 text-center text-muted-foreground">
+            <div className="p-4 rounded-sm bg-muted/50 text-center text-muted-foreground">
               No strategic insights available
             </div>
           )}

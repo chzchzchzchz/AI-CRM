@@ -89,7 +89,7 @@ export function OverviewTab({ accountId, account }: OverviewTabProps) {
               <SafeStreamdown>{data.summary}</SafeStreamdown>
             </div>
           ) : (
-            <div className="p-4 rounded-lg bg-muted/50 text-center text-muted-foreground">
+            <div className="p-4 rounded-sm bg-muted/50 text-center text-muted-foreground">
               No summary available
             </div>
           )}

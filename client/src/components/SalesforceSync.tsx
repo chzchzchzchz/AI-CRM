@@ -70,7 +70,7 @@ export function SalesforceSync() {
           {testConnection.isLoading ? (
             <Badge variant="secondary">Checking...</Badge>
           ) : testConnection.data?.connected ? (
-            <Badge variant="default" className="bg-green-600">
+            <Badge variant="default" className="bg-positive">
               <CheckCircle className="h-3 w-3 mr-1" />
               Connected
             </Badge>
@@ -84,17 +84,17 @@ export function SalesforceSync() {
 
         {/* Current Data Stats */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="text-center p-3 bg-muted rounded-lg">
+          <div className="text-center p-3 bg-muted rounded-sm">
             <Building className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
             <div className="text-2xl font-bold">{status?.accounts || 0}</div>
             <div className="text-xs text-muted-foreground">Accounts</div>
           </div>
-          <div className="text-center p-3 bg-muted rounded-lg">
+          <div className="text-center p-3 bg-muted rounded-sm">
             <Users className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
             <div className="text-2xl font-bold">{status?.contacts || 0}</div>
             <div className="text-xs text-muted-foreground">Contacts</div>
           </div>
-          <div className="text-center p-3 bg-muted rounded-lg">
+          <div className="text-center p-3 bg-muted rounded-sm">
             <CheckCircle className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
             <div className="text-2xl font-bold">{status?.linkedContacts || 0}</div>
             <div className="text-xs text-muted-foreground">Linked</div>
@@ -130,14 +130,14 @@ export function SalesforceSync() {
 
         {/* Status Message */}
         {syncStatus && (
-          <div className="p-3 bg-muted rounded-lg text-sm">
+          <div className="p-3 bg-muted rounded-sm text-sm">
             {syncStatus}
           </div>
         )}
 
         {/* Error Message */}
         {testConnection.data && !testConnection.data.connected && (
-          <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
+          <div className="p-3 bg-destructive/10 text-destructive rounded-sm text-sm">
             {testConnection.data.error || "Unable to connect to Salesforce. Check your credentials in Settings → Secrets."}
           </div>
         )}

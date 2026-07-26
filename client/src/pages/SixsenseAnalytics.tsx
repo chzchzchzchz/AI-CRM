@@ -39,27 +39,27 @@ export default function SixsenseAnalytics() {
   };
 
   const stageColors: Record<string, string> = {
-    Target: "bg-slate-500",
-    Awareness: "bg-blue-500",
-    Consideration: "bg-yellow-500",
-    Decision: "bg-orange-500",
-    Purchase: "bg-green-500",
+    Target: "bg-muted",
+    Awareness: "bg-accent",
+    Consideration: "bg-caution",
+    Decision: "bg-caution",
+    Purchase: "bg-positive",
   };
 
   const categoryColors: Record<string, string> = {
-    product: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
-    threat: "bg-red-500/20 text-red-400 border-red-500/30",
-    competitor: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-    compliance: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    brand: "bg-green-500/20 text-green-400 border-green-500/30",
-    event: "bg-pink-500/20 text-pink-400 border-pink-500/30",
-    general: "bg-slate-500/20 text-slate-400 border-slate-500/30",
+    product: "bg-accent-subtle text-accent border-accent/30",
+    threat: "bg-critical-subtle text-critical border-critical/30",
+    competitor: "bg-accent-subtle text-accent border-accent/30",
+    compliance: "bg-caution-subtle text-caution border-caution/30",
+    brand: "bg-positive-subtle text-positive border-positive/30",
+    event: "bg-critical-subtle text-critical border-critical/30",
+    general: "bg-muted text-ink-muted border-border",
   };
 
   if (summaryLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent/30"></div>
       </div>
     );
   }
@@ -69,7 +69,7 @@ export default function SixsenseAnalytics() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">6sense Analytics</h1>
+          <h1 className="text-2xl font-semibold">6sense Analytics</h1>
           <p className="text-muted-foreground">
             Intent signals and buying stage insights
             {summary?.dataAsOf && (
@@ -86,12 +86,12 @@ export default function SixsenseAnalytics() {
         <Card className="border-l-4 border-l-cyan-500">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Zap className="w-4 h-4 text-cyan-500" />
+              <Zap className="w-4 h-4 text-accent" />
               Total 6QAs
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{summary?.sixQA?.total || 0}</div>
+            <div className="text-2xl font-semibold">{summary?.sixQA?.total || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">Qualified accounts</p>
           </CardContent>
         </Card>
@@ -99,12 +99,12 @@ export default function SixsenseAnalytics() {
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-500" />
+              <CheckCircle className="w-4 h-4 text-positive" />
               Worked
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-500">{summary?.sixQA?.worked || 0}</div>
+            <div className="text-2xl font-semibold text-positive">{summary?.sixQA?.worked || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {summary?.sixQA?.workedPercent || 0}% of 6QAs
             </p>
@@ -114,12 +114,12 @@ export default function SixsenseAnalytics() {
         <Card className="border-l-4 border-l-red-500">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-500" />
+              <AlertTriangle className="w-4 h-4 text-critical" />
               Unworked
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-500">{summary?.sixQA?.unworked || 0}</div>
+            <div className="text-2xl font-semibold text-critical">{summary?.sixQA?.unworked || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {100 - (summary?.sixQA?.workedPercent || 0)}% opportunity gap
             </p>
@@ -129,12 +129,12 @@ export default function SixsenseAnalytics() {
         <Card className="border-l-4 border-l-orange-500">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-orange-500" />
+              <TrendingUp className="w-4 h-4 text-caution" />
               Decision + Purchase
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-orange-500">
+            <div className="text-2xl font-semibold text-caution">
               {(summary?.buyingStages?.decision || 0) + (summary?.buyingStages?.purchase || 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Ready to buy</p>
@@ -211,7 +211,7 @@ export default function SixsenseAnalytics() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {engagement?.metrics?.map((metric) => (
-                  <div key={metric.state} className="p-4 rounded-lg bg-muted/50">
+                  <div key={metric.state} className="p-4 rounded-sm bg-muted/50">
                     <div className="text-sm text-muted-foreground">{metric.state}</div>
                     <div className="text-2xl font-bold mt-1">{metric.accounts}</div>
                   </div>
@@ -221,9 +221,9 @@ export default function SixsenseAnalytics() {
           </Card>
 
           {/* Engagement Insights */}
-          <Card className="border-yellow-500/30 bg-yellow-500/5">
+          <Card className="border-caution/30 bg-caution-subtle">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-yellow-500">
+              <CardTitle className="flex items-center gap-2 text-caution">
                 <AlertTriangle className="w-5 h-5" />
                 Engagement Gap Alert
               </CardTitle>
@@ -231,14 +231,14 @@ export default function SixsenseAnalytics() {
             <CardContent>
               <p className="text-muted-foreground">
                 <strong className="text-foreground">{summary?.engagement?.noEngagement || 0} accounts</strong> showing 
-                intent signals have <strong className="text-red-400">zero engagement</strong> with your marketing or sales. 
+                intent signals have <strong className="text-critical">zero engagement</strong> with your marketing or sales. 
                 These are warm prospects going cold.
               </p>
               <div className="mt-4 flex gap-2">
-                <Badge variant="outline" className="border-yellow-500/30 text-yellow-500">
+                <Badge variant="outline" className="border-caution/30 text-caution">
                   {summary?.engagement?.intent || 0} with intent
                 </Badge>
-                <Badge variant="outline" className="border-green-500/30 text-green-500">
+                <Badge variant="outline" className="border-positive/30 text-positive">
                   {summary?.engagement?.knownEngagement || 0} engaged
                 </Badge>
               </div>
@@ -337,7 +337,7 @@ export default function SixsenseAnalytics() {
             <CardContent>
               {performance?.latest && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 rounded-lg bg-muted/50">
+                  <div className="p-4 rounded-sm bg-muted/50">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Activity className="w-4 h-4" />
                       Avg Sales Activities
@@ -348,7 +348,7 @@ export default function SixsenseAnalytics() {
                     <p className="text-xs text-muted-foreground">per worked account</p>
                   </div>
 
-                  <div className="p-4 rounded-lg bg-muted/50">
+                  <div className="p-4 rounded-sm bg-muted/50">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Users className="w-4 h-4" />
                       Avg Contacts Reached
@@ -359,7 +359,7 @@ export default function SixsenseAnalytics() {
                     <p className="text-xs text-muted-foreground">per worked account</p>
                   </div>
 
-                  <div className="p-4 rounded-lg bg-muted/50">
+                  <div className="p-4 rounded-sm bg-muted/50">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock className="w-4 h-4" />
                       Days to First Activity
@@ -370,7 +370,7 @@ export default function SixsenseAnalytics() {
                     <p className="text-xs text-muted-foreground">average</p>
                   </div>
 
-                  <div className="p-4 rounded-lg bg-muted/50">
+                  <div className="p-4 rounded-sm bg-muted/50">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock className="w-4 h-4" />
                       Days Since Last Activity
@@ -393,13 +393,13 @@ export default function SixsenseAnalytics() {
                         {new Date(day.day!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </span>
                       <div className="flex-1 flex items-center gap-2">
-                        <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden flex">
+                        <div className="flex-1 h-4 bg-muted rounded-sm overflow-hidden flex">
                           <div 
-                            className="h-full bg-green-500"
+                            className="h-full bg-positive"
                             style={{ width: `${((day.worked || 0) / (day.total6QAs || 1)) * 100}%` }}
                           />
                           <div 
-                            className="h-full bg-red-500/50"
+                            className="h-full bg-critical"
                             style={{ width: `${((day.unworked || 0) / (day.total6QAs || 1)) * 100}%` }}
                           />
                         </div>
@@ -412,10 +412,10 @@ export default function SixsenseAnalytics() {
                 </div>
                 <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-green-500 rounded" /> Worked
+                    <div className="w-3 h-3 bg-positive rounded" /> Worked
                   </span>
                   <span className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-red-500/50 rounded" /> Unworked
+                    <div className="w-3 h-3 bg-critical rounded" /> Unworked
                   </span>
                 </div>
               </div>

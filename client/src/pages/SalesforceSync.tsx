@@ -32,9 +32,9 @@ export default function SalesforceSync() {
 
   return (
     <DashboardLayout>
-      <div className="container py-8 space-y-6">
+      <div className="container py-1 space-y-5">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Salesforce Sync</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Salesforce Sync</h1>
           <p className="text-muted-foreground mt-2">
             Connect and sync your Salesforce accounts and contacts
           </p>

@@ -1,14 +1,27 @@
 import { memo, useMemo, useState, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge, StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Navigation } from "@/components/Navigation";
-import { trpc } from "@/lib/trpc";
-import { Link } from "wouter";
 import {
-  Building2, Users, MapPin, TrendingUp, ExternalLink, Search,
-  Filter, ArrowUpDown, Target, Zap, Eye, Flame, Mail, Sparkles
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ScoreBar } from "@/components/ui/charts";
+import { MetricGrid } from "@/components/ui/metric";
+import { EmptyState } from "@/components/ui/empty-state";
+import { CompanyLogo } from "@/components/ui/company-logo";
+import { StatCard } from "@/components/StatCard";
+import { PageHeader } from "@/components/app-shell/PageHeader";
+import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
+import { Link, useLocation } from "wouter";
+import {
+  ArrowUpDown, Building2, ChevronRight, Flame, Mail, Search, TrendingUp,
 } from "lucide-react";
 import { ContextualAI } from "@/components/ContextualAI";
 import {
@@ -36,6 +49,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   
   // Get rep context for territory filtering
   const { matchesTerritory, repInfo, isRepMode } = useRep();
+  const [, setLocation] = useLocation();
 
   const { data: accounts, isLoading } = trpc.accounts.list.useQuery(undefined, {
     staleTime: 3 * 60 * 1000
@@ -193,19 +207,19 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
       color: "badge-danger", 
       label: "Hot", 
       icon: Flame,
-      gradient: "from-red-600 to-orange-600"
+      gradient: " "
     };
     if (numScore >= 40) return { 
       color: "badge-warning", 
       label: "Warm", 
       icon: TrendingUp,
-      gradient: "from-orange-600 to-amber-600"
+      gradient: " "
     };
     return { 
       color: "badge-primary", 
       label: "Cold", 
       icon: Target,
-      gradient: "from-blue-600 to-cyan-600"
+      gradient: " "
     };
   };
 
@@ -221,20 +235,14 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-        <Navigation />
-        <div className="container py-12 space-y-8 max-w-7xl">
-          <div className="space-y-4">
-            <div className="h-12 w-96 skeleton" />
-            <div className="h-6 w-64 skeleton" />
-          </div>
-          <div className="h-32 skeleton rounded-xl" />
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-64 skeleton rounded-xl" />
-            ))}
-          </div>
+      <div className="container max-w-[1500px] space-y-5 py-1">
+        <div className="space-y-2">
+          <div className="skeleton h-6 w-56" />
+          <div className="skeleton h-4 w-40" />
         </div>
+        <div className="skeleton h-11 w-full" />
+        <div className="skeleton h-20 w-full" />
+        <div className="skeleton h-[420px] w-full" />
       </div>
     );
   }
@@ -245,351 +253,277 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     return score >= 40 && score < 70;
   }).length;
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <Navigation />
+  const filtersActive =
+    searchQuery !== "" ||
+    regionFilter !== "all" ||
+    industryFilter !== "all" ||
+    relationshipFilter !== "all" ||
+    intentFilter !== "all" ||
+    techFilter !== "all";
 
-      <div className="container py-12 space-y-8 max-w-7xl">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl shadow-lg">
-                <Building2 className="h-8 w-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-5xl font-bold tracking-tight">Target Accounts</h1>
-                <p className="text-muted-foreground text-lg mt-1">
-                  {filteredAccounts.length} accounts{isRepMode && ` • ${repInfo?.region} territory`}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
+  const resetFilters = () => {
+    setSearchQuery("");
+    setRegionFilter("all");
+    setIndustryFilter("all");
+    setRelationshipFilter("all");
+    setIntentFilter("all");
+    setTechFilter("all");
+  };
+
+  return (
+    <div className="container max-w-[1500px] space-y-5 py-1">
+      <PageHeader
+        title="Target Accounts"
+        description={
+          isRepMode
+            ? `${filteredAccounts.length} accounts in the ${repInfo?.region} territory`
+            : `${filteredAccounts.length} accounts across all territories`
+        }
+        actions={
+          <>
             <RepSwitcher />
-            <Button asChild className="gradient-primary text-white shadow-lg hover:shadow-xl">
+            <Button asChild>
               <Link href="/outreach">
-                <Mail className="mr-2 h-5 w-5" />
-                Generate Outreach
+                <Mail className="size-4" />
+                Generate outreach
               </Link>
             </Button>
+          </>
+        }
+      />
+
+      <ContextualAI
+        context="accounts"
+        placeholder="Ask about these accounts…"
+      />
+
+      {/* Intent split — each tile is a filter. */}
+      <MetricGrid>
+        <StatCard
+          title="Hot"
+          value={hotCount}
+          subtitle="Intent 70+"
+          icon={Flame}
+          tone="critical"
+          onClick={() => setIntentFilter(intentFilter === "hot" ? "all" : "hot")}
+          className={intentFilter === "hot" ? "bg-muted" : undefined}
+        />
+        <StatCard
+          title="Warm"
+          value={warmCount}
+          subtitle="Intent 40–69"
+          icon={TrendingUp}
+          tone="caution"
+          onClick={() => setIntentFilter(intentFilter === "warm" ? "all" : "warm")}
+          className={intentFilter === "warm" ? "bg-muted" : undefined}
+        />
+        <StatCard
+          title="In view"
+          value={filteredAccounts.length}
+          subtitle={filtersActive ? "Filtered" : "All accounts"}
+          icon={Building2}
+          onClick={resetFilters}
+        />
+      </MetricGrid>
+
+      {/* Filter bar */}
+      <Card variant="sunken">
+        <CardContent className="flex flex-wrap items-center gap-2 p-2.5">
+          <div className="relative min-w-52 flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-ink-faint" />
+            <Input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search accounts…"
+              className="pl-8"
+            />
           </div>
-        </div>
 
-        {/* AI Assistant Bar */}
-        <ContextualAI context="accounts" placeholder="Ask AI: Which accounts have the highest intent?" />
+          <Select value={regionFilter} onValueChange={setRegionFilter}>
+            <SelectTrigger className="h-8 w-auto min-w-28 text-xs"><SelectValue placeholder="Region" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All regions</SelectItem>
+              {regions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+            </SelectContent>
+          </Select>
 
-        {/* Quick Stats - All Clickable */}
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card 
-            className="card-elevated border-l-4 border-l-red-500 cursor-pointer hover:scale-[1.02] transition-transform"
-            onClick={() => setIntentFilter("hot")}
-          >
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Flame className="h-4 w-4 text-red-500" />
-                Hot Leads
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-600 dark:text-red-400">{hotCount}</div>
-              <p className="text-xs text-muted-foreground mt-1">Intent score 70+ • Click to filter</p>
-            </CardContent>
-          </Card>
+          <Select value={industryFilter} onValueChange={setIndustryFilter}>
+            <SelectTrigger className="h-8 w-auto min-w-28 text-xs"><SelectValue placeholder="Industry" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All industries</SelectItem>
+              {industries.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
+            </SelectContent>
+          </Select>
 
-          <Card 
-            className="card-elevated border-l-4 border-l-orange-500 cursor-pointer hover:scale-[1.02] transition-transform"
-            onClick={() => setIntentFilter("warm")}
-          >
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-orange-500" />
-                Warm Leads
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{warmCount}</div>
-              <p className="text-xs text-muted-foreground mt-1">Intent score 40-69 • Click to filter</p>
-            </CardContent>
-          </Card>
+          <Select value={relationshipFilter} onValueChange={setRelationshipFilter}>
+            <SelectTrigger className="h-8 w-auto min-w-24 text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value="Customer">Customer</SelectItem>
+              <SelectItem value="Prospect">Prospect</SelectItem>
+              <SelectItem value="Opportunity">Opportunity</SelectItem>
+            </SelectContent>
+          </Select>
 
-          <Card 
-            className="card-elevated border-l-4 border-l-indigo-500 cursor-pointer hover:scale-[1.02] transition-transform"
-            onClick={() => setIntentFilter("all")}
-          >
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Target className="h-4 w-4 text-indigo-500" />
-                Total Pipeline
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{filteredAccounts.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">Active accounts • Click to reset filters</p>
-            </CardContent>
-          </Card>
-        </div>
+          {mfaProviders.length > 0 && (
+            <Select value={techFilter} onValueChange={setTechFilter}>
+              <SelectTrigger className="h-8 w-auto min-w-24 text-xs"><SelectValue placeholder="Identity" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any identity stack</SelectItem>
+                {mfaProviders.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
 
-        {/* Filters */}
-        <Card className="card-elevated">
-          <CardContent className="p-6">
-            <div className="grid md:grid-cols-7 gap-4">
-              {/* Search */}
-              <div className="md:col-span-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search accounts..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
+          {filtersActive && (
+            <Button variant="ghost" size="sm" onClick={resetFilters}>
+              Clear
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
-              <Select value={regionFilter} onValueChange={setRegionFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Regions" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Regions</SelectItem>
-                  {regions.map((region: string) => (
-                    <SelectItem key={region} value={region!}>{region}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={industryFilter} onValueChange={setIndustryFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Industries" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Industries</SelectItem>
-                  {industries.map(industry => (
-                    <SelectItem key={industry} value={industry}>{industry}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={relationshipFilter} onValueChange={setRelationshipFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Relationship" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="Prospect">Prospects</SelectItem>
-                  <SelectItem value="Customer">Customers</SelectItem>
-                  <SelectItem value="Partner">Partners</SelectItem>
-                  <SelectItem value="POV">POVs</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={intentFilter} onValueChange={setIntentFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Intent" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Intent</SelectItem>
-                  <SelectItem value="hot">Hot (70+)</SelectItem>
-                  <SelectItem value="warm">Warm (40-69)</SelectItem>
-                  <SelectItem value="cold">Cold (&lt;40)</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={techFilter} onValueChange={setTechFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="MFA Provider" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All MFA</SelectItem>
-                  {mfaProviders.map((provider: string) => (
-                    <SelectItem key={provider} value={provider}>{provider}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Sort Controls */}
-            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border/50">
-              <span className="text-sm text-muted-foreground">Sort by:</span>
-              <Button
-                variant={sortField === "intentScore" ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleToggleSort("intentScore")}
-              >
-                Intent Score
-                {sortField === "intentScore" && (
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                )}
-              </Button>
-              <Button
-                variant={sortField === "name" ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleToggleSort("name")}
-              >
-                Name
-                {sortField === "name" && (
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                )}
-              </Button>
-              <Button
-                variant={sortField === "employees" ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleToggleSort("employees")}
-              >
-                Size
-                {sortField === "employees" && (
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Accounts Grid */}
+      {/* Accounts table */}
+      <Card className="overflow-hidden">
         {filteredAccounts.length === 0 ? (
-          <Card className="card-elevated">
-            <CardContent className="py-16 text-center">
-              <Building2 className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No accounts found</h3>
-              <p className="text-muted-foreground">Try adjusting your filters</p>
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={Building2}
+            title="No accounts match these filters"
+            description="Widen the search or clear the filters to see the full list."
+            action={<Button variant="outline" size="sm" onClick={resetFilters}>Clear filters</Button>}
+          />
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredAccounts.map((account: any) => {
-              const intentBadge = getIntentBadge(String(account.intentScore || "0"));
-              const IntentIcon = intentBadge.icon;
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <SortableHead field="name" label="Account" sortField={sortField} sortOrder={sortOrder} onSort={handleToggleSort} />
+                <SortableHead field="intentScore" label="Intent" sortField={sortField} sortOrder={sortOrder} onSort={handleToggleSort} className="w-40" />
+                <TableHead className="hidden md:table-cell">Stage</TableHead>
+                <SortableHead field="industry" label="Industry" sortField={sortField} sortOrder={sortOrder} onSort={handleToggleSort} className="hidden lg:table-cell" />
+                <SortableHead field="employees" label="Employees" sortField={sortField} sortOrder={sortOrder} onSort={handleToggleSort} className="hidden lg:table-cell text-right" />
+                <TableHead className="hidden xl:table-cell">Region</TableHead>
+                <TableHead className="hidden xl:table-cell">Activity</TableHead>
+                <TableHead className="w-8" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredAccounts.map((account: any) => {
+                const score = parseInt(String(account.intentScore || "0"));
+                const raw = (account.rawData as Record<string, any>) || {};
+                const days = raw.daysSinceLastEngagement ?? raw.lastSalesActivityDays;
+                const stage = account.sixsenseBuyingStage || account.relationship;
 
-              return (
-                <Link key={account.id} href={`/accounts/${account.id}`}>
-                  <Card className="card-elevated hover:scale-[1.02] transition-all cursor-pointer group h-full">
-                    <CardHeader>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          {/* Company Logo */}
-                          <div className="w-10 h-10 rounded-lg bg-card border border-border flex-shrink-0 overflow-hidden">
-                            <img
-                              src={`https://logo.clearbit.com/${account.domain}`}
-                              alt={`${account.name} logo`}
-                              className="w-full h-full object-contain"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold text-lg">${account.name.charAt(0)}</div>`;
-                              }}
-                            />
+                return (
+                  <TableRow
+                    key={account.id}
+                    className="group cursor-pointer"
+                    onClick={() => setLocation(`/accounts/${account.id}`)}
+                  >
+                    <TableCell>
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <CompanyLogo name={account.name} website={account.domain} size="md" />
+                        <div className="min-w-0">
+                          <div className="truncate font-medium group-hover:text-accent">
+                            {account.name}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <CardTitle className="text-xl group-hover:text-primary transition-colors line-clamp-1">
-                              {account.name}
-                            </CardTitle>
-                            <CardDescription className="mt-1 line-clamp-1">
-                              {account.domain}
-                            </CardDescription>
+                          <div className="truncate text-2xs text-ink-faint">
+                            {account.domain}
                           </div>
                         </div>
-                        <div className={`p-2 bg-gradient-to-br ${intentBadge.gradient} rounded-lg shadow-lg flex-shrink-0`}>
-                          <IntentIcon className="h-5 w-5 text-white" />
-                        </div>
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Intent Score */}
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Intent Score</span>
-                        <Badge className={intentBadge.color}>
-                          {account.intentScore} {intentBadge.label}
-                        </Badge>
-                      </div>
+                    </TableCell>
 
-                      {/* Details */}
-                      <div className="space-y-2 text-sm">
-                        {account.industry && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Building2 className="h-4 w-4 flex-shrink-0" />
-                            <span className="line-clamp-1">{account.industry}</span>
-                          </div>
-                        )}
-                        {account.employeeCount && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Users className="h-4 w-4 flex-shrink-0" />
-                            <span>{account.employeeCount} employees</span>
-                          </div>
-                        )}
-                        {account.region && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <MapPin className="h-4 w-4 flex-shrink-0" />
-                            <span>{account.region}</span>
-                          </div>
-                        )}
-                      </div>
+                    <TableCell>
+                      <ScoreBar score={score} />
+                    </TableCell>
 
-                      {/* Temperature & Activity from rawData */}
-                      {(() => {
-                        const rawData = (account.rawData as Record<string, any>) || {};
-                        const temperature = rawData.temperature;
-                        const daysSinceActivity = rawData.daysSinceLastEngagement || rawData.lastSalesActivityDays;
-                        const salesActivities = rawData.salesActivities || 0;
-                        const accountOwner = rawData.accountOwner || rawData.owner;
-                        
-                        return (
-                          <div className="flex flex-wrap gap-1.5">
-                            {temperature && (
-                              <Badge className={`text-xs ${
-                                temperature === 'Hot' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                                temperature === 'Warm' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
-                                'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                              }`}>
-                                {temperature === 'Hot' ? '🔥' : temperature === 'Warm' ? '🌡️' : '❄️'} {temperature}
-                              </Badge>
-                            )}
-                            {daysSinceActivity !== null && daysSinceActivity !== undefined && (
-                              <Badge variant="outline" className={`text-xs ${
-                                daysSinceActivity <= 7 ? 'border-green-500/50 text-green-400' :
-                                daysSinceActivity <= 30 ? 'border-yellow-500/50 text-yellow-400' :
-                                'border-red-500/50 text-red-400'
-                              }`}>
-                                {daysSinceActivity}d ago
-                              </Badge>
-                            )}
-                            {salesActivities > 0 && (
-                              <Badge variant="outline" className="text-xs border-purple-500/30 text-purple-400">
-                                {salesActivities} activities
-                              </Badge>
-                            )}
-                            {account.relationship && (
-                              <Badge variant="outline" className="text-xs">
-                                {account.relationship}
-                              </Badge>
-                            )}
-                          </div>
-                        );
-                      })()}
+                    <TableCell className="hidden md:table-cell">
+                      {stage ? (
+                        <Badge variant="secondary">{stage}</Badge>
+                      ) : (
+                        <span className="text-ink-faint">—</span>
+                      )}
+                    </TableCell>
 
-                      {/* Action Button */}
-                      <Button 
-                        variant="outline" 
-                        className="w-full group-hover:border-primary group-hover:text-primary"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          window.location.href = `/accounts/${account.id}`;
-                        }}
-                      >
-                        View Details
-                        <Eye className="ml-2 h-4 w-4" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
+                    <TableCell className="hidden max-w-40 truncate text-ink-muted lg:table-cell">
+                      {account.industry || "—"}
+                    </TableCell>
+
+                    <TableCell data-numeric className="hidden text-right text-ink-muted tabular-nums lg:table-cell">
+                      {account.employeeCount
+                        ? Number(String(account.employeeCount).replace(/[^0-9]/g, "")).toLocaleString()
+                        : "—"}
+                    </TableCell>
+
+                    <TableCell className="hidden text-ink-muted xl:table-cell">
+                      {account.region || "—"}
+                    </TableCell>
+
+                    <TableCell className="hidden xl:table-cell">
+                      {days === null || days === undefined ? (
+                        <span className="text-ink-faint">—</span>
+                      ) : (
+                        <StatusDot
+                          tone={days <= 7 ? "positive" : days <= 30 ? "caution" : "critical"}
+                          className="text-ink-muted"
+                        >
+                          {days}d ago
+                        </StatusDot>
+                      )}
+                    </TableCell>
+
+                    <TableCell>
+                      <ChevronRight className="size-4 text-ink-faint transition-colors group-hover:text-foreground" />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
-      </div>
+      </Card>
     </div>
   );
 });
+
+/** Header cell that toggles sort and shows the current direction. */
+function SortableHead({
+  field,
+  label,
+  sortField,
+  sortOrder,
+  onSort,
+  className,
+}: {
+  field: SortField;
+  label: string;
+  sortField: SortField;
+  sortOrder: SortOrder;
+  onSort: (f: SortField) => void;
+  className?: string;
+}) {
+  const active = sortField === field;
+  return (
+    <TableHead className={className}>
+      <button
+        onClick={e => {
+          e.stopPropagation();
+          onSort(field);
+        }}
+        className="inline-flex items-center gap-1 uppercase transition-colors hover:text-foreground"
+      >
+        {label}
+        <ArrowUpDown
+          className={cn(
+            "size-3 transition-opacity",
+            active ? "opacity-100 text-accent" : "opacity-0"
+          )}
+        />
+        {active && <span className="sr-only">{sortOrder === "asc" ? "ascending" : "descending"}</span>}
+      </button>
+    </TableHead>
+  );
+}
 
 export default function Accounts() {
   return <AccountsEnhanced />;

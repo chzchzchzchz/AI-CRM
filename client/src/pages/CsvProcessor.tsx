@@ -277,16 +277,14 @@ export default function CsvProcessor() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container py-8 max-w-6xl">
+    <div>
+      <div className="container py-1 max-w-6xl">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-3 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl shadow-lg">
-              <FileSpreadsheet className="h-8 w-8 text-white" />
-            </div>
+            <FileSpreadsheet className="size-5 shrink-0 text-ink-faint" />
             <div>
-              <h1 className="text-4xl font-bold tracking-tight">AI CSV Processor</h1>
+              <h1 className="text-xl font-semibold tracking-tight">AI CSV Processor</h1>
               <p className="text-muted-foreground text-lg">
                 Transform any CSV into SFDC/HubSpot webinar import format
               </p>
@@ -298,13 +296,7 @@ export default function CsvProcessor() {
         <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
           {["upload", "configure", "map", "preview", "export"].map((s, i) => (
             <div key={s} className="flex items-center">
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${
-                step === s 
-                  ? "bg-emerald-600 text-white" 
-                  : ["upload", "configure", "map", "preview", "export"].indexOf(step) > i
-                    ? "bg-emerald-600/20 text-emerald-400"
-                    : "bg-muted text-muted-foreground"
-              }`}>
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-sm ${ step === s ? "bg-positive text-positive-foreground" : ["upload", "configure", "map", "preview", "export"].indexOf(step) > i ? "bg-positive-subtle text-positive" : "bg-muted text-muted-foreground" }`}>
                 <span className="font-medium capitalize">{i + 1}. {s}</span>
               </div>
               {i < 4 && <ArrowRight className="h-4 w-4 mx-2 text-muted-foreground" />}
@@ -313,10 +305,10 @@ export default function CsvProcessor() {
         </div>
 
         {/* Instructions Card */}
-        <Card className="mb-6 border-emerald-500/30 bg-emerald-500/5">
+        <Card className="mb-6 border-positive/30 bg-positive-subtle">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <HelpCircle className="h-5 w-5 text-emerald-500" />
+              <HelpCircle className="h-5 w-5 text-positive" />
               How It Works
             </CardTitle>
           </CardHeader>
@@ -338,7 +330,7 @@ export default function CsvProcessor() {
                 <div
                   onDrop={handleDrop}
                   onDragOver={(e) => e.preventDefault()}
-                  className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-12 text-center hover:border-emerald-500/50 transition-colors cursor-pointer"
+                  className="border-2 border-dashed border-muted-foreground/30 rounded-md p-12 text-center hover:border-positive/30 transition-colors cursor-pointer"
                 >
                   <input
                     type="file"
@@ -361,9 +353,9 @@ export default function CsvProcessor() {
                   <div className="space-y-3">
                     <h3 className="font-semibold">Uploaded Files ({uploadedFiles.length})</h3>
                     {uploadedFiles.map((file, i) => (
-                      <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-sm">
                         <div className="flex items-center gap-3">
-                          <FileSpreadsheet className="h-5 w-5 text-emerald-500" />
+                          <FileSpreadsheet className="h-5 w-5 text-positive" />
                           <div>
                             <p className="font-medium">{file.name}</p>
                             <p className="text-sm text-muted-foreground">
@@ -376,7 +368,7 @@ export default function CsvProcessor() {
                         </Button>
                       </div>
                     ))}
-                    <Button onClick={combineFiles} className="w-full bg-emerald-600 hover:bg-emerald-700">
+                    <Button onClick={combineFiles} className="w-full bg-positive hover:bg-positive">
                       Continue to Configuration
                       <ArrowRight className="h-4 w-4 ml-2" />
                     </Button>
@@ -450,7 +442,7 @@ export default function CsvProcessor() {
                   <Button 
                     onClick={runAIMapping} 
                     disabled={!eventName || isAnalyzing}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                    className="flex-1 bg-positive hover:bg-positive"
                   >
                     {isAnalyzing ? (
                       <>
@@ -498,7 +490,7 @@ export default function CsvProcessor() {
 
                 <div className="grid gap-3 max-h-[400px] overflow-y-auto pr-2">
                   {templateInfo?.fields.map(field => (
-                    <div key={field.name} className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg">
+                    <div key={field.name} className="flex items-center gap-4 p-3 bg-muted/30 rounded-sm">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{field.name}</span>
@@ -534,7 +526,7 @@ export default function CsvProcessor() {
                   <Button 
                     onClick={processData}
                     disabled={isProcessing}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                    className="flex-1 bg-positive hover:bg-positive"
                   >
                     {isProcessing ? (
                       <>
@@ -558,7 +550,7 @@ export default function CsvProcessor() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold flex items-center gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                      <CheckCircle2 className="h-5 w-5 text-positive" />
                       Processing Complete
                     </h3>
                     <p className="text-sm text-muted-foreground">
@@ -598,7 +590,7 @@ export default function CsvProcessor() {
                   </Button>
                   <Button 
                     onClick={downloadCsv}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                    className="flex-1 bg-positive hover:bg-positive"
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Download Processed CSV

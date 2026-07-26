@@ -44,21 +44,21 @@ export default function DataValidation() {
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'critical':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
+        return <AlertCircle className="h-4 w-4 text-critical" />;
       case 'warning':
-        return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+        return <AlertTriangle className="h-4 w-4 text-caution" />;
       case 'info':
-        return <Info className="h-4 w-4 text-blue-500" />;
+        return <Info className="h-4 w-4 text-accent" />;
       default:
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-positive" />;
     }
   };
 
   const getSeverityBadge = (severity: string) => {
     const colors = {
-      critical: 'bg-red-500/10 text-red-500 border-red-500/20',
-      warning: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
-      info: 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+      critical: 'bg-critical-subtle text-critical border-critical/30',
+      warning: 'bg-caution-subtle text-caution border-caution/30',
+      info: 'bg-accent-subtle text-accent border-accent/30'
     };
     return colors[severity as keyof typeof colors] || '';
   };
@@ -68,7 +68,7 @@ export default function DataValidation() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Data Validation</h1>
+          <h1 className="text-xl font-semibold">Data Validation</h1>
           <p className="text-muted-foreground mt-1">
             AI-powered data quality checks with web search verification
           </p>
@@ -88,15 +88,15 @@ export default function DataValidation() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="p-6 border-l-4 border-l-blue-500">
             <div className="text-sm text-muted-foreground">Total Accounts</div>
-            <div className="text-3xl font-bold mt-1">{summaryQuery.data.totalAccounts}</div>
+            <div className="text-2xl font-semibold mt-1">{summaryQuery.data.totalAccounts}</div>
           </Card>
           <Card className="p-6 border-l-4 border-l-cyan-500">
             <div className="text-sm text-muted-foreground">Total Contacts</div>
-            <div className="text-3xl font-bold mt-1">{summaryQuery.data.totalContacts}</div>
+            <div className="text-2xl font-semibold mt-1">{summaryQuery.data.totalContacts}</div>
           </Card>
           <Card className="p-6 border-l-4 border-l-orange-500">
             <div className="text-sm text-muted-foreground">Account Issues</div>
-            <div className="text-3xl font-bold mt-1">{summaryQuery.data.totalIssues}</div>
+            <div className="text-2xl font-semibold mt-1">{summaryQuery.data.totalIssues}</div>
             <div className="text-xs text-muted-foreground mt-1">
               {summaryQuery.data.accountIssues.missingDomain} missing domains, 
               {summaryQuery.data.accountIssues.missingIndustry} missing industries
@@ -104,7 +104,7 @@ export default function DataValidation() {
           </Card>
           <Card className="p-6 border-l-4 border-l-purple-500">
             <div className="text-sm text-muted-foreground">Contact Issues</div>
-            <div className="text-3xl font-bold mt-1">
+            <div className="text-2xl font-semibold mt-1">
               {summaryQuery.data.contactIssues.missingEmail + summaryQuery.data.contactIssues.missingTitle}
             </div>
             <div className="text-xs text-muted-foreground mt-1">
@@ -127,7 +127,7 @@ export default function DataValidation() {
             <Button
               onClick={runAccountValidation}
               disabled={validating || bulkValidating}
-              className="bg-blue-500 hover:bg-blue-600"
+              className="bg-accent hover:bg-accent"
             >
               {validating ? (
                 <>
@@ -144,7 +144,7 @@ export default function DataValidation() {
             <Button
               onClick={runContactValidation}
               disabled={validating || bulkValidating}
-              className="bg-cyan-500 hover:bg-cyan-600"
+              className="bg-accent hover:bg-accent"
             >
               {validating ? (
                 <>
@@ -179,7 +179,7 @@ export default function DataValidation() {
               }}
               disabled={validating || bulkValidating}
               variant="outline"
-              className="w-full border-purple-500 text-purple-500 hover:bg-purple-500/10"
+              className="w-full border-accent/30 text-accent hover:bg-accent-subtle"
             >
               {bulkValidating ? (
                 <>
@@ -195,9 +195,9 @@ export default function DataValidation() {
             </Button>
             {bulkValidating && (
               <div className="mt-2">
-                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-purple-500 transition-all duration-300"
+                    className="h-full bg-accent transition-all duration-300"
                     style={{ width: `${bulkProgress}%` }}
                   />
                 </div>
@@ -226,7 +226,7 @@ export default function DataValidation() {
 
           {validationResults.totalIssues === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <CheckCircle className="h-12 w-12 mx-auto mb-3 text-green-500" />
+              <CheckCircle className="h-12 w-12 mx-auto mb-3 text-positive" />
               <p className="font-medium">No issues found!</p>
               <p className="text-sm">All validated data passed verification checks.</p>
             </div>

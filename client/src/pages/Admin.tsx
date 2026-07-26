@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, RefreshCw, Database, Zap, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Navigation } from "@/components/Navigation";
 
 export default function Admin() {
   const { user, loading } = useAuth();
@@ -61,10 +60,9 @@ export default function Admin() {
   // Admin access control
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        <Navigation />
+      <div className="min-h-screen bg-surface">
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-accent" />
         </div>
       </div>
     );
@@ -72,14 +70,13 @@ export default function Admin() {
 
   if (!user || user.role !== 'admin') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        <Navigation />
+      <div className="min-h-screen bg-surface">
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <Card className="bg-slate-900/50 border-slate-800 max-w-md">
+          <Card className="bg-card border-border max-w-md">
             <CardContent className="p-12 text-center">
-              <XCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-white mb-2">Access Denied</h2>
-              <p className="text-slate-400">
+              <XCircle className="h-16 w-16 text-critical mx-auto mb-4" />
+              <h2 className="text-2xl font-semibold text-foreground mb-2">Access Denied</h2>
+              <p className="text-ink-muted">
                 You need admin privileges to access this page.
               </p>
             </CardContent>
@@ -90,21 +87,18 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      <Navigation />
-      <div className="container py-8 space-y-8 max-w-6xl mx-auto">
+    <div className="min-h-screen bg-surface">
+      <div className="container py-1 space-y-5 max-w-6xl mx-auto">
         <div>
-          <h1 className="text-4xl font-bold text-white mb-2">Admin Panel</h1>
-          <p className="text-slate-400">Manage data enrichment, background jobs, and system health</p>
+          <h1 className="text-xl font-semibold text-foreground mb-2">Admin Panel</h1>
+          <p className="text-ink-muted">Manage data enrichment, background jobs, and system health</p>
         </div>
 
         {/* 6sense Enrichment */}
-        <Card className="border-blue-200 shadow-lg">
+        <Card className="border-accent/30 shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Database className="h-6 w-6 text-blue-600" />
-              </div>
+              <Database className="size-5 shrink-0 text-ink-faint" />
               <div>
                 <CardTitle>6sense Live Enrichment</CardTitle>
                 <CardDescription>Pull fresh intent data, keywords, and campaigns from 6sense API</CardDescription>
@@ -122,7 +116,7 @@ export default function Admin() {
                 {enriching ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  <Zap className="h-5 w-5 text-orange-500" />
+                  <Zap className="h-5 w-5 text-caution" />
                 )}
                 <div className="text-left">
                   <div className="font-semibold">Enrich High-Priority Accounts</div>
@@ -141,7 +135,7 @@ export default function Admin() {
                 {enriching ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  <RefreshCw className="h-5 w-5 text-blue-500" />
+                  <RefreshCw className="h-5 w-5 text-accent" />
                 )}
                 <div className="text-left">
                   <div className="font-semibold">Enrich All Accounts</div>
@@ -152,9 +146,9 @@ export default function Admin() {
               </Button>
             </div>
 
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <h4 className="font-semibold text-sm text-blue-900 mb-2">What gets enriched:</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
+            <div className="p-4 bg-accent rounded-sm border border-accent/30">
+              <h4 className="font-semibold text-sm text-accent mb-2">What gets enriched:</h4>
+              <ul className="text-sm text-accent space-y-1">
                 <li>• Intent scores (with spike detection)</li>
                 <li>• Buying stage changes</li>
                 <li>• Keyword research & trending topics</li>
@@ -166,12 +160,10 @@ export default function Admin() {
         </Card>
 
         {/* Background Job Queue */}
-        <Card className="border-purple-200 shadow-lg">
+        <Card className="border-accent/30 shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Clock className="h-6 w-6 text-purple-600" />
-              </div>
+              <Clock className="size-5 shrink-0 text-ink-faint" />
               <div>
                 <CardTitle>Background Job Queue</CardTitle>
                 <CardDescription>Schedule and process enrichment jobs asynchronously</CardDescription>
@@ -189,7 +181,7 @@ export default function Admin() {
                 {queueing ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  <CheckCircle2 className="h-5 w-5 text-positive" />
                 )}
                 <div className="text-left">
                   <div className="font-semibold">Queue All Jobs</div>
@@ -208,7 +200,7 @@ export default function Admin() {
                 {processing ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  <Zap className="h-5 w-5 text-purple-500" />
+                  <Zap className="h-5 w-5 text-accent" />
                 )}
                 <div className="text-left">
                   <div className="font-semibold">Process Queue (20 jobs)</div>
@@ -219,9 +211,9 @@ export default function Admin() {
               </Button>
             </div>
 
-            <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-              <h4 className="font-semibold text-sm text-purple-900 mb-2">How it works:</h4>
-              <ul className="text-sm text-purple-800 space-y-1">
+            <div className="p-4 bg-accent rounded-sm border border-accent/30">
+              <h4 className="font-semibold text-sm text-accent mb-2">How it works:</h4>
+              <ul className="text-sm text-accent space-y-1">
                 <li>• Jobs are prioritized by intent score (high intent = higher priority)</li>
                 <li>• Rate-limited to 500ms between requests (avoid API throttling)</li>
                 <li>• Failed jobs are retried with exponential backoff</li>
@@ -232,39 +224,39 @@ export default function Admin() {
         </Card>
 
         {/* System Status */}
-        <Card className="border-slate-200 shadow-lg">
+        <Card className="border-border shadow-lg">
           <CardHeader>
             <CardTitle>System Status</CardTitle>
             <CardDescription>Current enrichment and data quality metrics</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+              <div className="p-4 bg-positive rounded-sm border border-positive/30">
                 <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  <span className="font-semibold text-green-900">6sense API</span>
+                  <CheckCircle2 className="h-5 w-5 text-positive" />
+                  <span className="font-semibold text-positive">6sense API</span>
                 </div>
-                <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                <Badge variant="outline" className="bg-positive text-positive border-positive/30">
                   Connected
                 </Badge>
               </div>
 
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="p-4 bg-accent rounded-sm border border-accent/30">
                 <div className="flex items-center gap-2 mb-2">
-                  <Database className="h-5 w-5 text-blue-600" />
-                  <span className="font-semibold text-blue-900">Database</span>
+                  <Database className="h-5 w-5 text-accent" />
+                  <span className="font-semibold text-accent">Database</span>
                 </div>
-                <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
+                <Badge variant="outline" className="bg-accent text-accent border-accent/30">
                   Healthy
                 </Badge>
               </div>
 
-              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+              <div className="p-4 bg-accent rounded-sm border border-accent/30">
                 <div className="flex items-center gap-2 mb-2">
-                  <Clock className="h-5 w-5 text-purple-600" />
-                  <span className="font-semibold text-purple-900">Job Queue</span>
+                  <Clock className="h-5 w-5 text-accent" />
+                  <span className="font-semibold text-accent">Job Queue</span>
                 </div>
-                <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300">
+                <Badge variant="outline" className="bg-accent text-accent border-accent/30">
                   Ready
                 </Badge>
               </div>
