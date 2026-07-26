@@ -6,6 +6,7 @@ import { Badge } from"@/components/ui/badge";
 import { Progress } from"@/components/ui/progress";
 import { trpc } from"@/lib/trpc";
 import { toast } from"sonner";
+import { KnowledgeBase } from"@/components/KnowledgeBase";
 import { 
   Upload, FileSpreadsheet, Sparkles, Loader2, Download, 
   CheckCircle2, XCircle, AlertTriangle, Database, 
@@ -32,27 +33,9 @@ export default function DataHub() {
   const [result, setResult] = useState<ProcessingResult | null>(null);
   const [detectedType, setDetectedType] = useState<DataType>('auto');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const kbInputRef = useRef<HTMLInputElement>(null);
 
   const processLeadsMutation = trpc.tools.processLeads.useMutation();
-  const uploadDocMutation = trpc.tools.uploadDocument.useMutation({
-    onSuccess: (_r, vars) => toast.success(`Added"${vars.fileName}" to the knowledge base`),
-    onError: (e) => toast.error(e.message ||"Upload failed"),
-  });
-
-  // Knowledge-base upload: read a text document and index it for AI context.
-  const handleKbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (e.target) e.target.value ="";
-    if (!file) return;
-    const ext = file.name.split(".").pop()?.toLowerCase() ||"";
-    if (!["txt","md","csv","json","html"].includes(ext)) {
-      toast.error("Text documents only (.txt, .md, .csv, .json, .html).");
-      return;
-    }
-    const content = await file.text();
-    uploadDocMutation.mutate({ fileName: file.name, content, mimeType: file.type ||"text/plain", category:"general" });
-  };
+  // Knowledge-base upload moved into <KnowledgeBase />, next to the list it changes.
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -422,29 +405,12 @@ export default function DataHub() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4 text-accent" />
-                Knowledge Base
-              </CardTitle>
-              <CardDescription>
-                Upload docs to enhance AI context
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <input ref={kbInputRef} type="file" accept=".txt,.md,.csv,.json,.html" className="hidden" onChange={handleKbUpload} />
-              <Button variant="outline" className="w-full" disabled={uploadDocMutation.isPending} onClick={() => kbInputRef.current?.click()}>
-                <Upload className="h-4 w-4 mr-2" />
-                {uploadDocMutation.isPending ?"Uploading…" :"Upload Documents"}
-              </Button>
-              <p className="text-xs text-muted-foreground mt-2">
-                Battle cards, playbooks, and product docs will be used to enrich AI outputs
-              </p>
-            </CardContent>
-          </Card>
         </div>
       </div>
+
+      {/* Upload, list, search and removal in one place. Upload used to live in the
+          sidebar on its own, so a document went in and was never seen again. */}
+      <KnowledgeBase />
     </div>
     </div>
   );

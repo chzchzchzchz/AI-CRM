@@ -9,9 +9,9 @@ Every backend capability, and whether anything in the product actually reaches i
 | | Count |
 |---|---|
 | Procedures total | 170 |
-| Reachable from the UI | 83 |
+| Reachable from the UI | 87 |
 | External by design (webhooks, probes, connector actions) | 28 |
-| **Built but not routed anywhere** | **59** |
+| **Built but not routed anywhere** | **55** |
 | ↳ of those, called only by unreachable client code | 5 |
 | App routes | 32 |
 | Client modules unreachable from `main.tsx` | 19 |
@@ -67,7 +67,6 @@ Real, working code with no path to it from the product. Each line is either some
 | `people.getByCompany` | protected | `server/routers.ts` | — |
 | `people.getByAccountId` | protected | `server/routers.ts` | — |
 | `priorityActions.getRepTerritory` | protected | `server/priority-actions-router.ts` | — |
-| `rfps.create` | protected | `server/rfp-scraper.ts` | — |
 | `sequences.list` | protected | `server/sequences.ts` | — |
 | `sequences.save` | protected | `server/sequences.ts` | — |
 | `sequences.delete` | protected | `server/sequences.ts` | — |
@@ -75,9 +74,6 @@ Real, working code with no path to it from the product. Each line is either some
 | `sixsense.identifyByIP` | protected | `server/sixsense-router.ts` | — |
 | `sixsense.detectIntentSpikes` | protected | `server/sixsense-router.ts` | — |
 | `system.notifyOwner` | protected | `server/_core/systemRouter.ts` | — |
-| `tools.getDocuments` | protected | `server/tools-router.ts` | — |
-| `tools.deleteDocument` | protected | `server/tools-router.ts` | — |
-| `tools.searchKnowledge` | protected | `server/tools-router.ts` | — |
 | `tools.submitFeedback` | protected | `server/tools-router.ts` | — |
 | `tools.getLearningInsights` | protected | `server/tools-router.ts` | — |
 | `tools.getReportByShareId` | public | `server/tools-router.ts` | — |
@@ -177,6 +173,7 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `rfps.list` | `pages/RFPs.tsx` |
 | `rfps.scrape` | `pages/RFPs.tsx` |
 | `rfps.stats` | `pages/RFPs.tsx` |
+| `rfps.create` | `components/AddRfpDialog.tsx` |
 | `salesforce.getInstanceUrl` | `pages/AccountDetail.tsx`, `pages/ContactDetail.tsx` |
 | `salesforce.testConnection` | `components/SalesforceSync.tsx` |
 | `salesforce.getSyncStatus` | `components/SalesforceSync.tsx` |
@@ -191,10 +188,13 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `sixsenseAnalytics.getKeywords` | `pages/Home.tsx`, `pages/Insights.tsx`, `pages/SixsenseAnalytics.tsx` |
 | `sixsenseAnalytics.get6QAPerformance` | `pages/Insights.tsx`, `pages/SixsenseAnalytics.tsx` |
 | `sixsenseAnalytics.getSummary` | `pages/Home.tsx`, `pages/SixsenseAnalytics.tsx` |
-| `tools.uploadDocument` | `pages/ContentStudio.tsx`, `pages/DataHub.tsx` |
-| `tools.generateContent` | `pages/AITools.tsx` |
+| `tools.uploadDocument` | `components/KnowledgeBase.tsx` |
+| `tools.getDocuments` | `components/KnowledgeBase.tsx` |
+| `tools.deleteDocument` | `components/KnowledgeBase.tsx` |
+| `tools.searchKnowledge` | `components/KnowledgeBase.tsx` |
+| `tools.generateContent` | `pages/AITools.tsx`, `pages/ContentStudio.tsx` |
 | `tools.processLeads` | `pages/DataHub.tsx`, `pages/LeadProcessor.tsx` |
-| `tools.generateWebinarContent` | `pages/ContentStudio.tsx`, `pages/WebinarGenerator.tsx` |
+| `tools.generateWebinarContent` | `pages/WebinarGenerator.tsx` |
 | `tools.analyzeTranscript` | `pages/AITools.tsx`, `pages/TranscriptAnalyzer.tsx` |
 | `tools.saveTranscriptReport` | `pages/AITools.tsx`, `pages/TranscriptAnalyzer.tsx` |
 | `tools.getSavedTranscriptReports` | `pages/AITools.tsx`, `pages/TranscriptAnalyzer.tsx` |
