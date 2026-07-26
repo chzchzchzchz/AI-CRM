@@ -42,7 +42,7 @@ export function GlobalAIChat() {
         // Add welcome message
         setMessages([{
           role: 'assistant',
-          content: "👋 Hi! I'm your AI sales assistant. I can help you find high-intent accounts, generate personalized outreach, analyze buying signals, and answer questions about your pipeline. Try asking me something!"
+          content: "Hi! I'm your AI sales assistant. I can help you find high-intent accounts, generate personalized outreach, analyze buying signals, and answer questions about your pipeline. Try asking me something!"
         }]);
       }, 2000);
       return () => clearTimeout(timer);

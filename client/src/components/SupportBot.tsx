@@ -40,7 +40,7 @@ export function SupportBot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: `Hey! 👋 I'm here to help you get the most out of this dashboard. Ask me anything about accounts, intent scores, outreach, or how to use the features. If I can't help, reach out to ${SUPPORT_CONTACT}!`
+      content: `I'm here to help you get the most out of this dashboard. Ask me anything about accounts, intent scores, outreach, or how to use the features. If I can't help, reach out to ${SUPPORT_CONTACT}!`
     }
   ]);
   const [input, setInput] = useState("");

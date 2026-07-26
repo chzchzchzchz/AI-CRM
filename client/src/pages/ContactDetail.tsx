@@ -252,7 +252,7 @@ export default function ContactDetail() {
                     <span className={`font-bold text-lg ${getIntentColor(intentScore)}`}>
                       {intentScore}
                       <span className="text-xs ml-1">
-                        {intentScore >= 80 ? '🔥' : intentScore >= 60 ? '🌡️' : '❄️'}
+                        
                       </span>
                     </span>
                   </div>
