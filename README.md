@@ -3,7 +3,7 @@
 [![CI](https://github.com/chzchzchzchz/AI-CRM/actions/workflows/ci.yml/badge.svg)](https://github.com/chzchzchzchz/AI-CRM/actions/workflows/ci.yml)
 [![GitHub stars](https://img.shields.io/github/stars/chzchzchzchz/AI-CRM?style=social)](https://github.com/chzchzchzchz/AI-CRM)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Live Demo](https://img.shields.io/badge/🚀%20Live%20Demo-online-blue)](https://targetdash-pwcs8qfq.manus.space)
+
 
 ---
 
