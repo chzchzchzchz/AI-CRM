@@ -9,9 +9,9 @@ Every backend capability, and whether anything in the product actually reaches i
 | | Count |
 |---|---|
 | Procedures total | 170 |
-| Reachable from the UI | 81 |
+| Reachable from the UI | 83 |
 | External by design (webhooks, probes, connector actions) | 28 |
-| **Built but not routed anywhere** | **61** |
+| **Built but not routed anywhere** | **59** |
 | ↳ of those, called only by unreachable client code | 5 |
 | App routes | 32 |
 | Client modules unreachable from `main.tsx` | 19 |
@@ -84,8 +84,6 @@ Real, working code with no path to it from the product. Each line is either some
 | `tools.deleteTranscriptReport` | protected | `server/tools-router.ts` | — |
 | `validation.validateAccount` | protected | `server/validation-router.ts` | — |
 | `validation.validateContact` | protected | `server/validation-router.ts` | — |
-| `validation.getAllIssues` | protected | `server/validation-router.ts` | — |
-| `validation.fixIssue` | protected | `server/validation-router.ts` | — |
 
 ## Unreachable client modules
 
@@ -205,6 +203,8 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `validation.validateAccounts` | `pages/DataValidation.tsx` |
 | `validation.validateContacts` | `pages/DataValidation.tsx` |
 | `validation.validateAllAccountsBulk` | `pages/DataValidation.tsx` |
+| `validation.getAllIssues` | `components/ValidationIssues.tsx`, `pages/DataValidation.tsx` |
+| `validation.fixIssue` | `components/ValidationIssues.tsx` |
 
 ## External by design
 
