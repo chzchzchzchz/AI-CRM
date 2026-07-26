@@ -77,6 +77,7 @@ You must use the following XML-style tags to structure your internal monologue. 
 BEGIN PROCESSING NOW.`;
 
 import { getCompanyConfig } from "./config";
+import { withFacts, type ContextInput } from "./ai-context-block";
 
 /**
  * Revenue Architect Persona
@@ -158,8 +159,12 @@ Concrete, time-bound actions:
 /**
  * Helper function to prepend RCP prompt to any system message
  */
-export function withRCP(systemMessage: string): string {
-  return RCP_SYSTEM_PROMPT + "\n\n---\n\nADDITIONAL CONTEXT:\n" + systemMessage;
+export function withRCP(systemMessage: string, facts?: ContextInput): string {
+  return (
+    RCP_SYSTEM_PROMPT +
+    "\n\n---\n\nADDITIONAL CONTEXT:\n" +
+    withFacts(systemMessage, facts)
+  );
 }
 
 /**
@@ -191,11 +196,11 @@ export function getDynamicPersona(): string {
 /**
  * Helper function to apply Revenue Architect persona with RCP
  */
-export function withRevenueArchitect(taskContext: string): string {
+export function withRevenueArchitect(taskContext: string, facts?: ContextInput): string {
   const dynamicPersona = getDynamicPersona();
   return withRCP(
-    dynamicPersona + 
-    "\n\n---\n\nTASK:\n" + taskContext + 
+    dynamicPersona +
+    "\n\n---\n\nTASK:\n" + withFacts(taskContext, facts) +
     "\n\n---\n\n" + STANDARDIZED_OUTPUT_STRUCTURE
   );
 }
@@ -204,9 +209,9 @@ export function withRevenueArchitect(taskContext: string): string {
  * Helper function for simple Revenue Architect without RCP overhead
  * Use for faster, simpler AI calls that don't need deep reasoning
  */
-export function asRevenueArchitect(taskContext: string): string {
+export function asRevenueArchitect(taskContext: string, facts?: ContextInput): string {
   const dynamicPersona = getDynamicPersona();
-  return dynamicPersona + 
-    "\n\n---\n\nTASK:\n" + taskContext + 
+  return dynamicPersona +
+    "\n\n---\n\nTASK:\n" + withFacts(taskContext, facts) +
     "\n\n---\n\n" + STANDARDIZED_OUTPUT_STRUCTURE;
 }
