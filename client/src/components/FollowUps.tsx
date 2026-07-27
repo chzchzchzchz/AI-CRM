@@ -19,7 +19,7 @@ import { CalendarCheck, CheckCircle2, Clock } from "lucide-react";
  */
 export function FollowUps({ limit = 8 }: { limit?: number }) {
   const utils = trpc.useUtils();
-  const [view, setView] = useState<"due" | "upcoming">("due");
+  const [view, setView] = useState<"due" | "upcoming" | "done">("due");
 
   const { data, isLoading } = trpc.followUps.list.useQuery(
     { window: view, limit },
@@ -52,14 +52,15 @@ export function FollowUps({ limit = 8 }: { limit?: number }) {
           <CardDescription>
             {view === "due"
               ? "What you said you'd do, due today or earlier"
-              : "Scheduled ahead — nothing to do about these yet"}
+              : view === "upcoming"
+                ? "Scheduled ahead — nothing to do about these yet"
+                : "Closed out. Reopen one if it turned out not to be finished."}
           </CardDescription>
 
           {/* The upcoming count used to be stated and unreachable: the card said
               "3 still ahead" with no way to see which three. */}
-          {!!data?.upcomingCount || view === "upcoming" ? (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {(["due", "upcoming"] as const).map(v => (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+              {(["due", "upcoming", "done"] as const).map(v => (
                 <button
                   key={v}
                   type="button"
@@ -72,14 +73,16 @@ export function FollowUps({ limit = 8 }: { limit?: number }) {
                       : "border-border text-ink-muted hover:bg-muted"
                   )}
                 >
-                  {v === "due" ? "Due" : "Upcoming"}{" "}
-                  <span className="tabular-nums">
-                    {v === "due" ? (data?.dueCount ?? 0) : (data?.upcomingCount ?? 0)}
-                  </span>
+                  {v === "due" ? "Due" : v === "upcoming" ? "Upcoming" : "Done"}
+                  {v !== "done" && (
+                    <span className="tabular-nums">
+                      {" "}
+                      {v === "due" ? (data?.dueCount ?? 0) : (data?.upcomingCount ?? 0)}
+                    </span>
+                  )}
                 </button>
               ))}
-            </div>
-          ) : null}
+          </div>
         </CardHeader>
 
         <CardContent className="p-0">
@@ -92,9 +95,17 @@ export function FollowUps({ limit = 8 }: { limit?: number }) {
           ) : !data?.items.length ? (
             <EmptyState
               icon={CheckCircle2}
-              title={view === "due" ? "Nothing due" : "Nothing scheduled"}
+              title={
+                view === "due"
+                  ? "Nothing due"
+                  : view === "upcoming"
+                    ? "Nothing scheduled"
+                    : "Nothing closed yet"
+              }
               description={
-                view === "upcoming"
+                view === "done"
+                  ? "Follow-ups you mark done will collect here."
+                  : view === "upcoming"
                   ? "No follow-ups dated in the future."
                   : data?.upcomingCount
                     ? `Clear for today. ${data.upcomingCount} follow-up${data.upcomingCount === 1 ? "" : "s"} scheduled ahead.`
@@ -132,14 +143,19 @@ export function FollowUps({ limit = 8 }: { limit?: number }) {
                       </div>
                     </div>
 
-                    {/* Overdue is the news, so it carries the weight. */}
+                    {/* Overdue is the news, so it carries the weight. A closed item shows
+                        "Done" rather than a due date that stopped mattering. */}
                     <span
                       className={cn(
                         "shrink-0 whitespace-nowrap text-2xs font-medium",
-                        item.overdue ? "text-critical" : "text-ink-muted"
+                        view === "done"
+                          ? "text-positive"
+                          : item.overdue
+                            ? "text-critical"
+                            : "text-ink-muted"
                       )}
                     >
-                      {dueLabel(item.daysUntilDue)}
+                      {view === "done" ? "Done" : dueLabel(item.daysUntilDue)}
                     </span>
                   </button>
                 </li>
@@ -154,6 +170,7 @@ export function FollowUps({ limit = 8 }: { limit?: number }) {
         open={openId !== null}
         onOpenChange={v => !v && setOpenId(null)}
         onChanged={refresh}
+        onReopened={() => setView("due")}
       />
     </>
   );

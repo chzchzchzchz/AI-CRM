@@ -16,6 +16,7 @@ import { CompanyLogo } from"@/components/ui/company-logo";
 import { TechStackDisplay } from"@/components/TechStackDisplay";
 import { ActivityTimeline } from"@/components/ActivityTimeline";
 import { LogFollowUpDialog } from"@/components/LogFollowUpDialog";
+import { AccountTrajectory } from"@/components/AccountTrajectory";
 
 // --- Signal helpers -------------------------------------------------------
 // Heat pairs a tinted color with a word + shape/glyph so it survives greyscale
@@ -589,6 +590,10 @@ export default function AccountDetailEnhanced() {
                 </CardContent>
               </Card>
             )}
+
+            {/* What moved between briefs. Every brief was already snapshotted with a
+                diffable metrics row; nothing ever read them back. */}
+            <AccountTrajectory accountId={accountId} />
 
             {/* What actually happened, in order. The timeline component and the
                 procedure that feeds it were built to the same shape and never

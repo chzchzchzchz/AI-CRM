@@ -277,10 +277,51 @@ const SUPERSEDED: Record<string, string> = {
     "superseded by `intel.accountBrief` — string-splits the same brief on '## Signal Readout' to recover its judgement section",
   "ai.enrichAccount":
     "superseded by `intel.accountBrief` — answers the same question (score, insights, recommendations) without the evidence validation",
+  "ai.generateAccountSummary":
+    "superseded by `intel.accountBrief` — a summary with no evidence validation behind it",
+  "ai.generateEmail":
+    "superseded by `outreach.generateEmail` — the wired one carries the grounding rules that stop it inventing facts about the account",
+  "ai.generateAccountResearch":
+    "superseded by `ai.compileResearch` — both call the same enrichment, but compileResearch caches and is the one the UI uses",
+  "ai.generateOutreachRecommendation":
+    "declared in the source as an alias that reuses generateOutreachEmail",
+  // One signal pack replaced five per-entity reads on the account page. Wiring any of
+  // these back would reintroduce the split that let the page and the brief disagree.
+  "people.getByAccountId":
+    "superseded by `intel.accountSignals` — returns the same contacts, ranked by seniority, in the pack the page already loads",
+  "opportunities.getByAccountId":
+    "superseded by `intel.accountSignals` — the pack also carries the probability-weighted total this returns raw",
+  "intentScores.list":
+    "superseded by `intel.accountSignals` — the pack carries the same series plus its computed trend and largest jump",
+  "gong.getByAccountId":
+    "superseded by `intel.accountSignals` — conversations, topics and open action items arrive with the pack",
+  "calls.getByAccountId":
+    "superseded by `intel.accountSignals` — same reason as gong.getByAccountId",
+};
+
+/**
+ * Actions meant to be driven by a connector, a scheduler or another system rather than
+ * by a person clicking. Listing them as UI drift is what makes a to-do list untrustworthy.
+ */
+const AUTOMATION_BY_DESIGN: Record<string, string> = {
+  "clayImport.importRawData": "bulk import — driven by a Clay export or automation",
+  "clayImport.importAccounts": "bulk import — driven by a Clay export or automation",
+  "clayImport.getImportStats": "import telemetry for the automation that ran it",
+  "clayPull.triggerEnrichment": "connector action — Clay enrichment run",
+  "dust.getAccountIntelligence": "Dust connector action",
+  "dust.getContactIntelligence": "Dust connector action",
+  "dust.searchGongCalls": "Dust connector action",
+  "dust.query": "Dust connector action",
+  "gemini.researchAccount": "Gemini connector action",
+  "accounts.enrichWith6sense": "connector action — 6sense enrichment run",
+  "sixsense.syncAccountByDomain": "connector action — sync one account from 6sense",
+  "sixsense.identifyByIP": "connector action — de-anonymise a visiting IP",
+  "system.notifyOwner": "outbound notification, called by other server code",
 };
 
 function externalReason(key: string): string | null {
   if (EXTERNAL_BY_DESIGN[key]) return EXTERNAL_BY_DESIGN[key];
+  if (AUTOMATION_BY_DESIGN[key]) return AUTOMATION_BY_DESIGN[key];
   if (key.startsWith("integrations.") && key !== "integrations.status" && key !== "integrations.preflight") {
     return "connector action (callable from automation/API)";
   }

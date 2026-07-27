@@ -9,11 +9,11 @@ Every backend capability, and whether anything in the product actually reaches i
 | | Count |
 |---|---|
 | Procedures total | 177 |
-| Reachable from the UI | 95 |
-| External by design (webhooks, probes, connector actions) | 28 |
-| **Built but not routed anywhere** | **51** |
+| Reachable from the UI | 101 |
+| External by design (webhooks, probes, connector actions) | 41 |
+| **Built but not routed anywhere** | **23** |
 | ↳ of those, called only by unreachable client code | 2 |
-| Superseded by a live capability (kept, not a to-do) | 3 |
+| Superseded by a live capability (kept, not a to-do) | 12 |
 | App routes | 33 |
 | Client modules unreachable from `main.tsx` | 19 |
 | Integration connectors | 24 |
@@ -27,13 +27,8 @@ Real, working code with no path to it from the product. Each line is either some
 | Procedure | Access | Defined in | Called by (unreachable) |
 |---|---|---|---|
 | `accounts.getStats` | protected | `server/routers.ts` | — |
-| `accounts.enrichWith6sense` | protected | `server/routers.ts` | — |
 | `ai.analyzeCall` | protected | `server/routers.ts` | — |
-| `ai.generateAccountResearch` | protected | `server/routers.ts` | — |
-| `ai.generateOutreachRecommendation` | protected | `server/routers.ts` | — |
-| `ai.generateEmail` | protected | `server/routers.ts` | — |
 | `ai.prioritizeContacts` | protected | `server/routers.ts` | — |
-| `ai.generateAccountSummary` | protected | `server/routers.ts` | — |
 | `ai.compileResearch` | protected | `server/routers.ts` | `components/IntelligenceTab.tsx`, `components/ResearchTab.tsx` |
 | `ai.analyzeTechStack` | protected | `server/routers.ts` | `components/TechStackAnalysis.tsx` |
 | `analytics.overview` | protected | `server/routers.ts` | — |
@@ -41,42 +36,19 @@ Real, working code with no path to it from the product. Each line is either some
 | `auth.reviewAccessRequest` | protected | `server/routers.ts` | — |
 | `calls.list` | protected | `server/routers.ts` | — |
 | `calls.create` | protected | `server/routers.ts` | — |
-| `calls.getByAccountId` | protected | `server/routers.ts` | — |
-| `clayImport.importRawData` | protected | `server/clay-import.ts` | — |
-| `clayImport.importAccounts` | protected | `server/clay-import.ts` | — |
-| `clayImport.getImportStats` | protected | `server/clay-import.ts` | — |
-| `clayPull.triggerEnrichment` | protected | `server/integrations-router.ts` | — |
 | `deepThink.chat` | protected | `server/routers.ts` | — |
-| `dust.getAccountIntelligence` | protected | `server/routers/dust.ts` | — |
-| `dust.getContactIntelligence` | protected | `server/routers/dust.ts` | — |
-| `dust.searchGongCalls` | protected | `server/routers/dust.ts` | — |
-| `dust.query` | protected | `server/routers/dust.ts` | — |
-| `followUps.reopen` | protected | `server/follow-ups.ts` | — |
-| `followUps.remove` | protected | `server/follow-ups.ts` | — |
-| `gemini.researchAccount` | protected | `server/gemini.ts` | — |
 | `gong.getByCompany` | protected | `server/routers.ts` | — |
-| `gong.getByAccountId` | protected | `server/routers.ts` | — |
-| `hotLeads.getByBuyingStage` | protected | `server/hot-leads-router.ts` | — |
-| `intel.briefHistory` | protected | `server/intel/router.ts` | — |
 | `intel.brainLearn` | protected | `server/intel/router.ts` | — |
 | `intentScores.create` | protected | `server/integrations-router.ts` | — |
-| `intentScores.list` | protected | `server/integrations-router.ts` | — |
 | `opportunities.getById` | protected | `server/routers.ts` | — |
-| `opportunities.getByAccountId` | protected | `server/routers.ts` | — |
 | `people.listPaginated` | protected | `server/routers.ts` | — |
 | `people.getByCompany` | protected | `server/routers.ts` | — |
-| `people.getByAccountId` | protected | `server/routers.ts` | — |
 | `priorityActions.getRepTerritory` | protected | `server/priority-actions-router.ts` | — |
-| `sixsense.syncAccountByDomain` | protected | `server/sixsense-router.ts` | — |
-| `sixsense.identifyByIP` | protected | `server/sixsense-router.ts` | — |
 | `sixsense.detectIntentSpikes` | protected | `server/sixsense-router.ts` | — |
-| `system.notifyOwner` | protected | `server/_core/systemRouter.ts` | — |
 | `tools.submitFeedback` | protected | `server/tools-router.ts` | — |
 | `tools.getLearningInsights` | protected | `server/tools-router.ts` | — |
 | `tools.getReportByShareId` | public | `server/tools-router.ts` | — |
 | `tools.deleteTranscriptReport` | protected | `server/tools-router.ts` | — |
-| `validation.validateAccount` | protected | `server/validation-router.ts` | — |
-| `validation.validateContact` | protected | `server/validation-router.ts` | — |
 
 ## Superseded
 
@@ -85,8 +57,17 @@ Working code that nothing calls because something better does the same job. Not 
 | Procedure | Why |
 |---|---|
 | `ai.enrichAccount` | superseded by `intel.accountBrief` — answers the same question (score, insights, recommendations) without the evidence validation |
+| `ai.generateAccountResearch` | superseded by `ai.compileResearch` — both call the same enrichment, but compileResearch caches and is the one the UI uses |
+| `ai.generateOutreachRecommendation` | declared in the source as an alias that reuses generateOutreachEmail |
+| `ai.generateEmail` | superseded by `outreach.generateEmail` — the wired one carries the grounding rules that stop it inventing facts about the account |
+| `ai.generateAccountSummary` | superseded by `intel.accountBrief` — a summary with no evidence validation behind it |
 | `ai.compileOverview` | superseded by `intel.accountBrief` — same engine, but returns markdown instead of the structured judgement the UI renders |
 | `ai.generateStrategicInsights` | superseded by `intel.accountBrief` — string-splits the same brief on '## Signal Readout' to recover its judgement section |
+| `calls.getByAccountId` | superseded by `intel.accountSignals` — same reason as gong.getByAccountId |
+| `gong.getByAccountId` | superseded by `intel.accountSignals` — conversations, topics and open action items arrive with the pack |
+| `intentScores.list` | superseded by `intel.accountSignals` — the pack carries the same series plus its computed trend and largest jump |
+| `opportunities.getByAccountId` | superseded by `intel.accountSignals` — the pack also carries the probability-weighted total this returns raw |
+| `people.getByAccountId` | superseded by `intel.accountSignals` — returns the same contacts, ranked by seniority, in the pack the page already loads |
 
 ## Unreachable client modules
 
@@ -158,11 +139,14 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `followUps.list` | `components/FollowUps.tsx` |
 | `followUps.create` | `components/LogFollowUpDialog.tsx` |
 | `followUps.complete` | `components/FollowUpDialog.tsx` |
+| `followUps.reopen` | `components/FollowUpDialog.tsx` |
 | `followUps.snooze` | `components/FollowUpDialog.tsx` |
+| `followUps.remove` | `components/FollowUpDialog.tsx` |
 | `gong.list` | `components/GlobalSearch.tsx`, `pages/Insights.tsx` |
 | `gong.listPaginated` | `pages/Calls.tsx` |
 | `hotLeads.getTopLeads` | `components/HotLeadsWidget.tsx` |
 | `hotLeads.getSummary` | `components/HotLeadsWidget.tsx` |
+| `hotLeads.getByBuyingStage` | `components/HotLeadsWidget.tsx` |
 | `integrations.preflight` | `pages/Integrations.tsx` |
 | `integrations.status` | `pages/Integrations.tsx` |
 | `integrations.slackNotify` | `pages/Integrations.tsx` |
@@ -170,6 +154,7 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `integrations.teamsNotify` | `pages/Integrations.tsx` |
 | `intel.accountBrief` | `components/AccountJudgement.tsx` |
 | `intel.accountSignals` | `pages/AccountDetail.tsx` |
+| `intel.briefHistory` | `components/AccountTrajectory.tsx` |
 | `intel.brain` | `pages/Insights.tsx` |
 | `opportunities.list` | `pages/Home.tsx`, `pages/Opportunities.tsx` |
 | `opportunities.upsert` | `pages/Opportunities.tsx` |
@@ -215,6 +200,8 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `tools.getSavedTranscriptReports` | `pages/AITools.tsx`, `pages/TranscriptAnalyzer.tsx` |
 | `tools.askTranscriptQuestion` | `pages/AITools.tsx` |
 | `validation.getSummary` | `pages/DataValidation.tsx` |
+| `validation.validateAccount` | `components/ValidationIssues.tsx` |
+| `validation.validateContact` | `components/ValidationIssues.tsx` |
 | `validation.validateAccounts` | `pages/DataValidation.tsx` |
 | `validation.validateContacts` | `pages/DataValidation.tsx` |
 | `validation.validateAllAccountsBulk` | `pages/DataValidation.tsx` |
@@ -227,11 +214,21 @@ Not called by our UI, and should not be — these are entry points for other sys
 
 | Procedure | Why |
 |---|---|
+| `accounts.enrichWith6sense` | connector action — 6sense enrichment run |
 | `clay.receiveAccount` | inbound webhook (Clay pushes to us) |
 | `clay.receiveContact` | inbound webhook (Clay pushes to us) |
 | `clay.ping` | connectivity probe for Clay setup |
+| `clayImport.importRawData` | bulk import — driven by a Clay export or automation |
+| `clayImport.importAccounts` | bulk import — driven by a Clay export or automation |
+| `clayImport.getImportStats` | import telemetry for the automation that ran it |
+| `clayPull.triggerEnrichment` | connector action — Clay enrichment run |
 | `clayWebhook.receive` | inbound webhook |
 | `clayWebhook.test` | connectivity probe |
+| `dust.getAccountIntelligence` | Dust connector action |
+| `dust.getContactIntelligence` | Dust connector action |
+| `dust.searchGongCalls` | Dust connector action |
+| `dust.query` | Dust connector action |
+| `gemini.researchAccount` | Gemini connector action |
 | `integrations.salesloftCreatePerson` | connector action (callable from automation/API) |
 | `integrations.outreachCreateProspect` | connector action (callable from automation/API) |
 | `integrations.calendlyGetAccount` | connector action (callable from automation/API) |
@@ -253,7 +250,10 @@ Not called by our UI, and should not be — these are entry points for other sys
 | `integrations.zoominfoEnrichCompany` | connector action (callable from automation/API) |
 | `integrations.zoominfoSearchContacts` | connector action (callable from automation/API) |
 | `integrations.zoominfoEnrichContact` | connector action (callable from automation/API) |
+| `sixsense.syncAccountByDomain` | connector action — sync one account from 6sense |
+| `sixsense.identifyByIP` | connector action — de-anonymise a visiting IP |
 | `system.health` | uptime probe |
+| `system.notifyOwner` | outbound notification, called by other server code |
 | `zapier.webhook` | inbound webhook (Zapier/Make/n8n) |
 
 ## App routes
