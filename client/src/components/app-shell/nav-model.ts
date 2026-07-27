@@ -74,6 +74,7 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Engage",
     items: [
       { path: "/outreach", label: "Outreach", icon: Send },
+      { path: "/sequences", label: "Sequences", icon: Layers },
       { path: "/content-studio", label: "Content Studio", icon: FileText },
       { path: "/webinar-generator", label: "Webinars", icon: Activity },
       { path: "/transcript-analyzer", label: "Transcripts", icon: Mic },

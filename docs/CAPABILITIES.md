@@ -8,12 +8,13 @@ Every backend capability, and whether anything in the product actually reaches i
 
 | | Count |
 |---|---|
-| Procedures total | 176 |
-| Reachable from the UI | 91 |
+| Procedures total | 177 |
+| Reachable from the UI | 95 |
 | External by design (webhooks, probes, connector actions) | 28 |
-| **Built but not routed anywhere** | **57** |
-| ↳ of those, called only by unreachable client code | 5 |
-| App routes | 32 |
+| **Built but not routed anywhere** | **51** |
+| ↳ of those, called only by unreachable client code | 2 |
+| Superseded by a live capability (kept, not a to-do) | 3 |
+| App routes | 33 |
 | Client modules unreachable from `main.tsx` | 19 |
 | Integration connectors | 24 |
 
@@ -27,16 +28,13 @@ Real, working code with no path to it from the product. Each line is either some
 |---|---|---|---|
 | `accounts.getStats` | protected | `server/routers.ts` | — |
 | `accounts.enrichWith6sense` | protected | `server/routers.ts` | — |
-| `ai.enrichAccount` | protected | `server/routers.ts` | `components/AIEnrichButton.tsx` |
 | `ai.analyzeCall` | protected | `server/routers.ts` | — |
 | `ai.generateAccountResearch` | protected | `server/routers.ts` | — |
 | `ai.generateOutreachRecommendation` | protected | `server/routers.ts` | — |
 | `ai.generateEmail` | protected | `server/routers.ts` | — |
 | `ai.prioritizeContacts` | protected | `server/routers.ts` | — |
 | `ai.generateAccountSummary` | protected | `server/routers.ts` | — |
-| `ai.compileOverview` | protected | `server/routers.ts` | `components/IntelligenceTab.tsx`, `components/OverviewTab.tsx` |
 | `ai.compileResearch` | protected | `server/routers.ts` | `components/IntelligenceTab.tsx`, `components/ResearchTab.tsx` |
-| `ai.generateStrategicInsights` | protected | `server/routers.ts` | `components/AIInsightsTab.tsx`, `components/IntelligenceTab.tsx` |
 | `ai.analyzeTechStack` | protected | `server/routers.ts` | `components/TechStackAnalysis.tsx` |
 | `analytics.overview` | protected | `server/routers.ts` | — |
 | `auth.listAccessRequests` | protected | `server/routers.ts` | — |
@@ -69,9 +67,6 @@ Real, working code with no path to it from the product. Each line is either some
 | `people.getByCompany` | protected | `server/routers.ts` | — |
 | `people.getByAccountId` | protected | `server/routers.ts` | — |
 | `priorityActions.getRepTerritory` | protected | `server/priority-actions-router.ts` | — |
-| `sequences.list` | protected | `server/sequences.ts` | — |
-| `sequences.save` | protected | `server/sequences.ts` | — |
-| `sequences.delete` | protected | `server/sequences.ts` | — |
 | `sixsense.syncAccountByDomain` | protected | `server/sixsense-router.ts` | — |
 | `sixsense.identifyByIP` | protected | `server/sixsense-router.ts` | — |
 | `sixsense.detectIntentSpikes` | protected | `server/sixsense-router.ts` | — |
@@ -83,6 +78,16 @@ Real, working code with no path to it from the product. Each line is either some
 | `validation.validateAccount` | protected | `server/validation-router.ts` | — |
 | `validation.validateContact` | protected | `server/validation-router.ts` | — |
 
+## Superseded
+
+Working code that nothing calls because something better does the same job. Not drift and not a to-do — reconnecting any of these would put a worse answer back in front of a rep.
+
+| Procedure | Why |
+|---|---|
+| `ai.enrichAccount` | superseded by `intel.accountBrief` — answers the same question (score, insights, recommendations) without the evidence validation |
+| `ai.compileOverview` | superseded by `intel.accountBrief` — same engine, but returns markdown instead of the structured judgement the UI renders |
+| `ai.generateStrategicInsights` | superseded by `intel.accountBrief` — string-splits the same brief on '## Signal Readout' to recover its judgement section |
+
 ## Unreachable client modules
 
 These files compile and typecheck, but no import chain leads to them from `main.tsx`, so no user can reach them. They are the reason a procedure can look wired while being dead.
@@ -91,7 +96,7 @@ These files compile and typecheck, but no import chain leads to them from `main.
 
 Built to do something, currently doing nothing. Wire or retire.
 
-- `components/AIChatBox.tsx` — strands `ai.chat`
+- `components/AIChatBox.tsx`
 - `components/AIEnrichButton.tsx` — strands `ai.enrichAccount`
 - `components/AIInsightsTab.tsx` — strands `ai.generateStrategicInsights`
 - `components/IntelligenceTab.tsx` — strands `ai.generateStrategicInsights`, `ai.compileOverview`, `ai.compileResearch`
@@ -186,6 +191,10 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `salesforce.syncAccounts` | `components/SalesforceSync.tsx` |
 | `salesforce.syncContacts` | `components/SalesforceSync.tsx` |
 | `salesforce.fullSync` | `components/SalesforceSync.tsx` |
+| `sequences.list` | `pages/Sequences.tsx` |
+| `sequences.save` | `pages/Sequences.tsx` |
+| `sequences.duplicate` | `pages/Sequences.tsx` |
+| `sequences.delete` | `pages/Sequences.tsx` |
 | `sixsense.syncAllAccounts` | `pages/SixsenseSync.tsx` |
 | `sixsense.getSyncStatus` | `pages/SixsenseSync.tsx` |
 | `sixsense.getRecentSpikes` | `components/WhatChanged.tsx` |
@@ -198,7 +207,7 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `tools.getDocuments` | `components/KnowledgeBase.tsx` |
 | `tools.deleteDocument` | `components/KnowledgeBase.tsx` |
 | `tools.searchKnowledge` | `components/KnowledgeBase.tsx` |
-| `tools.generateContent` | `pages/AITools.tsx`, `pages/ContentStudio.tsx` |
+| `tools.generateContent` | `pages/AITools.tsx`, `pages/ContentStudio.tsx`, `pages/Sequences.tsx` |
 | `tools.processLeads` | `pages/DataHub.tsx`, `pages/LeadProcessor.tsx` |
 | `tools.generateWebinarContent` | `pages/WebinarGenerator.tsx` |
 | `tools.analyzeTranscript` | `pages/AITools.tsx`, `pages/TranscriptAnalyzer.tsx` |
@@ -264,6 +273,7 @@ Not called by our UI, and should not be — these are entry points for other sys
 | `/calls` | `Calls` |
 | `/insights` | `Insights` |
 | `/outreach` | `Outreach` |
+| `/sequences` | `Sequences` |
 | `/rfps` | `RFPs` |
 | `/integrations` | `Integrations` |
 | `/admin` | `Admin` |
