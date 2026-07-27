@@ -72,9 +72,18 @@ export default function Insights() {
   const totalAccounts = accounts?.length || 0;
   const totalCalls = calls?.length || 0;
   const totalContacts = contacts?.length || 0;
-  const avgIntent = accounts && totalAccounts > 0
-    ? accounts.reduce((sum: number, a: any) => sum + (Number(a.intentScore) || 0), 0) / totalAccounts
+  // Averaged over accounts that HAVE a score, not over all of them. Counting the 526
+  // accounts with no intent data as zero dragged the mean to 22 and made a book of
+  // business look cold when the real average across scored accounts is far higher.
+  const scoredAccounts = (accounts ?? []).filter((a: any) => Number(a.intentScore) > 0);
+  const avgIntent = scoredAccounts.length
+    ? scoredAccounts.reduce((sum: number, a: any) => sum + Number(a.intentScore), 0) / scoredAccounts.length
     : 0;
+
+  // "Decision makers" has to mean decision makers. This tile was showing the raw
+  // contact count under that label.
+  const DM_TITLES = /\b(chief|ciso|cto|cio|cfo|ceo|coo|cro|cmo|vp|vice president|svp|evp|head of|director|founder|president|owner|partner)\b/i;
+  const decisionMakers = (contacts ?? []).filter((c: any) => DM_TITLES.test(c.title || "")).length;
 
   // Group by industry
   const industryData = useMemo(() => {
@@ -373,12 +382,14 @@ export default function Insights() {
                   </div>
                   <div className="px-4">
                     <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
-                      <Users className="h-3.5 w-3.5" /> Key contacts
+                      <Users className="h-3.5 w-3.5" /> Decision makers
                     </div>
                     <div className="mt-2 tabular-nums text-2xl text-foreground">
-                      {totalContacts.toLocaleString()}
+                      {decisionMakers.toLocaleString()}
                     </div>
-                    <div className="text-xs text-ink-muted mt-1">decision makers</div>
+                    <div className="text-xs text-ink-muted mt-1">
+                      of {totalContacts.toLocaleString()} contacts
+                    </div>
                   </div>
                   <div className="pl-4">
                     <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">

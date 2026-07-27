@@ -9,8 +9,8 @@ Every backend capability, and whether anything in the product actually reaches i
 | | Count |
 |---|---|
 | Procedures total | 177 |
-| Reachable from the UI | 109 |
-| External by design (webhooks, probes, connector actions) | 45 |
+| Reachable from the UI | 110 |
+| External by design (webhooks, probes, connector actions) | 44 |
 | **Built but not routed anywhere** | **0** |
 | ↳ of those, called only by unreachable client code | 0 |
 | Superseded by a live capability (kept, not a to-do) | 23 |
@@ -74,6 +74,7 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 |---|---|
 | `accounts.list` | `components/GlobalSearch.tsx`, `pages/AITools.tsx`, `pages/Accounts.tsx`, `pages/Contacts.tsx`, `pages/Home.tsx`, `pages/Insights.tsx`, `pages/Opportunities.tsx`, `pages/Outreach.tsx`, `pages/TopAccounts.tsx` |
 | `accounts.getById` | `pages/AccountDetail.tsx`, `pages/ContactDetail.tsx` |
+| `accounts.getStats` | `pages/Contacts.tsx` |
 | `accounts.getTimeline` | `pages/AccountDetail.tsx` |
 | `admin.getPendingRequests` | `pages/AdminApproval.tsx` |
 | `admin.approveAccessRequest` | `pages/AdminApproval.tsx` |
@@ -188,7 +189,6 @@ Not called by our UI, and should not be — these are entry points for other sys
 
 | Procedure | Why |
 |---|---|
-| `accounts.getStats` | aggregate over all accounts — the dashboard already loads `accounts.list` for its cards and counts from that |
 | `accounts.enrichWith6sense` | connector action — 6sense enrichment run |
 | `analytics.overview` | aggregate over accounts, contacts and calls — Insights holds all three already and derives the same figures client-side |
 | `clay.receiveAccount` | inbound webhook (Clay pushes to us) |

@@ -19,7 +19,7 @@ import {
 import { useRep } from"@/contexts/RepContext";
 import { RepSwitcher } from"@/components/RepSwitcher";
 
-type SortField ="name" |"title" |"company";
+type SortField ="priority" |"name" |"title" |"company";
 type SortOrder ="asc" |"desc";
 
 export default function ContactsEnhanced() {
@@ -30,8 +30,10 @@ export default function ContactsEnhanced() {
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [titleFilter, setTitleFilter] = useState<string>("all");
   const [techFilter, setTechFilter] = useState<string>("all");
-  const [sortField, setSortField] = useState<SortField>("name");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+  // Not alphabetical. Sorting 10,000 contacts by first name opens the page on twelve
+  // people called Ahmed — accurate, and useless. Default to the ones worth calling.
+  const [sortField, setSortField] = useState<SortField>("priority");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [showAIPriority, setShowAIPriority] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const CONTACTS_PER_PAGE = 50;
@@ -43,6 +45,9 @@ export default function ContactsEnhanced() {
     const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
     return () => clearTimeout(t);
   }, [searchQuery]);
+
+  // The true totals, so the header can say how much it is NOT showing.
+  const { data: totals } = trpc.accounts.getStats.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
 
   const { data: contacts, isLoading } = trpc.people.list.useQuery(
     { search: debouncedSearch || undefined },
@@ -160,6 +165,13 @@ export default function ContactsEnhanced() {
     // Skip manual sorting if AI Priority is on (already sorted by priority)
     if (!showAIPriority) {
       filtered.sort((a: any, b: any) => {
+        // Priority is numeric (account intent), the rest are text.
+        if (sortField ==="priority") {
+          const score = (c: any) => Number(c.accountIntentScore ?? c.intentScore ?? 0) || 0;
+          const d = score(b) - score(a);
+          return sortOrder ==="desc" ? d : -d;
+        }
+
         let aVal: string, bVal: string;
 
         switch (sortField) {
@@ -243,6 +255,12 @@ export default function ContactsEnhanced() {
 
   const decisionMakerCount = filteredContacts.filter((c: any) => isDecisionMaker(c.title)).length;
 
+  // True when the server truncated: what came back is smaller than what exists.
+  const isCapped =
+    !debouncedSearch &&
+    !!totals?.totalContacts &&
+    (contacts?.length ?? 0) < totals.totalContacts;
+
   const stats: { key: string; label: string; value: number; Icon: any; text: string; hint: string }[] = [
     { key:"contacts", label:"Contacts", value: filteredContacts.length, Icon: Users, text:"text-foreground", hint:"In current view" },
     { key:"companies", label:"Companies", value: companies.length, Icon: Building2, text:"text-foreground", hint:"Unique accounts" },
@@ -257,9 +275,16 @@ export default function ContactsEnhanced() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-xl sm:text-xl font-semibold tracking-tight">Contacts</h1>
+            {/* The real total, not the size of the page we happened to fetch.
+                This read "1500 of 1500 contacts" against a database of 10,023: the
+                server caps its result at 1,500 and the client had no idea, so the page
+                told you that you were looking at everything while hiding 85% of it. */}
             <p className="mt-1 text-sm text-ink-muted">
-              <span className="tabular-nums text-ink-muted">{filteredContacts.length}</span> of{""}
-              <span className="tabular-nums text-ink-muted">{contacts?.length || 0}</span> contacts
+              <span className="tabular-nums text-ink-muted">{filteredContacts.length.toLocaleString()}</span> of{" "}
+              <span className="tabular-nums text-ink-muted">{(totals?.totalContacts ?? contacts?.length ?? 0).toLocaleString()}</span> contacts
+              {isCapped && (
+                <> · <span className="text-caution">showing the first {(contacts?.length ?? 0).toLocaleString()} — search to narrow</span></>
+              )}
               {repInfo && <> · {repInfo.label} territory</>}
             </p>
           </div>
@@ -355,6 +380,15 @@ export default function ContactsEnhanced() {
             {/* Sort Controls */}
             <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border/50">
               <span className="text-xs font-medium text-ink-muted">Sort by</span>
+              <Button
+                variant={sortField ==="priority" ?"default" :"outline"}
+                size="sm"
+                onClick={() => handleToggleSort("priority")}
+                title="Account intent score, highest first"
+              >
+                Priority
+                {sortField ==="priority" && <ArrowUpDown className="ml-2 h-4 w-4" />}
+              </Button>
               <Button
                 variant={sortField ==="name" ?"default" :"outline"}
                 size="sm"

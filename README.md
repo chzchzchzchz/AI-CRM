@@ -36,7 +36,7 @@ So I built **TargetDash**, the AI-powered layer that organizes the noise and hel
 | **AI Architecture** | Standalone additions | Native layer (every touchpoint) |
 | **Data Entry** | Manual input required | Automated capture (from 6sense, Gong, Clay) |
 | **Signal Detection** | Basic lead scoring | Multi-channel AI (intent, calls, engagement) |
-| **Next Best Action** | Requires manual synthesis | AI-generated ("Email Vertex Cloud VP re: renewal risk") |
+| **Next Best Action** | Requires manual synthesis | Named contact + the actual hook ("Email David Sullivan (RevOps Director) — lead with HIPAA audit"). Deterministic on the dashboard; the account page adds an evidence-cited AI brief. |
 | **MCP Server** | ❌ | ✅ `pnpm mcp` — exposes CRM data as MCP tools over stdio |
 | **Setup Time** | Extended implementation | ~2 minutes for the demo (see below) |
 
@@ -135,10 +135,10 @@ TargetDash **sits exactly between your reps and Salesforce**, bringing scattered
 └─────────────────────────────────────────────┘
                    ↓
 ┌─────────────────────────────────────────────┐
-│          Deep-Think AI Engine               │
-│  Layer 1: Recursive Reasoning (hidden)      │
-│  Layer 2: Synthesizer (user-facing)         │
-│  Cached responses for identical queries     │
+│        Account Intelligence (server/intel)  │
+│  Signals: every fact, rendered by code      │
+│  Judgement: model output, each claim cited  │
+│  Validated against the signals before ship  │
 └─────────────────────────────────────────────┘
                    ↓
 ┌─────────────────────────────────────────────┐
@@ -149,9 +149,9 @@ TargetDash **sits exactly between your reps and Salesforce**, bringing scattered
 └─────────────────────────────────────────────┘
                    ↓
 ┌─────────────────────────────────────────────┐
-│    Next Best Action Engine                  │
-│  "Email VP re: renewal risk"                │
-│  "Call CISO - intent spiking"               │
+│    Next Best Action                         │
+│  "Email David Sullivan (RevOps Director)    │
+│   — close out 'Send tailored demo'"         │
 └─────────────────────────────────────────────┘
                    ↓
 ┌─────────────────────────────────────────────┐
