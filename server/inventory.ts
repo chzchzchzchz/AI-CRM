@@ -186,6 +186,22 @@ function collectReachableModules(): Set<string> {
   return seen;
 }
 
+/**
+ * Blank out comments so a mention inside one isn't counted as a call.
+ *
+ * AIChatBox documents its own usage with `trpc.ai.chat` in a JSDoc block. That made an
+ * orphaned component look like it stranded a procedure which is in fact live elsewhere —
+ * a false alarm in the one document that exists to be trusted about this.
+ *
+ * Replaces with spaces rather than deleting, so any future offset-based reporting still
+ * lines up. `://` is excluded so a URL in a string isn't mistaken for a line comment.
+ */
+function stripComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, m => " ".repeat(m.length))
+    .replace(/(^|[^:])\/\/[^\n]*/g, (m, lead) => lead + " ".repeat(m.length - lead.length));
+}
+
 type ClientCalls = {
   /** "router.procedure" -> reachable client files that call it */
   live: Map<string, string[]>;
@@ -198,7 +214,7 @@ function collectClientCalls(reachable: Set<string>): ClientCalls {
   const orphaned = new Map<string, string[]>();
 
   for (const file of walk(CLIENT_SRC, [".ts", ".tsx"])) {
-    const src = fs.readFileSync(file, "utf8");
+    const src = stripComments(fs.readFileSync(file, "utf8"));
     const target = reachable.has(file) ? live : orphaned;
     const re = /trpc\.(\w+)\.(\w+)\b/g;
     let m: RegExpExecArray | null;
@@ -244,6 +260,23 @@ const EXTERNAL_BY_DESIGN: Record<string, string> = {
   "clayWebhook.test": "connectivity probe",
   "zapier.webhook": "inbound webhook (Zapier/Make/n8n)",
   "system.health": "uptime probe",
+};
+
+/**
+ * Procedures that are unrouted because something better is live, not because the work
+ * was forgotten. Listing them under "wire this up" sends someone to reconnect a worse
+ * version of a capability the product already has.
+ *
+ * Kept rather than deleted: they are working, tested API surface, and nothing is served
+ * by removing them while this is pre-1.0. But they should not be mistaken for a to-do.
+ */
+const SUPERSEDED: Record<string, string> = {
+  "ai.compileOverview":
+    "superseded by `intel.accountBrief` — same engine, but returns markdown instead of the structured judgement the UI renders",
+  "ai.generateStrategicInsights":
+    "superseded by `intel.accountBrief` — string-splits the same brief on '## Signal Readout' to recover its judgement section",
+  "ai.enrichAccount":
+    "superseded by `intel.accountBrief` — answers the same question (score, insights, recommendations) without the evidence validation",
 };
 
 function externalReason(key: string): string | null {
@@ -296,7 +329,10 @@ function main() {
 
   const wired = rows.filter(r => r.callers.length > 0);
   const external = rows.filter(r => !r.callers.length && r.external);
-  const unrouted = rows.filter(r => !r.callers.length && !r.external);
+  const superseded = rows.filter(r => !r.callers.length && !r.external && SUPERSEDED[r.key]);
+  const unrouted = rows.filter(
+    r => !r.callers.length && !r.external && !SUPERSEDED[r.key]
+  );
   // Called only from code the product can't reach — the most misleading state, because
   // a plain grep reports these as wired.
   const strandedOnly = unrouted.filter(r => r.deadCallers.length > 0);
@@ -321,6 +357,7 @@ function main() {
   L.push(`| External by design (webhooks, probes, connector actions) | ${external.length} |`);
   L.push(`| **Built but not routed anywhere** | **${unrouted.length}** |`);
   L.push(`| ↳ of those, called only by unreachable client code | ${strandedOnly.length} |`);
+  L.push(`| Superseded by a live capability (kept, not a to-do) | ${superseded.length} |`);
   L.push(`| App routes | ${routes.length} |`);
   L.push(`| Client modules unreachable from \`main.tsx\` | ${orphanedModules.length} |`);
   L.push(`| Integration connectors | ${CONNECTORS.length} |`);
@@ -351,6 +388,21 @@ function main() {
     L.push("");
   }
 
+  if (superseded.length) {
+    L.push("## Superseded");
+    L.push("");
+    L.push(
+      "Working code that nothing calls because something better does the same job. " +
+        "Not drift and not a to-do — reconnecting any of these would put a worse answer " +
+        "back in front of a rep."
+    );
+    L.push("");
+    L.push("| Procedure | Why |");
+    L.push("|---|---|");
+    for (const r of superseded) L.push(`| \`${r.key}\` | ${SUPERSEDED[r.key]} |`);
+    L.push("");
+  }
+
   if (orphanedModules.length) {
     // A design-system primitive with no current consumer is a library component waiting
     // for one. A feature component with no consumer is work the product lost. Listing
@@ -374,8 +426,11 @@ function main() {
       L.push("Built to do something, currently doing nothing. Wire or retire.");
       L.push("");
       for (const m of strandedFeatures) {
+        // "Strands" means this dead file is the ONLY caller. A procedure that is also
+        // called from live code is not stranded by an orphan that happens to mention
+        // it — claiming otherwise sends someone to wire up something already wired.
         const procs = [...calls.orphaned.entries()]
-          .filter(([, files]) => files.includes(m))
+          .filter(([key, files]) => files.includes(m) && !calls.live.has(key))
           .map(([key]) => `\`${key}\``);
         L.push(`- \`${m}\`${procs.length ? ` — strands ${procs.join(", ")}` : ""}`);
       }
@@ -443,6 +498,7 @@ function main() {
   console.log(`  procedures     : ${rows.length}`);
   console.log(`  reachable      : ${wired.length}`);
   console.log(`  external       : ${external.length}`);
+  console.log(`  superseded     : ${superseded.length}`);
   console.log(`  NOT ROUTED     : ${unrouted.length} (${strandedOnly.length} called only by dead code)`);
   console.log(`  routes         : ${routes.length}`);
   console.log(`  orphan modules : ${orphanedModules.length}`);

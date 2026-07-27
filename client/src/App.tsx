@@ -16,6 +16,7 @@ const Opportunities = lazyLoad(() => import("./pages/Opportunities"));
 const Calls = lazyLoad(() => import("./pages/Calls"));
 const Insights = lazyLoad(() => import("./pages/Insights"));
 const Outreach = lazyLoad(() => import("./pages/Outreach"));
+const Sequences = lazyLoad(() => import("./pages/Sequences"));
 const RFPs = lazyLoad(() => import("./pages/RFPs"));
 const Integrations = lazyLoad(() => import("./pages/Integrations"));
 const Admin = lazyLoad(() => import("./pages/Admin"));
@@ -61,6 +62,7 @@ function Router() {
       <Route path="/calls" component={Calls} />
       <Route path="/insights" component={Insights} />
       <Route path="/outreach" component={Outreach} />
+      <Route path="/sequences" component={Sequences} />
       <Route path="/rfps" component={RFPs} />
       <Route path="/integrations" component={Integrations} />
       <Route path="/admin" component={Admin} />
