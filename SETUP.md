@@ -11,7 +11,7 @@ demo data with free local AI.
 pnpm install
 DEMO_MODE=true pnpm dev
 ```
-Open http://localhost:3333 — boots with 16 demo accounts, 40 contacts, a $1.02M pipeline. No
+Open http://localhost:3333 — boots with 1,000 demo accounts, 10,023 contacts, $21.3M of open pipeline. No
 database, no Salesforce, no keys required (DEMO_MODE reads `demo-db.json`).
 
 ## 2. Free AI with NO API keys (local LLM)
