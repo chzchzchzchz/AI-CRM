@@ -3,7 +3,8 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { RefreshCw, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { RefreshCw, CheckCircle2, XCircle, AlertCircle, TrendingUp } from "lucide-react";
+import { toast } from "sonner";
 
 export default function SixsenseSync() {
   const [syncing, setSyncing] = useState(false);
@@ -11,6 +12,19 @@ export default function SixsenseSync() {
 
   const { data: syncStatus, refetch: refetchStatus } = trpc.sixsense.getSyncStatus.useQuery();
   const syncAllMutation = trpc.sixsense.syncAllAccounts.useMutation();
+
+  // Syncing pulls fresh scores; detecting spikes is what turns those scores into
+  // something worth looking at. The second half ran only on a schedule and had no
+  // manual trigger, so after a sync you had to wait to find out if anything moved.
+  const detectSpikes = trpc.sixsense.detectIntentSpikes.useMutation({
+    onSuccess: r =>
+      toast.success(
+        r.spikesDetected
+          ? `${r.spikesDetected} intent spike${r.spikesDetected === 1 ? "" : "s"} detected`
+          : "No spikes — nothing moved enough to flag"
+      ),
+    onError: e => toast.error(e.message),
+  });
 
   const handleSyncAll = async (limit: number) => {
     setSyncing(true);
@@ -132,6 +146,31 @@ export default function SixsenseSync() {
                   </>
                 )}
               </Button>
+            </div>
+
+            <div className="mt-3 border-t border-border pt-3">
+              <Button
+                onClick={() => detectSpikes.mutate()}
+                disabled={syncing || detectSpikes.isPending}
+                variant="ghost"
+                size="sm"
+              >
+                {detectSpikes.isPending ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Checking for spikes…
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp className="mr-2 h-4 w-4" />
+                    Detect intent spikes now
+                  </>
+                )}
+              </Button>
+              <p className="mt-1 text-xs text-ink-muted">
+                Runs on a schedule too. Worth triggering right after a sync — spikes are
+                what show up on the dashboard under &quot;What changed&quot;.
+              </p>
             </div>
 
             {syncResult && (

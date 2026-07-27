@@ -297,6 +297,43 @@ const SUPERSEDED: Record<string, string> = {
     "superseded by `intel.accountSignals` — conversations, topics and open action items arrive with the pack",
   "calls.getByAccountId":
     "superseded by `intel.accountSignals` — same reason as gong.getByAccountId",
+  "gong.getByCompany":
+    "superseded by `intel.accountSignals` — keyed on a company-name string where the pack is keyed on the account id",
+  "people.getByCompany":
+    "superseded by `intel.accountSignals` — same reason as gong.getByCompany",
+  // The admin router is the one the approvals screen uses; these are an older pair with
+  // the same behaviour behind different names.
+  "auth.listAccessRequests":
+    "superseded by `admin.getPendingRequests`, which is what the approvals screen calls",
+  "auth.reviewAccessRequest":
+    "superseded by `admin.approveAccessRequest` / `admin.denyAccessRequest`",
+  "calls.list":
+    "superseded by `gong.listPaginated`, which the Calls page uses and which pages rather than loading every call",
+  "calls.create":
+    "superseded by the Gong sync — calls arrive from the connector, not by hand",
+  "ai.prioritizeContacts":
+    "superseded by `people.prioritize`, which the Contacts page uses",
+  "opportunities.getById":
+    "superseded by `opportunities.list` — there is no single-opportunity page, and the list already carries every field one would show",
+  "deepThink.chat":
+    "superseded by `ai.chat`, which the assistant uses on every page",
+  "people.listPaginated":
+    "superseded by `people.list` for UI purposes — `list` caps its result and supports search, which a contact list needs and this doesn't",
+  "priorityActions.getRepTerritory":
+    "superseded by `priorityActions.getRepStats` + `getEnriched`, which the dashboard uses and which already scope to the rep",
+};
+
+/**
+ * Server-side aggregates. Correct and available, but every page that would use one
+ * already holds the underlying rows for another reason, so calling these would add a
+ * round trip rather than remove one. Recorded here so the next person doesn't rediscover
+ * them as "missing work".
+ */
+const AGGREGATE_API: Record<string, string> = {
+  "accounts.getStats":
+    "aggregate over all accounts — the dashboard already loads `accounts.list` for its cards and counts from that",
+  "analytics.overview":
+    "aggregate over accounts, contacts and calls — Insights holds all three already and derives the same figures client-side",
 };
 
 /**
@@ -317,11 +354,15 @@ const AUTOMATION_BY_DESIGN: Record<string, string> = {
   "sixsense.syncAccountByDomain": "connector action — sync one account from 6sense",
   "sixsense.identifyByIP": "connector action — de-anonymise a visiting IP",
   "system.notifyOwner": "outbound notification, called by other server code",
+  // Its own doc comment: "admin/debug — normally runs in the background".
+  "intel.brainLearn": "forces a learning cycle that otherwise runs on a schedule",
+  "intentScores.create": "write path — connectors push scores in through it",
 };
 
 function externalReason(key: string): string | null {
   if (EXTERNAL_BY_DESIGN[key]) return EXTERNAL_BY_DESIGN[key];
   if (AUTOMATION_BY_DESIGN[key]) return AUTOMATION_BY_DESIGN[key];
+  if (AGGREGATE_API[key]) return AGGREGATE_API[key];
   if (key.startsWith("integrations.") && key !== "integrations.status" && key !== "integrations.preflight") {
     return "connector action (callable from automation/API)";
   }

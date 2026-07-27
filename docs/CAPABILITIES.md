@@ -9,46 +9,16 @@ Every backend capability, and whether anything in the product actually reaches i
 | | Count |
 |---|---|
 | Procedures total | 177 |
-| Reachable from the UI | 101 |
-| External by design (webhooks, probes, connector actions) | 41 |
-| **Built but not routed anywhere** | **23** |
-| ↳ of those, called only by unreachable client code | 2 |
-| Superseded by a live capability (kept, not a to-do) | 12 |
+| Reachable from the UI | 109 |
+| External by design (webhooks, probes, connector actions) | 45 |
+| **Built but not routed anywhere** | **0** |
+| ↳ of those, called only by unreachable client code | 0 |
+| Superseded by a live capability (kept, not a to-do) | 23 |
 | App routes | 33 |
 | Client modules unreachable from `main.tsx` | 19 |
 | Integration connectors | 24 |
 
 "Reachable" is decided by walking the import graph from `client/src/main.tsx`, not by grepping for the procedure name. The difference is not academic: a component can call a procedure perfectly while nothing in the product renders that component, in which case the procedure is dead and a text search says otherwise.
-
-## Built but not routed
-
-Real, working code with no path to it from the product. Each line is either something to wire up or something to retire — it should not stay in this list indefinitely.
-
-| Procedure | Access | Defined in | Called by (unreachable) |
-|---|---|---|---|
-| `accounts.getStats` | protected | `server/routers.ts` | — |
-| `ai.analyzeCall` | protected | `server/routers.ts` | — |
-| `ai.prioritizeContacts` | protected | `server/routers.ts` | — |
-| `ai.compileResearch` | protected | `server/routers.ts` | `components/IntelligenceTab.tsx`, `components/ResearchTab.tsx` |
-| `ai.analyzeTechStack` | protected | `server/routers.ts` | `components/TechStackAnalysis.tsx` |
-| `analytics.overview` | protected | `server/routers.ts` | — |
-| `auth.listAccessRequests` | protected | `server/routers.ts` | — |
-| `auth.reviewAccessRequest` | protected | `server/routers.ts` | — |
-| `calls.list` | protected | `server/routers.ts` | — |
-| `calls.create` | protected | `server/routers.ts` | — |
-| `deepThink.chat` | protected | `server/routers.ts` | — |
-| `gong.getByCompany` | protected | `server/routers.ts` | — |
-| `intel.brainLearn` | protected | `server/intel/router.ts` | — |
-| `intentScores.create` | protected | `server/integrations-router.ts` | — |
-| `opportunities.getById` | protected | `server/routers.ts` | — |
-| `people.listPaginated` | protected | `server/routers.ts` | — |
-| `people.getByCompany` | protected | `server/routers.ts` | — |
-| `priorityActions.getRepTerritory` | protected | `server/priority-actions-router.ts` | — |
-| `sixsense.detectIntentSpikes` | protected | `server/sixsense-router.ts` | — |
-| `tools.submitFeedback` | protected | `server/tools-router.ts` | — |
-| `tools.getLearningInsights` | protected | `server/tools-router.ts` | — |
-| `tools.getReportByShareId` | public | `server/tools-router.ts` | — |
-| `tools.deleteTranscriptReport` | protected | `server/tools-router.ts` | — |
 
 ## Superseded
 
@@ -60,14 +30,25 @@ Working code that nothing calls because something better does the same job. Not 
 | `ai.generateAccountResearch` | superseded by `ai.compileResearch` — both call the same enrichment, but compileResearch caches and is the one the UI uses |
 | `ai.generateOutreachRecommendation` | declared in the source as an alias that reuses generateOutreachEmail |
 | `ai.generateEmail` | superseded by `outreach.generateEmail` — the wired one carries the grounding rules that stop it inventing facts about the account |
+| `ai.prioritizeContacts` | superseded by `people.prioritize`, which the Contacts page uses |
 | `ai.generateAccountSummary` | superseded by `intel.accountBrief` — a summary with no evidence validation behind it |
 | `ai.compileOverview` | superseded by `intel.accountBrief` — same engine, but returns markdown instead of the structured judgement the UI renders |
 | `ai.generateStrategicInsights` | superseded by `intel.accountBrief` — string-splits the same brief on '## Signal Readout' to recover its judgement section |
+| `auth.listAccessRequests` | superseded by `admin.getPendingRequests`, which is what the approvals screen calls |
+| `auth.reviewAccessRequest` | superseded by `admin.approveAccessRequest` / `admin.denyAccessRequest` |
+| `calls.list` | superseded by `gong.listPaginated`, which the Calls page uses and which pages rather than loading every call |
+| `calls.create` | superseded by the Gong sync — calls arrive from the connector, not by hand |
 | `calls.getByAccountId` | superseded by `intel.accountSignals` — same reason as gong.getByAccountId |
+| `deepThink.chat` | superseded by `ai.chat`, which the assistant uses on every page |
+| `gong.getByCompany` | superseded by `intel.accountSignals` — keyed on a company-name string where the pack is keyed on the account id |
 | `gong.getByAccountId` | superseded by `intel.accountSignals` — conversations, topics and open action items arrive with the pack |
 | `intentScores.list` | superseded by `intel.accountSignals` — the pack carries the same series plus its computed trend and largest jump |
+| `opportunities.getById` | superseded by `opportunities.list` — there is no single-opportunity page, and the list already carries every field one would show |
 | `opportunities.getByAccountId` | superseded by `intel.accountSignals` — the pack also carries the probability-weighted total this returns raw |
+| `people.listPaginated` | superseded by `people.list` for UI purposes — `list` caps its result and supports search, which a contact list needs and this doesn't |
+| `people.getByCompany` | superseded by `intel.accountSignals` — same reason as gong.getByCompany |
 | `people.getByAccountId` | superseded by `intel.accountSignals` — returns the same contacts, ranked by seniority, in the pack the page already loads |
+| `priorityActions.getRepTerritory` | superseded by `priorityActions.getRepStats` + `getEnriched`, which the dashboard uses and which already scope to the rep |
 
 ## Unreachable client modules
 
@@ -80,12 +61,12 @@ Built to do something, currently doing nothing. Wire or retire.
 - `components/AIChatBox.tsx`
 - `components/AIEnrichButton.tsx` — strands `ai.enrichAccount`
 - `components/AIInsightsTab.tsx` — strands `ai.generateStrategicInsights`
-- `components/IntelligenceTab.tsx` — strands `ai.generateStrategicInsights`, `ai.compileOverview`, `ai.compileResearch`
+- `components/IntelligenceTab.tsx` — strands `ai.generateStrategicInsights`, `ai.compileOverview`
 - `components/LoadingSkeleton.tsx`
 - `components/ManusDialog.tsx`
 - `components/OverviewTab.tsx` — strands `ai.compileOverview`
-- `components/ResearchTab.tsx` — strands `ai.compileResearch`
-- `components/TechStackAnalysis.tsx` — strands `ai.analyzeTechStack`
+- `components/ResearchTab.tsx`
+- `components/TechStackAnalysis.tsx`
 - `components/app-shell/Brand.tsx`
 
 ### Unused primitives (9)
@@ -117,9 +98,12 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `admin.approveUser` | `pages/AdminApproval.tsx` |
 | `admin.denyUser` | `pages/AdminApproval.tsx` |
 | `admin.updateUserRole` | `pages/AdminApproval.tsx` |
+| `ai.analyzeCall` | `pages/Calls.tsx` |
 | `ai.search` | `pages/SmartSearch.tsx` |
 | `ai.chat` | `components/AIAssistant.tsx`, `components/GlobalAIChat.tsx` |
 | `ai.generateContactSummary` | `pages/ContactDetail.tsx` |
+| `ai.compileResearch` | `components/AccountResearch.tsx` |
+| `ai.analyzeTechStack` | `components/AccountResearch.tsx` |
 | `auth.me` | `_core/hooks/useAuth.ts` |
 | `auth.logout` | `_core/hooks/useAuth.ts`, `components/app-shell/Sidebar.tsx` |
 | `auth.signUp` | `pages/SignUp.tsx` |
@@ -182,6 +166,7 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `sequences.delete` | `pages/Sequences.tsx` |
 | `sixsense.syncAllAccounts` | `pages/SixsenseSync.tsx` |
 | `sixsense.getSyncStatus` | `pages/SixsenseSync.tsx` |
+| `sixsense.detectIntentSpikes` | `pages/SixsenseSync.tsx` |
 | `sixsense.getRecentSpikes` | `components/WhatChanged.tsx` |
 | `sixsenseAnalytics.getBuyingStages` | `pages/Insights.tsx`, `pages/SixsenseAnalytics.tsx` |
 | `sixsenseAnalytics.getEngagement` | `pages/Insights.tsx`, `pages/SixsenseAnalytics.tsx` |
@@ -194,11 +179,15 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `tools.searchKnowledge` | `components/KnowledgeBase.tsx` |
 | `tools.generateContent` | `pages/AITools.tsx`, `pages/ContentStudio.tsx`, `pages/Sequences.tsx` |
 | `tools.processLeads` | `pages/DataHub.tsx`, `pages/LeadProcessor.tsx` |
+| `tools.submitFeedback` | `components/ContentFeedback.tsx` |
+| `tools.getLearningInsights` | `components/LearningInsights.tsx` |
 | `tools.generateWebinarContent` | `pages/WebinarGenerator.tsx` |
 | `tools.analyzeTranscript` | `pages/AITools.tsx`, `pages/TranscriptAnalyzer.tsx` |
 | `tools.saveTranscriptReport` | `pages/AITools.tsx`, `pages/TranscriptAnalyzer.tsx` |
 | `tools.getSavedTranscriptReports` | `pages/AITools.tsx`, `pages/TranscriptAnalyzer.tsx` |
+| `tools.getReportByShareId` | `pages/AITools.tsx` |
 | `tools.askTranscriptQuestion` | `pages/AITools.tsx` |
+| `tools.deleteTranscriptReport` | `pages/AITools.tsx` |
 | `validation.getSummary` | `pages/DataValidation.tsx` |
 | `validation.validateAccount` | `components/ValidationIssues.tsx` |
 | `validation.validateContact` | `components/ValidationIssues.tsx` |
@@ -214,7 +203,9 @@ Not called by our UI, and should not be — these are entry points for other sys
 
 | Procedure | Why |
 |---|---|
+| `accounts.getStats` | aggregate over all accounts — the dashboard already loads `accounts.list` for its cards and counts from that |
 | `accounts.enrichWith6sense` | connector action — 6sense enrichment run |
+| `analytics.overview` | aggregate over accounts, contacts and calls — Insights holds all three already and derives the same figures client-side |
 | `clay.receiveAccount` | inbound webhook (Clay pushes to us) |
 | `clay.receiveContact` | inbound webhook (Clay pushes to us) |
 | `clay.ping` | connectivity probe for Clay setup |
@@ -250,6 +241,8 @@ Not called by our UI, and should not be — these are entry points for other sys
 | `integrations.zoominfoEnrichCompany` | connector action (callable from automation/API) |
 | `integrations.zoominfoSearchContacts` | connector action (callable from automation/API) |
 | `integrations.zoominfoEnrichContact` | connector action (callable from automation/API) |
+| `intel.brainLearn` | forces a learning cycle that otherwise runs on a schedule |
+| `intentScores.create` | write path — connectors push scores in through it |
 | `sixsense.syncAccountByDomain` | connector action — sync one account from 6sense |
 | `sixsense.identifyByIP` | connector action — de-anonymise a visiting IP |
 | `system.health` | uptime probe |
