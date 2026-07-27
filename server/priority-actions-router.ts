@@ -36,6 +36,30 @@ function formatKeyContact(contact: { name: string | null; title: string | null }
   return `${name} (${title})`;
 }
 
+/**
+ * These columns arrive as a real array, a JSON string, or a comma-joined string
+ * depending on which connector wrote them. Normalise all three, and drop anything
+ * blank — an empty string rendered into a sentence reads as a missing word.
+ */
+function toList(value: unknown): string[] {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value.map(v => String(v).trim()).filter(Boolean);
+  if (typeof value === 'string') {
+    const s = value.trim();
+    if (!s) return [];
+    if (s.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) return parsed.map(v => String(v).trim()).filter(Boolean);
+      } catch {
+        /* fall through to delimiter split */
+      }
+    }
+    return s.split(/[,;|]/).map(x => x.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 export const priorityActionsRouter = router({
   getEnriched: protectedProcedure
     .input(z.object({ 
@@ -138,32 +162,64 @@ export const priorityActionsRouter = router({
             ? '⚠️ LOST OPP - Check Salesforce for deal history before re-engaging' 
             : null;
 
-          // Generate "Why Now" reasoning with VECTOR context
+          /**
+           * "Why now" in plain English, not as arithmetic.
+           *
+           * This used to render the formula at the reader: "VECTOR 80/100 • Intent 100 +
+           * 26 days since last call = Follow up". A rep does not need to see the sum;
+           * they need the sentence the sum implies. The composite score is already shown
+           * as its own badge beside this line, so repeating it here was noise too.
+           */
           let whyNow: string;
           if (isLostOpp) {
-            whyNow = `VECTOR ${vectorScores.composite}/100 • ⚠️ LOST OPP - Check SFDC for history, loss reasons, and previous contacts`;
+            whyNow = `Previously lost — check Salesforce for why before re-engaging`;
           } else if (calls.length === 0) {
-            whyNow = `VECTOR ${vectorScores.composite}/100 (Tier ${vectorScores.tier}) • Intent ${account.intentScore} + Zero engagement = Act today`;
+            whyNow = `Intent ${account.intentScore} and nobody has ever called them`;
           } else if (daysSinceLastCall !== null && daysSinceLastCall <= 7) {
-            whyNow = `VECTOR ${vectorScores.composite}/100 • Hot momentum - last call ${daysSinceLastCall} days ago`;
+            whyNow = `Live conversation — you spoke ${daysSinceLastCall === 0 ? 'today' : daysSinceLastCall === 1 ? 'yesterday' : `${daysSinceLastCall} days ago`}`;
           } else if (daysSinceLastCall !== null && daysSinceLastCall <= 30) {
-            whyNow = `VECTOR ${vectorScores.composite}/100 • Intent ${account.intentScore} + ${daysSinceLastCall} days since last call = Follow up`;
+            whyNow = `Intent hit ${account.intentScore} and nobody has called in ${daysSinceLastCall} days`;
           } else {
-            whyNow = `VECTOR ${vectorScores.composite}/100 • High intent (${account.intentScore}) + ${daysSinceLastCall || 'No'} days cold = Re-engage`;
+            whyNow = `Intent ${account.intentScore} but the account has gone quiet for ${daysSinceLastCall ?? 'over 30'} days`;
           }
 
-          // Generate Next Best Action with specific contact
-          let nextBestAction = 'Identify key contacts in security/IT leadership';
-          if (primaryContact) {
-            const isSecurityFocused = 
-              account.industry?.toLowerCase().includes('security') ||
-              account.industry?.toLowerCase().includes('software') ||
-              primaryContact.title?.toLowerCase().includes('security') ||
-              primaryContact.title?.toLowerCase().includes('ciso') ||
-              primaryContact.title?.toLowerCase().includes('cto');
-            
-            const messageType = isSecurityFocused ? 'security risk-focused' : 'value-driven';
-            nextBestAction = `Email ${formatKeyContact(primaryContact)} with ${messageType} message`;
+          /**
+           * The hook, not the category.
+           *
+           * This used to be a two-branch template: every account got either "with
+           * security risk-focused message" or "with value-driven message" depending on
+           * whether a title contained "ciso". Two sentences across a thousand accounts,
+           * telling a rep nothing they could open an email with — while the README called
+           * it AI-generated.
+           *
+           * The specifics were already loaded on this request and unused: recorded
+           * trigger events, commitments made on the last call, what they run. No model,
+           * no extra query, and every one of them is a real thing to say.
+           */
+          const triggers = toList(account.triggerEvents).slice(0, 2);
+          const openCommitments = Array.from(
+            new Set(calls.flatMap((c: any) => toList(c.actionItems)))
+          ).slice(0, 1);
+          const stack = [
+            ...toList(account.securityStack).slice(0, 2),
+            ...toList(account.techStack).slice(0, 1),
+          ];
+
+          let nextBestAction: string;
+          if (!primaryContact) {
+            nextBestAction = 'No contacts on file — find a stakeholder before anything else';
+          } else {
+            const who = formatKeyContact(primaryContact);
+            // Ordered by how much a rep would want it: an unmet promise beats a news
+            // event, which beats a guess from their tech stack.
+            const hook = openCommitments.length
+              ? `close out "${openCommitments[0]}" from the last call`
+              : triggers.length
+                ? `lead with ${triggers.join(' and ')}`
+                : stack.length
+                  ? `reference their ${stack.join('/')} setup`
+                  : null;
+            nextBestAction = hook ? `Email ${who} — ${hook}` : `Email ${who}`;
           }
 
           // Calculate engagement metrics

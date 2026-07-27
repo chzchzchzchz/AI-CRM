@@ -30,10 +30,14 @@ export function TechStackDisplay({ techStack, securityStack }: TechStackDisplayP
         {/* Tech Stack */}
         {hasTechStack && (
           <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Server className="h-4 w-4 text-accent" />
-              <h4 className="font-semibold text-sm">Technology Stack</h4>
-            </div>
+            {/* Only labelled when there is a second group to tell it apart from —
+                otherwise it repeated the card title directly underneath itself. */}
+            {hasSecurityStack && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Server className="h-4 w-4 text-accent" />
+                <h4 className="font-semibold text-sm">Technology</h4>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
               {techStack.map((tech, idx) => (
                 <Badge 

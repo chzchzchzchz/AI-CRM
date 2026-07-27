@@ -267,7 +267,6 @@ export default function Home() {
                   const Icon = action.icon;
                   const vectorScores = (action as any).vectorScores;
                   const engagementMetrics = (action as any).engagementMetrics;
-                  const primaryContact = (action as any).primaryContact;
                   const keyContactsCount = (action as any).keyContactsCount || 0;
                   const isLostOpp = (action as any).isLostOpp;
                   const lostOppContext = (action as any).lostOppContext;
@@ -377,14 +376,9 @@ export default function Home() {
                                 </dt>
                                 <dd className="mt-0.5 text-sm">{action.nextBestAction}</dd>
                               </div>
-                              {primaryContact && (
-                                <div>
-                                  <dt className="text-2xs font-medium tracking-wide text-ink-faint uppercase">
-                                    Contact
-                                  </dt>
-                                  <dd className="mt-0.5 text-sm">{primaryContact}</dd>
-                                </div>
-                              )}
+                              {/* No separate "Contact" row: the next best action names the
+                                  person, and the contact list above names them again. The
+                                  same string three times in one card reads as a bug. */}
                             </dl>
 
                             {/* Engagement Metrics */}
@@ -404,26 +398,42 @@ export default function Home() {
                               <span><span className="tabular-nums text-ink-muted">{action.contactCount}</span> contacts</span>
                             </div>
 
-                            {/* VECTOR Score Breakdown (compact) */}
-                            {vectorScores && (
-                              <div className="flex flex-wrap gap-x-5 gap-y-1.5">
-                                {([
-                                  ["Engagement", vectorScores.engagement],
-                                  ["Conversion", vectorScores.conversion],
-                                  ["Strategic", vectorScores.strategic],
-                                  ["Timing", vectorScores.timing],
-                                ] as const).map(([label, value]) => (
-                                  <div key={label}>
-                                    <div className="text-2xs tracking-wide text-ink-faint uppercase">
-                                      {label}
+                            {/* What makes up the VECTOR score.
+                                Four bare numbers out of 100 with no scale and no
+                                explanation told a rep nothing — is "Engagement 22" bad?
+                                Each now carries its denominator and a hover explaining
+                                what moves it, and the weakest one is tinted so the
+                                breakdown answers "where is this account thin?" at a
+                                glance rather than needing to be read four times. */}
+                            {vectorScores && (() => {
+                              const parts = [
+                                ["Engagement", vectorScores.engagement, "Calls, recency and how many people you've reached"],
+                                ["Conversion", vectorScores.conversion, "Intent score and how far along the buying stage is"],
+                                ["Strategic", vectorScores.strategic, "Company size, industry fit and tech stack overlap"],
+                                ["Timing", vectorScores.timing, "How long since the last touch, against how hot they are"],
+                              ] as const;
+                              const weakest = Math.min(...parts.map(p => p[1] ?? 100));
+                              return (
+                                <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+                                  {parts.map(([label, value, help]) => (
+                                    <div key={label} title={help}>
+                                      <div className="text-2xs tracking-wide text-ink-faint uppercase">
+                                        {label}
+                                      </div>
+                                      <div
+                                        data-numeric
+                                        className={`text-sm font-medium tabular-nums ${
+                                          value === weakest ? "text-caution" : ""
+                                        }`}
+                                      >
+                                        {value}
+                                        <span className="text-2xs font-normal text-ink-faint">/100</span>
+                                      </div>
                                     </div>
-                                    <div data-numeric className="text-sm font-medium tabular-nums">
-                                      {value}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                                  ))}
+                                </div>
+                              );
+                            })()}
 
                             {/* Action Button */}
                             <div>
