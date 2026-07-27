@@ -60,6 +60,36 @@ export function ValidationIssues() {
   // let the reader ask for more.
   const [limit, setLimit] = useState(PAGE);
 
+  // Deep-verify one record rather than the whole database. The bulk passes take minutes
+  // and are the only way this engine was reachable; when you are looking at a single bad
+  // row, checking that row is the thing you actually want.
+  const [verifying, setVerifying] = useState<string | null>(null);
+  const [verdicts, setVerdicts] = useState<Record<string, string>>({});
+
+  const verifyAccount = trpc.validation.validateAccount.useMutation();
+  const verifyContact = trpc.validation.validateContact.useMutation();
+
+  const runVerify = async (issue: { id: string; type: string; entityId: number }) => {
+    setVerifying(issue.id);
+    try {
+      const res =
+        issue.type === "account"
+          ? await verifyAccount.mutateAsync({ accountId: issue.entityId })
+          : await verifyContact.mutateAsync({ contactId: issue.entityId });
+      const found = res.issueCount;
+      setVerdicts(v => ({
+        ...v,
+        [issue.id]: found
+          ? `${found} issue${found === 1 ? "" : "s"} confirmed against the web`
+          : "Verified — nothing contradicted by the web",
+      }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Verification failed");
+    } finally {
+      setVerifying(null);
+    }
+  };
+
   const fix = trpc.validation.fixIssue.useMutation({
     onSuccess: res => {
       if (res.success) {
@@ -199,6 +229,13 @@ export function ValidationIssues() {
                       <p className="mt-0.5 text-xs text-ink-muted">{issue.issue}</p>
                       <p className="mt-0.5 text-2xs text-ink-subtle">{issue.suggestion}</p>
 
+                      {verdicts[issue.id] && (
+                        <p className="mt-1 flex items-center gap-1 text-2xs text-accent">
+                          <ShieldCheck className="size-3" />
+                          {verdicts[issue.id]}
+                        </p>
+                      )}
+
                       {isEditing && (
                         <form
                           className="mt-2 flex flex-wrap items-center gap-2"
@@ -249,6 +286,23 @@ export function ValidationIssues() {
                         </form>
                       )}
                     </div>
+
+                    {!isEditing && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="shrink-0"
+                        disabled={verifying !== null}
+                        title="Check this one record against the web"
+                        onClick={() => runVerify(issue)}
+                      >
+                        {verifying === issue.id ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          "Verify"
+                        )}
+                      </Button>
+                    )}
 
                     {!isEditing &&
                       (issue.editable ? (

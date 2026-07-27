@@ -229,26 +229,47 @@ export const hotLeadsRouter = router({
       const [accts, people] = await Promise.all([getAllAccounts(), getAllPeople()]);
       const acctById = new Map<number, any>(accts.map((a: any) => [a.id, a]));
 
-      const results = (people as any[])
-        .map((p) => {
-          const acct = acctById.get(p.accountId);
-          if (!acct || acct.sixsenseBuyingStage !== stage) return null;
-          return {
-            contactId: p.id,
-            contactName: p.name,
-            contactTitle: p.title,
-            contactEmail: p.email,
-            linkedinUrl: p.linkedinUrl,
-            accountId: acct.id,
-            accountName: acct.name,
-            intentScore: acct.intentScore ?? 0,
-            buyingStage: acct.sixsenseBuyingStage,
-          };
-        })
-        .filter(Boolean)
-        .sort((a: any, b: any) => (b.intentScore || 0) - (a.intentScore || 0))
-        .slice(0, limit);
+      // Same HotLead shape as getTopLeads, and ranked the same way.
+      //
+      // This used to return a narrower object — no phone, no priority score, no reason —
+      // so a caller could not render the two lists with one component. Two shapes for one
+      // concept is how a UI ends up with two code paths that drift apart.
+      const results: HotLead[] = [];
+      for (const p of people as any[]) {
+        const acct = acctById.get(p.accountId);
+        if (!acct || acct.sixsenseBuyingStage !== stage) continue;
 
-      return results;
+        const intentScore = acct.intentScore ?? 0;
+        const { score, reason } = calculatePriorityScore(
+          intentScore,
+          acct.sixsenseBuyingStage,
+          acct.sixsenseProfileFit,
+          p.title,
+          !!p.linkedinUrl,
+          !!p.email
+        );
+
+        results.push({
+          contactId: p.id,
+          contactName: p.name,
+          contactTitle: p.title,
+          contactEmail: p.email,
+          contactPhone: p.phone,
+          linkedinUrl: p.linkedinUrl,
+          accountId: acct.id,
+          accountName: acct.name,
+          accountDomain: acct.domain,
+          intentScore,
+          buyingStage: acct.sixsenseBuyingStage,
+          profileFit: acct.sixsenseProfileFit,
+          industry: acct.industry,
+          employeeCount: acct.employeeCount,
+          region: acct.region,
+          priorityScore: score,
+          priorityReason: reason,
+        });
+      }
+
+      return results.sort((a, b) => b.priorityScore - a.priorityScore).slice(0, limit);
     }),
 });

@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { 
   Sparkles, FileText, Upload, Mic, 
   Loader2, Copy, Check, ChevronRight,
-  AlertTriangle, Shield, DollarSign, Quote, User, Link2,
+  AlertTriangle, Shield, DollarSign, Quote, User, Link2, Trash2,
   Save, Building2, Zap, MessageSquare, Clock, Target,
   TrendingUp, Lightbulb, Send, X, ExternalLink,
   FileSearch, Brain, Users, Briefcase, AlertCircle,
@@ -213,8 +213,28 @@ function CallAnalyzerTool({ sharedReportId }: { sharedReportId: string | null })
     }
   });
 
+  // A shared report is resolved through the PUBLIC procedure, not through the caller's
+  // own saved list.
+  //
+  // "Copy share link" produced a URL that only ever worked for the person who made the
+  // report: the recipient's saved list doesn't contain it, so the page silently showed
+  // nothing. tools.getReportByShareId is public and exists for exactly this, and was
+  // never called. A share link that doesn't share is worse than no share button.
+  const sharedReportQuery = trpc.tools.getReportByShareId.useQuery(
+    { shareId: sharedReportId ?? "" },
+    { enabled: !!sharedReportId, retry: false }
+  );
+
+  const deleteReport = trpc.tools.deleteTranscriptReport.useMutation({
+    onSuccess: () => {
+      toast.success('Report deleted');
+      savedReportsQuery.refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const savedReportsQuery = trpc.tools.getSavedTranscriptReports.useQuery(undefined, {
-    enabled: showSavedReports || !!sharedReportId
+    enabled: showSavedReports
   });
 
   const askFollowUpMutation = trpc.tools.askTranscriptQuestion.useMutation({
@@ -230,15 +250,13 @@ function CallAnalyzerTool({ sharedReportId }: { sharedReportId: string | null })
 
   // Load shared report if ID provided
   useEffect(() => {
-    if (sharedReportId && savedReportsQuery.data) {
-      const report = savedReportsQuery.data.find((r: SavedReport) => r.shareId === sharedReportId);
-      if (report) {
-        setViewingReport(report);
-        setResult(report.analysis as AnalysisResult);
-        setTranscript(report.transcript);
-      }
+    const report = sharedReportQuery.data as SavedReport | null | undefined;
+    if (sharedReportId && report) {
+      setViewingReport(report);
+      setResult(report.analysis as AnalysisResult);
+      setTranscript(report.transcript);
     }
-  }, [sharedReportId, savedReportsQuery.data]);
+  }, [sharedReportId, sharedReportQuery.data]);
 
   const handleAnalyze = () => {
     if (!transcript.trim() || transcript.length < 100) {
@@ -416,6 +434,19 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => loadReport(report)}>
                         <Eye className="w-4 h-4" />
+                      </Button>
+                      {/* Reports could be saved and never removed. A share link stays
+                          live until the report is gone, so deleting it is also how you
+                          revoke one. */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Delete ${report.name}`}
+                        className="text-muted-foreground hover:text-critical"
+                        disabled={deleteReport.isPending}
+                        onClick={() => deleteReport.mutate({ id: report.id })}
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>

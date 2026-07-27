@@ -7,6 +7,7 @@ import { Progress } from"@/components/ui/progress";
 import { trpc } from"@/lib/trpc";
 import { toast } from"sonner";
 import { KnowledgeBase } from"@/components/KnowledgeBase";
+import { LearningInsights } from"@/components/LearningInsights";
 import { 
   Upload, FileSpreadsheet, Sparkles, Loader2, Download, 
   CheckCircle2, XCircle, AlertTriangle, Database, 
@@ -382,28 +383,10 @@ export default function DataHub() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex flex-wrap items-center gap-2">
-                <Brain className="h-4 w-4 text-accent" />
-                Learning from You
-              </CardTitle>
-              <CardDescription>
-                The AI improves based on your corrections
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-sm text-muted-foreground">
-                <p>When you edit processed data, the AI learns:</p>
-                <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li>Your field naming preferences</li>
-                  <li>Custom validation rules</li>
-                  <li>Industry-specific formatting</li>
-                  <li>Data quality standards</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Was four static bullet points asserting what the AI learns from you, while
+              the procedure that reads that record sat unrouted and no feedback was ever
+              captured. Now it shows the actual record, and says so when it's empty. */}
+          <LearningInsights />
 
         </div>
       </div>
