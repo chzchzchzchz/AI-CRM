@@ -15,7 +15,7 @@ Every backend capability, and whether anything in the product actually reaches i
 | ↳ of those, called only by unreachable client code | 0 |
 | Superseded by a live capability (kept, not a to-do) | 23 |
 | App routes | 33 |
-| Client modules unreachable from `main.tsx` | 19 |
+| Client modules unreachable from `main.tsx` | 9 |
 | Integration connectors | 24 |
 
 "Reachable" is decided by walking the import graph from `client/src/main.tsx`, not by grepping for the procedure name. The difference is not academic: a component can call a procedure perfectly while nothing in the product renders that component, in which case the procedure is dead and a text search says otherwise.
@@ -53,21 +53,6 @@ Working code that nothing calls because something better does the same job. Not 
 ## Unreachable client modules
 
 These files compile and typecheck, but no import chain leads to them from `main.tsx`, so no user can reach them. They are the reason a procedure can look wired while being dead.
-
-### Stranded features (10)
-
-Built to do something, currently doing nothing. Wire or retire.
-
-- `components/AIChatBox.tsx`
-- `components/AIEnrichButton.tsx` — strands `ai.enrichAccount`
-- `components/AIInsightsTab.tsx` — strands `ai.generateStrategicInsights`
-- `components/IntelligenceTab.tsx` — strands `ai.generateStrategicInsights`, `ai.compileOverview`
-- `components/LoadingSkeleton.tsx`
-- `components/ManusDialog.tsx`
-- `components/OverviewTab.tsx` — strands `ai.compileOverview`
-- `components/ResearchTab.tsx`
-- `components/TechStackAnalysis.tsx`
-- `components/app-shell/Brand.tsx`
 
 ### Unused primitives (9)
 
@@ -219,7 +204,7 @@ Not called by our UI, and should not be — these are entry points for other sys
 | `dust.getContactIntelligence` | Dust connector action |
 | `dust.searchGongCalls` | Dust connector action |
 | `dust.query` | Dust connector action |
-| `gemini.researchAccount` | Gemini connector action |
+| `gemini.researchAccount` | **cannot succeed in this deployment** — needs browser automation that isn't installed; it throws by design. Use the configured LLM provider instead |
 | `integrations.salesloftCreatePerson` | connector action (callable from automation/API) |
 | `integrations.outreachCreateProspect` | connector action (callable from automation/API) |
 | `integrations.calendlyGetAccount` | connector action (callable from automation/API) |

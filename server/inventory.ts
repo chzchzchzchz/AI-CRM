@@ -349,7 +349,12 @@ const AUTOMATION_BY_DESIGN: Record<string, string> = {
   "dust.getContactIntelligence": "Dust connector action",
   "dust.searchGongCalls": "Dust connector action",
   "dust.query": "Dust connector action",
-  "gemini.researchAccount": "Gemini connector action",
+  // Honest about its own limits: queryGemini throws rather than returning placeholder
+  // text, so a caller reports the feature as unavailable instead of passing "not
+  // available" off as research. Calling this a working connector action would be the
+  // same class of overstatement this document exists to catch.
+  "gemini.researchAccount":
+    "**cannot succeed in this deployment** — needs browser automation that isn't installed; it throws by design. Use the configured LLM provider instead",
   "accounts.enrichWith6sense": "connector action — 6sense enrichment run",
   "sixsense.syncAccountByDomain": "connector action — sync one account from 6sense",
   "sixsense.identifyByIP": "connector action — de-anonymise a visiting IP",
