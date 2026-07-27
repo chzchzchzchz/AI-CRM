@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { KnowledgeBase } from "@/components/KnowledgeBase";
+import { ContentFeedback } from "@/components/ContentFeedback";
 import { toast } from "sonner";
 import {
   Sparkles, Loader2, Copy, CheckCircle2,
@@ -35,6 +36,8 @@ export default function ContentStudio() {
   // those were the documents consulted. The server reports a real boolean; naming
   // files it cannot name would be inventing evidence for its own output.
   const [ragUsed, setRagUsed] = useState<boolean | null>(null);
+  const [contentId, setContentId] = useState<number | null>(null);
+  const [originalContent, setOriginalContent] = useState<string>("");
 
   // `tools.generateContent` handles every type this page offers, grounded in the
   // knowledge base. It was built and unrouted, so the page shipped its own fake:
@@ -75,6 +78,10 @@ export default function ContentStudio() {
         content: result.content,
         title: `Generated ${contentTypes.find(c => c.value === contentType)?.label}`,
       });
+      // Kept so feedback can be attached to this exact generation, and so an edit can
+      // be told apart from the text we produced.
+      setContentId(result.contentId ?? null);
+      setOriginalContent(result.content);
       setRagUsed(result.ragSourcesUsed);
       toast.success("Content generated");
     } catch (error) {
@@ -238,9 +245,25 @@ export default function ContentStudio() {
                 </div>
               </CardHeader>
               <CardContent>
-                <pre className="whitespace-pre-wrap text-sm bg-muted/50 p-4 rounded-sm overflow-auto max-h-96">
-                  {generatedContent.content}
-                </pre>
+                {/* Editable, not a <pre>. A rep is going to change this before sending
+                    it, and the edit is the most useful feedback there is — it says what
+                    the draft should have been rather than that it was wrong. */}
+                <Textarea
+                  value={generatedContent.content}
+                  onChange={e =>
+                    setGeneratedContent(g => (g ? { ...g, content: e.target.value } : g))
+                  }
+                  rows={14}
+                  aria-label="Generated content"
+                  className="text-sm"
+                />
+
+                <ContentFeedback
+                  contentId={contentId}
+                  editedContent={generatedContent?.content}
+                  originalContent={originalContent}
+                  className="mt-4 border-t pt-4"
+                />
 
                 {ragUsed !== null && (
                   <div className="mt-4 pt-4 border-t">

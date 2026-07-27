@@ -37,8 +37,8 @@ So I built **TargetDash**, the AI-powered layer that organizes the noise and hel
 | **Data Entry** | Manual input required | Automated capture (from 6sense, Gong, Clay) |
 | **Signal Detection** | Basic lead scoring | Multi-channel AI (intent, calls, engagement) |
 | **Next Best Action** | Requires manual synthesis | AI-generated ("Email Vertex Cloud VP re: renewal risk") |
-| **MCP Server** | ❌ | ✅ (plug into ANY AI agent) |
-| **Setup Time** | Extended implementation | 5 minutes (see below) |
+| **MCP Server** | ❌ | ✅ `pnpm mcp` — exposes CRM data as MCP tools over stdio |
+| **Setup Time** | Extended implementation | ~2 minutes for the demo (see below) |
 
 ---
 
@@ -47,13 +47,16 @@ So I built **TargetDash**, the AI-powered layer that organizes the noise and hel
 Spin it up with `pnpm dev` and the seeded demo dataset looks like this out of the box:
 
 ```text
-📈 16 accounts tracked (scales seamlessly with real data)
-🔥 13 highly active leads (intent 70+)
-🌡️ 3 developing leads
-📇 40 contacts, 8 open opportunities
-🎯 Top accounts ranked by VECTOR score, e.g. Vertex Cloud Systems (95), Pinnacle Software (93)
+📈 1,000 accounts · 474 with intent data
+🔥 126 highly active leads (intent 70+)
+🌡️ 136 developing leads (intent 40–69)
+📇 10,023 contacts · 113 open opportunities · $21.3M open pipeline
+🎯 Top accounts by intent, e.g. Brightwave Health (100), Pinnacle Software (100)
 
 ```
+
+<sub>Counted from `demo-db.seed.json`. If you reshape the seed, recount — these numbers
+were stale by two orders of magnitude before anyone checked them.</sub>
 
 Point it at your own 6sense/Gong/Clay/Salesforce data and it routes your real book of business into one clear dashboard.
 
@@ -63,7 +66,7 @@ Point it at your own 6sense/Gong/Clay/Salesforce data and it routes your real bo
 
 ### Run the demo (zero config, ~2 minutes)
 
-No database, no API keys. Boots with a synthetic dataset (16 accounts, 40 contacts, $1.02M pipeline).
+No database, no API keys. Boots with a synthetic dataset (1,000 accounts, 10,023 contacts, $21.3M open pipeline).
 
 ```bash
 git clone https://github.com/chzchzchzchz/AI-CRM.git
@@ -85,7 +88,7 @@ Want it live on a public URL? One click, no local setup (deploys the demo; add y
 
 [](https://render.com/deploy?repo=https://github.com/chzchzchzchz/AI-CRM)
 (Or skip the copy and run `DEMO_MODE=true pnpm dev`, which just picks the first free port from 3000.)
-The AI features (account briefs, outreach, chat) work for free too, as they fall back to a local Ollama model when no cloud key is set. See [SETUP.md](https://www.google.com/search?q=SETUP.md) for the one-time Ollama step.
+The AI features (account briefs, outreach, chat) work for free too, as they fall back to a local Ollama model when no cloud key is set. See [SETUP.md](SETUP.md) for the one-time Ollama step.
 
 ### Use it for YOUR company
 
@@ -117,7 +120,7 @@ node scripts/seed-demo.mjs              # or (re)generate the synthetic demo dat
 
 
 
-Integration keys (6sense, Gong, Clay, Salesforce) are all optional and independent. See the full matrix in [SETUP.md](https://www.google.com/search?q=SETUP.md). Admins configuring reps, territories, branding, and live integrations can refer to **[ADMIN_SETUP.md](https://www.google.com/search?q=ADMIN_SETUP.md)**.
+Integration keys (6sense, Gong, Clay, Salesforce) are all optional and independent. See the full matrix in [SETUP.md](SETUP.md). Admins configuring reps, territories, branding, and live integrations can refer to **[ADMIN_SETUP.md](ADMIN_SETUP.md)**.
 
 ---
 
@@ -176,7 +179,7 @@ TargetDash includes an **MCP (Model Context Protocol) server**, meaning ANY AI a
 > are set but wrong (a placeholder, a quoted value, a webhook URL pointed at
 > the wrong vendor). It catches the mistakes that otherwise fail silently.
 
-> **Working on the code?** [`docs/ARCHITECTURE.md`](https://www.google.com/search?q=docs/ARCHITECTURE.md) covers repo layout, the app shell and nav model, the design-system tokens, the bundle splits, and how to add a page. [`DESIGN.md`](https://www.google.com/search?q=DESIGN.md) covers the visual language.
+> **Working on the code?** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) covers repo layout, the app shell and nav model, the design-system tokens, the bundle splits, and how to add a page. [`DESIGN.md`](DESIGN.md) covers the visual language.
 
 ---
 
@@ -270,4 +273,4 @@ Questions, bugs, or feature requests? Open a [GitHub issue](https://github.com/c
 
 ## License
 
-MIT License, free for personal & commercial use. See [LICENSE](https://www.google.com/search?q=LICENSE).
+MIT License, free for personal & commercial use. See [LICENSE](LICENSE).

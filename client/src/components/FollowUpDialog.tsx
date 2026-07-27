@@ -24,7 +24,9 @@ import {
   Loader2,
   Mail,
   Phone,
+  RotateCcw,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -46,6 +48,7 @@ type FollowUpItem = {
   title: string;
   notes: string | null;
   dueDate: string;
+  status: string;
   daysUntilDue: number;
   overdue: boolean;
   account: { id: number; name: string; domain: string | null; industry: string | null } | null;
@@ -118,17 +121,42 @@ export function FollowUpDialog({
   open,
   onOpenChange,
   onChanged,
+  onReopened,
 }: {
   followUp: FollowUpItem | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onChanged?: () => void;
+  /** Reopening moves the item out of the list you are looking at, so the caller is
+   *  told, and can show you where it went rather than letting it just disappear. */
+  onReopened?: () => void;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
 
   const complete = trpc.followUps.complete.useMutation({
     onSuccess: () => {
       toast.success("Marked done");
+      onOpenChange(false);
+      onChanged?.();
+    },
+    onError: e => toast.error(e.message),
+  });
+
+  // Closing something prematurely is the easiest mistake to make here, and until now it
+  // was the only irreversible one — `reopen` existed and nothing called it.
+  const reopen = trpc.followUps.reopen.useMutation({
+    onSuccess: () => {
+      toast.success("Reopened");
+      onOpenChange(false);
+      onChanged?.();
+      onReopened?.();
+    },
+    onError: e => toast.error(e.message),
+  });
+
+  const remove = trpc.followUps.remove.useMutation({
+    onSuccess: () => {
+      toast.success("Deleted");
       onOpenChange(false);
       onChanged?.();
     },
@@ -153,6 +181,8 @@ export function FollowUpDialog({
 
   if (!followUp) return null;
   const { account, contact } = followUp;
+  // A closed follow-up offers reopen and delete instead of snooze and done.
+  const isDone = followUp.status === "done";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -160,13 +190,20 @@ export function FollowUpDialog({
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-start gap-2 pr-6">
             <span className="min-w-0">{followUp.title}</span>
-            <Badge variant={followUp.overdue ? "critical" : "secondary"} size="sm">
-              {followUp.overdue ? (
+            {/* A closed follow-up must not still read "3 days overdue" — the date stopped
+                mattering the moment it was done. */}
+            <Badge
+              variant={isDone ? "positive" : followUp.overdue ? "critical" : "secondary"}
+              size="sm"
+            >
+              {isDone ? (
+                <CheckCircle2 className="size-3" />
+              ) : followUp.overdue ? (
                 <AlertTriangle className="size-3" />
               ) : (
                 <Clock className="size-3" />
               )}
-              {dueLabel(followUp.daysUntilDue)}
+              {isDone ? "Done" : dueLabel(followUp.daysUntilDue)}
             </Badge>
           </DialogTitle>
           {account && (
@@ -313,38 +350,79 @@ export function FollowUpDialog({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-3">
-          <div className="flex flex-wrap gap-1.5">
-            {[
-              { label: "1 week", days: 7 },
-              { label: "1 month", days: 30 },
-              { label: "3 months", days: 90 },
-            ].map(o => (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {isDone ? (
               <Button
-                key={o.days}
                 size="sm"
                 variant="ghost"
-                disabled={snooze.isPending}
-                onClick={() => snooze.mutate({ id: followUp.id, days: o.days })}
+                disabled={remove.isPending}
+                className="text-ink-muted hover:text-critical"
+                onClick={() => remove.mutate({ id: followUp.id })}
               >
-                {o.label}
+                <Trash2 className="mr-1.5 size-3.5" />
+                Delete
               </Button>
-            ))}
-            <span className="self-center text-2xs text-ink-subtle">snooze</span>
+            ) : (
+              <>
+                {[
+                  { label: "1 week", days: 7 },
+                  { label: "1 month", days: 30 },
+                  { label: "3 months", days: 90 },
+                ].map(o => (
+                  <Button
+                    key={o.days}
+                    size="sm"
+                    variant="ghost"
+                    disabled={snooze.isPending}
+                    onClick={() => snooze.mutate({ id: followUp.id, days: o.days })}
+                  >
+                    {o.label}
+                  </Button>
+                ))}
+                <span className="self-center text-2xs text-ink-subtle">snooze</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={remove.isPending}
+                  aria-label="Delete this follow-up"
+                  className="text-ink-muted hover:text-critical"
+                  onClick={() => remove.mutate({ id: followUp.id })}
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              </>
+            )}
           </div>
 
-          <Button
-            size="sm"
-            disabled={complete.isPending}
-            onClick={() => complete.mutate({ id: followUp.id })}
-            className={cn(complete.isPending && "opacity-70")}
-          >
-            {complete.isPending ? (
-              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-            ) : (
-              <CheckCircle2 className="mr-1.5 size-3.5" />
-            )}
-            Mark done
-          </Button>
+          {isDone ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={reopen.isPending}
+              onClick={() => reopen.mutate({ id: followUp.id })}
+            >
+              {reopen.isPending ? (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              ) : (
+                <RotateCcw className="mr-1.5 size-3.5" />
+              )}
+              Reopen
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              disabled={complete.isPending}
+              onClick={() => complete.mutate({ id: followUp.id })}
+              className={cn(complete.isPending && "opacity-70")}
+            >
+              {complete.isPending ? (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="mr-1.5 size-3.5" />
+              )}
+              Mark done
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -3,6 +3,7 @@
  * Shows top contacts at high-intent accounts for immediate outreach
  */
 
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import {
   Card,
@@ -33,11 +34,25 @@ interface HotLeadsWidgetProps {
   compact?: boolean;
 }
 
+const STAGES = ["Purchase", "Decision", "Consideration", "Evaluation", "Awareness"] as const;
+type Stage = (typeof STAGES)[number];
+
 export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetProps) {
-  const { data: hotLeads, isLoading } = trpc.hotLeads.getTopLeads.useQuery({ 
-    limit,
-    minIntentScore: 70 
-  });
+  // "Everyone hot" and "everyone at Purchase stage" are different questions, and the
+  // second one had a procedure written for it that nothing called.
+  const [stage, setStage] = useState<Stage | null>(null);
+
+  const top = trpc.hotLeads.getTopLeads.useQuery(
+    { limit, minIntentScore: 70 },
+    { enabled: stage === null }
+  );
+  const byStage = trpc.hotLeads.getByBuyingStage.useQuery(
+    { stage: (stage ?? "Purchase") as Stage, limit: Math.min(limit, 20) },
+    { enabled: stage !== null }
+  );
+
+  const hotLeads = stage === null ? top.data : byStage.data;
+  const isLoading = stage === null ? top.isLoading : byStage.isLoading;
   const { data: summary } = trpc.hotLeads.getSummary.useQuery();
 
   if (isLoading) {
@@ -107,6 +122,32 @@ export function HotLeadsWidget({ limit = 10, compact = false }: HotLeadsWidgetPr
               <span data-numeric className="font-medium text-foreground">{summary.medium.contacts}</span> medium
             </StatusDot>
           </div>
+        )}
+
+        {!compact && (
+          <div className="flex flex-wrap gap-1.5 border-b border-border-subtle px-5 py-2.5">
+            {([null, ...STAGES] as const).map(v => (
+              <button
+                key={v ?? "all"}
+                type="button"
+                onClick={() => setStage(v)}
+                aria-pressed={stage === v}
+                className={
+                  stage === v
+                    ? "rounded-sm border border-accent/30 bg-accent-subtle px-2 py-0.5 text-2xs font-medium text-accent"
+                    : "rounded-sm border border-border px-2 py-0.5 text-2xs text-ink-muted transition-colors hover:bg-muted"
+                }
+              >
+                {v ?? "All hot"}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!isLoading && !hotLeads?.length && (
+          <p className="px-5 py-6 text-center text-sm text-ink-muted">
+            {stage ? `No contacts at accounts in the ${stage} stage.` : "No hot leads right now."}
+          </p>
         )}
 
         <ul className="max-h-[560px] divide-y divide-border-subtle overflow-y-auto">

@@ -3,10 +3,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import { SafeStreamdown } from "@/components/SafeStreamdown";
 import { Link } from "wouter";
 import {
   Phone, Calendar, Clock, Building2, Search,
-  PlayCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight
+  PlayCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Sparkles, Loader2
 } from "lucide-react";
 
 
@@ -16,6 +18,22 @@ export default function Calls() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedCalls, setExpandedCalls] = useState<Set<number>>(new Set());
+  const [analyzingId, setAnalyzingId] = useState<number | null>(null);
+  const [analyses, setAnalyses] = useState<Record<number, string>>({});
+
+  const analyze = trpc.ai.analyzeCall.useMutation({
+    onSuccess: (res, vars) => {
+      const text = typeof res === "string" ? res : JSON.stringify(res, null, 2);
+      setAnalyses(a => ({ ...a, [vars.callId]: text }));
+      // Open the row so the result is visible where it was asked for.
+      setExpandedCalls(prev => new Set(prev).add(vars.callId));
+      setAnalyzingId(null);
+    },
+    onError: e => {
+      toast.error(e.message);
+      setAnalyzingId(null);
+    },
+  });
 
   // Use paginated query for performance
   const { data, isLoading } = trpc.gong.listPaginated.useQuery(
@@ -193,6 +211,25 @@ export default function Calls() {
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2 flex-shrink-0">
+                        {/* Gong gives you the recording; this reads the transcript and
+                            says what happened. The procedure existed and nothing called
+                            it, so a call you hadn't sat in on was just a row. */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={analyze.isPending}
+                          onClick={() => {
+                            setAnalyzingId(call.id);
+                            analyze.mutate({ callId: call.id });
+                          }}
+                        >
+                          {analyze.isPending && analyzingId === call.id ? (
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          ) : (
+                            <Sparkles className="mr-1 h-3 w-3" />
+                          )}
+                          Analyse
+                        </Button>
                         {call.recordingUrl && (
                           <Button
                             variant="outline"
@@ -237,6 +274,18 @@ export default function Calls() {
                         <span>View Transcript</span>
                         {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                       </Button>
+                    )}
+
+                    {analyses[call.id] && (
+                      <div className="mt-2 rounded-sm border border-accent/25 bg-accent-subtle p-3">
+                        <p className="mb-1 flex items-center gap-1.5 text-2xs font-medium uppercase tracking-wide text-accent">
+                          <Sparkles className="h-3 w-3" />
+                          Analysis
+                        </p>
+                        <div className="prose prose-sm dark:prose-invert max-w-none text-xs">
+                          <SafeStreamdown>{analyses[call.id]}</SafeStreamdown>
+                        </div>
+                      </div>
                     )}
 
                     {isExpanded && call.transcriptUrl && (

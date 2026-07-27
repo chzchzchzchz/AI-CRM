@@ -277,10 +277,97 @@ const SUPERSEDED: Record<string, string> = {
     "superseded by `intel.accountBrief` — string-splits the same brief on '## Signal Readout' to recover its judgement section",
   "ai.enrichAccount":
     "superseded by `intel.accountBrief` — answers the same question (score, insights, recommendations) without the evidence validation",
+  "ai.generateAccountSummary":
+    "superseded by `intel.accountBrief` — a summary with no evidence validation behind it",
+  "ai.generateEmail":
+    "superseded by `outreach.generateEmail` — the wired one carries the grounding rules that stop it inventing facts about the account",
+  "ai.generateAccountResearch":
+    "superseded by `ai.compileResearch` — both call the same enrichment, but compileResearch caches and is the one the UI uses",
+  "ai.generateOutreachRecommendation":
+    "declared in the source as an alias that reuses generateOutreachEmail",
+  // One signal pack replaced five per-entity reads on the account page. Wiring any of
+  // these back would reintroduce the split that let the page and the brief disagree.
+  "people.getByAccountId":
+    "superseded by `intel.accountSignals` — returns the same contacts, ranked by seniority, in the pack the page already loads",
+  "opportunities.getByAccountId":
+    "superseded by `intel.accountSignals` — the pack also carries the probability-weighted total this returns raw",
+  "intentScores.list":
+    "superseded by `intel.accountSignals` — the pack carries the same series plus its computed trend and largest jump",
+  "gong.getByAccountId":
+    "superseded by `intel.accountSignals` — conversations, topics and open action items arrive with the pack",
+  "calls.getByAccountId":
+    "superseded by `intel.accountSignals` — same reason as gong.getByAccountId",
+  "gong.getByCompany":
+    "superseded by `intel.accountSignals` — keyed on a company-name string where the pack is keyed on the account id",
+  "people.getByCompany":
+    "superseded by `intel.accountSignals` — same reason as gong.getByCompany",
+  // The admin router is the one the approvals screen uses; these are an older pair with
+  // the same behaviour behind different names.
+  "auth.listAccessRequests":
+    "superseded by `admin.getPendingRequests`, which is what the approvals screen calls",
+  "auth.reviewAccessRequest":
+    "superseded by `admin.approveAccessRequest` / `admin.denyAccessRequest`",
+  "calls.list":
+    "superseded by `gong.listPaginated`, which the Calls page uses and which pages rather than loading every call",
+  "calls.create":
+    "superseded by the Gong sync — calls arrive from the connector, not by hand",
+  "ai.prioritizeContacts":
+    "superseded by `people.prioritize`, which the Contacts page uses",
+  "opportunities.getById":
+    "superseded by `opportunities.list` — there is no single-opportunity page, and the list already carries every field one would show",
+  "deepThink.chat":
+    "superseded by `ai.chat`, which the assistant uses on every page",
+  "people.listPaginated":
+    "superseded by `people.list` for UI purposes — `list` caps its result and supports search, which a contact list needs and this doesn't",
+  "priorityActions.getRepTerritory":
+    "superseded by `priorityActions.getRepStats` + `getEnriched`, which the dashboard uses and which already scope to the rep",
+};
+
+/**
+ * Server-side aggregates. Correct and available, but every page that would use one
+ * already holds the underlying rows for another reason, so calling these would add a
+ * round trip rather than remove one. Recorded here so the next person doesn't rediscover
+ * them as "missing work".
+ */
+const AGGREGATE_API: Record<string, string> = {
+  "accounts.getStats":
+    "aggregate over all accounts — the dashboard already loads `accounts.list` for its cards and counts from that",
+  "analytics.overview":
+    "aggregate over accounts, contacts and calls — Insights holds all three already and derives the same figures client-side",
+};
+
+/**
+ * Actions meant to be driven by a connector, a scheduler or another system rather than
+ * by a person clicking. Listing them as UI drift is what makes a to-do list untrustworthy.
+ */
+const AUTOMATION_BY_DESIGN: Record<string, string> = {
+  "clayImport.importRawData": "bulk import — driven by a Clay export or automation",
+  "clayImport.importAccounts": "bulk import — driven by a Clay export or automation",
+  "clayImport.getImportStats": "import telemetry for the automation that ran it",
+  "clayPull.triggerEnrichment": "connector action — Clay enrichment run",
+  "dust.getAccountIntelligence": "Dust connector action",
+  "dust.getContactIntelligence": "Dust connector action",
+  "dust.searchGongCalls": "Dust connector action",
+  "dust.query": "Dust connector action",
+  // Honest about its own limits: queryGemini throws rather than returning placeholder
+  // text, so a caller reports the feature as unavailable instead of passing "not
+  // available" off as research. Calling this a working connector action would be the
+  // same class of overstatement this document exists to catch.
+  "gemini.researchAccount":
+    "**cannot succeed in this deployment** — needs browser automation that isn't installed; it throws by design. Use the configured LLM provider instead",
+  "accounts.enrichWith6sense": "connector action — 6sense enrichment run",
+  "sixsense.syncAccountByDomain": "connector action — sync one account from 6sense",
+  "sixsense.identifyByIP": "connector action — de-anonymise a visiting IP",
+  "system.notifyOwner": "outbound notification, called by other server code",
+  // Its own doc comment: "admin/debug — normally runs in the background".
+  "intel.brainLearn": "forces a learning cycle that otherwise runs on a schedule",
+  "intentScores.create": "write path — connectors push scores in through it",
 };
 
 function externalReason(key: string): string | null {
   if (EXTERNAL_BY_DESIGN[key]) return EXTERNAL_BY_DESIGN[key];
+  if (AUTOMATION_BY_DESIGN[key]) return AUTOMATION_BY_DESIGN[key];
+  if (AGGREGATE_API[key]) return AGGREGATE_API[key];
   if (key.startsWith("integrations.") && key !== "integrations.status" && key !== "integrations.preflight") {
     return "connector action (callable from automation/API)";
   }
