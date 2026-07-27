@@ -14,7 +14,11 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import fetch from 'node-fetch';
 
-const TRPC_URL = process.env.TRPC_URL || 'http://localhost:3000/trpc';
+// Must match where the app actually serves tRPC. This defaulted to
+// http://localhost:3000/trpc — wrong port and wrong path — so the MCP server failed
+// against a default install while the README advertised it with a tick.
+const TRPC_URL =
+  process.env.TRPC_URL || `http://localhost:${process.env.PORT || 3333}/api/trpc`;
 const API_KEY = process.env.BUILT_IN_FORGE_API_KEY || '';
 
 const server = new Server(
