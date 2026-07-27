@@ -319,7 +319,7 @@ export default function ContactsEnhanced() {
                 {s.label}
               </div>
               <div className={`mt-1.5 text-2xl font-semibold tabular-nums ${s.text}`}>{s.value}</div>
-              <div className="mt-0.5 text-[11px] text-ink-subtle">{s.hint}</div>
+              <div className="mt-0.5 text-2xs text-ink-subtle">{s.hint}</div>
             </div>
           ))}
         </div>
@@ -476,7 +476,7 @@ export default function ContactsEnhanced() {
                         {contact.name}
                       </span>
                       {dm && (
-                        <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-medium text-ink-muted bg-muted rounded px-1.5 py-0.5 flex-shrink-0">
+                        <span className="hidden sm:inline-flex items-center gap-1 text-2xs font-medium text-ink-muted bg-muted rounded px-1.5 py-0.5 flex-shrink-0">
                           <Target className="h-2.5 w-2.5" />
                           Decision maker
                         </span>
@@ -495,10 +495,10 @@ export default function ContactsEnhanced() {
                     </div>
                     <div className="mt-0.5 flex flex-wrap gap-1">
                       {contact.department && (
-                        <span className="text-[10px] text-ink-muted bg-muted rounded px-1.5 py-0.5">{contact.department}</span>
+                        <span className="text-2xs text-ink-muted bg-muted rounded px-1.5 py-0.5">{contact.department}</span>
                       )}
                       {industry && industry !=="Unknown" && (
-                        <span className="text-[10px] text-ink-muted bg-muted rounded px-1.5 py-0.5">{industry}</span>
+                        <span className="text-2xs text-ink-muted bg-muted rounded px-1.5 py-0.5">{industry}</span>
                       )}
                     </div>
                   </div>
@@ -550,7 +550,7 @@ export default function ContactsEnhanced() {
                       {hasScore ? (
                         <>
                           <div className="text-lg leading-none tabular-nums text-accent">{numScore}</div>
-                          <div className={`mt-1 flex items-center justify-end gap-1 text-[11px] font-medium ${heat.text}`}>
+                          <div className={`mt-1 flex items-center justify-end gap-1 text-2xs font-medium ${heat.text}`}>
                             <HeatIcon className="h-3 w-3" />
                             {heat.label}
                           </div>

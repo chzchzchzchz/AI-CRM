@@ -250,7 +250,7 @@ export default function AccountDetailEnhanced() {
                       </span>
                     )}
                   </div>
-                  <div className="mt-1 text-[11px] text-ink-muted">
+                  <div className="mt-1 text-2xs text-ink-muted">
                     {realBuyingStage ? '6sense' : 'Inferred from intent band'}
                   </div>
                 </div>
@@ -278,7 +278,7 @@ export default function AccountDetailEnhanced() {
                       />
                     </div>
                     {coverage.missing.length > 0 && (
-                      <p className="mt-1.5 text-[11px] leading-relaxed text-ink-subtle">
+                      <p className="mt-1.5 text-2xs leading-relaxed text-ink-subtle">
                         No data for: {coverage.missing.join(', ')}. Nothing on this page infers them.
                       </p>
                     )}
@@ -295,7 +295,7 @@ export default function AccountDetailEnhanced() {
                     <div className="text-xs text-ink-muted">Contacts</div>
                     <div className="mt-1 tabular-nums text-lg font-semibold text-accent">{people?.length || 0}</div>
                     {!!signals?.stakeholders.total && (
-                      <div className="text-[11px] text-ink-muted">
+                      <div className="text-2xs text-ink-muted">
                         <span className="tabular-nums">{signals.stakeholders.withEmail}</span> reachable
                       </div>
                     )}
@@ -308,7 +308,7 @@ export default function AccountDetailEnhanced() {
                           ${pipelineValue.toLocaleString()}
                         </div>
                         {/* The honest forecast number sits under the headline one. */}
-                        <div className="text-[11px] text-ink-muted">
+                        <div className="text-2xs text-ink-muted">
                           <span className="tabular-nums">${weightedPipeline.toLocaleString()}</span> weighted ·{' '}
                           <span className="tabular-nums">{openDeals}</span> open
                         </div>
@@ -324,7 +324,7 @@ export default function AccountDetailEnhanced() {
                         <div className="mt-1 tabular-nums text-lg font-semibold text-foreground">
                           {signals.conversations.daysSinceLastCall}d
                         </div>
-                        <div className="text-[11px] text-ink-muted">
+                        <div className="text-2xs text-ink-muted">
                           <span className="tabular-nums">{signals.conversations.total}</span> calls on file
                         </div>
                       </>
@@ -367,7 +367,7 @@ export default function AccountDetailEnhanced() {
                       {/* truncate sets white-space:nowrap, so without min-w-0 this flex
                           item's min-content width is the whole untruncated name. */}
                       <span className="min-w-0 flex-1 text-sm font-medium truncate">{opp.name}</span>
-                      <span className="shrink-0 rounded-sm bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
+                      <span className="shrink-0 rounded-sm bg-surface-raised px-2 py-0.5 text-2xs font-medium text-ink-muted">
                         {opp.stage}
                       </span>
                     </div>
@@ -378,7 +378,7 @@ export default function AccountDetailEnhanced() {
                       <div className="flex flex-wrap items-center gap-2.5">
                         {/* The CRM's own probability — distinct from the AI prediction beside it. */}
                         {opp.probability != null && (
-                          <span className="tabular-nums text-[11px] text-ink-muted" title="Probability recorded in the CRM">
+                          <span className="tabular-nums text-2xs text-ink-muted" title="Probability recorded in the CRM">
                             {opp.probability}% CRM
                           </span>
                         )}
@@ -388,7 +388,7 @@ export default function AccountDetailEnhanced() {
                             title="AI-predicted likelihood of winning — not the CRM probability"
                           >
                             <BrainCircuit className="h-3 w-3 text-accent" />
-                            <span className="tabular-nums text-[11px] font-semibold text-accent">
+                            <span className="tabular-nums text-2xs font-semibold text-accent">
                               {opp.aiSuccessScore}% AI
                             </span>
                           </div>
@@ -585,7 +585,7 @@ export default function AccountDetailEnhanced() {
                       </li>
                     ))}
                   </ul>
-                  <p className="mt-3 text-[11px] text-ink-subtle">
+                  <p className="mt-3 text-2xs text-ink-subtle">
                     Captured from call transcripts. Unresolved until closed in the CRM.
                   </p>
                 </CardContent>

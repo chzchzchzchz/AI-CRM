@@ -120,7 +120,7 @@ export default function Integrations() {
                       {diag.summary}
                     </p>
                   )}
-                  <p className="text-[11px] text-muted-foreground tabular-nums">{c.env}</p>
+                  <p className="text-2xs text-muted-foreground tabular-nums">{c.env}</p>
                   {c.webhook ? (
                     <div className="flex gap-2">
                       <Input
@@ -134,7 +134,7 @@ export default function Integrations() {
                       </Button>
                     </div>
                   ) : (
-                    <p className="text-[11px] text-muted-foreground">Add the key above, then use it from the API.</p>
+                    <p className="text-2xs text-muted-foreground">Add the key above, then use it from the API.</p>
                   )}
                 </CardContent>
               </Card>
