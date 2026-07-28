@@ -118,7 +118,13 @@ export default function Opportunities() {
                   )}
                 </div>
 
-                <div className="space-y-3">
+                {/* Each column scrolls itself rather than stretching the page.
+                    Every stage rendered its full set, so the board was as tall as its
+                    busiest column — 15,624px on the seeded data. A board you scroll for
+                    fifteen screens isn't a board; you lose the other columns the moment
+                    you start moving. Capped so the whole pipeline stays comparable at a
+                    glance, with the deep columns reachable inside their own lane. */}
+                <div className="scroll-fade max-h-[calc(100vh-22rem)] space-y-3 overflow-y-auto pr-1">
                   {inStage.length === 0 && (
                     <p className="text-xs text-ink-muted border border-dashed border-border rounded-sm px-3 py-6 text-center">
                       No deals

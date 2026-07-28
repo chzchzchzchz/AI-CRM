@@ -393,6 +393,26 @@
     color: var(--foreground);
   }
 
+  /**
+   * Scroll region whose last item fades out at the boundary.
+   *
+   * A capped column clips its final card mid-height, which reads as a rendering
+   * fault rather than "there is more below" — especially where the platform hides
+   * overlay scrollbars until you touch them. The fade is the affordance: it says
+   * the content continues without needing a scrollbar to be visible.
+   *
+   * Applied to the element itself, so a column with only two cards fades against
+   * its own empty space and shows nothing.
+   */
+  .scroll-fade {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 2rem), transparent 100%);
+  }
+  @supports not (mask-image: linear-gradient(#000, #000)) {
+    .scroll-fade {
+      mask-image: none;
+    }
+  }
+
   /* Scrollbars, restrained. */
   * {
     scrollbar-width: thin;
