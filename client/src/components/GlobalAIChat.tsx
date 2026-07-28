@@ -30,24 +30,36 @@ export function GlobalAIChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
 
-  // Auto-popup on first visit
+  /**
+   * Introduce the assistant once — but never over a form the user is filling in.
+   *
+   * This used to fire on any first visit, two seconds after load. On /login that
+   * meant someone typing their password got a 384px panel dropped over the Sign In
+   * button, from an assistant offering to analyse a pipeline they cannot see yet.
+   * It also made the button genuinely unclickable, which is how the quality gate
+   * found it: Playwright reported the panel "intercepts pointer events" and could
+   * not sign in at all.
+   *
+   * Gated on being past the auth screens. A person who is signed in and looking at
+   * their dashboard can be introduced to a helper; a person trying to get in cannot.
+   */
+  const onAuthRoute = /^\/(login|signup|request-access|forgot-password)/.test(location);
+
   useEffect(() => {
-    const hasSeenAI = localStorage.getItem('hasSeenAIAssistant');
-    if (!hasSeenAI) {
-      // Wait 2 seconds after page load to show welcome
-      const timer = setTimeout(() => {
-        setIsOpen(true);
-        setHasShownWelcome(true);
-        localStorage.setItem('hasSeenAIAssistant', 'true');
-        // Add welcome message
-        setMessages([{
-          role: 'assistant',
-          content: "Hi! I'm your AI sales assistant. I can help you find high-intent accounts, generate personalized outreach, analyze buying signals, and answer questions about your pipeline. Try asking me something!"
-        }]);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, []);
+    if (onAuthRoute) return;
+    if (localStorage.getItem('hasSeenAIAssistant')) return;
+
+    const timer = setTimeout(() => {
+      setIsOpen(true);
+      setHasShownWelcome(true);
+      localStorage.setItem('hasSeenAIAssistant', 'true');
+      setMessages([{
+        role: 'assistant',
+        content: "Hi! I'm your AI sales assistant. I can help you find high-intent accounts, generate personalized outreach, analyze buying signals, and answer questions about your pipeline. Try asking me something!"
+      }]);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [onAuthRoute]);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isWarRoomMode, setIsWarRoomMode] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);

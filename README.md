@@ -77,6 +77,13 @@ pnpm dev                       # → http://localhost:3333
 
 ```
 
+Sign in with **`demo@ai-crm.com`** / **`DemoPass123!`**.
+
+<sub>Seeded credentials, for the bundled demo dataset only — change or remove that user
+before pointing this at real data. Until recently the seeded users had no password hash
+at all, so a fresh clone reached the login screen and could go no further; the quality
+gate now signs in on every CI run, which means this can't silently break again.</sub>
+
 Prefer Docker? One command, no toolchain needed:
 
 ```bash
@@ -173,6 +180,13 @@ TargetDash includes an **MCP (Model Context Protocol) server**, meaning ANY AI a
 ```
 
 ---
+
+> **Changing the code?** Run `pnpm verify`. It typechecks, lints hooks, tests,
+> regenerates the capability inventory, checks the claims the docs make against the
+> code, builds, and then walks every route in a real browser at desktop and mobile
+> asserting that nothing is unreadable, overflowing, erroring or unboundedly heavy.
+> CI runs the same thing on every push. See [docs/QUALITY-GATE.md](docs/QUALITY-GATE.md)
+> for what each rule catches and the defect that put it there.
 
 > **Setting it up?** Run `pnpm doctor` — it reads your `.env` and tells you
 > exactly which integrations are ready, which are half configured, and which

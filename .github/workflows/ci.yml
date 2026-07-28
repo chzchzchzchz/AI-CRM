@@ -37,8 +37,35 @@ jobs:
       - name: Typecheck
         run: pnpm check
 
+      # Rules-of-hooks only. A hook below an early return typechecks, builds and
+      # passes every unit test, then renders a blank page at runtime — it happened
+      # three times in this repo before this step existed.
+      - name: Lint
+        run: pnpm lint
+
       - name: Test
         run: pnpm test
 
+      # Regenerates docs/CAPABILITIES.md, then asserts nothing is built-but-unreachable.
+      - name: Capability inventory
+        run: pnpm inventory
+
+      # Static truth checks: no type below the scale floor, no dead doc links,
+      # README figures match the seed, nothing unrouted, no fabricated evidence.
+      - name: Check claims
+        run: pnpm check:claims
+
       - name: Build
         run: pnpm build
+
+      # The checks a typecheck structurally cannot make: every route, at desktop and
+      # mobile, asserted for tiny text, horizontal overflow, runtime errors, DOM
+      # weight and page height. Chromium is fetched here because playwright-core
+      # ships without one.
+      - name: Install Chromium for the quality gate
+        run: pnpm exec playwright-core install --with-deps chromium
+
+      - name: Quality gate
+        run: pnpm gate
+        env:
+          GATE_VERBOSE: "1"
