@@ -321,7 +321,7 @@ export default function ContactDetail() {
                   <Sparkles className="h-4 w-4 text-accent" />
                   AI Contact Brief
                   {contact.linkedinUrl && (
-                    <Badge variant="outline" className="text-[11px] font-normal gap-1 border-border-strong text-ink-muted">
+                    <Badge variant="outline" className="text-2xs font-normal gap-1 border-border-strong text-ink-muted">
                       <Linkedin className="h-3 w-3 text-accent" /> LinkedIn available
                     </Badge>
                   )}

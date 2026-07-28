@@ -69,8 +69,8 @@ function monogramOf(name?: string | null, domain?: string | null): string {
 
 const SIZE_CLASS = {
   xs: "size-5 text-[9px]",
-  sm: "size-6 text-[10px]",
-  md: "size-8 text-[11px]",
+  sm: "size-6 text-2xs",
+  md: "size-8 text-2xs",
   lg: "size-10 text-xs",
   xl: "size-14 text-sm",
 } as const;

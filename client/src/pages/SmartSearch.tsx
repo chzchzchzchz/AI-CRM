@@ -73,7 +73,7 @@ export default function SmartSearch() {
 
             {searchResults && (
               <div className="rounded-sm border border-border-strong bg-muted p-4">
-                <p className="text-[0.6875rem] font-semibold tracking-[0.04em] text-ink-muted mb-1">
+                <p className="text-2xs font-semibold tracking-[0.04em] text-ink-muted mb-1">
                   AI interpretation
                 </p>
                 <p className="text-foreground">{searchResults.explanation}</p>
