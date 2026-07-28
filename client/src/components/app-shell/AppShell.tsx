@@ -106,7 +106,11 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 px-3 py-5 md:px-5 lg:px-6">
+        {/* pb-28 reserves the strip the floating assistant and help controls occupy
+            (both sit at bottom-6, ~56px tall). Without it the last card on every page
+            scrolls under them and its final line is unreadable — on the dashboard that
+            was the hot-lead count, permanently hidden behind the Help button. */}
+        <main className="min-w-0 flex-1 px-3 pt-5 pb-28 md:px-5 lg:px-6">
           {children}
         </main>
       </div>

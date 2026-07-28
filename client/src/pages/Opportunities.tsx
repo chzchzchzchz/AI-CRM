@@ -165,13 +165,13 @@ export default function Opportunities() {
                           {/* Two distinct, labeled figures: CRM's stated probability vs the AI's success score. */}
                           <div className="flex flex-wrap items-center gap-5 pt-3 border-t border-border">
                             <div className="flex flex-col gap-0.5">
-                              <span className="text-[11px] text-ink-muted">CRM prob</span>
+                              <span className="text-2xs text-ink-muted">CRM prob</span>
                               <span className="tabular-nums text-sm text-foreground">
                                 {prob != null ? `${prob}%` :"—"}
                               </span>
                             </div>
                             <div className="flex flex-col gap-0.5">
-                              <span className="text-[11px] text-accent inline-flex items-center gap-1">
+                              <span className="text-2xs text-accent inline-flex items-center gap-1">
                                 <BrainCircuit className="h-3 w-3" /> AI score
                               </span>
                               <span className="tabular-nums text-sm text-accent">

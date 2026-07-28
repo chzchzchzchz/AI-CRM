@@ -264,7 +264,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                   {s.label}
                 </div>
                 <div className={`mt-1.5 text-2xl font-semibold tabular-nums ${s.text}`}>{s.value}</div>
-                <div className="mt-0.5 text-[11px] text-ink-subtle">{s.hint}{active ?" · active" :""}</div>
+                <div className="mt-0.5 text-2xs text-ink-subtle">{s.hint}{active ?" · active" :""}</div>
               </button>
             );
           })}
@@ -420,7 +420,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                           {account.name}
                         </span>
                         {account.relationship && (
-                          <span className="hidden sm:inline text-[10px] font-medium uppercase tracking-wide text-ink-muted bg-muted rounded px-1.5 py-0.5 flex-shrink-0">
+                          <span className="hidden sm:inline text-2xs font-medium uppercase tracking-wide text-ink-muted bg-muted rounded px-1.5 py-0.5 flex-shrink-0">
                             {account.relationship}
                           </span>
                         )}
@@ -468,7 +468,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                           {hasScore ? numScore : <span className="text-ink-subtle">—</span>}
                         </div>
                         {hasScore && (
-                          <div className={`mt-1 flex items-center justify-end gap-1 text-[11px] font-medium ${heat.text}`}>
+                          <div className={`mt-1 flex items-center justify-end gap-1 text-2xs font-medium ${heat.text}`}>
                             <HeatIcon className="h-3 w-3" />
                             {heat.label}
                           </div>

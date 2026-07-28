@@ -164,17 +164,17 @@ export function SupportBot() {
               <div className="ml-0">
                 <button
                   onClick={() => toggleReasoning(i)}
-                  className="flex flex-wrap items-center gap-1 text-[10px] text-ink-subtle hover:text-ink-muted transition-colors py-1"
+                  className="flex flex-wrap items-center gap-1 text-2xs text-ink-subtle hover:text-ink-muted transition-colors py-1"
                 >
                   {expandedReasoning === i ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   <span>{expandedReasoning === i ? "Hide" : "View"} reasoning</span>
                 </button>
                 {expandedReasoning === i && (
                   <div className="mt-1 bg-muted border border-border-strong rounded-sm overflow-hidden">
-                    <div className="px-2 py-1 bg-muted text-[10px] text-ink-muted border-b border-border-strong">
+                    <div className="px-2 py-1 bg-muted text-2xs text-ink-muted border-b border-border-strong">
                       AI Reasoning
                     </div>
-                    <div className="p-2 text-[10px] text-ink-muted overflow-x-auto max-h-32 font-mono whitespace-pre-wrap break-all">
+                    <div className="p-2 text-2xs text-ink-muted overflow-x-auto max-h-32 font-mono whitespace-pre-wrap break-all">
                       <code>{msg.reasoning}</code>
                     </div>
                   </div>

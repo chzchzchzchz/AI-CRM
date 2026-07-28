@@ -242,14 +242,14 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
             {/* Cache indicator */}
             {response.cached && (
               <div className="flex flex-wrap items-center gap-2 mb-2 pb-2 border-b border-accent/30">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-positive-subtle text-positive text-[10px] font-medium">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-positive-subtle text-positive text-2xs font-medium">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                   Instant response (cached)
                 </span>
                 {response.cacheHitCount && response.cacheHitCount > 1 && (
-                  <span className="text-[10px] text-ink-subtle">• Served {response.cacheHitCount} times</span>
+                  <span className="text-2xs text-ink-subtle">• Served {response.cacheHitCount} times</span>
                 )}
               </div>
             )}
@@ -272,17 +272,17 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
               <div className="mt-3 pt-3 border-t border-accent/30">
                 <button
                   onClick={() => setShowReasoning(!showReasoning)}
-                  className="flex flex-wrap items-center gap-1 text-[10px] text-accent/60 hover:text-accent transition-colors"
+                  className="flex flex-wrap items-center gap-1 text-2xs text-accent/60 hover:text-accent transition-colors"
                 >
                   {showReasoning ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   <span>{showReasoning ? "Hide" : "View"} reasoning</span>
                 </button>
                 {showReasoning && (
                   <div className="mt-2 bg-muted border border-border-strong rounded-sm overflow-hidden">
-                    <div className="px-2 py-1 bg-muted text-[10px] text-ink-muted border-b border-border-strong">
+                    <div className="px-2 py-1 bg-muted text-2xs text-ink-muted border-b border-border-strong">
                       AI Reasoning
                     </div>
-                    <div className="p-2 text-[10px] text-ink-muted overflow-x-auto max-h-48 font-mono whitespace-pre-wrap break-all">
+                    <div className="p-2 text-2xs text-ink-muted overflow-x-auto max-h-48 font-mono whitespace-pre-wrap break-all">
                       <code>{response.reasoning}</code>
                     </div>
                   </div>
