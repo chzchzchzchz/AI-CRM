@@ -493,12 +493,22 @@ export default function ContactsEnhanced() {
                       <Building2 className="h-3.5 w-3.5 text-ink-subtle flex-shrink-0" />
                       <span className="truncate">{contact.company}</span>
                     </div>
-                    <div className="mt-0.5 flex flex-wrap gap-1">
+                    {/* One line, never wrapping.
+                        These tags used to wrap onto a second line whenever both were
+                        present, so rows in the same list were 82px or 95px tall
+                        depending on their data. Ragged row heights are what stop your
+                        eye establishing a rhythm down a list — the scan has to
+                        re-find the next name every time. Fixed height, truncated. */}
+                    <div className="mt-0.5 flex items-center gap-1 overflow-hidden whitespace-nowrap">
                       {contact.department && (
-                        <span className="text-2xs text-ink-muted bg-muted rounded px-1.5 py-0.5">{contact.department}</span>
+                        <span className="shrink-0 truncate rounded bg-muted px-1.5 py-0.5 text-2xs text-ink-muted">
+                          {contact.department}
+                        </span>
                       )}
                       {industry && industry !=="Unknown" && (
-                        <span className="text-2xs text-ink-muted bg-muted rounded px-1.5 py-0.5">{industry}</span>
+                        <span className="min-w-0 truncate rounded bg-muted px-1.5 py-0.5 text-2xs text-ink-muted">
+                          {industry}
+                        </span>
                       )}
                     </div>
                   </div>

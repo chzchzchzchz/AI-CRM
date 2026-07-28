@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, useCallback } from"react";
+import { memo, useEffect, useMemo, useState, useCallback } from"react";
 import { Card, CardContent } from"@/components/ui/card";
 import { Button } from"@/components/ui/button";
 import { Input } from"@/components/ui/input";
@@ -32,6 +32,8 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   const [techFilter, setTechFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("intentScore");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ACCOUNTS_PER_PAGE = 50;
 
   // Get rep context for territory filtering
   const { matchesTerritory, repInfo, isRepMode } = useRep();
@@ -188,6 +190,27 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   }, [sortField]);
 
   // Loading state
+  /**
+   * Render a page, not the whole book.
+   *
+   * This list rendered every filtered account at once. Against the seeded 1,000 that
+   * produced 38,549 DOM nodes and a page 68,215px tall — 68 metres of scrolling, which
+   * is not a list a person can scan, and enough nodes to make the browser work for it.
+   * Contacts already paged at 50; this now matches.
+   */
+  const totalPages = Math.max(1, Math.ceil(filteredAccounts.length / ACCOUNTS_PER_PAGE));
+  const page = Math.min(currentPage, totalPages);
+  const paginatedAccounts = useMemo(
+    () => filteredAccounts.slice((page - 1) * ACCOUNTS_PER_PAGE, page * ACCOUNTS_PER_PAGE),
+    [filteredAccounts, page]
+  );
+
+  // Narrowing the list must return you to the top of it. Without this, filtering from
+  // 1,000 down to 12 while on page 8 shows an empty list and looks like no results.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, regionFilter, industryFilter, relationshipFilter, intentFilter, techFilter, sortField, sortOrder]);
+
   if (isLoading) {
     return (
       <div>
@@ -392,7 +415,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
           </Card>
         ) : (
           <div className="rounded-md border border-border/60 bg-card divide-y divide-border/50 overflow-hidden">
-            {filteredAccounts.map((account: any) => {
+            {paginatedAccounts.map((account: any) => {
               const numScore = parseInt(String(account.intentScore ||"0"));
               const hasScore = !!account.intentScore && numScore > 0;
               const heat = getHeat(numScore);
@@ -480,6 +503,40 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                 </Link>
               );
             })}
+          </div>
+        )}
+
+        {/* Pager. Only shown when there is more than one page, so a filtered-down
+            list doesn't get controls that do nothing. */}
+        {totalPages > 1 && (
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
+            <Button variant="outline" size="sm" onClick={() => setCurrentPage(1)} disabled={page === 1}>
+              First
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(pp => Math.max(1, pp - 1))}
+              disabled={page === 1}
+            >
+              Previous
+            </Button>
+            <span className="px-2 text-sm text-ink-muted">
+              Page <span className="tabular-nums text-foreground">{page}</span> of{" "}
+              <span className="tabular-nums text-foreground">{totalPages}</span>{" "}
+              (<span className="tabular-nums text-foreground">{filteredAccounts.length.toLocaleString()}</span> accounts)
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(pp => Math.min(totalPages, pp + 1))}
+              disabled={page === totalPages}
+            >
+              Next
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setCurrentPage(totalPages)} disabled={page === totalPages}>
+              Last
+            </Button>
           </div>
         )}
       </div>
