@@ -74,6 +74,21 @@ export default function ContentStudio() {
         additionalNotes: additionalNotes || undefined,
       });
 
+      // No model was reachable. The server used to hand this back looking exactly like
+      // a successful generation, so the panel read "Generated Blog Post" over an
+      // apology and a success toast confirmed it. Say what actually happened instead.
+      if (result.available === false) {
+        setGeneratedContent({
+          content: result.content,
+          title: "No model configured",
+        });
+        setContentId(null);
+        setOriginalContent("");
+        setRagUsed(false);
+        toast.error("No AI model is configured — nothing was generated");
+        return;
+      }
+
       setGeneratedContent({
         content: result.content,
         title: `Generated ${contentTypes.find(c => c.value === contentType)?.label}`,

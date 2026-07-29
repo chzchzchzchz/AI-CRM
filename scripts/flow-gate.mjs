@@ -201,6 +201,79 @@ await flow("every nav link goes somewhere real", async () => {
   assert(!dead.length, `nav links to nonexistent routes: ${dead.join(", ")}`);
 });
 
+/**
+ * An AI action has to end in something a person can read.
+ *
+ * This is the first-run experience for anyone who clones the repo: no API key, no
+ * Ollama, nothing installed. The README promises the AI features "work for free
+ * too", and the server is built for it — every provider fails, and invokeLLM
+ * degrades to an honest note rather than throwing.
+ *
+ * What was never checked is what reaches the screen. A degraded response has a
+ * different shape from a real one, and the failure modes are all silent: a spinner
+ * that never stops, a toast nobody reads, "[object Object]" in the output panel, or
+ * an empty box that looks like the feature is broken rather than unconfigured.
+ *
+ * So: click Generate, wait, and assert the page ends up in one of exactly two
+ * states — real content, or a message that says why there isn't any.
+ */
+await flow("an AI action ends in readable output, with or without a model", async () => {
+  await goto("/content-studio");
+
+  const context = page.locator("textarea").first();
+  assert((await context.count()) > 0, "no context field on /content-studio");
+  await context.fill("A mid-market fintech evaluating identity providers after a failed audit.");
+
+  const generate = page.getByRole("button", { name: /generate/i }).first();
+  assert((await generate.count()) > 0, "no Generate button on /content-studio");
+  assert(await generate.isEnabled(), "Generate is disabled even with context filled in");
+  await generate.click();
+
+  // The LLM path has a 60s total deadline before it degrades, so give it room.
+  await page.waitForFunction(
+    () => !/Generating/i.test(document.body.innerText),
+    undefined,
+    { timeout: 90_000 }
+  ).catch(() => {});
+
+  const seen = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " ").trim());
+  assert(!/Generating…|Generating\.\.\./i.test(seen), "still generating after 90s — the spinner never stops");
+
+  for (const junk of ["[object Object]", "undefined", "NaN", "Lorem ipsum"]) {
+    assert(!seen.includes(junk), `"${junk}" reached the screen`);
+  }
+
+  // Read the output panel, not the page. Measuring whole-page text was the first
+  // version of this check and it was useless: the nav and the form alone clear any
+  // threshold, so it reported "produced content" while the panel held an apology.
+  const panel = await page.locator("textarea").last().inputValue().catch(() => "");
+  const unavailable = /unavailable|no api key|no local model|no model is configured/i.test(panel);
+
+  assert(panel.length > 0, "the output panel is empty — no content and no reason");
+
+  if (unavailable) {
+    // Degraded is a fine outcome for a fresh clone. Being told it succeeded is not:
+    // this used to render "Generated Blog Post" over the apology, toast "Content
+    // generated", and write it to the content library as a real asset.
+    const heading = await page.evaluate(() => document.body.innerText);
+    assert(
+      !/Generated (Blog Post|Email|Ad Copy|Campaign Brief|Battle Card)/i.test(heading),
+      "an unavailable model was presented as a successful generation"
+    );
+    assert(
+      !/Content generated/i.test(heading),
+      "a success toast fired even though nothing was generated"
+    );
+  } else {
+    assert(panel.length > 200, `the model returned ${panel.length} characters — too short to be the asked-for content`);
+  }
+
+  if (process.env.GATE_VERBOSE) {
+    console.log(`    → ${unavailable ? "no model: reported as unavailable" : "produced content"}`);
+    console.log(`    → panel: ${JSON.stringify(panel.slice(0, 200))}`);
+  }
+});
+
 // ── report ──────────────────────────────────────────────────────────────────
 await browser.close();
 if (server) { try { process.kill(-server.pid); } catch {} }

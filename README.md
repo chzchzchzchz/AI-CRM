@@ -95,7 +95,7 @@ Want it live on a public URL? One click, no local setup (deploys the demo; add y
 
 [](https://render.com/deploy?repo=https://github.com/chzchzchzchz/AI-CRM)
 (Or skip the copy and run `DEMO_MODE=true pnpm dev`, which just picks the first free port from 3000.)
-The AI features (account briefs, outreach, chat) work for free too, as they fall back to a local Ollama model when no cloud key is set. See [SETUP.md](SETUP.md) for the one-time Ollama step.
+The AI features (account briefs, outreach, chat) can run for free: with no cloud key set they fall back to a local Ollama model at `localhost:11434`. That needs Ollama installed and running — see [SETUP.md](SETUP.md) for the one-time step. With **no** model reachable at all, the AI features don't fail or hang; each one says plainly that no model is configured and what to do about it. A flow check in CI asserts exactly that, because it used to report "Content generated" and hand you the apology as the content.
 
 ### Use it for YOUR company
 

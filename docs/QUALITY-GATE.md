@@ -130,10 +130,26 @@ observable change rather than that a handler exists:
 | Clicking an account opens it | the URL moves to the row's own href, and the page isn't a 404 or a stub |
 | Global search returns results | Ctrl+K opens, a real query finds something, a nonsense one says so |
 | Every nav link goes somewhere real | every sidebar link is followed and none lands on the 404 page |
+| An AI action ends in readable output | Generate produces content, or says why it can't — and never claims success for neither |
 
 Deliberately small. A flaky flow check is worse than none, because it teaches
 people to re-run CI until it goes green. Anything that couldn't be made
 deterministic was left out rather than retried into submission.
+
+The AI flow is the fresh-clone case: no API key, no Ollama, nothing installed. The
+server was already built for it — every provider fails and `invokeLLM` degrades to a
+readable note instead of throwing. What nobody had checked was **what reached the
+screen**: Content Studio toasted *"Content generated"*, titled the panel *"Generated
+Blog Post"*, filled it with the apology, and saved it to the content library as a
+real asset. Honest text presented as a success is still a lie about what happened.
+
+`isLlmUnavailable()` now lets callers tell a degraded response from a real one, and
+the flow asserts the page never claims a success it didn't have.
+
+> The first version of that check measured **whole-page** text length to decide
+> whether content had been produced. The nav and the form alone clear any sensible
+> threshold, so it reported "produced content" while the panel held an apology. It
+> reads the output panel now. Worth stating because the check was green either way.
 
 > **Contacts search is filtered twice** — once server-side in `people.list`, once
 > again on the client. Breaking either one alone leaves search working, so the

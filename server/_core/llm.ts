@@ -434,15 +434,40 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   throw new Error(`LLM invoke failed: ${lastError}`);
 }
 
+/**
+ * The text returned when no model could be reached.
+ *
+ * Exported with a predicate because callers could not previously tell a degraded
+ * response from a real one — they took `choices[0].message.content` and passed it
+ * on. Content Studio therefore showed a "Content generated" toast, titled the
+ * panel "Generated Blog Post", filled it with this apology, and wrote it to the
+ * database as a generated asset. Honest text presented as a success is still a lie
+ * about what happened.
+ */
+export const LLM_UNAVAILABLE_NOTE =
+  "AI generation is unavailable right now: no API key is set and no local model is reachable. " +
+  "To enable free local AI: install Ollama, run `ollama serve`, then `ollama pull phi3:mini`. " +
+  "Or set BUILT_IN_FORGE_API_KEY for hosted AI.";
+
+/** True when this text is the degradation note rather than model output. */
+export function isLlmUnavailable(text: unknown): boolean {
+  if (typeof text !== "string") return false;
+  if (text.includes(LLM_UNAVAILABLE_NOTE)) return true;
+  // The JSON form, for callers that asked for structured output.
+  try {
+    const parsed = JSON.parse(text);
+    return parsed?.available === false && typeof parsed?.note === "string";
+  } catch {
+    return false;
+  }
+}
+
 // Returned when no LLM is available at all (no key + no local Ollama). Keeps the AI
 // features functional-but-honest for a zero-install user instead of erroring out.
 function llmUnavailableFallback(
   responseFormat: { type: string } | undefined
 ): InvokeResult {
-  const note =
-    "AI generation is unavailable right now: no API key is set and no local model is reachable. " +
-    "To enable free local AI: install Ollama, run `ollama serve`, then `ollama pull phi3:mini`. " +
-    "Or set BUILT_IN_FORGE_API_KEY for hosted AI.";
+  const note = LLM_UNAVAILABLE_NOTE;
   const isJson =
     responseFormat?.type === "json_object" ||
     responseFormat?.type === "json_schema";
