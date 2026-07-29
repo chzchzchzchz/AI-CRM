@@ -11,7 +11,13 @@ export default function NotFound() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-canvas text-foreground">
+    // data-not-found lets the quality gate tell "this route renders nothing much"
+    // apart from "this route does not exist". Three URLs in the gate's own list were
+    // 404s for a while, and it reported all three as meeting every budget.
+    <div
+      data-not-found="true"
+      className="min-h-screen w-full flex items-center justify-center bg-canvas text-foreground"
+    >
       <Card className="w-full max-w-lg mx-4 shadow-lg border-0 bg-surface backdrop-blur-sm">
         <CardContent className="pt-8 pb-8 text-center">
           <div className="flex justify-center mb-6">
