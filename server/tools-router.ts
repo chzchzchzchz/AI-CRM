@@ -1,6 +1,6 @@
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { invokeLLM } from "./_core/llm";
+import { invokeLLM, isLlmUnavailable } from "./_core/llm";
 import { asRevenueArchitect } from "./ai-system-prompt";
 import { 
   uploadDocument, 
@@ -310,7 +310,22 @@ Generate professional, actionable content.`;
         
         const content = response.choices[0].message.content || '';
         const durationMs = Date.now() - startTime;
-        
+
+        // No model was reachable, so this is the degradation note, not content. It used
+        // to be saved as a generated asset and reported to the client as a success —
+        // the content library filled up with apologies and the panel titled one
+        // "Generated Blog Post".
+        const available = !isLlmUnavailable(content);
+        if (!available) {
+          return {
+            content: typeof content === 'string' ? content : JSON.stringify(content),
+            contentId: null,
+            ragSourcesUsed: false,
+            durationMs,
+            available: false as const,
+          };
+        }
+
         // Save generated content (only if logged in)
         let contentId: number | null = null;
         if (ctx.user) {
@@ -339,7 +354,8 @@ Generate professional, actionable content.`;
           content: typeof content === 'string' ? content : JSON.stringify(content),
           contentId,
           ragSourcesUsed: ragContext ? true : false,
-          durationMs
+          durationMs,
+          available: true as const,
         };
       } catch (error) {
         console.error('[GenerateContent] Error:', error);
