@@ -449,6 +449,23 @@ export const LLM_UNAVAILABLE_NOTE =
   "To enable free local AI: install Ollama, run `ollama serve`, then `ollama pull phi3:mini`. " +
   "Or set BUILT_IN_FORGE_API_KEY for hosted AI.";
 
+/**
+ * Read an invokeLLM response and say whether it is real output.
+ *
+ * Every caller in this repo did `response.choices[0].message.content` and passed the
+ * result on. Thirteen of fourteen therefore had the same latent bug: with no model
+ * reachable, the degradation note below became the account summary, the outreach
+ * email, the chat reply — presented as if a model had written it.
+ *
+ * Use this instead of reaching into `choices`. When `available` is false, say so in
+ * whatever way suits the feature; do not render `content` as an answer.
+ */
+export function llmText(response: InvokeResult): { content: string; available: boolean } {
+  const raw = (response as any)?.choices?.[0]?.message?.content;
+  const content = typeof raw === "string" ? raw : raw == null ? "" : JSON.stringify(raw);
+  return { content, available: content.length > 0 && !isLlmUnavailable(content) };
+}
+
 /** True when this text is the degradation note rather than model output. */
 export function isLlmUnavailable(text: unknown): boolean {
   if (typeof text !== "string") return false;

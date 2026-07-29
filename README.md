@@ -244,7 +244,8 @@ Uses AI embeddings to score accounts by synthesizing multiple data points:
 
 * ✅ **No hardcoded secrets** (all in config/environment)
 * ✅ **Parameterized SQL** (Drizzle ORM, no injection vectors)
-* ✅ **Email/password + 2FA auth**, session cookies, audit logging (bypassed only when `DEMO_MODE=true`)
+* ✅ **Email/password auth**, session cookies, audit logging (bypassed only when `DEMO_MODE=true`)
+* ⚠️ **2FA is not enabled.** A complete TOTP implementation exists in `server/twofa-router.ts` — QR enrolment, backup codes, verify, disable — but it is not mounted on the router, the login path does not check `twoFactorEnabled`, and there is no UI. This claimed a ✅ here until a check for unreachable server modules found the file. Treat 2FA as unbuilt until those three things land.
 * ✅ **CORS hardened**; rate limiting scoped to `/api` so static assets can't exhaust a legitimate user's budget
 * ✅ **Session cookies negotiate `SameSite` per request**: `None; Secure` over HTTPS, `Lax` over plain HTTP (an invalid pairing is silently dropped by browsers)
 * ✅ **Weak/missing `JWT_SECRET` refuses to sign** in production

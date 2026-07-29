@@ -1,6 +1,6 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { invokeLLM } from "./_core/llm";
+import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
 import { eq, inArray } from "drizzle-orm";
 import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -185,8 +185,8 @@ OUTPUT ONLY THE EMAIL BODY. Nothing else.`;
         ],
       });
 
-      const emailContent = emailResponse.choices[0]?.message?.content || "";
-      const email = typeof emailContent === 'string' ? emailContent : JSON.stringify(emailContent);
+      const { content: emailContent, available } = llmText(emailResponse);
+      const email = available ? emailContent : LLM_UNAVAILABLE_NOTE;
 
       // Return ONLY the email - no strategy, no reasoning
       return {
@@ -235,8 +235,9 @@ OUTPUT ONLY THE REVISED EMAIL. Nothing else.`;
         ],
       });
 
-      const content = response.choices[0]?.message?.content;
-      const cleanContent = typeof content === 'string' ? content.trim() : (content ? JSON.stringify(content) : input.currentEmail);
+      // A failed refinement must not replace the rep's draft with an apology.
+      const { content, available } = llmText(response);
+      const cleanContent = available ? content.trim() : input.currentEmail;
       return {
         content: cleanContent,
       };
