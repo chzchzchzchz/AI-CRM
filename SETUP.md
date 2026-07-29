@@ -14,6 +14,8 @@ DEMO_MODE=true pnpm dev
 Open http://localhost:3333 — boots with 1,000 demo accounts, 10,023 contacts, $21.3M of open pipeline. No
 database, no Salesforce, no keys required (DEMO_MODE reads `demo-db.json`).
 
+Sign in with `demo@ai-crm.com` / `DemoPass123!` — seeded for the demo dataset only.
+
 ## 2. Free AI with NO API keys (local LLM)
 The AI features (account briefs, strategic insights, outreach generation, chat) automatically fall
 back to a **local Ollama model** when no cloud key is set — so they work for free.
