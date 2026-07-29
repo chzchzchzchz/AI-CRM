@@ -1,4 +1,4 @@
-import { invokeLLM } from "./_core/llm";
+import { invokeLLM, llmText, isLlmUnavailable } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
 import { getAllAccounts, getAllPeople } from "./db";
 
@@ -145,8 +145,10 @@ Return JSON:
       }
     });
 
-    const content = response.choices[0].message.content;
-    if (content && typeof content === 'string') {
+    // Parsing the degradation note gives an object with no isValid field, which reads
+    // as "not invalid" and quietly passes every record through as clean.
+    const { content, available } = llmText(response);
+    if (available) {
       const result = JSON.parse(content);
       
       if (!result.isValid) {
@@ -230,8 +232,10 @@ Return JSON:
       }
     });
 
-    const content = response.choices[0].message.content;
-    if (content && typeof content === 'string') {
+    // Parsing the degradation note gives an object with no isValid field, which reads
+    // as "not invalid" and quietly passes every record through as clean.
+    const { content, available } = llmText(response);
+    if (available) {
       const result = JSON.parse(content);
       
       if (!result.isValid && result.confidence > 0.6) {
@@ -314,8 +318,10 @@ Return JSON:
       }
     });
 
-    const content = response.choices[0].message.content;
-    if (content && typeof content === 'string') {
+    // Parsing the degradation note gives an object with no isValid field, which reads
+    // as "not invalid" and quietly passes every record through as clean.
+    const { content, available } = llmText(response);
+    if (available) {
       const result = JSON.parse(content);
       
       if (!result.isValid && result.confidence > 0.7) {

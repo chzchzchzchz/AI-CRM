@@ -275,7 +275,117 @@ function walk(dir, exts, acc = []) {
   }
 }
 
-/* ---------------------------------------------------------------- 9. report */
+/* ------------------------------------------------------------------- 9. llm */
+/**
+ * A caller that reads model output must be able to tell it apart from an apology.
+ *
+ * With no key and no local Ollama, invokeLLM degrades to a readable note rather than
+ * throwing. That is the right behaviour and it was invisible: every caller did
+ * `response.choices[0].message.content` and passed it on, so the note became the
+ * account summary, the chat reply, the generated blog post — and got written to the
+ * content library and the context store as though a model had produced it.
+ *
+ * Reading `choices[0]` directly is now the thing to look for. Use `llmText()`, which
+ * returns `{ content, available }`, and say something honest when available is false.
+ */
+{
+  const offenders = [];
+  for (const file of walk(path.join(ROOT, "server"), [".ts"])) {
+    const rel = path.relative(ROOT, file);
+    if (rel === path.join("server", "_core", "llm.ts")) continue; // defines it
+    if (rel.endsWith(".test.ts")) continue;
+    const src = stripComments(fs.readFileSync(file, "utf8"));
+    if (!/\binvokeLLM\s*\(/.test(src)) continue;
+
+    // Reaching into the response shape by hand bypasses the check entirely.
+    const raw = [...src.matchAll(/\.choices\s*\[\s*0\s*\]/g)].length;
+    if (raw) {
+      offenders.push(`${rel}: reads choices[0] ${raw}× directly — use llmText()`);
+      continue;
+    }
+
+    // Every llmText() call must be destructured so `available` is actually bound.
+    //
+    // Two weaker versions of this rule shipped green before this one. The first only
+    // asked whether llmText appeared in the file — a mechanical substitution turned
+    // seven files green without handling a single outage. The second asked whether
+    // the word "available" appeared anywhere, which three files satisfied with the
+    // string "Database not available". Match the binding, not the vocabulary.
+    const calls = [...src.matchAll(/\bllmText\s*\(/g)].length;
+    const bound = [...src.matchAll(/\{[^}]*\bavailable\b[^}]*\}\s*=\s*llmText\s*\(/g)].length;
+    if (calls > bound) {
+      offenders.push(
+        `${rel}: ${calls - bound} of ${calls} llmText() calls drop \`available\` — ` +
+          `destructure it and say something honest when it is false`
+      );
+    }
+  }
+  offenders.length
+    ? fail("LLM callers check availability", offenders.join("\n    "))
+    : ok("LLM callers check availability");
+}
+
+/* ------------------------------------------------------------ 10. two impls */
+/**
+ * No server module may be unreachable from the router.
+ *
+ * server/account-summary.ts and server/contact-summary.ts were complete, plausible
+ * implementations of generateAccountSummary and generateContactSummary that nothing
+ * imported — the live versions live in aiContext.ts. Fixing the availability bug, I
+ * opened the obviously-named file, edited it, and fixed nothing. A dead file with
+ * the right name is worse than no file, because it answers the question you were
+ * about to ask.
+ */
+{
+  const entry = new Set();
+  const queue = ["server/_core/index.ts", "server/routers.ts"];
+  const resolve = (fromFile, spec) => {
+    if (spec.startsWith("@shared/")) return path.join(ROOT, "shared", spec.slice(8) + ".ts");
+    if (!spec.startsWith(".")) return null;
+    const base = path.resolve(path.dirname(path.join(ROOT, fromFile)), spec);
+    for (const c of [`${base}.ts`, path.join(base, "index.ts")]) {
+      if (fs.existsSync(c)) return c;
+    }
+    return null;
+  };
+  while (queue.length) {
+    const rel = queue.pop();
+    if (entry.has(rel) || !fs.existsSync(path.join(ROOT, rel))) continue;
+    entry.add(rel);
+    const src = fs.readFileSync(path.join(ROOT, rel), "utf8");
+    for (const m of src.matchAll(/(?:from|import\()\s*["']([^"']+)["']/g)) {
+      const target = resolve(rel, m[1]);
+      if (target) queue.push(path.relative(ROOT, target));
+    }
+  }
+  const orphans = walk(path.join(ROOT, "server"), [".ts"])
+    .map(f => path.relative(ROOT, f))
+    .filter(rel => !rel.endsWith(".test.ts") && !rel.includes("_core") && !entry.has(rel))
+    // Entry points, tooling and test helpers are run directly or imported by tests,
+    // neither of which the router graph can see.
+    .filter(
+      rel =>
+        ![
+          "server/inventory.ts",
+          "server/mcp-server.ts",
+          "server/doctor.ts",
+          "server/test-utils.ts",
+          // A complete TOTP router that is deliberately not mounted: the login path
+          // does not check twoFactorEnabled and there is no UI, so mounting it alone
+          // would advertise 2FA without providing it. README says so plainly.
+          "server/twofa-router.ts",
+        ].includes(rel)
+    );
+  orphans.length
+    ? fail(
+        "no unreachable server modules",
+        `${orphans.join(", ")} — not reachable from routers.ts or _core/index.ts. ` +
+          `Delete it, or wire it up; a dead file with a plausible name gets edited by mistake.`
+      )
+    : ok("no unreachable server modules");
+}
+
+/* --------------------------------------------------------------- 11. report */
 for (const c of checks) console.log(`  ✓ ${c}`);
 for (const f of failures) console.log(`  ✘ ${f.rule}\n    ${f.detail}`);
 

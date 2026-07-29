@@ -1,7 +1,7 @@
 import { getDb } from "./db";
 import { contextStore } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { invokeLLM } from "./_core/llm";
+import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
 // Real intent-spike detection, computed from the intentScores time series — so the AI
@@ -212,8 +212,12 @@ ${intentSpikeContext}`;
   ];
 
   const response = await invokeLLM({ messages });
-  const answer = response.choices[0].message.content || "I couldn't process that request.";
-  const answerStr = typeof answer === 'string' ? answer : JSON.stringify(answer);
+  // With no model reachable this is the degradation note, not a reply. Returned as-is
+  // it reads like an answer, and everything below would then mine it for "insights"
+  // and write those into the conversation memory.
+  const { content: answer, available } = llmText(response);
+  if (!available) return { answer: LLM_UNAVAILABLE_NOTE, insights: [] };
+  const answerStr = answer;
 
   // Extract insights and store for future use
   const insights: string[] = [];
@@ -259,8 +263,11 @@ Return a JSON array of insight strings.`;
         }
       });
 
-      const learningContent = learningResponse.choices[0].message.content;
-      const parsed = JSON.parse(typeof learningContent === 'string' ? learningContent : JSON.stringify(learningContent));
+      // Mining the degradation note for "insights" would write apologies into the
+      // context store, where they resurface as prior learnings on every later answer.
+      const { content: learningContent, available: learningAvailable } = llmText(learningResponse);
+      if (!learningAvailable) return { answer: answerStr, insights: [] };
+      const parsed = JSON.parse(learningContent);
       
       for (const insight of parsed.insights) {
         insights.push(insight);
@@ -379,8 +386,12 @@ ${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `
     ]
   });
 
-  const summary = response.choices[0].message.content || "Unable to generate summary";
-  const summaryStr = typeof summary === 'string' ? summary : JSON.stringify(summary);
+  // With no model reachable this is the degradation note. It used to be returned as the
+  // summary AND cached under account_insight, so the apology became the stored answer
+  // and outlived the outage.
+  const { content: summary, available } = llmText(response);
+  if (!available) return LLM_UNAVAILABLE_NOTE;
+  const summaryStr = summary;
 
   // Store the summary
   await storeContext({
@@ -390,7 +401,7 @@ ${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `
     metadata: { type: 'summary', fullSummary: summaryStr }
   });
 
-  return typeof summary === 'string' ? summary : JSON.stringify(summary);
+  return summary;
 }
 
 /**
@@ -469,8 +480,12 @@ Be specific, actionable, and avoid generic statements. Focus on what makes this 
     ]
   });
 
-  const summary = response.choices[0].message.content || "Unable to generate summary";
-  const summaryStr = typeof summary === 'string' ? summary : JSON.stringify(summary);
+  // With no model reachable this is the degradation note. It used to be returned as the
+  // summary AND cached under account_insight, so the apology became the stored answer
+  // and outlived the outage.
+  const { content: summary, available } = llmText(response);
+  if (!available) return LLM_UNAVAILABLE_NOTE;
+  const summaryStr = summary;
 
   // Store the summary
   await storeContext({
@@ -480,5 +495,5 @@ Be specific, actionable, and avoid generic statements. Focus on what makes this 
     metadata: { type: 'profile', fullSummary: summaryStr }
   });
 
-  return typeof summary === 'string' ? summary : JSON.stringify(summary);
+  return summary;
 }

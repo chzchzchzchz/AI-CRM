@@ -1028,7 +1028,7 @@ Or go to the Admin Panel: /admin/approval`
           news: newsData
         };
 
-        const { invokeLLM } = await import("./_core/llm");
+        const { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } = await import("./_core/llm");
         const { withRCP } = await import("./ai-system-prompt");
         const response = await invokeLLM({
           messages: [
@@ -1043,8 +1043,8 @@ Or go to the Admin Panel: /admin/approval`
           ]
         });
 
-        const insights = response.choices[0]?.message?.content;
-        const insightsText = typeof insights === 'string' ? insights : 'No research insights available';
+        const { content: insights, available } = llmText(response);
+        const insightsText = available ? insights : LLM_UNAVAILABLE_NOTE;
         
         const result = {
           insights: insightsText,
@@ -1113,7 +1113,7 @@ Or go to the Admin Panel: /admin/approval`
         const stackString = JSON.stringify(stackData, null, 2);
 
         // Use AI to categorize and filter the tech stack
-        const { invokeLLM } = await import("./_core/llm");
+        const { invokeLLM, llmText } = await import("./_core/llm");
         const { withRCP } = await import("./ai-system-prompt");
         const response = await invokeLLM({
           messages: [
@@ -1151,8 +1151,9 @@ Or go to the Admin Panel: /admin/approval`
           }
         });
 
-        const content = response.choices[0]?.message?.content;
-        if (!content || typeof content !== 'string') {
+        const { content, available } = llmText(response);
+        // The raw stack string is a usable answer; the note is not.
+        if (!available) {
           return { categories: {}, raw: stackString };
         }
 
