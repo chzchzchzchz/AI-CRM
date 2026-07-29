@@ -18,8 +18,9 @@
     "audit": "pnpm audit --prod --audit-level moderate",
     "db:push": "drizzle-kit push",
     "gate": "node scripts/quality-gate.mjs",
+    "flows": "node scripts/flow-gate.mjs",
     "check:claims": "node scripts/check-claims.mjs",
-    "verify": "pnpm check && pnpm lint && pnpm test && pnpm inventory && pnpm check:claims && pnpm build && pnpm gate",
+    "verify": "pnpm check && pnpm lint && pnpm test && pnpm inventory && pnpm check:claims && pnpm build && pnpm gate && pnpm flows",
     "lint": "eslint client/src"
   },
   "dependencies": {

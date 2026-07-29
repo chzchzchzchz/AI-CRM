@@ -22,7 +22,8 @@ pnpm verify
   ├── pnpm inventory     regenerate docs/CAPABILITIES.md
   ├── pnpm check:claims  static truth checks
   ├── pnpm build
-  └── pnpm gate          browser checks, every route × 2 viewports
+  ├── pnpm gate          browser checks, every route × 2 viewports
+  └── pnpm flows         uses the app: filter, open, search, walk the nav
 ```
 
 Run any one on its own. `pnpm gate` boots its own server on port 3399; point it at
@@ -112,6 +113,33 @@ was too strict.
 
 If a budget genuinely needs to move, change it in one place (`BUDGET` at the top of
 `scripts/quality-gate.mjs`) and say in the commit message what got bigger and why.
+
+## Flow gate — `scripts/flow-gate.mjs`
+
+The browser gate loads every route and measures what rendered. **It never clicks
+anything.** So the whole class of "I tried it and nothing happened" was invisible:
+a search box that filters nothing, a row that doesn't navigate, a dialog that
+opens empty. Every one of those renders perfectly.
+
+Four flows, each a thing a rep does in the first two minutes, each asserting an
+observable change rather than that a handler exists:
+
+| Flow | What it asserts |
+|---|---|
+| Contacts search narrows the list | a nonsense query matches 0, `director` matches some but not all |
+| Clicking an account opens it | the URL moves to the row's own href, and the page isn't a 404 or a stub |
+| Global search returns results | Ctrl+K opens, a real query finds something, a nonsense one says so |
+| Every nav link goes somewhere real | every sidebar link is followed and none lands on the 404 page |
+
+Deliberately small. A flaky flow check is worse than none, because it teaches
+people to re-run CI until it goes green. Anything that couldn't be made
+deterministic was left out rather than retried into submission.
+
+> **Contacts search is filtered twice** — once server-side in `people.list`, once
+> again on the client. Breaking either one alone leaves search working, so the
+> flow check only fails when search is genuinely broken from the user's side.
+> That's the right behaviour for a flow test, and it's worth knowing the
+> redundancy is there: a single-layer regression will not surface here.
 
 ## Rules considered and rejected
 
