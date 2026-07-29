@@ -14,7 +14,15 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["server/**/*.test.ts", "server/**/*.spec.ts"],
+    // shared/ is in here because a test file outside the include glob is silently
+    // never run — it reports green by not existing. check-claims asserts that every
+    // *.test.ts in the repo is matched by one of these patterns.
+    include: [
+      "server/**/*.test.ts",
+      "server/**/*.spec.ts",
+      "shared/**/*.test.ts",
+      "shared/**/*.spec.ts",
+    ],
     // The demo/JSON database is a single shared file on disk (demo-db.json).
     // Running test files in parallel races on writes to it and causes flaky
     // failures (e.g. audit-log assertions). Force sequential file execution.

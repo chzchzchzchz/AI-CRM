@@ -40,6 +40,8 @@ a running instance with `BASE_URL=http://localhost:3333 pnpm gate`, and add
 | README matches the seed | The README advertised 16 accounts and 40 contacts against a dataset of 1,000 and 10,023 |
 | Nothing unrouted | 51 procedures were built and unreachable, discovered only by writing a crawler |
 | No fabricated evidence | Content Studio displayed a hardcoded list of filenames as the documents an answer was drawn from |
+| One job-title taxonomy | Eight private regexes decided who was a "decision maker". One read "Vice President" as "President"; others matched with `.includes()`, so "Leadership" counted as a lead |
+| Every test file runs | `shared/taxonomy.test.ts` sat outside the vitest `include` glob — committed, green, never executed |
 
 ## Lint — `eslint.config.js`
 
@@ -65,6 +67,20 @@ Walks all 27 routes at 1440px and 390px, signed in.
 | No page errors | a component removed from a render path typechecked clean and produced a blank page |
 | Under 6,000 DOM nodes | the accounts list drew 38,549 — every row, unpaged |
 | Under 16 screens tall | that same page was 68,215px, roughly 68 metres |
+| No placeholder or template output | every account's Next Best Action was one of two strings, picked by whether a title contained "ciso" |
+| Global metrics agree across pages | "Decision makers" said 790 on /insights and 619 on /contacts. The real figure was 5,365 |
+
+The last two are the ones that catch a page which looks right. A tile can be
+legible, well-spaced, error-free and still be lying; the mechanical tells are that
+the sentence is a shape rather than an answer, and that the app contradicts itself.
+
+**Metric agreement** works off two attributes. A tile that claims to describe the
+whole book of business carries `data-metric="decision-makers"`,
+`data-metric-scope="global"` and `data-metric-value`; the gate collects them across
+every route and fails when one key shows two values. A tile showing a filtered,
+paged or territory-scoped number sets `data-metric-scope="view"` and is not
+compared — it is allowed to be smaller, it just has to say so, which is why the
+Contacts tiles switch their own scope when a filter is on.
 
 Height and node budgets are asserted at desktop only: on a phone everything stacks,
 so those numbers describe the layout rather than the page's restraint.
@@ -85,12 +101,12 @@ If a budget genuinely needs to move, change it in one place (`BUDGET` at the top
 
 Worth being explicit, so its passing isn't read as more than it is:
 
-- **Whether the copy is any good.** It can prove no text is too small to read; it
-  cannot prove the sentence is worth reading. "Email {contact} with value-driven
-  message" would pass every rule here.
-- **Whether a number is correct.** It checks the README against the seed. It does
-  not know that "Decision makers 1,500" was the raw contact count under the wrong
-  label.
+- **Whether the copy is any good.** It knows the specific dead phrasings that
+  shipped, and it knows a shared taxonomy is being used. It does not know whether
+  a new sentence is worth reading. A fresh template, phrased differently, passes.
+- **Whether a number is correct.** It can prove the app does not contradict itself
+  and that the README matches the seed. Two pages agreeing on 619 is not proof that
+  619 is right — only that one definition produced it.
 - **Anything behind a real vendor API.** No connector has been verified against a
   live tenant; the AI paths are exercised against a stub standing in for the model.
 

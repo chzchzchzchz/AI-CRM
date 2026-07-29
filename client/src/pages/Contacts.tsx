@@ -18,6 +18,7 @@ import {
 } from"@/components/ui/select";
 import { useRep } from"@/contexts/RepContext";
 import { RepSwitcher } from"@/components/RepSwitcher";
+import { isDecisionMaker, DECISION_MAKER_HINT, TITLE_TOKENS } from "@shared/taxonomy";
 
 type SortField ="priority" |"name" |"title" |"company";
 type SortOrder ="asc" |"desc";
@@ -85,8 +86,13 @@ export default function ContactsEnhanced() {
     const keywords = new Set<string>();
     contacts.forEach((c: any) => {
       if (c.title) {
-        const words = c.title.toLowerCase().match(/\b(ceo|cto|cfo|cio|ciso|vp|svp|evp|director|head|manager|lead|engineer|analyst|specialist)\b/g);
-        words?.forEach((w: string) => keywords.add(w));
+        // Vocabulary from @shared/taxonomy, not a local list — the dropdown offers
+        // the same words the app classifies by, so filtering to "director" can't
+        // mean something different from the Decision makers tile.
+        const t = c.title.toLowerCase();
+        TITLE_TOKENS.forEach((w) => {
+          if (new RegExp(`\\b${w.replace(/\./g, "\\.")}\\b`).test(t)) keywords.add(w);
+        });
       }
     });
     return Array.from(keywords).sort();
@@ -222,8 +228,6 @@ export default function ContactsEnhanced() {
     setCurrentPage(1);
   }, []);
 
-  const isDecisionMaker = (title?: string | null) =>
-    !!title?.toLowerCase().match(/\b(ceo|cto|cfo|cio|vp|svp|evp|director|head)\b/);
 
   // Intent heat: tinted text + glyph + word, never color alone.
   const getHeat = (score: number) => {
@@ -253,18 +257,48 @@ export default function ContactsEnhanced() {
     );
   }
 
-  const decisionMakerCount = filteredContacts.filter((c: any) => isDecisionMaker(c.title)).length;
-
   // True when the server truncated: what came back is smaller than what exists.
   const isCapped =
     !debouncedSearch &&
     !!totals?.totalContacts &&
     (contacts?.length ?? 0) < totals.totalContacts;
 
-  const stats: { key: string; label: string; value: number; Icon: any; text: string; hint: string }[] = [
-    { key:"contacts", label:"Contacts", value: filteredContacts.length, Icon: Users, text:"text-foreground", hint:"In current view" },
-    { key:"companies", label:"Companies", value: companies.length, Icon: Building2, text:"text-foreground", hint:"Unique accounts" },
-    { key:"dm", label:"Decision makers", value: decisionMakerCount, Icon: Briefcase, text:"text-accent", hint:"C-level & VPs" },
+  // True when these tiles describe a subset rather than the book of business: a filter
+  // is on, a rep territory is applied, or AI priority reordered a shortlist. The gate
+  // compares same-named metrics across pages, and a tile that silently shows a subset
+  // under an unqualified label is exactly the defect it is looking for.
+  //
+  // Note that a capped list does NOT narrow these tiles any more: the counts below come
+  // from the server's totals when nothing is filtered, so they describe all 10,023
+  // contacts even though only 1,500 rows were fetched.
+  const isNarrowed =
+    isRepMode ||
+    showAIPriority ||
+    !!searchQuery ||
+    companyFilter !=="all" ||
+    titleFilter !=="all" ||
+    techFilter !=="all";
+
+  // Filtered, count what is on screen. Unfiltered, take the server's count over the
+  // whole dataset — counting the fetched rows would describe a 15% sample under a
+  // label that claims the book.
+  const shownDecisionMakers = filteredContacts.filter((c: any) => isDecisionMaker(c.title)).length;
+  const decisionMakerCount = isNarrowed
+    ? shownDecisionMakers
+    : totals?.totalDecisionMakers ?? shownDecisionMakers;
+  const contactCount = isNarrowed
+    ? filteredContacts.length
+    : totals?.totalContacts ?? filteredContacts.length;
+
+  // `scope: "view"` means the number describes what is on screen rather than the whole
+  // dataset, and the gate will not compare it to a tile of the same name elsewhere.
+  // Companies is always scoped: it counts distinct companies among the fetched rows,
+  // which is 1,500 contacts' worth, not the account table.
+  const scope = isNarrowed ?"view" :"global";
+  const stats: { key: string; metric: string; scope: string; label: string; value: number; Icon: any; text: string; hint: string }[] = [
+    { key:"contacts", metric:"contacts", scope, label:"Contacts", value: contactCount, Icon: Users, text:"text-foreground", hint: isNarrowed ?"In current view" :"All contacts" },
+    { key:"companies", metric:"companies", scope:"view", label:"Companies", value: companies.length, Icon: Building2, text:"text-foreground", hint:"Unique accounts" },
+    { key:"dm", metric:"decision-makers", scope, label:"Decision makers", value: decisionMakerCount, Icon: Briefcase, text:"text-accent", hint: DECISION_MAKER_HINT },
   ];
 
   return (
@@ -313,8 +347,17 @@ export default function ContactsEnhanced() {
         {/* Quick Stats - segmented readout */}
         <div className="grid grid-cols-3 rounded-md border border-border/60 bg-card divide-x divide-border/50 overflow-hidden">
           {stats.map((s) => (
-            <div key={s.key} className="px-4 py-4 sm:px-5">
-              <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-ink-muted">
+            <div
+              key={s.key}
+              className="px-4 py-4 sm:px-5"
+              data-metric={s.metric}
+              data-metric-scope={s.scope}
+              data-metric-value={s.value}
+            >
+              <div
+                className="flex flex-wrap items-center gap-2 text-xs font-medium text-ink-muted"
+                title={s.hint}
+              >
                 <s.Icon className={`h-3.5 w-3.5 ${s.text ==="text-foreground" ?"text-ink-muted" : s.text}`} />
                 {s.label}
               </div>

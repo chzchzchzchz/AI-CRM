@@ -48,6 +48,27 @@ const ROUTES = [
   "/sixsense-sync", "/sixsense-analytics", "/admin", "/admin/approval",
 ];
 
+/**
+ * Sentences that mean the output is a shape, not an answer.
+ *
+ * "Email {contact} with value-driven message" was the Next Best Action for every
+ * account in the database — one of two strings, chosen by whether a job title
+ * contained "ciso". It rendered at a legible size, in a well-spaced card, with no
+ * overflow and no errors: every budget below would have passed it. The only thing
+ * wrong with it was that it said nothing, and only a person reading the page could
+ * tell. These are the specific phrasings that were shipped, so at least this exact
+ * failure cannot come back unnoticed.
+ */
+const TEMPLATE_TELLS = [
+  "with value-driven message",
+  "with security risk-focused message",
+  "Lorem ipsum",
+  "TODO:",
+  "undefined",
+  "NaN",
+  "[object Object]",
+];
+
 const BUDGET = {
   minFontPx: 12,      // below this is caption size doing body-copy work
   maxNodes: 6000,     // an unpaged list blows straight past this
@@ -57,6 +78,20 @@ const BUDGET = {
 
 const failures = [];
 const note = [];
+
+/**
+ * Every global metric seen, keyed by name → value → the routes that showed it.
+ *
+ * "Decision makers" was a tile on /insights and a tile on /contacts. Over the same
+ * 1,500 contacts, one matched seventeen job-title tokens and said 790; the other
+ * matched nine and said 619 — and the true figure was 5,365, because both were
+ * counting a capped query. Both rendered at a legible size with no overflow and no
+ * page errors — every other
+ * budget here passed them — and the pages are two clicks apart. A number can be
+ * wrong while being perfectly presented, and the only mechanical tell is that the
+ * app contradicts itself.
+ */
+const metrics = new Map();
 
 const waitPort = (port, ms = 90_000) =>
   new Promise((resolve, reject) => {
@@ -84,6 +119,21 @@ if (OWN_SERVER) {
     detached: true,
   });
   await waitPort(PORT);
+
+  // waitPort only proves something answered a TCP connect. A dev server left over
+  // from an earlier run can hold the port and then be reaped, and the gate goes on
+  // to fail 27 routes with ERR_CONNECTION_REFUSED and an uncaught exception — which
+  // reads like the app is broken rather than like the harness never started.
+  const ready = await fetch(`${BASE}/login`)
+    .then(r => r.ok)
+    .catch(() => false);
+  if (!ready) {
+    console.log(`\n  ✘ quality gate: no server answering on ${BASE}`);
+    console.log(`    port ${PORT} accepted a connection but did not serve /login.`);
+    console.log(`    Check for a stale dev server: ps aux | grep 'tsx watch'\n`);
+    try { process.kill(-server.pid); } catch {}
+    process.exit(1);
+  }
 }
 
 const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
@@ -102,11 +152,25 @@ async function signIn(page) {
 }
 
 /** Smallest rendered font size among elements that actually show text. */
-const measure = () => ({
+const measure = TELLS => ({
   nodes: document.querySelectorAll("*").length,
   height: document.documentElement.scrollHeight,
   screens: +(document.documentElement.scrollHeight / window.innerHeight).toFixed(1),
   overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  // Placeholder and template phrasings that reached the screen.
+  tells: (() => {
+    const body = document.body.innerText || "";
+    return TELLS.filter(t => body.includes(t));
+  })(),
+  // Tiles that claim to describe the whole book of business, so the same key can
+  // be compared across pages. data-metric-scope="view" opts out — a filtered list
+  // is allowed to show a smaller number, it just has to say so.
+  metrics: [...document.querySelectorAll("[data-metric]")]
+    .filter(el => el.getAttribute("data-metric-scope") === "global")
+    .map(el => ({
+      key: el.getAttribute("data-metric"),
+      value: el.getAttribute("data-metric-value"),
+    })),
   tiny: (() => {
     const out = [];
     for (const el of document.querySelectorAll("body *")) {
@@ -143,7 +207,7 @@ for (const width of [1440, 390]) {
 
     let m;
     try {
-      m = await page.evaluate(measure);
+      m = await page.evaluate(measure, TEMPLATE_TELLS);
     } catch (e) {
       failures.push({ route, width, rule: "renders", detail: e.message.slice(0, 100) });
       continue;
@@ -156,6 +220,20 @@ for (const width of [1440, 390]) {
       failures.push({ route: at, rule: `no text under ${BUDGET.minFontPx}px`, detail: m.tiny.join(", ") });
     if (errors.length)
       failures.push({ route: at, rule: "no page errors", detail: errors[0] });
+    if (m.tells.length)
+      failures.push({
+        route: at,
+        rule: "no placeholder or template output",
+        detail: m.tells.map(t => `"${t}"`).join(", "),
+      });
+    for (const { key, value } of m.metrics || []) {
+      if (!key || value == null) continue;
+      if (!metrics.has(key)) metrics.set(key, new Map());
+      const seen = metrics.get(key);
+      if (!seen.has(value)) seen.set(value, []);
+      seen.get(value).push(at);
+    }
+
     // Budgets are desktop-only: a phone stacks everything, so height and node
     // counts there measure the layout, not the page's restraint.
     if (width === 1440) {
@@ -171,6 +249,18 @@ for (const width of [1440, 390]) {
 
 await browser.close();
 if (server) { try { process.kill(-server.pid); } catch {} }
+
+// A metric that means the whole book of business has to be the same number
+// wherever it appears. Anything scoped to a filter or a territory is tagged
+// data-metric-scope="view" and is not compared.
+for (const [key, byValue] of metrics) {
+  if (byValue.size < 2) continue;
+  failures.push({
+    route: [...byValue.values()].flat().join(", "),
+    rule: `"${key}" agrees across pages`,
+    detail: [...byValue].map(([v, where]) => `${v} on ${where.join(" & ")}`).join(" vs "),
+  });
+}
 
 if (process.env.GATE_VERBOSE) note.forEach(n => console.log("  " + n));
 

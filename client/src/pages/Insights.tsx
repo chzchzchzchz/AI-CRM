@@ -10,6 +10,7 @@ import { ContextualAI } from "@/components/ContextualAI";
 import { useRep } from "@/contexts/RepContext";
 import { RepSwitcher } from "@/components/RepSwitcher";
 import { CompanyLogo } from "@/components/ui/company-logo";
+import { isDecisionMaker, DECISION_MAKER_HINT } from "@shared/taxonomy";
 
 type FilterType = "intent" | "industry" | "region" | "buyingStage" | "keyword" | null;
 
@@ -57,12 +58,30 @@ export default function Insights() {
     });
   }, [allAccounts, matchesTerritory]);
   const { data: calls } = trpc.gong.list.useQuery();
-  const { data: contacts } = trpc.people.list.useQuery();
+  const { data: allContacts } = trpc.people.list.useQuery();
+
+  // The header on this page reads "West territory · Every figure is computed from
+  // live account data". Accounts were scoped to the territory and contacts were not,
+  // so the Decision makers tile counted the whole company while the tile beside it
+  // counted one region — and /contacts, which does scope, disagreed with both.
+  // Matched on account name, the same join /contacts uses.
+  const territoryAccountNames = useMemo(() => {
+    if (!accounts || !isRepMode) return null;
+    return new Set(accounts.map((a: any) => a.name?.toLowerCase()));
+  }, [accounts, isRepMode]);
+
+  const contacts = useMemo(() => {
+    if (!allContacts) return undefined;
+    if (!territoryAccountNames) return allContacts;
+    return allContacts.filter((c: any) => territoryAccountNames.has(c.company?.toLowerCase()));
+  }, [allContacts, territoryAccountNames]);
   const { data: keywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 50 });
   const { data: engagement } = trpc.sixsenseAnalytics.getEngagement.useQuery();
   const { data: buyingStages } = trpc.sixsenseAnalytics.getBuyingStages.useQuery();
   const { data: sixQAPerformance } = trpc.sixsenseAnalytics.get6QAPerformance.useQuery();
   const { data: brain } = trpc.intel.brain.useQuery();
+  // Totals over the whole dataset, not over whatever a capped list query returned.
+  const { data: stats } = trpc.accounts.getStats.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
 
   const [activeFilter, setActiveFilter] = useState<ActiveFilter | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
@@ -71,7 +90,10 @@ export default function Insights() {
   // Calculate metrics
   const totalAccounts = accounts?.length || 0;
   const totalCalls = calls?.length || 0;
-  const totalContacts = contacts?.length || 0;
+  // Same cap, same problem: "of 1,500 contacts" was the page size, not the dataset.
+  const totalContacts = territoryAccountNames
+    ? contacts?.length || 0
+    : stats?.totalContacts ?? contacts?.length ?? 0;
   // Averaged over accounts that HAVE a score, not over all of them. Counting the 526
   // accounts with no intent data as zero dragged the mean to 22 and made a book of
   // business look cold when the real average across scored accounts is far higher.
@@ -80,10 +102,19 @@ export default function Insights() {
     ? scoredAccounts.reduce((sum: number, a: any) => sum + Number(a.intentScore), 0) / scoredAccounts.length
     : 0;
 
-  // "Decision makers" has to mean decision makers. This tile was showing the raw
-  // contact count under that label.
-  const DM_TITLES = /\b(chief|ciso|cto|cio|cfo|ceo|coo|cro|cmo|vp|vice president|svp|evp|head of|director|founder|president|owner|partner)\b/i;
-  const decisionMakers = (contacts ?? []).filter((c: any) => DM_TITLES.test(c.title || "")).length;
+  // "Decision makers" has to mean decision makers, it has to mean the same thing here
+  // as it does on /contacts, and it has to be counted over the same set. None of the
+  // three were true: this page had its own seventeen-token regex where /contacts had
+  // nine — 790 here against 619 there — and both counted over people.list, which caps
+  // at 1,500 of 10,023, so each tile described a 15% sample under a label claiming the
+  // whole book. The real figure is 5,365.
+  //
+  // Outside rep mode the count comes from the server, over every contact. In rep mode
+  // it is a territory figure, computed here and tagged as scoped so nothing compares
+  // it to the global one.
+  const decisionMakers = territoryAccountNames
+    ? (contacts ?? []).filter((c: any) => isDecisionMaker(c.title)).length
+    : stats?.totalDecisionMakers ?? 0;
 
   // Group by industry
   const industryData = useMemo(() => {
@@ -380,8 +411,16 @@ export default function Insights() {
                       {activeFilter ? `filtered from ${totalAccounts}` : "in territory"}
                     </div>
                   </div>
-                  <div className="px-4">
-                    <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
+                  <div
+                    className="px-4"
+                    data-metric="decision-makers"
+                    data-metric-scope={territoryAccountNames ?"view" :"global"}
+                    data-metric-value={decisionMakers}
+                  >
+                    <div
+                      className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted"
+                      title={DECISION_MAKER_HINT}
+                    >
                       <Users className="h-3.5 w-3.5" /> Decision makers
                     </div>
                     <div className="mt-2 tabular-nums text-2xl text-foreground">

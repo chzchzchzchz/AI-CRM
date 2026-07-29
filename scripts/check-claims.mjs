@@ -200,7 +200,82 @@ function walk(dir, exts, acc = []) {
   hits.length ? fail("no fabricated evidence", hits.join("\n    ")) : ok("no fabricated evidence");
 }
 
-/* ---------------------------------------------------------------- 7. report */
+/* --------------------------------------------------------------- 7. meaning */
+/**
+ * A word that appears on screen must mean one thing.
+ *
+ * "Decision makers" was a tile on /insights and a tile on /contacts. Over the same
+ * 1,500 contacts, Insights matched seventeen title tokens and said 790; Contacts
+ * matched nine and said 619. Each was correct against its own private regex, and
+ * the two pages are two clicks apart. There were eight of those regexes — Insights,
+ * Contacts twice, Outreach, priority-actions, hot-leads, intel/signals and ai.ts
+ * — no two alike, and one of them read "Vice President" as "President".
+ *
+ * There is now one, in shared/taxonomy.ts. This rule is what stops a ninth: any
+ * file that lists three or more executive title tokens is building its own
+ * taxonomy, whatever it calls the variable.
+ */
+{
+  const TITLE_TOKENS = /\b(ciso|cto|cio|cfo|ceo|coo|cmo|cro|svp|evp|vice president|c-level)\b/gi;
+  const CANONICAL = path.join("shared", "taxonomy.ts");
+  const hits = [];
+  const sources = [
+    ...walk(path.join(ROOT, "client", "src"), [".tsx", ".ts"]),
+    ...walk(path.join(ROOT, "server"), [".ts"]),
+    ...walk(path.join(ROOT, "shared"), [".ts"]),
+  ];
+  for (const file of sources) {
+    const rel = path.relative(ROOT, file);
+    // The definition itself, and tests that must be able to name titles literally.
+    if (rel === CANONICAL || rel.endsWith(".test.ts") || rel.endsWith(".spec.ts")) continue;
+    const src = stripComments(fs.readFileSync(file, "utf8"));
+    // Only lines that look like a pattern or a list — a title inside a prose string,
+    // a demo transcript or a placeholder is someone writing English, not classifying.
+    for (const line of src.split("\n")) {
+      if (!/[/[]/.test(line)) continue;
+      const found = [...new Set((line.match(TITLE_TOKENS) || []).map(s => s.toLowerCase()))];
+      if (found.length >= 3) hits.push(`${rel}: ${found.join(", ")} — import from @shared/taxonomy`);
+    }
+  }
+  hits.length
+    ? fail("one job-title taxonomy", hits.join("\n    "))
+    : ok("one job-title taxonomy");
+}
+
+/* ----------------------------------------------------------------- 8. tests */
+/**
+ * Every test file must actually be run.
+ *
+ * shared/taxonomy.test.ts was written, committed and reported green while never
+ * executing once: the vitest `include` glob covered `server/**` only, so the file
+ * was invisible to the runner. A test outside the glob is worse than no test —
+ * it looks like coverage. When it was finally wired in it failed immediately, on
+ * the "Vice President" bug above.
+ */
+{
+  const cfgPath = path.join(ROOT, "vitest.config.ts");
+  if (!fs.existsSync(cfgPath)) {
+    ok("every test file runs (skipped — no vitest config)");
+  } else {
+    const cfg = fs.readFileSync(cfgPath, "utf8");
+    const block = cfg.match(/include:\s*\[([\s\S]*?)\]/);
+    const globs = block ? [...block[1].matchAll(/["'`]([^"'`]+)["'`]/g)].map(m => m[1]) : [];
+    // "server/**/*.test.ts" → the directory it roots at.
+    const roots = globs.map(g => g.split("/**")[0]).filter(Boolean);
+    const orphans = walk(ROOT, [".test.ts", ".spec.ts"])
+      .map(f => path.relative(ROOT, f))
+      .filter(rel => !rel.startsWith("node_modules") && !rel.startsWith("dist"))
+      .filter(rel => !roots.some(r => rel.startsWith(r + path.sep)));
+    orphans.length
+      ? fail(
+          "every test file runs",
+          `${orphans.join(", ")} — not matched by any vitest include glob (${globs.join(", ")})`
+        )
+      : ok(`every test file runs (${globs.length} globs)`);
+  }
+}
+
+/* ---------------------------------------------------------------- 9. report */
 for (const c of checks) console.log(`  ✓ ${c}`);
 for (const f of failures) console.log(`  ✘ ${f.rule}\n    ${f.detail}`);
 
