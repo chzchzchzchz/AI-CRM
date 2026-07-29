@@ -1,8 +1,8 @@
-import { invokeLLM } from "./_core/llm";
+import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
 import { getAllAccounts, getAllPeople, getAllGongCalls } from "./db";
 import { withRCP, asRevenueArchitect } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
-import { TITLE_TOKENS, isDecisionMaker } from "@shared/taxonomy";
+import { TITLE_TOKENS, isDecisionMaker, bySeniority } from "@shared/taxonomy";
 
 /**
  * AI Service Layer
@@ -111,8 +111,13 @@ Focus on:
     }
   });
 
-  const content = response.choices[0].message.content;
-  return JSON.parse(typeof content === 'string' ? content : JSON.stringify(content));
+  // No model reachable: the note would JSON.parse into an object with none of the
+  // fields below, and every caller would read undefined off it.
+  const { content, available } = llmText(response);
+  if (!available) {
+    return { summary: LLM_UNAVAILABLE_NOTE, score: 0, insights: [], recommendations: [], confidence: 0 };
+  }
+  return JSON.parse(content);
 }
 
 /**
@@ -166,8 +171,14 @@ Provide a JSON response with:
     }
   });
 
-  const content = response.choices[0].message.content;
-  return JSON.parse(typeof content === 'string' ? content : JSON.stringify(content));
+  const { content, available } = llmText(response);
+  if (!available) {
+    return {
+      summary: LLM_UNAVAILABLE_NOTE, keyTopics: [], objections: [], nextSteps: [],
+      sentiment: "neutral", buyingSignals: [], competitorsMentioned: [], actionItems: [],
+    };
+  }
+  return JSON.parse(content);
 }
 
 /**
@@ -200,8 +211,8 @@ Return only the email body (no subject line).
     ]
   });
 
-  const content = response.choices[0].message.content;
-  return typeof content === 'string' ? content : JSON.stringify(content);
+  const { content, available } = llmText(response);
+  return available ? content : LLM_UNAVAILABLE_NOTE;
 }
 
 /**
@@ -264,9 +275,11 @@ Examples:
     intent: "account_search", filters: {}, sortBy: "relevance", explanation: "",
   };
   try {
-    const content = response.choices[0].message.content;
-    const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
-    if (parsed && typeof parsed === "object" && !("available" in parsed)) interp = { ...interp, ...parsed };
+    const { content, available } = llmText(response);
+    // Without a model the deterministic interpretation below still answers the query.
+    if (!available) throw new Error("no model");
+    const parsed = JSON.parse(content);
+    if (parsed && typeof parsed === "object") interp = { ...interp, ...parsed };
   } catch { /* fall back to text-only search below */ }
 
   // Actually run the search against real data — the whole point the page was missing.
@@ -423,8 +436,11 @@ Return a JSON array of contact IDs sorted by priority (highest first), with reas
     }
   });
 
-  const content = response.choices[0].message.content;
-  const rankings = JSON.parse(typeof content === 'string' ? content : JSON.stringify(content)).rankings;
+  // Seniority order is a defensible ranking on its own, so an outage degrades the
+  // quality of the list rather than emptying it.
+  const { content, available } = llmText(response);
+  if (!available) return [...contacts].sort(bySeniority);
+  const rankings = JSON.parse(content).rankings;
   
   // Map rankings back to full contact objects, sorted by priority
   const contactMap = new Map(contacts.map(c => [c.id, c]));

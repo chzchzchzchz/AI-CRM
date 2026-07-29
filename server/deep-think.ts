@@ -1,4 +1,4 @@
-import { invokeLLM } from "./_core/llm";
+import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
 import { getDb } from "./db";
 import { aiResponseCache } from "../drizzle/schema";
 import { eq, and, gt } from "drizzle-orm";
@@ -217,8 +217,8 @@ export async function deepThink(params: {
     ]
   });
 
-  const reasoning = layer1Response.choices[0]?.message?.content || "";
-  const reasoningStr = typeof reasoning === 'string' ? reasoning : JSON.stringify(reasoning);
+  const { content: reasoning, available: reasoningAvailable } = llmText(layer1Response);
+  const reasoningStr = reasoningAvailable ? reasoning : LLM_UNAVAILABLE_NOTE;
 
   // ============================================
   // LAYER 2: SYNTHESIZER
@@ -238,8 +238,10 @@ Transform this into a polished, human response.`;
     ]
   });
 
-  const answer = layer2Response.choices[0]?.message?.content || "";
-  const answerStr = typeof answer === 'string' ? answer : JSON.stringify(answer);
+  // Caching the degradation note would make one outage look like a permanent answer.
+  const { content: answer, available } = llmText(layer2Response);
+  if (!available) return { answer: LLM_UNAVAILABLE_NOTE, reasoning: reasoningStr, cached: false };
+  const answerStr = answer;
 
   // Store in cache for future use
   await storeInCache({

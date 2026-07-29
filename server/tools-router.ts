@@ -1,6 +1,6 @@
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { invokeLLM, isLlmUnavailable } from "./_core/llm";
+import { invokeLLM, isLlmUnavailable, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
 import { asRevenueArchitect } from "./ai-system-prompt";
 import { 
   uploadDocument, 
@@ -308,17 +308,16 @@ Generate professional, actionable content.`;
           ]
         });
         
-        const content = response.choices[0].message.content || '';
+        const { content, available } = llmText(response);
         const durationMs = Date.now() - startTime;
 
         // No model was reachable, so this is the degradation note, not content. It used
         // to be saved as a generated asset and reported to the client as a success —
         // the content library filled up with apologies and the panel titled one
         // "Generated Blog Post".
-        const available = !isLlmUnavailable(content);
         if (!available) {
           return {
-            content: typeof content === 'string' ? content : JSON.stringify(content),
+            content,
             contentId: null,
             ragSourcesUsed: false,
             durationMs,
@@ -565,9 +564,11 @@ Format your response as JSON with these keys:
           }
         });
 
-        const messageContent = response.choices[0].message.content;
-        const content = JSON.parse(typeof messageContent === 'string' ? messageContent : '{}');
-        return content;
+        // JSON.parse of the note yields an object with none of the webinar fields, so
+        // the page renders empty headings rather than saying why.
+        const { content: messageContent, available } = llmText(response);
+        if (!available) throw new Error(LLM_UNAVAILABLE_NOTE);
+        return JSON.parse(messageContent);
       } catch (error) {
         console.error('[WebinarContent] Error:', error);
         throw new Error('Failed to generate webinar content');
@@ -667,8 +668,9 @@ ${input.transcript}`;
           }
         });
 
-        const messageContent = response.choices[0].message.content;
-        const analysis = JSON.parse(typeof messageContent === 'string' ? messageContent : '{}');
+        const { content: messageContent, available } = llmText(response);
+        if (!available) throw new Error(LLM_UNAVAILABLE_NOTE);
+        const analysis = JSON.parse(messageContent);
         
         // Auto-link to account by fuzzy matching company name
         let linkedAccount = null;
@@ -790,7 +792,8 @@ ${input.transcript}`;
           }
         ]
       });
-      return { answer: response.choices[0]?.message?.content || 'Unable to answer' };
+      const { content: answer, available } = llmText(response);
+      return { answer: available ? answer : LLM_UNAVAILABLE_NOTE };
     }),
 
   deleteTranscriptReport: protectedProcedure

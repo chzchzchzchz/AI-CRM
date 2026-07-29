@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getAccountById, getContactsByAccountId, getGongCallsByAccountId } from "./db";
-import { invokeLLM } from "./_core/llm";
+import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
 
 export const bulkInsightsRouter = router({
@@ -110,8 +110,8 @@ CRITICAL RULES:
             ]
           });
 
-          const recommendations = response.choices[0]?.message?.content;
-          const recommendationsText = typeof recommendations === 'string' ? recommendations : 'Unable to generate insights';
+          const { content: recommendations, available } = llmText(response);
+          const recommendationsText = available ? recommendations : LLM_UNAVAILABLE_NOTE;
 
           // Store in cache
           const { updateAccount } = await import("./db");

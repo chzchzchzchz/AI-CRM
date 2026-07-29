@@ -1,6 +1,6 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { invokeLLM } from "./_core/llm";
+import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
 
@@ -152,9 +152,10 @@ Return a JSON object with this structure:
           }
         });
 
-        const messageContent = response.choices[0]?.message?.content;
-        if (!messageContent) throw new Error("No response from AI");
-        const content = typeof messageContent === 'string' ? messageContent : JSON.stringify(messageContent);
+        const { content, available } = llmText(response);
+        // Parsing the note would yield an object with none of the expected fields and
+        // silently mark every row as enriched-with-nothing.
+        if (!available) throw new Error(LLM_UNAVAILABLE_NOTE);
 
         const result = JSON.parse(content);
         return {
