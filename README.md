@@ -183,8 +183,10 @@ TargetDash includes an **MCP (Model Context Protocol) server**, meaning ANY AI a
 
 > **Changing the code?** Run `pnpm verify`. It typechecks, lints hooks, tests,
 > regenerates the capability inventory, checks the claims the docs make against the
-> code, builds, and then walks every route in a real browser at desktop and mobile
-> asserting that nothing is unreadable, overflowing, erroring or unboundedly heavy.
+> code, builds, walks every route in a real browser at desktop and mobile asserting
+> that nothing is unreadable, overflowing, erroring, empty or unboundedly heavy —
+> and then actually uses the app: filters a list, opens a record, searches, and
+> follows every link in the nav.
 > CI runs the same thing on every push. See [docs/QUALITY-GATE.md](docs/QUALITY-GATE.md)
 > for what each rule catches and the defect that put it there.
 

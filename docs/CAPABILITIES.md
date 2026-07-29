@@ -74,7 +74,7 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 |---|---|
 | `accounts.list` | `components/GlobalSearch.tsx`, `pages/AITools.tsx`, `pages/Accounts.tsx`, `pages/Contacts.tsx`, `pages/Home.tsx`, `pages/Insights.tsx`, `pages/Opportunities.tsx`, `pages/Outreach.tsx`, `pages/TopAccounts.tsx` |
 | `accounts.getById` | `pages/AccountDetail.tsx`, `pages/ContactDetail.tsx` |
-| `accounts.getStats` | `pages/Contacts.tsx` |
+| `accounts.getStats` | `pages/Contacts.tsx`, `pages/Insights.tsx` |
 | `accounts.getTimeline` | `pages/AccountDetail.tsx` |
 | `admin.getPendingRequests` | `pages/AdminApproval.tsx` |
 | `admin.approveAccessRequest` | `pages/AdminApproval.tsx` |
