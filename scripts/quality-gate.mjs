@@ -38,15 +38,30 @@ const PORT = Number(process.env.GATE_PORT || 3399);
 const BASE = process.env.BASE_URL || `http://localhost:${PORT}`;
 const OWN_SERVER = !process.env.BASE_URL;
 
-/** Every route a user can reach, with the budget each is held to. */
-const ROUTES = [
-  "/", "/accounts", "/accounts/2", "/contacts", "/opportunities", "/calls",
-  "/insights", "/intent-signals", "/bulk-insights", "/smart-search", "/ai-tools",
-  "/outreach", "/sequences", "/content-studio", "/webinar-generator",
-  "/transcript-analyzer", "/rfps", "/data-hub", "/lead-processor",
-  "/csv-processor", "/validation", "/integrations", "/salesforce-sync",
-  "/sixsense-sync", "/sixsense-analytics", "/admin", "/admin/approval",
-];
+/**
+ * Every route a user can reach — read from the router, not typed out here.
+ *
+ * This list used to be hand-maintained, and it drifted: `/smart-search`,
+ * `/ai-tools` and `/intent-signals` were in it and none of them existed. The real
+ * paths are `/search` and `/tools`, and the third was never a page at all. All
+ * three rendered the 404 component, and the gate reported "27 routes × 2
+ * viewports, all budgets met" — because a 404 page is small, legible and
+ * error-free, so it passes every budget in this file.
+ *
+ * Deriving the list means a route added tomorrow is walked without anyone
+ * remembering to add it, and a route that does not exist cannot be in it.
+ */
+const AUTH_ROUTES = new Set(["/login", "/signup", "/request-access", "/forgot-password"]);
+const ROUTES = (() => {
+  const src = fs.readFileSync("client/src/App.tsx", "utf8");
+  const paths = [...src.matchAll(/<Route\s+path=\{?["']([^"']+)["']/g)].map(m => m[1]);
+  const seen = new Set();
+  return paths
+    .filter(p => !AUTH_ROUTES.has(p) && p !== "/404")
+    // A param route needs a real value; id 2 exists in the seed for both.
+    .map(p => p.replace(/:\w+/g, "2"))
+    .filter(p => (seen.has(p) ? false : seen.add(p)));
+})();
 
 /**
  * Sentences that mean the output is a shape, not an answer.
@@ -74,6 +89,10 @@ const BUDGET = {
   maxNodes: 6000,     // an unpaged list blows straight past this
   maxScreens: 16,     // page height as a multiple of the viewport
   maxOverflowPx: 1,   // sub-pixel rounding only
+  // A page that renders its shell and nothing else. The 404 page measures 108
+  // characters and the emptiest real route (/rfps) measures 165, so this sits
+  // between them: below it, there is nothing on the page worth the trip.
+  minContentChars: Number(process.env.GATE_MIN_CONTENT ?? 120),
 };
 
 const failures = [];
@@ -151,6 +170,21 @@ async function signIn(page) {
   return !page.url().includes("/login");
 }
 
+/**
+ * Text that means the page gave up.
+ *
+ * A route that renders its shell and then shows "Failed to load" passes every other
+ * budget in this file: legible, no overflow, no uncaught error, a sane node count.
+ * The only thing wrong with it is that there is nothing on it.
+ */
+const BROKEN_TELLS = [
+  "Failed to load",
+  "Something went wrong",
+  "Error loading",
+  "Unable to load",
+  "An error occurred",
+];
+
 /** Smallest rendered font size among elements that actually show text. */
 const measure = TELLS => ({
   nodes: document.querySelectorAll("*").length,
@@ -160,7 +194,22 @@ const measure = TELLS => ({
   // Placeholder and template phrasings that reached the screen.
   tells: (() => {
     const body = document.body.innerText || "";
-    return TELLS.filter(t => body.includes(t));
+    return TELLS.template.filter(t => body.includes(t));
+  })(),
+  broken: (() => {
+    const body = document.body.innerText || "";
+    return TELLS.broken.filter(t => body.includes(t));
+  })(),
+  // How much a reader actually gets. Nav chrome is excluded — a page whose only
+  // text is the sidebar is an empty page, however many characters that sidebar has.
+  notFound: !!document.querySelector("[data-not-found]"),
+  content: (() => {
+    const main = document.querySelector("main") || document.body;
+    const clone = main.cloneNode(true);
+    for (const el of clone.querySelectorAll("nav, aside, header, footer, script, style")) {
+      el.remove();
+    }
+    return (clone.innerText || "").replace(/\s+/g, " ").trim().length;
   })(),
   // Tiles that claim to describe the whole book of business, so the same key can
   // be compared across pages. data-metric-scope="view" opts out — a filtered list
@@ -193,6 +242,15 @@ for (const width of [1440, 390]) {
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", e => errors.push(e.message.split("\n")[0].slice(0, 120)));
+  // A failed query logs and renders an empty state rather than throwing, so
+  // pageerror alone never sees it. React's key/prop warnings land here too.
+  page.on("console", m => {
+    if (m.type() !== "error") return;
+    const t = m.text().slice(0, 120);
+    // Chrome logs every non-2xx fetch to the console; tRPC surfaces those itself.
+    if (/Failed to load resource/.test(t)) return;
+    errors.push(t);
+  });
 
   if (!(await signIn(page))) {
     failures.push({ route: "/login", rule: "sign in", detail: "could not authenticate" });
@@ -203,11 +261,27 @@ for (const width of [1440, 390]) {
   for (const route of ROUTES) {
     errors.length = 0;
     await page.goto(`${BASE}${route}`, { waitUntil: "domcontentloaded" }).catch(() => {});
-    await page.waitForTimeout(2200);
+
+    // Every route is code-split, so a fixed wait is a race — and a chunk that has
+    // not arrived looks exactly like a page with nothing on it. Wait for the
+    // Suspense fallback to go, then settle, so each measurement is of the same
+    // thing every run. A route still loading after 15s is a finding, not a retry.
+    const loaded = await page
+      .waitForSelector("[data-route-loading]", { state: "detached", timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!loaded) {
+      failures.push({
+        route: `${route} @${width}`,
+        rule: "route finishes loading",
+        detail: "still showing the loading spinner after 15s",
+      });
+    }
+    await page.waitForTimeout(1200);
 
     let m;
     try {
-      m = await page.evaluate(measure, TEMPLATE_TELLS);
+      m = await page.evaluate(measure, { template: TEMPLATE_TELLS, broken: BROKEN_TELLS });
     } catch (e) {
       failures.push({ route, width, rule: "renders", detail: e.message.slice(0, 100) });
       continue;
@@ -226,6 +300,24 @@ for (const width of [1440, 390]) {
         rule: "no placeholder or template output",
         detail: m.tells.map(t => `"${t}"`).join(", "),
       });
+    if (m.notFound)
+      failures.push({
+        route: at,
+        rule: "route exists",
+        detail: "rendered the 404 page — this URL is not registered in App.tsx",
+      });
+    if (m.broken.length)
+      failures.push({
+        route: at,
+        rule: "page is not in an error state",
+        detail: m.broken.map(t => `"${t}"`).join(", "),
+      });
+    if (m.content < BUDGET.minContentChars)
+      failures.push({
+        route: at,
+        rule: `at least ${BUDGET.minContentChars} characters of content`,
+        detail: `${m.content} — the page rendered its shell and little else`,
+      });
     for (const { key, value } of m.metrics || []) {
       if (!key || value == null) continue;
       if (!metrics.has(key)) metrics.set(key, new Map());
@@ -241,7 +333,7 @@ for (const width of [1440, 390]) {
         failures.push({ route: at, rule: `under ${BUDGET.maxNodes} DOM nodes`, detail: `${m.nodes}` });
       if (m.screens > BUDGET.maxScreens)
         failures.push({ route: at, rule: `under ${BUDGET.maxScreens} screens tall`, detail: `${m.screens} screens (${m.height}px)` });
-      note.push(`${route.padEnd(24)} ${String(m.nodes).padStart(5)} nodes  ${String(m.screens).padStart(5)} screens`);
+      note.push(`${route.padEnd(24)} ${String(m.nodes).padStart(5)} nodes  ${String(m.screens).padStart(5)} screens  ${String(m.content).padStart(6)} chars`);
     }
   }
   await ctx.close();

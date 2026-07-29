@@ -58,7 +58,19 @@ and a config that emits hundreds of warnings is a config nobody reads.
 
 ## Browser gate — `scripts/quality-gate.mjs`
 
-Walks all 27 routes at 1440px and 390px, signed in.
+Walks every route at 1440px and 390px, signed in.
+
+The route list is **read from `client/src/App.tsx`**, not typed into the script. It
+used to be hand-maintained and it drifted: `/smart-search`, `/ai-tools` and
+`/intent-signals` were all in it, none of them existed, and all three rendered the
+404 page — which is small, legible, and error-free, so it met every budget. The
+gate reported "27 routes × 2 viewports, all budgets met" while testing three
+phantoms and never testing `/contacts/:id` or `/top-accounts` at all.
+
+Deriving the list means a route added tomorrow is walked without anyone
+remembering, and a route that doesn't exist can't be in it. The 404 page also
+carries `data-not-found` now, so even a param route with a bad id fails loudly
+rather than passing quietly.
 
 | Budget | The defect it prevents |
 |---|---|
@@ -69,6 +81,10 @@ Walks all 27 routes at 1440px and 390px, signed in.
 | Under 16 screens tall | that same page was 68,215px, roughly 68 metres |
 | No placeholder or template output | every account's Next Best Action was one of two strings, picked by whether a title contained "ciso" |
 | Global metrics agree across pages | "Decision makers" said 790 on /insights and 619 on /contacts. The real figure was 5,365 |
+| Route exists | three URLs in this gate's own list were 404s, and it passed all three |
+| At least 120 characters of content | a page can render its shell, show nothing, and meet every budget above |
+| No console errors | a failed query logs and renders an empty state rather than throwing, so `pageerror` never sees it |
+| Route finishes loading | every route is code-split; a fixed wait measures whichever ones happened to arrive |
 
 The last two are the ones that catch a page which looks right. A tile can be
 legible, well-spaced, error-free and still be lying; the mechanical tells are that
