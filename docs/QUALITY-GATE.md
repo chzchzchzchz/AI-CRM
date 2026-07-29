@@ -113,6 +113,18 @@ was too strict.
 If a budget genuinely needs to move, change it in one place (`BUDGET` at the top of
 `scripts/quality-gate.mjs`) and say in the commit message what got bigger and why.
 
+## Rules considered and rejected
+
+**Buttons with no click handler.** The obvious heuristic — a `<Button>` tag with no
+`onClick`, `type="submit"`, `asChild` or `href` — found 7 candidates in this repo
+and **6 were false positives**: `DialogTrigger asChild` and `Link` wrappers, where
+the parent owns the click. The seventh was a dropzone whose parent `<div>` handles
+`onClick`, so it works too.
+
+A rule that is 86% noise is a rule that gets silenced, and a silenced rule is worse
+than no rule because it still looks like coverage. Recorded here so the next person
+to have the idea knows it was measured rather than skipped.
+
 ## What the gate does not check
 
 Worth being explicit, so its passing isn't read as more than it is:
