@@ -1,4 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
+import { isDecisionMaker } from "@shared/taxonomy";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
@@ -170,6 +171,10 @@ export const appRouter = router({
       return {
         totalAccounts: accounts.length,
         totalContacts: people.length,
+        // Computed here, over every contact, because people.list caps at 1,500 of
+        // 10,023 — so a page that counts decision makers from its own query is
+        // describing a 15% sample under a label that claims the whole book.
+        totalDecisionMakers: people.filter((p: any) => isDecisionMaker(p.title)).length,
         totalCalls: calls.length,
         avgIntentScore,
         buyingStages,
@@ -471,6 +476,11 @@ Or go to the Admin Panel: /admin/approval`
         hotLeads,
         warmLeads,
         totalContacts: people.length,
+        // Counted here, over every contact, because people.list caps at 1,500 of
+        // 10,023 — so a page counting decision makers from its own query describes a
+        // 15% sample under a label that claims the whole book. Both /insights and
+        // /contacts read this field, which is what makes them agree.
+        totalDecisionMakers: people.filter((p: any) => isDecisionMaker(p.title)).length,
         totalCalls: calls.length,
       };
     }),

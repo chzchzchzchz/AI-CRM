@@ -18,7 +18,16 @@ import {
  * This is the single source of truth for "what do we know about this account".
  */
 
-export type Seniority = "C-Suite" | "VP" | "Director" | "Manager" | "Individual" | "Unknown";
+/**
+ * Seniority comes from @shared/taxonomy, re-exported so existing callers keep
+ * working. It used to be defined in this file, and in six other places, each
+ * slightly different — which is how the same "Decision makers" label ended up
+ * showing 1,500 on one page and 619 on another.
+ */
+import { inferSeniority, SENIORITY_RANK, type Seniority } from "@shared/taxonomy";
+export { inferSeniority, SENIORITY_RANK };
+export type { Seniority };
+
 export type TrendDirection = "rising" | "falling" | "flat" | "unknown";
 
 export type SignalPack = {
@@ -152,28 +161,6 @@ function toNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/**
- * Infer seniority from job title. The schema has no managementLevel column, so title is
- * the only real signal — inferring it here beats asking the LLM to guess.
- */
-export function inferSeniority(title: string | null | undefined): Seniority {
-  if (!title) return "Unknown";
-  const t = title.toLowerCase();
-  if (/\b(ceo|cto|cio|ciso|cfo|coo|cmo|cro|chief|founder|president|owner|partner)\b/.test(t)) return "C-Suite";
-  if (/\b(vp|vice president|svp|evp|head of)\b/.test(t)) return "VP";
-  if (/\b(director|dir\.)\b/.test(t)) return "Director";
-  if (/\b(manager|mgr|lead|supervisor|principal)\b/.test(t)) return "Manager";
-  return "Individual";
-}
-
-const SENIORITY_RANK: Record<Seniority, number> = {
-  "C-Suite": 0,
-  VP: 1,
-  Director: 2,
-  Manager: 3,
-  Individual: 4,
-  Unknown: 5,
-};
 
 /** Pull the intent-score time series. Isolated so a demo-shim quirk can't break the pack. */
 async function fetchIntentHistory(accountId: number) {

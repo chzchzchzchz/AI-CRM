@@ -1,3 +1,4 @@
+import { useState } from"react";
 import { toast } from"sonner";
 import { trpc } from"@/lib/trpc";
 import { Card, CardContent } from"@/components/ui/card";
@@ -31,8 +32,19 @@ const usdCompact = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 1,
 });
 
+/** How many cards a stage draws before it offers the rest. */
+const CARDS_PER_STAGE = 12;
+
 export default function Opportunities() {
   const utils = trpc.useUtils();
+  /**
+   * Stages that have been expanded past the default.
+   *
+   * Every stage drawing its full set put 8,856 DOM nodes on this page — three times
+   * the next-heaviest route — for cards that are behind a scroll boundary and mostly
+   * unread. A rep works the top of a stage, not all 34 of it.
+   */
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const { data: opportunities, isLoading } = trpc.opportunities.list.useQuery();
   const { data: accounts } = trpc.accounts.list.useQuery();
   const aiScoreMutation = trpc.opportunities.aiScore.useMutation({
@@ -98,6 +110,9 @@ export default function Opportunities() {
         <div className="flex flex-wrap gap-4 overflow-x-auto pb-4">
           {STAGES.map((stage) => {
             const inStage = allOpps.filter((o: any) => o.stage === stage);
+            const showAll = !!expanded[stage];
+            const visible = showAll ? inStage : inStage.slice(0, CARDS_PER_STAGE);
+            const hidden = inStage.length - visible.length;
             const stageValue = inStage.reduce((s: number, o: any) => s + (Number(o.amount) || 0), 0);
             const isWon = stage ==="Closed Won";
             const isLost = stage ==="Closed Lost";
@@ -118,14 +133,20 @@ export default function Opportunities() {
                   )}
                 </div>
 
-                <div className="space-y-3">
+                {/* Each column scrolls itself rather than stretching the page.
+                    Every stage rendered its full set, so the board was as tall as its
+                    busiest column — 15,624px on the seeded data. A board you scroll for
+                    fifteen screens isn't a board; you lose the other columns the moment
+                    you start moving. Capped so the whole pipeline stays comparable at a
+                    glance, with the deep columns reachable inside their own lane. */}
+                <div className="scroll-fade max-h-[calc(100vh-22rem)] space-y-3 overflow-y-auto pr-1">
                   {inStage.length === 0 && (
                     <p className="text-xs text-ink-muted border border-dashed border-border rounded-sm px-3 py-6 text-center">
                       No deals
                     </p>
                   )}
 
-                  {inStage.map((opp: any) => {
+                  {visible.map((opp: any) => {
                     const st = statusMeta(opp.status);
                     const hasScore = opp.aiSuccessScore != null && opp.aiSuccessScore !=="";
                     const score = hasScore ? Number(opp.aiSuccessScore) : null;
@@ -211,6 +232,19 @@ export default function Opportunities() {
                       </Card>
                     );
                   })}
+
+                  {/* Never truncate silently — a capped column that says nothing
+                      reads as "that's the whole stage". */}
+                  {hidden > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => setExpanded(e => ({ ...e, [stage]: true }))}
+                    >
+                      Show <span className="tabular-nums mx-1">{hidden}</span> more
+                    </Button>
+                  )}
                 </div>
               </div>
             );

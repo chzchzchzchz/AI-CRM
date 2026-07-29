@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAllAccounts, getContactsByAccountId, getGongCallsByAccountId, getAllOpportunities } from "./db";
 import { Account, Contact, Call } from "../drizzle/schema";
 import { calculateVectorScores, type AccountData } from "./vectorScoring";
+import { isDecisionMaker } from "@shared/taxonomy";
 
 // Rep territory assignments
 // Under 2000 employees: Zane (Central), Morgan (West), Miranda (East)
@@ -18,17 +19,11 @@ const REP_TERRITORIES: Record<string, { region: string; minEmployees: number; ma
   "kevin.huelster@{COMPANY_EMAIL_DOMAIN}": { region: "East", minEmployees: 2000, maxEmployees: Infinity },
 };
 
-// Key executive titles to prioritize
-const KEY_TITLES = [
-  'ciso', 'cto', 'cio', 'cso', 'vp', 'vice president', 'director', 
-  'head of security', 'head of it', 'chief', 'svp', 'evp'
-];
-
-function isKeyTitle(title: string | null | undefined): boolean {
-  if (!title) return false;
-  const lower = title.toLowerCase();
-  return KEY_TITLES.some(t => lower.includes(t));
-}
+// "Key title" is the same question as "decision maker", so it uses the same answer.
+// It used to be a local list of twelve fragments matched with .includes(), which
+// meant this router and the Decision makers tiles could disagree about the same
+// contact.
+const isKeyTitle = isDecisionMaker;
 
 function formatKeyContact(contact: { name: string | null; title: string | null }): string {
   const name = contact.name || 'Unknown';

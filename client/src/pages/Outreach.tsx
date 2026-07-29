@@ -9,6 +9,7 @@ import { Sparkles, Building2, Loader2, Copy, Check, Search, Users, Mail, Externa
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { stripXmlReasoning, extractReasoning } from "@/lib/stripXmlReasoning";
+import { bySeniority } from "@shared/taxonomy";
 
 export default function Outreach() {
   const { data: accounts, isLoading } = trpc.accounts.list.useQuery();
@@ -217,15 +218,11 @@ export default function Outreach() {
       contact.accountId === selectedAccountId
     );
     
-    // Sort by title relevance (security/IT roles first)
-    const priorityTitles = ['ciso', 'cio', 'cto', 'vp', 'vice president', 'director', 'head', 'chief', 'security', 'it '];
-    filtered.sort((a: any, b: any) => {
-      const titleA = (a.title || '').toLowerCase();
-      const titleB = (b.title || '').toLowerCase();
-      const scoreA = priorityTitles.some(t => titleA.includes(t)) ? 1 : 0;
-      const scoreB = priorityTitles.some(t => titleB.includes(t)) ? 1 : 0;
-      return scoreB - scoreA;
-    });
+    // Most senior first. This used to be a local list of ten title fragments matched
+    // with .includes(), which sorted every contact into one of two buckets and put a
+    // Director above a CISO as often as not. bySeniority ranks all five tiers, using
+    // the same definition as the Decision makers tiles.
+    filtered.sort(bySeniority);
     
     // Apply search filter
     if (contactSearchQuery.trim()) {

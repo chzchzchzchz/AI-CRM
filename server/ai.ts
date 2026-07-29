@@ -2,6 +2,7 @@ import { invokeLLM } from "./_core/llm";
 import { getAllAccounts, getAllPeople, getAllGongCalls } from "./db";
 import { withRCP, asRevenueArchitect } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
+import { TITLE_TOKENS, isDecisionMaker } from "@shared/taxonomy";
 
 /**
  * AI Service Layer
@@ -314,14 +315,19 @@ function runSearch(
   if (!stages.length && /ready to buy|purchase|closing/.test(q)) stages = ["Purchase", "Decision"];
   const stageSet = new Set(stages.map((s) => s.toLowerCase()));
 
+  // Vocabulary from @shared/taxonomy: "find me the CISOs" has to look for the same
+  // word the Decision makers tile counts, or search and the dashboard disagree.
   const titleKeywords: string[] = [];
-  for (const kw of ["ciso", "cto", "cio", "ceo", "cfo", "vp", "director", "head of", "security", "sales", "marketing", "engineering"]) {
+  for (const kw of TITLE_TOKENS) {
     if (q.includes(kw) || (firstStr(f.title) || "").toLowerCase().includes(kw)) titleKeywords.push(kw);
   }
 
+  // A seniority word in the question means the rep is asking about people, so that
+  // test comes from the shared taxonomy rather than a fourth list of executive titles.
   const wantsContacts =
     interp.intent === "contact_search" ||
-    /\b(who|contact|contacts|person|people|ciso|cto|cfo|ceo|decision maker)\b/.test(q);
+    isDecisionMaker(q) ||
+    /\b(who|contact|contacts|person|people|decision maker)\b/.test(q);
 
   // ---- contact search --------------------------------------------------------------
   if (wantsContacts) {

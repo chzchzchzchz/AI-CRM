@@ -99,6 +99,27 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
       .slice(0, maxItems);
   }, [activities, maxItems]);
 
+  /**
+   * Grouped above the early return, not below it.
+   *
+   * This useMemo used to sit after `if (isLoading)`, so the component ran one hook
+   * while loading and two once loaded — "Rendered more hooks than during the previous
+   * render" the moment the timeline resolved. It typechecked, built and usually
+   * rendered, because the query often resolves before first paint and the bad
+   * transition never happens. Found by the rules-of-hooks lint, not by looking.
+   */
+  const groupedActivities = useMemo(() => {
+    const groups: { [key: string]: Activity[] } = {};
+    sortedActivities.forEach(activity => {
+      const dateKey = formatDate(activity.date);
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(activity);
+    });
+    return groups;
+  }, [sortedActivities]);
+
   if (isLoading) {
     return (
       <Card>
@@ -143,19 +164,6 @@ export function ActivityTimeline({ activities, isLoading, maxItems = 20 }: Activ
       </Card>
     );
   }
-
-  // Group activities by date
-  const groupedActivities = useMemo(() => {
-    const groups: { [key: string]: Activity[] } = {};
-    sortedActivities.forEach(activity => {
-      const dateKey = formatDate(activity.date);
-      if (!groups[dateKey]) {
-        groups[dateKey] = [];
-      }
-      groups[dateKey].push(activity);
-    });
-    return groups;
-  }, [sortedActivities]);
 
   return (
     <Card>

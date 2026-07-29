@@ -6,6 +6,7 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getAllAccounts, getAllPeople } from "./db";
+import { inferSeniority } from "@shared/taxonomy";
 
 export interface HotLead {
   contactId: number;
@@ -72,21 +73,24 @@ function calculatePriorityScore(
   };
   score += fitScores[profileFit || ''] || 0;
 
-  // Title-based scoring (0-15 points) - prioritize decision makers
+  // Title-based scoring (0-15 points) - prioritize decision makers.
+  //
+  // The tier comes from @shared/taxonomy so this router agrees with the Decision
+  // makers tiles about who is senior; only the weights are local, because how much
+  // seniority is worth against intent is a scoring decision, not a definition.
   const titleLower = (title || '').toLowerCase();
-  if (titleLower.includes('ciso') || titleLower.includes('chief information security')) {
-    score += 15;
-    reasons.push("CISO");
-  } else if (titleLower.includes('vp') || titleLower.includes('vice president')) {
-    score += 12;
+  const TITLE_POINTS: Record<string, number> = {
+    "C-Suite": 15, VP: 12, Director: 10, Manager: 5, Individual: 0, Unknown: 0,
+  };
+  const seniority = inferSeniority(title);
+  score += TITLE_POINTS[seniority];
+  if (seniority === "C-Suite") {
+    // Name the office when it's the one that buys this; "C-Suite" alone tells a rep less.
+    reasons.push(/\bciso\b|chief information security/i.test(titleLower) ? "CISO" : "C-level");
+  } else if (seniority === "VP") {
     reasons.push("VP-level");
-  } else if (titleLower.includes('director')) {
-    score += 10;
+  } else if (seniority === "Director") {
     reasons.push("Director-level");
-  } else if (titleLower.includes('head of') || titleLower.includes('lead')) {
-    score += 8;
-  } else if (titleLower.includes('manager')) {
-    score += 5;
   }
 
   // Security/IAM title bonus
