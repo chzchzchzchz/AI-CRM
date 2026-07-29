@@ -69,3 +69,9 @@ jobs:
         run: pnpm gate
         env:
           GATE_VERBOSE: "1"
+
+      # The gate above loads every route and measures what rendered — it never
+      # clicks anything, so "I tried it and nothing happened" stayed invisible.
+      # These use the app: filter a list, open a record, search, walk the nav.
+      - name: Flow gate
+        run: pnpm flows
