@@ -450,7 +450,59 @@ function walk(dir, exts, acc = []) {
   }
 }
 
-/* --------------------------------------------------------------- 12. report */
+/* ------------------------------------------------------- 12. tests that pass */
+/**
+ * A test must be able to fail.
+ *
+ * server/sixsense.test.ts contained one test that called the live 6sense API and,
+ * with no key configured, did this:
+ *
+ *     if (!apiKey) {
+ *       console.log("Skipping 6sense test - no API key configured");
+ *       return;
+ *     }
+ *
+ * No key is ever configured in CI, so it returned immediately having asserted
+ * nothing, on every run this repo has ever had. It passed. It counted toward the
+ * total. It is why a survey of connector coverage reported 6sense as tested.
+ *
+ * Bailing out is the right instinct — a suite must not need a vendor key. The wrong
+ * part is bailing out *silently into a pass*. Skip properly (`it.skip`, or `this.skip()`)
+ * so the runner reports it, or assert something that does not need the key.
+ */
+{
+  const offenders = [];
+  const testFiles = walk(ROOT, [".test.ts"])
+    .map(f => path.relative(ROOT, f))
+    .filter(rel => !rel.startsWith("node_modules") && !rel.startsWith("dist"));
+
+  for (const rel of testFiles) {
+    const src = stripComments(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+    // Each test body, roughly: from `it("…"` to the next one.
+    const blocks = src.split(/\b(?:it|test)\s*(?:\.\w+)?\s*\(/).slice(1);
+    for (const block of blocks) {
+      const bare = block.search(/(?:^|\n)\s*return\s*;/);
+      if (bare === -1) continue;
+      const firstExpect = block.search(/\bexpect\s*\(/);
+      // A bare `return;` reached before this test has asserted anything at all.
+      if (firstExpect === -1 || bare < firstExpect) {
+        const name = (block.match(/^\s*["'`]([^"'`]{0,70})/) || [, "(unnamed)"])[1];
+        offenders.push(`${rel}: "${name}" can return before asserting anything`);
+        break; // one report per file is enough to go and look
+      }
+    }
+  }
+
+  offenders.length
+    ? fail(
+        "no test can pass without asserting",
+        offenders.join("\n    ") +
+          "\n    Use it.skip so the runner reports it, or assert something that needs no credentials."
+      )
+    : ok(`no test can pass without asserting (${testFiles.length} files)`);
+}
+
+/* --------------------------------------------------------------- 13. report */
 for (const c of checks) console.log(`  ✓ ${c}`);
 for (const f of failures) console.log(`  ✘ ${f.rule}\n    ${f.detail}`);
 
