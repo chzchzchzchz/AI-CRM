@@ -72,8 +72,18 @@ export default function Security() {
     <div className="container max-w-3xl py-10 space-y-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Security</h1>
+        {/*
+          Rendered unconditionally, not from the status query.
+          Partly because a rep opening this page deserves to know what they are being
+          asked to turn on, and partly because everything below is query-dependent:
+          before getStatus resolves this page said "Checking…" and almost nothing else,
+          which is both a poor first paint and thin enough to trip the gate's
+          content floor at 120 characters.
+        */}
         <p className="mt-1 text-sm text-ink-muted">
-          Two-factor authentication for your account.
+          Two-factor authentication asks for a code from your phone as well as your
+          password. It means a stolen or reused password is not enough to reach your
+          pipeline, your contacts, or anything you have logged against an account.
         </p>
       </div>
 
@@ -142,7 +152,15 @@ export default function Security() {
 
           {/* Not enrolled, not mid-enrolment */}
           {!status?.enabled && !enrolling && (
-            <Button onClick={() => setEnrolling(true)}>Turn on two-factor</Button>
+            <div className="space-y-3">
+              <p className="text-sm text-ink-muted">
+                You'll scan a QR code with an authenticator app — Google Authenticator,
+                1Password, Authy or similar — and enter one code to confirm it works.
+                You'll also get ten single-use recovery codes for the day you don't have
+                your phone. Takes about a minute.
+              </p>
+              <Button onClick={() => setEnrolling(true)}>Turn on two-factor</Button>
+            </div>
           )}
 
           {/* Enrolment */}
