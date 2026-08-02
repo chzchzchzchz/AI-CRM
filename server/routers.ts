@@ -955,6 +955,63 @@ Or go to the Admin Panel: /admin/approval`
       .query(async ({ input }) => {
         return await getGongCallsByAccountId(input.accountId);
       }),
+
+    /**
+     * Everything above reads the local `calls` table. These two are the only things in
+     * this app that have ever talked to Gong — until they existed, GONG_API_KEY was a
+     * credential the setup docs asked for and no code spent.
+     */
+    testConnection: protectedProcedure.query(async () => {
+      const { gongTestConnection, isGongConfigured } = await import("./integrations/gong");
+      if (!isGongConfigured()) {
+        return { configured: false, ok: false, message: "No Gong credentials set" };
+      }
+      const res = await gongTestConnection();
+      return {
+        configured: true,
+        ok: res.ok,
+        message: res.ok ? `Connected \u2014 ${res.data?.users} users visible` : res.error || "Failed",
+      };
+    }),
+
+    /** Pull calls in a window, with their transcripts, for the analysis paths to work on. */
+    fetchFromGong: protectedProcedure
+      .input(
+        z.object({
+          fromDateTime: z.string().optional(),
+          toDateTime: z.string().optional(),
+          withTranscripts: z.boolean().default(false),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { gongListCalls, gongGetTranscripts, isGongConfigured } = await import(
+          "./integrations/gong"
+        );
+        if (!isGongConfigured()) {
+          return { ok: false, skipped: true, error: "No Gong credentials set", calls: [] };
+        }
+
+        const list = await gongListCalls({
+          fromDateTime: input.fromDateTime,
+          toDateTime: input.toDateTime,
+        });
+        if (!list.ok) return { ok: false, skipped: false, error: list.error, calls: [] };
+
+        const calls = list.data!.calls;
+        if (!input.withTranscripts || !calls.length) {
+          return { ok: true, skipped: false, calls, transcripts: [] };
+        }
+
+        // Transcripts are a separate, heavier call, so they are opt-in.
+        const transcripts = await gongGetTranscripts(calls.map((c) => c.id));
+        return {
+          ok: true,
+          skipped: false,
+          calls,
+          transcripts: transcripts.ok ? transcripts.data : [],
+          transcriptError: transcripts.ok ? undefined : transcripts.error,
+        };
+      }),
   }),
 
   // AI-powered features
