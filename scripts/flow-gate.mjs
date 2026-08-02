@@ -274,6 +274,49 @@ await flow("an AI action ends in readable output, with or without a model", asyn
   }
 });
 
+/**
+ * 2FA enrolment has to be reachable and has to actually enrol.
+ *
+ * The whole reason this feature was broken for so long is that nothing ever touched
+ * it: the router was unmounted, the login path never read `twoFactorEnabled`, and the
+ * "backup codes" were never stored. Every one of those was invisible because no test
+ * and no page ever opened the thing.
+ *
+ * This does not enable 2FA — turning it on for the demo user would lock every other
+ * check in this file out of the app. It asserts the page is reachable, reports honest
+ * status, and produces a real QR code and secret when asked to start.
+ */
+await flow("2FA enrolment is reachable and produces a real secret", async () => {
+  await goto("/security");
+
+  const body = await page.evaluate(() => document.body.innerText);
+  assert(!(await page.locator("[data-not-found]").count()), "/security is not routed");
+  assert(/two-factor/i.test(body), "the security page does not mention two-factor");
+  // Status must be a claim about this account, not a placeholder.
+  assert(
+    /Off\. Your password alone signs you in\.|recovery codes left/i.test(body),
+    `security page shows no 2FA status: ${JSON.stringify(body.slice(0, 200))}`
+  );
+
+  const start = page.getByRole("button", { name: /turn on two-factor/i }).first();
+  assert((await start.count()) > 0, "no way to start enrolment");
+  await start.click();
+  await page.waitForTimeout(3000);
+
+  const qr = page.locator('img[alt*="authenticator" i]').first();
+  assert((await qr.count()) > 0, "enrolment produced no QR code");
+  const src = await qr.getAttribute("src");
+  assert(
+    (src || "").startsWith("data:image/"),
+    `QR code is not an image: ${JSON.stringify((src || "").slice(0, 40))}`
+  );
+
+  // The manual-entry key has to be a real base32 secret, not a placeholder.
+  const shown = await page.evaluate(() => document.body.innerText);
+  const secret = shown.match(/\b[A-Z2-7]{32,}\b/);
+  assert(secret, "no base32 secret offered for manual entry");
+});
+
 // ── report ──────────────────────────────────────────────────────────────────
 await browser.close();
 if (server) { try { process.kill(-server.pid); } catch {} }

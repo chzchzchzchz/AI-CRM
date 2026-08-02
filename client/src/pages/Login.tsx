@@ -16,14 +16,39 @@ export default function Login() {
 
   const utils = trpc.useUtils();
 
+  // A correct password on a 2FA account returns a challenge instead of a session.
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [useBackupCode, setUseBackupCode] = useState(false);
+
   const loginMutation = trpc.auth.login.useMutation({
-    onSuccess: () => {
+    onSuccess: (res: { twoFactorRequired?: boolean; challengeId?: string }) => {
+      if (res.twoFactorRequired && res.challengeId) {
+        setChallengeId(res.challengeId);
+        return;
+      }
       // Invalidate auth cache and redirect to home
       utils.auth.me.invalidate();
       setLocation("/");
     },
     onError: (err: { message?: string }) => {
       setError(err.message || "Invalid email or password");
+    },
+  });
+
+  const verifyMutation = trpc.auth.loginVerify.useMutation({
+    onSuccess: () => {
+      utils.auth.me.invalidate();
+      setLocation("/");
+    },
+    onError: (err: { message?: string }) => {
+      setError(err.message || "That code is not valid");
+      // An expired or exhausted challenge cannot be retried, so send them back to the
+      // password step rather than leaving them typing codes at a dead challenge.
+      if (/expired|start over/i.test(err.message || "")) {
+        setChallengeId(null);
+        setCode("");
+      }
     },
   });
 
@@ -37,6 +62,16 @@ export default function Login() {
     }
 
     loginMutation.mutate({ email, password });
+  };
+
+  const handleVerify = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!code.trim()) {
+      setError(useBackupCode ? "Enter a recovery code" : "Enter the 6-digit code");
+      return;
+    }
+    verifyMutation.mutate({ challengeId: challengeId!, code, isBackupCode: useBackupCode });
   };
 
   return (
@@ -57,7 +92,81 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Login Form */}
+        {/* Second factor. Shown only after the password has already been accepted. */}
+        {challengeId ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Two-step verification</CardTitle>
+              <CardDescription>
+                {useBackupCode
+                  ? "Enter one of the recovery codes you saved when you turned this on."
+                  : "Enter the 6-digit code from your authenticator app."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleVerify} className="space-y-4">
+                {error && (
+                  <div className="flex items-start gap-2 rounded-md border border-critical/40 bg-critical-subtle p-3 text-sm text-critical">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="code">{useBackupCode ? "Recovery code" : "Verification code"}</Label>
+                  <Input
+                    id="code"
+                    name="code"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    placeholder={useBackupCode ? "XXXXX-XXXXX" : "000000"}
+                    // A phone keypad for digits, and no autocorrect mangling a code.
+                    inputMode={useBackupCode ? "text" : "numeric"}
+                    autoComplete="one-time-code"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoFocus
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={verifyMutation.isPending}>
+                  {verifyMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Verifying…
+                    </>
+                  ) : (
+                    "Verify"
+                  )}
+                </Button>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <button
+                    type="button"
+                    className="text-accent hover:underline"
+                    onClick={() => {
+                      setUseBackupCode((v) => !v);
+                      setCode("");
+                      setError("");
+                    }}
+                  >
+                    {useBackupCode ? "Use my authenticator app" : "I don't have my phone"}
+                  </button>
+                  <button
+                    type="button"
+                    className="text-ink-muted hover:underline"
+                    onClick={() => {
+                      setChallengeId(null);
+                      setCode("");
+                      setError("");
+                    }}
+                  >
+                    Back to sign in
+                  </button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        ) : (
+        /* Login Form */
         <Card>
           <CardHeader>
             <CardTitle>Sign In</CardTitle>
@@ -120,6 +229,7 @@ export default function Login() {
             </form>
           </CardContent>
         </Card>
+        )}
 
         {/* Links */}
         <div className="text-center space-y-2 text-sm">

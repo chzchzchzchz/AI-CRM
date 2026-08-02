@@ -322,6 +322,7 @@ class SDKServer {
             role: "admin",
             twoFactorEnabled: false,
             twoFactorSecret: null,
+            twoFactorBackupCodes: null,
             createdAt: new Date(),
             updatedAt: new Date(),
             lastSignedIn: new Date(),
