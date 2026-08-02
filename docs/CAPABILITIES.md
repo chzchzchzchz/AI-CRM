@@ -8,13 +8,13 @@ Every backend capability, and whether anything in the product actually reaches i
 
 | | Count |
 |---|---|
-| Procedures total | 177 |
-| Reachable from the UI | 110 |
+| Procedures total | 183 |
+| Reachable from the UI | 116 |
 | External by design (webhooks, probes, connector actions) | 44 |
 | **Built but not routed anywhere** | **0** |
 | ↳ of those, called only by unreachable client code | 0 |
 | Superseded by a live capability (kept, not a to-do) | 23 |
-| App routes | 33 |
+| App routes | 34 |
 | Client modules unreachable from `main.tsx` | 9 |
 | Integration connectors | 24 |
 
@@ -94,6 +94,7 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `auth.logout` | `_core/hooks/useAuth.ts`, `components/app-shell/Sidebar.tsx` |
 | `auth.signUp` | `pages/SignUp.tsx` |
 | `auth.login` | `pages/Login.tsx` |
+| `auth.loginVerify` | `pages/Login.tsx` |
 | `auth.requestAccess` | `pages/RequestAccess.tsx` |
 | `bulkInsights.generateForTopLeads` | `pages/BulkInsights.tsx` |
 | `csvProcessor.getTemplateInfo` | `pages/CsvProcessor.tsx` |
@@ -174,6 +175,11 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `tools.getReportByShareId` | `pages/AITools.tsx` |
 | `tools.askTranscriptQuestion` | `pages/AITools.tsx` |
 | `tools.deleteTranscriptReport` | `pages/AITools.tsx` |
+| `twoFA.generateSecret` | `pages/Security.tsx` |
+| `twoFA.enable` | `pages/Security.tsx` |
+| `twoFA.regenerateBackupCodes` | `pages/Security.tsx` |
+| `twoFA.disable` | `pages/Security.tsx` |
+| `twoFA.getStatus` | `pages/Security.tsx` |
 | `validation.getSummary` | `pages/DataValidation.tsx` |
 | `validation.validateAccount` | `components/ValidationIssues.tsx` |
 | `validation.validateContact` | `components/ValidationIssues.tsx` |
@@ -270,6 +276,7 @@ Not called by our UI, and should not be — these are entry points for other sys
 | `/top-accounts` | `TopAccounts` |
 | `/lead-processor` | `LeadProcessor` |
 | `/webinar-generator` | `WebinarGenerator` |
+| `/security` | `Security` |
 | `/404` | `NotFound` |
 
 ## Integration connectors

@@ -1,225 +1,162 @@
+/**
+ * Two-factor authentication — enrolment, status and removal.
+ *
+ * The login-time half lives in routers.ts (`auth.login` and `auth.loginVerify`), because
+ * it has to run before a session exists. Everything here is session-scoped: you must
+ * already be signed in to turn 2FA on, look at it, or turn it off.
+ *
+ * The previous version of this file was never mounted on the router, which is how it
+ * came to ship with a `verify` procedure that required a session in order to complete a
+ * login, and ten backup codes that were generated from Math.random() and then thrown
+ * away — there was no column to put them in. Nothing exercised any of it, so nothing
+ * noticed. The crypto now lives in ./twofa with tests around it.
+ */
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { users } from "../drizzle/schema";
 import { getDb } from "./db";
 import { eq } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 // @ts-ignore - speakeasy doesn't have TypeScript definitions
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import { send2FASetupEmail } from "./_core/email";
 import { getCompanyConfig } from "./config";
+import {
+  verifyTotp,
+  generateBackupCodes,
+  hashBackupCodes,
+  countBackupCodes,
+  BACKUP_CODE_COUNT,
+} from "./twofa";
 
-// Use any type for speakeasy since it doesn't have TypeScript definitions
-const speakeasyAny = speakeasy as any;
+const sp = speakeasy as any;
 
 export const twoFARouter = router({
   /**
-   * Generate 2FA secret and QR code for user
+   * Start enrolment: a fresh secret and the QR code for it.
+   *
+   * Nothing is written here. The secret only reaches the database once the user has
+   * proved they can produce a code from it, so an abandoned enrolment cannot lock
+   * anyone out of their own account.
    */
   generateSecret: protectedProcedure.query(async ({ ctx }) => {
-    try {
-      const productName = getCompanyConfig().productName;
-      const secret = speakeasyAny.generateSecret({
-        name: `${productName} (${ctx.user.email})`,
-        issuer: productName,
-        length: 32,
-      }) as any;
+    const productName = getCompanyConfig().productName;
+    const secret = sp.generateSecret({
+      name: `${productName} (${ctx.user.email})`,
+      issuer: productName,
+      length: 32,
+    });
 
-      // Generate QR code as data URL
-      const qrCode = await QRCode.toDataURL(secret.otpauth_url || "");
-
-      return {
-        secret: secret.base32 as string,
-        qrCode,
-        backupCodes: generateBackupCodes(),
-      };
-    } catch (error) {
-      console.error("Failed to generate 2FA secret:", error);
-      throw new Error("Failed to generate 2FA secret");
-    }
+    return {
+      secret: secret.base32 as string,
+      qrCode: await QRCode.toDataURL(secret.otpauth_url || ""),
+    };
   }),
 
   /**
-   * Enable 2FA for user
+   * Finish enrolment.
+   *
+   * The backup codes are returned here in the clear — the only time they are ever
+   * visible — and stored as bcrypt hashes. They cannot be shown again, which the UI
+   * says before the user can navigate away.
    */
   enable: protectedProcedure
     .input(
       z.object({
-        secret: z.string(),
-        verificationCode: z.string(),
+        secret: z.string().min(16),
+        verificationCode: z.string().min(6),
       })
     )
     .mutation(async ({ input, ctx }) => {
-      try {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
 
-        // Verify the code is correct
-        const isValidCode = speakeasyAny.totp.verify({
-          secret: input.secret,
-          encoding: "base32",
-          token: input.verificationCode,
-          window: 2,
-        });
-
-        if (!isValidCode) {
-          throw new Error("Invalid verification code");
-        }
-
-        // Save 2FA secret to user
-        await db
-          .update(users)
-          .set({
-            twoFactorSecret: input.secret,
-            twoFactorEnabled: true,
-          })
-          .where(eq(users.id, ctx.user.id));
-
-        // Send confirmation email
-        await send2FASetupEmail(ctx.user.email as string);
-
-        return {
-          success: true,
-          message: "2FA enabled successfully",
-          backupCodes: generateBackupCodes(),
-        };
-      } catch (error) {
-        console.error("Failed to enable 2FA:", error);
-        throw new Error(
-          error instanceof Error ? error.message : "Failed to enable 2FA"
-        );
+      if (!verifyTotp(input.secret, input.verificationCode)) {
+        throw new Error("That code didn't match. Check your authenticator app and try again.");
       }
+
+      const backupCodes = generateBackupCodes();
+      await db
+        .update(users)
+        .set({
+          twoFactorSecret: input.secret,
+          twoFactorEnabled: true,
+          twoFactorBackupCodes: await hashBackupCodes(backupCodes),
+        })
+        .where(eq(users.id, ctx.user.id));
+
+      // Best effort: a mail failure must not leave 2FA half-enabled.
+      try {
+        await send2FASetupEmail(ctx.user.email as string);
+      } catch (e) {
+        console.error("[2fa] enabled, but the confirmation email failed:", e);
+      }
+
+      return { success: true, backupCodes };
+    }),
+
+  /** Issue a fresh set of recovery codes, invalidating the old ones. */
+  regenerateBackupCodes: protectedProcedure
+    .input(z.object({ password: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      if (!user?.twoFactorEnabled) throw new Error("2FA is not enabled");
+      if (!(await bcrypt.compare(input.password, (user.passwordHash as string) || ""))) {
+        throw new Error("Invalid password");
+      }
+
+      const backupCodes = generateBackupCodes();
+      await db
+        .update(users)
+        .set({ twoFactorBackupCodes: await hashBackupCodes(backupCodes) })
+        .where(eq(users.id, ctx.user.id));
+
+      return { success: true, backupCodes };
     }),
 
   /**
-   * Disable 2FA for user
+   * Turn 2FA off.
+   *
+   * Password-gated: someone who walks up to an unlocked laptop should not be able to
+   * remove the second factor. The stored secret and codes are cleared rather than just
+   * the flag, so re-enabling always starts a fresh enrolment.
    */
   disable: protectedProcedure
     .input(z.object({ password: z.string() }))
     .mutation(async ({ input, ctx }) => {
-      try {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-
-        // Verify password before disabling 2FA
-        const userResult = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, ctx.user.id))
-          .limit(1);
-
-        if (!userResult[0]) {
-          throw new Error("User not found");
-        }
-
-        const bcrypt = await import("bcryptjs");
-        // @ts-ignore
-        const isPasswordValid = await bcrypt.compare(
-          input.password,
-          (userResult[0].passwordHash as string) || ""
-        );
-
-        if (!isPasswordValid) {
-          throw new Error("Invalid password");
-        }
-
-        // Disable 2FA
-        await db
-          .update(users)
-          .set({
-            twoFactorSecret: null,
-            twoFactorEnabled: false,
-          })
-          .where(eq(users.id, ctx.user.id));
-
-        return { success: true, message: "2FA disabled successfully" };
-      } catch (error) {
-        console.error("Failed to disable 2FA:", error);
-        throw new Error(
-          error instanceof Error ? error.message : "Failed to disable 2FA"
-        );
-      }
-    }),
-
-  /**
-   * Verify 2FA code during login
-   */
-  verify: protectedProcedure
-    .input(z.object({ code: z.string() }))
-    .mutation(async ({ input, ctx }) => {
-      try {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-
-        const userResult = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, ctx.user.id))
-          .limit(1);
-
-      if (!userResult[0]?.twoFactorSecret || !userResult[0]?.twoFactorEnabled) {
-        throw new Error("2FA not enabled for this user");
-      }
-
-        // Verify the code
-        const secret = userResult[0].twoFactorSecret as string;
-        const isValidCode = speakeasyAny.totp.verify({
-          secret,
-          encoding: "base32",
-          token: input.code,
-          window: 2,
-        });
-
-        if (!isValidCode) {
-          throw new Error("Invalid 2FA code");
-        }
-
-        return { success: true, message: "2FA verification successful" };
-      } catch (error) {
-        console.error("Failed to verify 2FA code:", error);
-        throw new Error(
-          error instanceof Error ? error.message : "Failed to verify 2FA code"
-        );
-      }
-    }),
-
-  /**
-   * Get 2FA status for current user
-   */
-  getStatus: protectedProcedure.query(async ({ ctx }) => {
-    try {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const userResult = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, ctx.user.id))
-        .limit(1);
-
-      if (!userResult[0]) {
-        throw new Error("User not found");
+      const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      if (!user) throw new Error("User not found");
+      if (!(await bcrypt.compare(input.password, (user.passwordHash as string) || ""))) {
+        throw new Error("Invalid password");
       }
 
-      return {
-        enabled: userResult[0].twoFactorEnabled || false,
-        hasSecret: !!userResult[0].twoFactorSecret,
-      };
-    } catch (error) {
-      console.error("Failed to get 2FA status:", error);
-      throw new Error("Failed to get 2FA status");
-    }
+      await db
+        .update(users)
+        .set({ twoFactorSecret: null, twoFactorEnabled: false, twoFactorBackupCodes: null })
+        .where(eq(users.id, ctx.user.id));
+
+      return { success: true };
+    }),
+
+  /** Whether 2FA is on, and how many recovery codes are left to warn about. */
+  getStatus: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+
+    const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
+    if (!user) throw new Error("User not found");
+
+    return {
+      enabled: !!user.twoFactorEnabled,
+      backupCodesRemaining: countBackupCodes(user.twoFactorBackupCodes as string | null),
+      backupCodeTotal: BACKUP_CODE_COUNT,
+    };
   }),
 });
-
-/**
- * Generate backup codes for 2FA
- */
-function generateBackupCodes(): string[] {
-  const codes: string[] = [];
-  for (let i = 0; i < 10; i++) {
-    const code = Math.random().toString(36).substring(2, 10).toUpperCase();
-    codes.push(code);
-  }
-  return codes;
-}

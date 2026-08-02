@@ -17,7 +17,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronsLeft, LogOut, Monitor, Moon, Sun } from "lucide-react";
+import { ChevronsLeft, LogOut, Monitor, Moon, ShieldCheck, Sun } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { APP_TITLE } from "@/const";
 import { isItemActive, visibleSections } from "./nav-model";
@@ -246,6 +246,12 @@ function SidebarAccount({ collapsed }: { collapsed: boolean }) {
             <Link href="/integrations">
               <Monitor className="size-4" />
               Integrations
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/security">
+              <ShieldCheck className="size-4" />
+              Security
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />

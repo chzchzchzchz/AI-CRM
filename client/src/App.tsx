@@ -39,6 +39,7 @@ const RequestAccess = lazyLoad(() => import("./pages/RequestAccess"));
 const ForgotPassword = lazyLoad(() => import("./pages/ForgotPassword"));
 const LeadProcessor = lazyLoad(() => import("./pages/LeadProcessor"));
 const WebinarGenerator = lazyLoad(() => import("./pages/WebinarGenerator"));
+const Security = lazyLoad(() => import("./pages/Security"));
 import { GlobalSearch } from "./components/GlobalSearch";
 import { GlobalAIChat } from "./components/GlobalAIChat";
 import { SupportBot } from "./components/SupportBot";
@@ -81,6 +82,7 @@ function Router() {
       <Route path="/top-accounts" component={TopAccounts} />
       <Route path="/lead-processor" component={LeadProcessor} />
       <Route path="/webinar-generator" component={WebinarGenerator} />
+      <Route path="/security" component={Security} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

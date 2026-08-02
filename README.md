@@ -245,7 +245,7 @@ Uses AI embeddings to score accounts by synthesizing multiple data points:
 * ✅ **No hardcoded secrets** (all in config/environment)
 * ✅ **Parameterized SQL** (Drizzle ORM, no injection vectors)
 * ✅ **Email/password auth**, session cookies, audit logging (bypassed only when `DEMO_MODE=true`)
-* ⚠️ **2FA is not enabled.** A complete TOTP implementation exists in `server/twofa-router.ts` — QR enrolment, backup codes, verify, disable — but it is not mounted on the router, the login path does not check `twoFactorEnabled`, and there is no UI. This claimed a ✅ here until a check for unreachable server modules found the file. Treat 2FA as unbuilt until those three things land.
+* ✅ **TOTP two-factor**, enrolled at `/security`, enforced at login. A correct password on a 2FA account returns a five-minute, five-attempt challenge instead of a session. Recovery codes come from `crypto.randomBytes`, are stored bcrypt-hashed, and are single-use. <sub>This line claimed a ✅ for a long time while `twoFactorEnabled` was written by nothing and read by nothing — the router was never mounted, the login path never checked it, its `verify` was a `protectedProcedure` (unusable before a session exists), and the ten "backup codes" were `Math.random()` strings that were never stored anywhere. A check for unreachable server modules found the file.</sub>
 * ✅ **CORS hardened**; rate limiting scoped to `/api` so static assets can't exhaust a legitimate user's budget
 * ✅ **Session cookies negotiate `SameSite` per request**: `None; Secure` over HTTPS, `Lax` over plain HTTP (an invalid pairing is silently dropped by browsers)
 * ✅ **Weak/missing `JWT_SECRET` refuses to sign** in production

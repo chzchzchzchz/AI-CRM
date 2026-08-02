@@ -40,6 +40,48 @@ import { notifyOwner } from "./_core/notification";
 import { getApprovalLinks } from "./admin-approval-api";
 import { hotLeadsRouter } from "./hot-leads-router";
 import { recordFailedLogin, clearLoginAttempts, getLoginLockout, validatePasswordComplexity, logSecurityEvent } from "./_core/security";
+import { twoFARouter } from "./twofa-router";
+import {
+  createChallenge,
+  claimChallengeAttempt,
+  consumeChallenge,
+  verifyTotp,
+  redeemBackupCode,
+  countBackupCodes,
+} from "./twofa";
+
+/**
+ * Issue the session cookie and return the shape the client expects.
+ *
+ * Shared by the password-only path and the 2FA path so there is exactly one place a
+ * session is minted — the alternative was two copies that could drift, and only one of
+ * them behind the second factor.
+ */
+async function issueSession(
+  ctx: { req: any; res: any },
+  user: { id: number; openId: string; email: string | null; name: string | null; role: string }
+) {
+  const db = await getDb();
+  if (db) {
+    await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
+  }
+
+  const token = await sdk.createSessionToken(user.openId, {
+    expiresInMs: 7 * 24 * 60 * 60 * 1000, // 7 days
+    name: user.name || user.email || "",
+  });
+
+  ctx.res.cookie(COOKIE_NAME, token, {
+    ...getSessionCookieOptions(ctx.req),
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  return {
+    success: true as const,
+    twoFactorRequired: false as const,
+    user: { id: user.id, email: user.email, name: user.name, role: user.role },
+  };
+}
 
 
 export const appRouter = router({
@@ -186,6 +228,9 @@ export const appRouter = router({
   }),
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
+  // Enrolment, status and removal. The login half is auth.login / auth.loginVerify,
+  // which cannot live here because they run before a session exists.
+  twoFA: twoFARouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -330,26 +375,93 @@ Or go to the Admin Panel: /admin/approval`
         
         // Clear failed login attempts on successful login
         clearLoginAttempts(clientIP);
+
+        // The password was right. If this account has a second factor, that is not
+        // enough on its own — issue a short-lived challenge instead of a session.
+        // Before this existed, twoFactorEnabled was written by the settings page and
+        // read by nothing: a user could turn 2FA on, see it confirmed, and still be
+        // signed in by password alone.
+        if (user.twoFactorEnabled && user.twoFactorSecret) {
+          logSecurityEvent(
+            "LOGIN_2FA_REQUIRED",
+            { email: input.email, userId: user.id, ip: clientIP },
+            "info"
+          );
+          return {
+            success: false as const,
+            twoFactorRequired: true as const,
+            challengeId: createChallenge(user.id),
+          };
+        }
+
         logSecurityEvent("LOGIN_SUCCESS", { email: input.email, userId: user.id, ip: clientIP }, "info");
-        
-        // Update last signed in
-        await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
-        
-        // Create session token using SDK (compatible with auth system)
-        const token = await sdk.createSessionToken(user.openId, {
-          expiresInMs: 7 * 24 * 60 * 60 * 1000, // 7 days
-          name: user.name || user.email || "",
-        });
-        
-        const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, token, {
-          ...cookieOptions,
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
-        
-        return { success: true, user: { id: user.id, email: user.email, name: user.name, role: user.role } };
+        return issueSession(ctx, user);
       }),
-    
+
+    /**
+     * Second step of a 2FA login: exchange a challenge plus a code for a session.
+     *
+     * Public by necessity — there is no session yet, which is the whole point. What
+     * stands in for one is the challenge: five minutes, five attempts, destroyed on
+     * use, and only ever issued after a correct password.
+     *
+     * The predecessor of this procedure was `twoFA.verify`, a protectedProcedure. It
+     * could only be called by someone already signed in, so it could not have been
+     * part of any login.
+     */
+    loginVerify: publicProcedure
+      .input(
+        z.object({
+          challengeId: z.string().min(16),
+          code: z.string().min(6),
+          // A recovery code is the way back in when the phone is gone.
+          isBackupCode: z.boolean().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        const claim = claimChallengeAttempt(input.challengeId);
+        if (!claim.ok) {
+          throw new Error(
+            claim.reason === "exhausted"
+              ? "Too many incorrect codes. Sign in again to start over."
+              : "That sign-in attempt expired. Enter your password again."
+          );
+        }
+
+        const [user] = await db.select().from(users).where(eq(users.id, claim.userId)).limit(1);
+        if (!user?.twoFactorEnabled || !user.twoFactorSecret) {
+          throw new Error("Two-factor authentication is not enabled for this account");
+        }
+
+        if (input.isBackupCode) {
+          const redeemed = await redeemBackupCode(
+            user.twoFactorBackupCodes as string | null,
+            input.code
+          );
+          if (!redeemed.ok) throw new Error("That recovery code is not valid");
+          // Spend it before the session is issued: a code that survives its own use
+          // is a permanent bypass of the second factor.
+          await db
+            .update(users)
+            .set({ twoFactorBackupCodes: redeemed.remaining })
+            .where(eq(users.id, user.id));
+          logSecurityEvent(
+            "LOGIN_2FA_BACKUP_CODE_USED",
+            { userId: user.id, remaining: countBackupCodes(redeemed.remaining) },
+            "warn"
+          );
+        } else if (!verifyTotp(user.twoFactorSecret as string, input.code)) {
+          throw new Error("That code is not valid");
+        }
+
+        consumeChallenge(input.challengeId);
+        logSecurityEvent("LOGIN_SUCCESS", { userId: user.id, method: "2fa" }, "info");
+        return issueSession(ctx, user);
+      }),
+
     // Request Access (for demo)
     requestAccess: publicProcedure
       .input(z.object({
