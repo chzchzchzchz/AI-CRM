@@ -14,6 +14,13 @@ export const users = mysqlTable("users", {
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   twoFactorEnabled: boolean("twoFactorEnabled").default(false), // 2FA status
   twoFactorSecret: varchar("twoFactorSecret", { length: 255 }), // TOTP secret
+  // Bcrypt hashes of single-use recovery codes, JSON array. Hashed because a recovery
+  // code IS a credential — it bypasses the second factor entirely.
+  //
+  // There was no column for these before, which meant the ten codes shown at enrolment
+  // were generated, displayed, and discarded. A user who lost their phone had a printed
+  // list of strings that could never be redeemed, and no way to know until they tried.
+  twoFactorBackupCodes: text("twoFactorBackupCodes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

@@ -370,10 +370,6 @@ function walk(dir, exts, acc = []) {
           "server/mcp-server.ts",
           "server/doctor.ts",
           "server/test-utils.ts",
-          // A complete TOTP router that is deliberately not mounted: the login path
-          // does not check twoFactorEnabled and there is no UI, so mounting it alone
-          // would advertise 2FA without providing it. README says so plainly.
-          "server/twofa-router.ts",
         ].includes(rel)
     );
   orphans.length
