@@ -8,8 +8,8 @@ Every backend capability, and whether anything in the product actually reaches i
 
 | | Count |
 |---|---|
-| Procedures total | 183 |
-| Reachable from the UI | 116 |
+| Procedures total | 185 |
+| Reachable from the UI | 118 |
 | External by design (webhooks, probes, connector actions) | 44 |
 | **Built but not routed anywhere** | **0** |
 | ↳ of those, called only by unreachable client code | 0 |
@@ -115,6 +115,8 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `followUps.remove` | `components/FollowUpDialog.tsx` |
 | `gong.list` | `components/GlobalSearch.tsx`, `pages/Insights.tsx` |
 | `gong.listPaginated` | `pages/Calls.tsx` |
+| `gong.testConnection` | `pages/Integrations.tsx` |
+| `gong.fetchFromGong` | `pages/Integrations.tsx` |
 | `hotLeads.getTopLeads` | `components/HotLeadsWidget.tsx` |
 | `hotLeads.getSummary` | `components/HotLeadsWidget.tsx` |
 | `hotLeads.getByBuyingStage` | `components/HotLeadsWidget.tsx` |

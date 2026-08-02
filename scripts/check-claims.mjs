@@ -381,7 +381,76 @@ function walk(dir, exts, acc = []) {
     : ok("no unreachable server modules");
 }
 
-/* --------------------------------------------------------------- 11. report */
+/* ------------------------------------------------------- 11. advertised keys */
+/**
+ * A connector you can configure must be a connector that does something.
+ *
+ * `GONG_API_KEY` was in the integration registry, `pnpm doctor` reported it "ready"
+ * when set, SETUP.md documented where to get it, and the README had a "Gong Call
+ * Intelligence" section. There was no Gong client. Not an unfinished one — none. The
+ * key was decoration, and setting it changed nothing.
+ *
+ * Nothing could have caught that: the capability inventory counts tRPC procedures, the
+ * unreachable-module check finds files nobody imports, and neither notices a vendor
+ * that was never coded against at all. This walks the other way — from the credential
+ * the app asks you for, to the code that spends it.
+ *
+ * Inbound-only connectors (a webhook we receive, rather than an API we call) are
+ * listed explicitly, because "no outbound client" is correct for those.
+ */
+{
+  const regPath = path.join(ROOT, "server", "integrations", "registry.ts");
+  if (!fs.existsSync(regPath)) {
+    ok("advertised connectors have a client (skipped — no registry)");
+  } else {
+    // Connectors that receive data rather than fetch it, so no outbound client exists.
+    const INBOUND_ONLY = new Set(["clay"]);
+
+    const reg = fs.readFileSync(regPath, "utf8");
+    const keys = [...reg.matchAll(/key:\s*"([^"]+)"/g)].map(m => m[1]);
+
+    // A client is one of exactly two things, both precise:
+    //
+    //   1. a dedicated module named for the vendor, or
+    //   2. an exported function in connectors.ts whose name starts with the vendor key
+    //
+    // The first version of this rule asked whether any file "mentions the vendor and
+    // contains fetch(". Deleting server/integrations/gong.ts entirely left the rule
+    // green, because routers.ts mentions gong and contains a fetch somewhere. Naming
+    // the implementation is the only thing a missing implementation cannot satisfy.
+    const connectorsPath = path.join(ROOT, "server", "integrations", "connectors.ts");
+    const inlineExports = fs.existsSync(connectorsPath)
+      ? [
+          ...stripComments(fs.readFileSync(connectorsPath, "utf8")).matchAll(
+            /export\s+(?:async\s+)?function\s+(\w+)/g
+          ),
+        ].map(m => m[1].toLowerCase())
+      : [];
+
+    const hasModule = key =>
+      [
+        path.join(ROOT, "server", `${key}.ts`),
+        path.join(ROOT, "server", "integrations", `${key}.ts`),
+      ].some(p => fs.existsSync(p) && /\bfetch\s*\(|\baxios\b/.test(fs.readFileSync(p, "utf8")));
+
+    const orphans = [];
+    for (const key of keys) {
+      if (INBOUND_ONLY.has(key)) continue;
+      const served = hasModule(key) || inlineExports.some(fn => fn.startsWith(key.toLowerCase()));
+      if (!served) orphans.push(key);
+    }
+
+    orphans.length
+      ? fail(
+          "advertised connectors have a client",
+          `${orphans.join(", ")} — the registry asks for credentials that no code spends. ` +
+            `Write the client, mark it inbound-only, or stop advertising it.`
+        )
+      : ok(`advertised connectors have a client (${keys.length} checked)`);
+  }
+}
+
+/* --------------------------------------------------------------- 12. report */
 for (const c of checks) console.log(`  ✓ ${c}`);
 for (const f of failures) console.log(`  ✘ ${f.rule}\n    ${f.detail}`);
 

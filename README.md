@@ -233,10 +233,12 @@ Uses AI embeddings to score accounts by synthesizing multiple data points:
 
 ### Gong Call Intelligence
 
-* Auto-transcribes sales calls
+* Pulls calls and transcripts from Gong (`/v2/calls`, cursor-paged) — Gong does the transcribing; this fetches what it produced
 * Extracts action items so nothing falls through the cracks
 * Surfaces objection patterns
 * Recommends follow-up actions
+
+<sub>This list read "Auto-transcribes sales calls" while **no Gong client existed at all**. `GONG_API_KEY` was in the setup docs, `pnpm doctor` called it ready when set, and nothing anywhere spent it — the analysis features worked, but only on transcripts already in the database. A check now walks from every credential the app asks for to the code that uses it, so an advertised connector with no client fails the build.</sub>
 
 ---
 

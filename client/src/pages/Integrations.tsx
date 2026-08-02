@@ -46,6 +46,12 @@ export default function Integrations() {
   const teams = trpc.integrations.teamsNotify.useMutation();
   const [urls, setUrls] = useState<Record<string, string>>({});
 
+  // Gong is the one connector here that can be checked for real rather than by the
+  // shape of its key: testConnection spends an authenticated request. A well-formed
+  // but revoked key looks perfect to preflight and fails here.
+  const gong = trpc.gong.testConnection.useQuery(undefined, { enabled: false });
+  const gongFetch = trpc.gong.fetchFromGong.useMutation();
+
   const testWebhook = async (key: StatusKey) => {
     const url = urls[key]?.trim();
     if (!url) { toast.error("Paste a webhook URL to test"); return; }
@@ -75,6 +81,62 @@ export default function Integrations() {
             </p>
           </div>
         </div>
+
+        {/*
+          Gong gets its own card because it is the only connector whose credentials can
+          be proved rather than inspected. GONG_API_KEY was advertised in setup for a
+          long time while no code spent it; a button that actually calls Gong is what
+          makes that impossible to repeat quietly.
+        */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-base">Gong</CardTitle>
+              {gong.data && (
+                <Badge variant={gong.data.ok ? "default" : "destructive"} className="gap-1">
+                  {gong.data.ok ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                  {gong.data.ok ? "Connected" : gong.data.configured ? "Rejected" : "No key"}
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Pull calls and transcripts. Needs GONG_ACCESS_KEY + GONG_ACCESS_KEY_SECRET,
+              or GONG_API_KEY.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {gong.data && (
+              <p className="text-2xs text-muted-foreground">{gong.data.message}</p>
+            )}
+            {gongFetch.data && (
+              <p className="text-2xs text-muted-foreground">
+                {gongFetch.data.skipped
+                  ? gongFetch.data.error
+                  : gongFetch.data.ok
+                    ? `Fetched ${gongFetch.data.calls.length} call(s) from the last 30 days`
+                    : gongFetch.data.error}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" className="h-8" onClick={() => gong.refetch()} disabled={gong.isFetching}>
+                <Send className="h-3 w-3 mr-1" /> {gong.isFetching ? "Testing…" : "Test connection"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8"
+                disabled={gongFetch.isPending}
+                onClick={() =>
+                  gongFetch.mutate({
+                    fromDateTime: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
+                  })
+                }
+              >
+                {gongFetch.isPending ? "Fetching…" : "Fetch recent calls"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {CONNECTORS.map((c) => {
