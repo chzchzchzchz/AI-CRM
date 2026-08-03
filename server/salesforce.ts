@@ -5,10 +5,17 @@
 
 import { ENV } from './_core/env';
 
-// Salesforce OAuth configuration
-const SALESFORCE_CLIENT_ID = ENV.salesforceClientId;
-const SALESFORCE_CLIENT_SECRET = ENV.salesforceClientSecret;
-const SALESFORCE_INSTANCE_URL = ENV.salesforceInstanceUrl;
+// Read from process.env at call time.
+//
+// These were module-level consts copied out of ENV, and ENV is itself built from
+// process.env when it is first imported — so the value depended on import order
+// twice over. Anything that loaded this before dotenv ran held "" for the life of
+// the process, and every Salesforce call then failed with "not configured" against
+// an .env file that plainly had the key in it.
+const SALESFORCE_CLIENT_ID = () => process.env.SALESFORCE_CLIENT_ID || ENV.salesforceClientId;
+const SALESFORCE_CLIENT_SECRET = () => process.env.SALESFORCE_CLIENT_SECRET || ENV.salesforceClientSecret;
+const SALESFORCE_INSTANCE_URL = () =>
+  process.env.SALESFORCE_INSTANCE_URL || ENV.salesforceInstanceUrl || "https://login.salesforce.com";
 
 interface SalesforceTokenResponse {
   access_token: string;
@@ -69,16 +76,16 @@ export async function getAccessToken(): Promise<{ token: string; instanceUrl: st
     return { token: cachedToken.token, instanceUrl: cachedToken.instanceUrl };
   }
 
-  if (!SALESFORCE_CLIENT_ID || !SALESFORCE_CLIENT_SECRET) {
+  if (!SALESFORCE_CLIENT_ID() || !SALESFORCE_CLIENT_SECRET()) {
     throw new Error('Salesforce credentials not configured. Add SALESFORCE_CLIENT_ID and SALESFORCE_CLIENT_SECRET to secrets.');
   }
 
-  const tokenUrl = `${SALESFORCE_INSTANCE_URL}/services/oauth2/token`;
+  const tokenUrl = `${SALESFORCE_INSTANCE_URL()}/services/oauth2/token`;
   
   const params = new URLSearchParams({
     grant_type: 'client_credentials',
-    client_id: SALESFORCE_CLIENT_ID,
-    client_secret: SALESFORCE_CLIENT_SECRET,
+    client_id: SALESFORCE_CLIENT_ID(),
+    client_secret: SALESFORCE_CLIENT_SECRET(),
   });
 
   const response = await fetch(tokenUrl, {
@@ -106,21 +113,42 @@ export async function getAccessToken(): Promise<{ token: string; instanceUrl: st
   return { token: data.access_token, instanceUrl: data.instance_url };
 }
 
+/** Drop the cached token — exposed for the 401 retry and for tests. */
+export function resetSalesforceToken() {
+  cachedToken = null;
+}
+
+/** One authenticated GET, retrying once on 401 with a fresh token. */
+async function authedGet(path: string): Promise<Response> {
+  const send = async () => {
+    const { token, instanceUrl } = await getAccessToken();
+    const url = path.startsWith('http') ? path : `${instanceUrl}${path}`;
+    return fetch(url, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    });
+  };
+
+  let response = await send();
+  // The cache holds a token for an hour. Salesforce can invalidate one sooner — a
+  // session settings change, an admin revoke — and without this every query failed
+  // for the rest of that hour with no attempt to re-authenticate.
+  if (response.status === 401) {
+    resetSalesforceToken();
+    response = await send();
+  }
+  return response;
+}
+
 /**
- * Execute a SOQL query against Salesforce
+ * Execute a SOQL query against Salesforce.
+ *
+ * Returns the first batch only. Use queryAll for anything that can exceed one batch;
+ * Salesforce caps a query response at 2,000 records regardless of the LIMIT in the
+ * SOQL, and hands back nextRecordsUrl for the remainder.
  */
 export async function query<T>(soql: string): Promise<SalesforceQueryResponse<T>> {
-  const { token, instanceUrl } = await getAccessToken();
-  
-  const url = `${instanceUrl}/services/data/v59.0/query?q=${encodeURIComponent(soql)}`;
-  
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
+  const response = await authedGet(`/services/data/v59.0/query?q=${encodeURIComponent(soql)}`);
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -128,6 +156,43 @@ export async function query<T>(soql: string): Promise<SalesforceQueryResponse<T>
   }
 
   return response.json() as any;
+}
+
+/**
+ * Execute a SOQL query and follow nextRecordsUrl to the end.
+ *
+ * The interface has declared `nextRecordsUrl` and `done` since this file was written
+ * and nothing read either of them. Salesforce returns at most 2,000 records per
+ * batch, so `LIMIT 5000` on contacts returned 2,000 and stopped — ordered by Name,
+ * which means an org of 5,000 contacts synced A through roughly J and reported
+ * success. A truncation that is sorted looks exactly like a smaller org.
+ */
+export async function queryAll<T>(soql: string, maxBatches = 25): Promise<T[]> {
+  let batch = await query<T>(soql);
+  const records: T[] = [...batch.records];
+  let batches = 1;
+
+  while (!batch.done && batch.nextRecordsUrl && batches < maxBatches) {
+    const response = await authedGet(batch.nextRecordsUrl);
+    if (!response.ok) {
+      const errorText = await response.text();
+      // Partial results reported as complete is the failure this function exists to
+      // prevent, so a failed continuation throws rather than returning what it has.
+      throw new Error(`Salesforce paging failed after ${records.length} records: ${response.status} - ${errorText}`);
+    }
+    batch = (await response.json()) as SalesforceQueryResponse<T>;
+    records.push(...batch.records);
+    batches += 1;
+  }
+
+  if (!batch.done && batch.nextRecordsUrl) {
+    throw new Error(
+      `Salesforce returned more than ${maxBatches} batches (${records.length} records so far). ` +
+        `Raise maxBatches or narrow the query — silently keeping the first ${records.length} would misreport the org's size.`
+    );
+  }
+
+  return records;
 }
 
 /**
@@ -140,11 +205,10 @@ export async function fetchAccounts(): Promise<SalesforceAccount[]> {
     FROM Account
     WHERE IsDeleted = false
     ORDER BY Name
-    LIMIT 2000
   `;
-  
-  const result = await query<SalesforceAccount>(soql);
-  return result.records;
+
+  // No LIMIT: it did nothing except make the truncation look deliberate.
+  return queryAll<SalesforceAccount>(soql);
 }
 
 /**
@@ -157,11 +221,9 @@ export async function fetchContacts(): Promise<SalesforceContact[]> {
     FROM Contact
     WHERE IsDeleted = false
     ORDER BY Name
-    LIMIT 5000
   `;
-  
-  const result = await query<SalesforceContact>(soql);
-  return result.records;
+
+  return queryAll<SalesforceContact>(soql);
 }
 
 /**
