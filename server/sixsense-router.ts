@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
-import { getCompanyByDomain, getCompanyByIP, enrichAccount } from "./sixsense";
+import { getCompanyByDomain, getCompanyByIP, enrichAccount, enrichAccountDetailed } from "./sixsense";
 // Real intent-spike detection, computed from the intentScores time series.
 import { detectIntentSpikes } from "./intel/spikes";
 const detectAndNotifyIntentSpikes = () => detectIntentSpikes();
@@ -24,15 +24,24 @@ export const sixsenseRouter = router({
       const { accountId, domain } = input;
 
       try {
-        // Fetch data from 6sense
-        const sixsenseData = await enrichAccount(domain);
+        // Fetch data from 6sense.
+        //
+        // The detailed variant, because "No 6sense data found" was previously the
+        // message for a revoked key, an unset key and a network failure as well as a
+        // genuine miss — four different problems, one sentence, three of them wrong.
+        const enriched = await enrichAccountDetailed(domain);
 
-        if (!sixsenseData) {
+        if (!enriched.ok) {
           return {
             success: false,
-            message: `No 6sense data found for domain: ${domain}`,
+            reason: enriched.reason,
+            message:
+              enriched.reason === "no_match"
+                ? `No 6sense data found for domain: ${domain}`
+                : enriched.message,
           };
         }
+        const sixsenseData = enriched.account;
 
         // Update account with 6sense data
         const db = await getDb();
