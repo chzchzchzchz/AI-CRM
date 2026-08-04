@@ -315,9 +315,34 @@ export function maybeNotifyHotLead(name: string, score?: number | null, prevScor
   const threshold = parseInt(process.env.HOT_LEAD_THRESHOLD || "80");
   const s = Number(score) || 0;
   const p = Number(prevScore) || 0;
-  if (s >= threshold && p < threshold) {
-    notifyAll(`🔥 Hot lead: ${name} crossed intent ${threshold} (now ${s})`).catch(() => {});
-  }
+  if (s < threshold || p >= threshold) return;
+
+  notifyAll(`🔥 Hot lead: ${name} crossed intent ${threshold} (now ${s})`)
+    .then((results) => {
+      // The result used to be discarded: `.catch(() => {})` and nothing else. A rep
+      // who set up a Slack alert and typo'd the webhook URL got no ping and no trace,
+      // indefinitely — the one failure mode an alerting feature cannot have, because
+      // silence is exactly what it looks like when nothing is happening.
+      const delivered = Object.entries(results).filter(([, r]) => r.ok);
+      if (delivered.length) return;
+
+      const configured = Object.entries(results).filter(([, r]) => !r.skipped);
+      if (!configured.length) {
+        // Nothing set up at all. Not an error — just worth saying once, since the
+        // threshold was crossed and nobody heard about it.
+        console.warn(
+          `[alerts] ${name} crossed intent ${threshold} but no notification channel is configured`
+        );
+        return;
+      }
+      console.error(
+        `[alerts] ${name} crossed intent ${threshold} and every configured channel failed: ` +
+          configured.map(([k, r]) => `${k}=${r.status ?? r.error ?? "failed"}`).join(", ")
+      );
+    })
+    .catch((e) => {
+      console.error(`[alerts] hot-lead notification threw for ${name}:`, msg(e));
+    });
 }
 
 function msg(e: unknown): string { return e instanceof Error ? e.message : "request failed"; }
