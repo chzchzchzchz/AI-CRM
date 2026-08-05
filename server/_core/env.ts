@@ -1,5 +1,20 @@
 export const ENV = {
-  appId: process.env.VITE_APP_ID ?? "",
+  /**
+   * Identifies this app inside a session token.
+   *
+   * This defaulted to "". Every session this app minted therefore carried appId: "",
+   * and verifySession rejects a payload whose appId is not a non-empty string — so
+   * every session token this app issued failed its own verification, always.
+   *
+   * Nothing looked broken because DEMO_MODE falls back to a demo admin user when
+   * verification returns null. Sign-in appeared to work; it was the fallback working.
+   * With DEMO_MODE=false a user would sign in, receive a cookie, and be signed out on
+   * the next request, forever, with only a console warning to show for it.
+   *
+   * VITE_APP_ID still wins when set (it is the Manus OAuth app id). The default is
+   * just a stable string so sign and verify agree in the ordinary case.
+   */
+  appId: process.env.VITE_APP_ID || "targetdash",
   cookieSecret: process.env.JWT_SECRET ?? "",
   // Database URLs - automatically switches based on DEMO_MODE flag
   demoMode: process.env.DEMO_MODE === "true",

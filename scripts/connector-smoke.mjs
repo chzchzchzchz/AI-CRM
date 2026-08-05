@@ -41,12 +41,25 @@ if (fs.existsSync(".env")) {
  * `assert` states what the response has to contain for our parsing to be correct —
  * this is the part that catches a vendor changing its contract.
  */
+/**
+ * A placeholder is not a credential.
+ *
+ * .env.example ships `SIXSENSE_API_KEY=your_6sense_api_key` so the file documents the
+ * variable. Once the gate started booting from that file — which is the point, it is
+ * what users copy — the harness read the placeholder as a configured key, called
+ * 6sense with it, and reported the connector as FAILED. "You configured this and it is
+ * broken" and "you have not configured this" are different sentences and only one of
+ * them was true.
+ */
+const PLACEHOLDER = /^(your[_-]|xxx|changeme|change[_-]this|replace[_-]?me|todo|placeholder|<|\.\.\.)/i;
+const real = (v) => Boolean(v && v.trim() && !PLACEHOLDER.test(v.trim()));
+
 const CONNECTORS = [
   {
     name: "Gong",
     env: ["GONG_ACCESS_KEY + GONG_ACCESS_KEY_SECRET", "or GONG_API_KEY"],
     configured: () =>
-      Boolean((process.env.GONG_ACCESS_KEY && process.env.GONG_ACCESS_KEY_SECRET) || process.env.GONG_API_KEY),
+      (real(process.env.GONG_ACCESS_KEY) && real(process.env.GONG_ACCESS_KEY_SECRET)) || real(process.env.GONG_API_KEY),
     run: async () => {
       const { gongTestConnection } = await import("../server/integrations/gong.ts");
       const res = await gongTestConnection();
@@ -58,10 +71,9 @@ const CONNECTORS = [
     name: "ZoomInfo",
     env: ["ZOOMINFO_USERNAME + ZOOMINFO_PASSWORD", "or ZOOMINFO_CLIENT_ID + ZOOMINFO_PRIVATE_KEY"],
     configured: () =>
-      Boolean(
-        process.env.ZOOMINFO_USERNAME &&
-          (process.env.ZOOMINFO_PASSWORD || (process.env.ZOOMINFO_CLIENT_ID && process.env.ZOOMINFO_PRIVATE_KEY))
-      ),
+      real(process.env.ZOOMINFO_USERNAME) &&
+      (real(process.env.ZOOMINFO_PASSWORD) ||
+        (real(process.env.ZOOMINFO_CLIENT_ID) && real(process.env.ZOOMINFO_PRIVATE_KEY))),
     run: async () => {
       const { zoominfoEnrichCompany } = await import("../server/integrations/zoominfo.ts");
       // A domain that certainly exists, so "no match" means our request was wrong.
@@ -74,7 +86,7 @@ const CONNECTORS = [
   {
     name: "6sense",
     env: ["SIXSENSE_API_KEY"],
-    configured: () => Boolean(process.env.SIXSENSE_API_KEY),
+    configured: () => real(process.env.SIXSENSE_API_KEY),
     run: async () => {
       const { getCompanyByDomain } = await import("../server/sixsense.ts");
       const company = await getCompanyByDomain("salesforce.com");
@@ -86,7 +98,7 @@ const CONNECTORS = [
     name: "Salesforce",
     env: ["SALESFORCE_CLIENT_ID + SALESFORCE_CLIENT_SECRET + SALESFORCE_USERNAME + SALESFORCE_PASSWORD"],
     configured: () =>
-      Boolean(process.env.SALESFORCE_CLIENT_ID && process.env.SALESFORCE_USERNAME),
+      real(process.env.SALESFORCE_CLIENT_ID) && real(process.env.SALESFORCE_USERNAME),
     run: async () => {
       const sf = await import("../server/salesforce.ts");
       const res = await sf.testConnection();

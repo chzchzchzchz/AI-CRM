@@ -98,15 +98,6 @@ export const appRouter = router({
   sixsense: sixsenseRouter,
   csvProcessor: csvProcessorRouter,
   deepThink: router({
-    chat: protectedProcedure
-      .input(z.object({
-        query: z.string(),
-        context: z.string().optional(),
-        debugMode: z.boolean().optional()
-      }))
-      .mutation(async ({ input }) => {
-        return await deepThink(input);
-      }),
     sales: protectedProcedure
       .input(z.object({
         query: z.string(),
@@ -490,69 +481,6 @@ Or go to the Admin Panel: /admin/approval`
         return { success: true };
       }),
     
-    // Admin: List access requests
-    listAccessRequests: protectedProcedure.query(async ({ ctx }) => {
-      if (ctx.user?.role !== "admin") {
-        throw new Error("Admin access required");
-      }
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      return await db.select().from(accessRequests).orderBy(accessRequests.createdAt);
-    }),
-    
-    // Admin: Approve/Deny access request
-    reviewAccessRequest: protectedProcedure
-      .input(z.object({
-        requestId: z.number(),
-        status: z.enum(["approved", "denied"]),
-      }))
-      .mutation(async ({ input, ctx }) => {
-        if (ctx.user?.role !== "admin") {
-          throw new Error("Admin access required");
-        }
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-        
-        const request = await db.select().from(accessRequests).where(eq(accessRequests.id, input.requestId)).limit(1);
-        if (request.length === 0) {
-          throw new Error("Request not found");
-        }
-        
-        // Update request status
-        await db.update(accessRequests).set({
-          status: input.status,
-          reviewedBy: ctx.user.id,
-          reviewedAt: new Date(),
-        }).where(eq(accessRequests.id, input.requestId));
-        
-        // If approved, create user account with temporary password
-        if (input.status === "approved") {
-          const req = request[0];
-          const tempPassword = Math.random().toString(36).substring(2, 10);
-          const passwordHash = await bcrypt.hash(tempPassword, 10);
-          const openId = `demo_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-          
-          await db.insert(users).values({
-            openId,
-            email: req.email,
-            name: req.name,
-            passwordHash,
-            loginMethod: "demo",
-            isApproved: true,
-            role: "user",
-          });
-
-          // Deliver the temp password by email. Only echo it in the API response in demo
-          // mode — returning credentials to the caller in production is a leak.
-          const { sendAccessApprovalEmail } = await import("./_core/email");
-          await sendAccessApprovalEmail(req.email, req.name, tempPassword).catch(() => false);
-          return process.env.DEMO_MODE === "true"
-            ? { success: true, tempPassword }
-            : { success: true };
-        }
-        
-        return { success: true };
-      }),
   }),
 
   accounts: router({
@@ -725,16 +653,6 @@ Or go to the Admin Panel: /admin/approval`
     list: protectedProcedure.query(async () => {
       return await getAllOpportunities();
     }),
-    getById: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        return await getOpportunityById(input.id);
-      }),
-    getByAccountId: protectedProcedure
-      .input(z.object({ accountId: z.number() }))
-      .query(async ({ input }) => {
-        return await getOpportunitiesByAccountId(input.accountId);
-      }),
     upsert: protectedProcedure
       .input(z.object({
         id: z.number().optional(),
@@ -826,11 +744,6 @@ Or go to the Admin Panel: /admin/approval`
         });
         return { success: true };
       }),
-    getByAccountId: protectedProcedure
-      .input(z.object({ accountId: z.number() }))
-      .query(async ({ input }) => {
-        return await getGongCallsByAccountId(input.accountId);
-      }),
   }),
 
   people: router({
@@ -858,21 +771,6 @@ Or go to the Admin Panel: /admin/approval`
           return hits.slice(0, Math.max(cap, 500));
         }
         return all.slice(0, cap);
-      }),
-    listPaginated: protectedProcedure
-      .input(z.object({ limit: z.number().default(100), offset: z.number().default(0) }))
-      .query(async ({ input }) => {
-        return await getPeoplePaginated(input.limit, input.offset);
-      }),
-    getByCompany: protectedProcedure
-      .input(z.object({ company: z.string() }))
-      .query(async ({ input }) => {
-        return await getPeopleByCompany(input.company);
-      }),
-    getByAccountId: protectedProcedure
-      .input(z.object({ accountId: z.number() }))
-      .query(async ({ input }) => {
-        return await getContactsByAccountId(input.accountId);
       }),
     prioritize: protectedProcedure
       .input(z.object({ accountId: z.number().optional() }))
@@ -945,22 +843,6 @@ Or go to the Admin Panel: /admin/approval`
       .query(async ({ input }) => {
         return await getGongCallsPaginated(input.limit, input.offset);
       }),
-    getByCompany: protectedProcedure
-      .input(z.object({ company: z.string() }))
-      .query(async ({ input }) => {
-        return await getGongCallsByCompany(input.company);
-      }),
-    getByAccountId: protectedProcedure
-      .input(z.object({ accountId: z.number() }))
-      .query(async ({ input }) => {
-        return await getGongCallsByAccountId(input.accountId);
-      }),
-
-    /**
-     * Everything above reads the local `calls` table. These two are the only things in
-     * this app that have ever talked to Gong — until they existed, GONG_API_KEY was a
-     * credential the setup docs asked for and no code spent.
-     */
     testConnection: protectedProcedure.query(async () => {
       const { gongTestConnection, isGongConfigured } = await import("./integrations/gong");
       if (!isGongConfigured()) {
@@ -1016,14 +898,6 @@ Or go to the Admin Panel: /admin/approval`
 
   // AI-powered features
   ai: router({
-    enrichAccount: protectedProcedure
-      .input(z.object({ accountId: z.number() }))
-      .mutation(async ({ input }) => {
-        const account = await getAccountById(input.accountId);
-        if (!account) throw new Error('Account not found');
-        return await enrichAccountWithAI(account);
-      }),
-
     analyzeCall: protectedProcedure
       .input(z.object({ callId: z.number() }))
       .mutation(async ({ input }) => {
@@ -1033,51 +907,10 @@ Or go to the Admin Panel: /admin/approval`
         return await analyzeGongCall(call);
       }),
 
-    // Documented alias: AI account research (reuses enrichAccountWithAI)
-    generateAccountResearch: protectedProcedure
-      .input(z.object({ accountId: z.number() }))
-      .mutation(async ({ input }) => {
-        const account = await getAccountById(input.accountId);
-        if (!account) throw new Error("Account not found");
-        return await enrichAccountWithAI(account);
-      }),
-    // Documented alias: AI outreach recommendation (reuses generateOutreachEmail)
-    generateOutreachRecommendation: protectedProcedure
-      .input(z.object({ accountId: z.number(), contactId: z.number(), recentActivity: z.string().optional() }))
-      .mutation(async ({ input }) => {
-        const account = await getAccountById(input.accountId);
-        if (!account) throw new Error("Account not found");
-        const people = await getAllPeople();
-        const contact = people.find((p: Contact) => p.id === input.contactId);
-        const email = await generateOutreachEmail(account, contact, input.recentActivity);
-        return { recommendation: email };
-      }),
-    generateEmail: protectedProcedure
-      .input(z.object({
-        accountId: z.number(),
-        contactId: z.number(),
-        context: z.string().optional()
-      }))
-      .mutation(async ({ input }) => {
-        const account = await getAccountById(input.accountId);
-        const people = await getAllPeople();
-        const contact = people.find((p: Contact) => p.id === input.contactId);
-        if (!account || !contact) throw new Error('Account or contact not found');
-        return await generateOutreachEmail(account, contact, input.context);
-      }),
-
     search: protectedProcedure
       .input(z.object({ query: z.string() }))
       .mutation(async ({ input }) => {
         return await intelligentSearch(input.query);
-      }),
-
-    prioritizeContacts: protectedProcedure
-      .input(z.object({ accountId: z.number() }))
-      .mutation(async ({ input }) => {
-        const account = await getAccountById(input.accountId);
-        const contacts = await getPeopleByCompany(account?.name || '');
-        return await prioritizeContacts(contacts, account);
       }),
 
     chat: protectedProcedure
@@ -1100,46 +933,10 @@ Or go to the Admin Panel: /admin/approval`
         });
       }),
 
-    generateAccountSummary: protectedProcedure
-      .input(z.object({ accountId: z.number() }))
-      .mutation(async ({ input }) => {
-        return await generateAccountSummary(input.accountId);
-      }),
-
     generateContactSummary: protectedProcedure
       .input(z.object({ contactId: z.number(), includeLinkedIn: z.boolean().optional() }))
       .mutation(async ({ input }) => {
         return await generateContactSummary(input.contactId, input.includeLinkedIn ?? false);
-      }),
-
-    // Consolidated account brief. The heavy lifting lives in server/intel: facts are
-    // rendered deterministically from every signal we hold, and the model's judgement is
-    // validated against those signals before it ships. Kept on this name/shape so existing
-    // callers keep working.
-    compileOverview: protectedProcedure
-      .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
-      .query(async ({ input }) => {
-        try {
-          const { generateAccountBrief } = await import("./intel/brief");
-          const brief = await generateAccountBrief(input.accountId, {
-            forceRefresh: input.forceRefresh,
-          });
-          const cacheAge = brief.cached
-            ? Math.floor((Date.now() - new Date(brief.generatedAt).getTime()) / 60000)
-            : 0;
-          return {
-            summary: brief.markdown,
-            judgement: brief.judgement,
-            cached: brief.cached,
-            cacheAge,
-            metrics: brief.metrics,
-            degraded: brief.degraded,
-            droppedClaims: brief.validation.dropped,
-          };
-        } catch (error) {
-          console.error("[compileOverview] brief generation failed:", error);
-          return null;
-        }
       }),
 
     compileResearch: protectedProcedure
@@ -1230,38 +1027,6 @@ Or go to the Admin Panel: /admin/approval`
         return { ...result, cached: false, cacheAge: 0 };
       }),
 
-    // Strategic insights are the judgement half of the same account brief, so both panels
-    // share one cached generation instead of each firing its own slow LLM call. The old
-    // implementation aggregated contact columns (engagementActivities, salesActivities,
-    // daysSinceLastEngagement) that do not exist in the schema, so it fed the model zeros
-    // and the model invented the numbers back.
-    generateStrategicInsights: protectedProcedure
-      .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
-      .query(async ({ input }) => {
-        try {
-          const { generateAccountBrief } = await import("./intel/brief");
-          const brief = await generateAccountBrief(input.accountId, {
-            forceRefresh: input.forceRefresh,
-          });
-          // Everything above the facts tables is the interpretation layer.
-          const judgement = brief.markdown.split("## Signal Readout")[0];
-          const recommendations = judgement
-            .replace(/^# Account Brief:.*$/m, "")
-            .replace(/^_Generated .*_$/m, "")
-            .trim();
-          return {
-            recommendations,
-            cached: brief.cached,
-            cacheAge: brief.cached
-              ? Math.floor((Date.now() - new Date(brief.generatedAt).getTime()) / 60000)
-              : 0,
-            degraded: brief.degraded,
-          };
-        } catch (error) {
-          console.error("[generateStrategicInsights] failed:", error);
-          return null;
-        }
-      }),
     analyzeTechStack: protectedProcedure
       .input(z.object({ accountId: z.number() }))
       .mutation(async ({ input }) => {
