@@ -37,7 +37,7 @@ So I built **TargetDash**, the AI-powered layer that organizes the noise and hel
 | **Data Entry** | Manual input required | Automated capture (from 6sense, Gong, Clay) |
 | **Signal Detection** | Basic lead scoring | Multi-channel AI (intent, calls, engagement) |
 | **Next Best Action** | Requires manual synthesis | Named contact + the actual hook ("Email David Sullivan (RevOps Director) — lead with HIPAA audit"). Deterministic on the dashboard; the account page adds an evidence-cited AI brief. |
-| **MCP Server** | ❌ | ✅ `pnpm mcp` — exposes CRM data as MCP tools over stdio |
+| **MCP Server** | ❌ | ✅ `pnpm mcp` — five tools over stdio, each asserted against the router |
 | **Setup Time** | Extended implementation | ~2 minutes for the demo (see below) |
 
 ---
@@ -169,15 +169,25 @@ TargetDash **sits exactly between your reps and Salesforce**, bringing scattered
 
 ### MCP Server - Plug Into ANY AI
 
-TargetDash includes an **MCP (Model Context Protocol) server**, meaning ANY AI agent (Claude, GPT, etc.) can securely query your Salesforce data in real-time to help carry the load:
+TargetDash includes an **MCP (Model Context Protocol) server**, so any MCP-speaking agent can query the CRM over stdio. `pnpm mcp` exposes five tools:
 
-```typescript
-// Your AI agent can now assist with:
-"Show me highly active leads with >90 intent"
-"Draft an email to the VP of Engineering at our top account"
-"What's our 6QA gap this week?"
+| Tool | What it does |
+| --- | --- |
+| `list_accounts` | every account with intent score, buying stage, industry, region, tech stack |
+| `get_account` | one account in full, including intent history |
+| `search_accounts` | natural language — *"CISOs at fintechs with intent over 80"* |
+| `get_workspace_brain` | executive summary of the book: totals, hot accounts, what changed |
+| `sync_salesforce` | pull accounts and contacts from Salesforce |
 
-```
+Run the app with `DEMO_MODE=true` and no credential is needed. Against a real deployment, set `MCP_SESSION_COOKIE` to a valid session cookie.
+
+<sub>Until recently every one of these was broken. Four called tRPC procedures that
+did not exist — `account.list` where the namespace is `accounts`, `insights.getSummary`
+where there is no `insights` namespace — and two returned *"import initiated. Check
+task board for progress"* without doing anything, for imports that were never written.
+The server started, listed its tools, and failed on every call. Nothing in the repo
+called it, so nothing noticed. `server/mcp.test.ts` now asserts each named procedure
+exists in the router.</sub>
 
 ---
 
