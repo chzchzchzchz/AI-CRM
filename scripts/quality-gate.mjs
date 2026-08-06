@@ -129,8 +129,20 @@ const waitPort = (port, ms = 90_000) =>
 
 let server;
 if (OWN_SERVER) {
+  // Boot from the .env the README tells people to copy, not one invented here.
+  //
+  // This used to write its own four-line file. That meant CI proved a configuration
+  // no user has, while `cp .env.example .env` — the documented first step — was never
+  // exercised by anything. The two had already drifted: .env.example carries a
+  // DATABASE_URL, company config, connector placeholders and a JWT_SECRET the gate's
+  // version didn't, any of which could have broken a real first run without CI
+  // noticing. Every run is now a cold start against the documented file.
   if (!fs.existsSync(".env")) {
-    fs.writeFileSync(".env", `DEMO_MODE=true\nPORT=${PORT}\nJWT_SECRET=gate-only-not-a-real-secret-value-here\nNODE_ENV=development\n`);
+    if (!fs.existsSync(".env.example")) {
+      console.log("\n  ✘ quality gate: no .env and no .env.example to copy — a fresh clone has nothing to boot from\n");
+      process.exit(1);
+    }
+    fs.copyFileSync(".env.example", ".env");
   }
   server = spawn("pnpm", ["dev"], {
     env: { ...process.env, PORT: String(PORT), DEMO_MODE: "true" },

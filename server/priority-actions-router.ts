@@ -278,40 +278,6 @@ export const priorityActionsRouter = router({
       return enrichedActions;
     }),
 
-  // Get rep territory info
-  getRepTerritory: protectedProcedure
-    .input(z.object({ userEmail: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const territory = REP_TERRITORIES[input.userEmail];
-      if (!territory) {
-        return null;
-      }
-      
-      const isDemoUser = ctx.user?.email?.includes('demo') || false;
-      const accounts = await getAllAccounts(isDemoUser);
-      const repAccounts = accounts.filter((a: Account) => {
-        const empCount = a.employeeCount || 0;
-        return a.region === territory.region && 
-          empCount >= territory.minEmployees && 
-          empCount < territory.maxEmployees;
-      });
-      
-      const hotLeads = repAccounts.filter((a: Account) => (a.intentScore || 0) >= 70).length;
-      const warmLeads = repAccounts.filter((a: Account) => {
-        const score = a.intentScore || 0;
-        return score >= 40 && score < 70;
-      }).length;
-      
-      return {
-        region: territory.region,
-        maxEmployees: territory.maxEmployees,
-        totalAccounts: repAccounts.length,
-        hotLeads,
-        warmLeads,
-      };
-    }),
-
-  // Get dashboard stats filtered by rep
   getRepStats: protectedProcedure
     .input(z.object({ userEmail: z.string().optional() }))
     .query(async ({ ctx, input }) => {

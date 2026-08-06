@@ -271,56 +271,16 @@ const EXTERNAL_BY_DESIGN: Record<string, string> = {
  * by removing them while this is pre-1.0. But they should not be mistaken for a to-do.
  */
 const SUPERSEDED: Record<string, string> = {
-  "ai.compileOverview":
-    "superseded by `intel.accountBrief` — same engine, but returns markdown instead of the structured judgement the UI renders",
-  "ai.generateStrategicInsights":
-    "superseded by `intel.accountBrief` — string-splits the same brief on '## Signal Readout' to recover its judgement section",
-  "ai.enrichAccount":
-    "superseded by `intel.accountBrief` — answers the same question (score, insights, recommendations) without the evidence validation",
-  "ai.generateAccountSummary":
-    "superseded by `intel.accountBrief` — a summary with no evidence validation behind it",
-  "ai.generateEmail":
-    "superseded by `outreach.generateEmail` — the wired one carries the grounding rules that stop it inventing facts about the account",
-  "ai.generateAccountResearch":
-    "superseded by `ai.compileResearch` — both call the same enrichment, but compileResearch caches and is the one the UI uses",
-  "ai.generateOutreachRecommendation":
-    "declared in the source as an alias that reuses generateOutreachEmail",
   // One signal pack replaced five per-entity reads on the account page. Wiring any of
   // these back would reintroduce the split that let the page and the brief disagree.
-  "people.getByAccountId":
-    "superseded by `intel.accountSignals` — returns the same contacts, ranked by seniority, in the pack the page already loads",
-  "opportunities.getByAccountId":
-    "superseded by `intel.accountSignals` — the pack also carries the probability-weighted total this returns raw",
   "intentScores.list":
     "superseded by `intel.accountSignals` — the pack carries the same series plus its computed trend and largest jump",
-  "gong.getByAccountId":
-    "superseded by `intel.accountSignals` — conversations, topics and open action items arrive with the pack",
-  "calls.getByAccountId":
-    "superseded by `intel.accountSignals` — same reason as gong.getByAccountId",
-  "gong.getByCompany":
-    "superseded by `intel.accountSignals` — keyed on a company-name string where the pack is keyed on the account id",
-  "people.getByCompany":
-    "superseded by `intel.accountSignals` — same reason as gong.getByCompany",
   // The admin router is the one the approvals screen uses; these are an older pair with
   // the same behaviour behind different names.
-  "auth.listAccessRequests":
-    "superseded by `admin.getPendingRequests`, which is what the approvals screen calls",
-  "auth.reviewAccessRequest":
-    "superseded by `admin.approveAccessRequest` / `admin.denyAccessRequest`",
   "calls.list":
     "superseded by `gong.listPaginated`, which the Calls page uses and which pages rather than loading every call",
   "calls.create":
     "superseded by the Gong sync — calls arrive from the connector, not by hand",
-  "ai.prioritizeContacts":
-    "superseded by `people.prioritize`, which the Contacts page uses",
-  "opportunities.getById":
-    "superseded by `opportunities.list` — there is no single-opportunity page, and the list already carries every field one would show",
-  "deepThink.chat":
-    "superseded by `ai.chat`, which the assistant uses on every page",
-  "people.listPaginated":
-    "superseded by `people.list` for UI purposes — `list` caps its result and supports search, which a contact list needs and this doesn't",
-  "priorityActions.getRepTerritory":
-    "superseded by `priorityActions.getRepStats` + `getEnriched`, which the dashboard uses and which already scope to the rep",
 };
 
 /**
@@ -443,6 +403,16 @@ function main() {
   L.push(`| Reachable from the UI | ${wired.length} |`);
   L.push(`| External by design (webhooks, probes, connector actions) | ${external.length} |`);
   L.push(`| **Built but not routed anywhere** | **${unrouted.length}** |`);
+  // Say what the zero rests on.
+  //
+  // This line read "0" while 47 procedures were exempted by hand in the three maps
+  // above — 20 of them with no caller anywhere, not even a test. The number was true
+  // and much weaker than it looked, and check-claims asserts it, so the whole gate
+  // inherited that weakness. An exemption count next to the zero is the difference
+  // between "nothing is unrouted" and "nothing is unrouted, given 27 exceptions".
+  L.push(
+    `| ↳ exempted from that zero (maps in \`server/inventory.ts\`, plus the \`integrations.*\` rule) | ${external.length + superseded.length} |`
+  );
   L.push(`| ↳ of those, called only by unreachable client code | ${strandedOnly.length} |`);
   L.push(`| Superseded by a live capability (kept, not a to-do) | ${superseded.length} |`);
   L.push(`| App routes | ${routes.length} |`);
