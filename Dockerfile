@@ -4,8 +4,14 @@
 #   docker build -t targetdash .
 #   docker run -p 3333:3333 targetdash      # zero-config demo at http://localhost:3333
 #
-# For real data, pass env at runtime (see ADMIN_SETUP.md):
-#   docker run -p 3333:3333 -e DEMO_MODE=false -e DATABASE_URL=... targetdash
+# For real data, pass env at runtime (see ADMIN_SETUP.md). JWT_SECRET is required —
+# outside demo mode the server refuses to start with a missing or placeholder one,
+# because sessions signed with a public value are forgeable by anyone:
+#   docker run -p 3333:3333 \
+#     -e DEMO_MODE=false \
+#     -e DATABASE_URL=... \
+#     -e JWT_SECRET="$(openssl rand -base64 48)" \
+#     targetdash
 
 # ---- build stage ----
 FROM node:22-slim AS build

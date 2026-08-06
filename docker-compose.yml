@@ -16,6 +16,10 @@ services:
       DEMO_MODE: "${DEMO_MODE:-true}"
       # Defaults to the bundled MySQL below; demo mode ignores it.
       DATABASE_URL: "${DATABASE_URL:-mysql://root:targetdash@db:3306/targetdash}"
+      # Required once DEMO_MODE=false: the server refuses to start outside demo mode
+      # with a missing or placeholder secret. Generate one with:
+      #   JWT_SECRET="$(openssl rand -base64 48)" DEMO_MODE=false docker compose --profile full up
+      JWT_SECRET: "${JWT_SECRET:-}"
       # --- Optional integrations (see ADMIN_SETUP.md) ---
       # OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
       # SIXSENSE_API_KEY: "${SIXSENSE_API_KEY:-}"

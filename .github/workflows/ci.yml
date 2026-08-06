@@ -94,3 +94,61 @@ jobs:
           SALESFORCE_CLIENT_SECRET: ${{ secrets.SALESFORCE_CLIENT_SECRET }}
           SALESFORCE_USERNAME: ${{ secrets.SALESFORCE_USERNAME }}
           SALESFORCE_PASSWORD: ${{ secrets.SALESFORCE_PASSWORD }}
+
+  # The Docker path the README advertises — `docker compose up`, and the Render
+  # one-click button, which builds this same Dockerfile.
+  #
+  # It had never been built or booted by anything. A runtime stage that installs
+  # --prod only will happily build an image that dies on its first import, and the
+  # README's health check path is a string nothing verifies. Separate job so a
+  # Docker failure is legible on its own rather than buried in the main run.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker build -t targetdash:ci .
+
+      - name: Boot it exactly as the README says
+        run: docker run -d --name targetdash -p 3333:3333 targetdash:ci
+
+      - name: Wait for the health check Render relies on
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3333/api/health > /dev/null; then
+              echo "healthy after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::/api/health never came up — the Render one-click deploy would never go live"
+          docker logs targetdash
+          exit 1
+
+      - name: Sign in with the credentials the README prints
+        run: |
+          body=$(curl -fsS -X POST http://localhost:3333/api/trpc/auth.login \
+            -H 'Content-Type: application/json' \
+            -d '{"json":{"email":"demo@ai-crm.com","password":"DemoPass123!"}}')
+          echo "$body"
+          echo "$body" | grep -q '"success":true' || {
+            echo "::error::the documented demo credentials do not work in the image"
+            docker logs targetdash
+            exit 1
+          }
+
+      - name: The dashboard has data in it
+        run: |
+          count=$(curl -fsS http://localhost:3333/api/trpc/accounts.getStats \
+            | grep -o '"totalAccounts":[0-9]*' | head -1 | cut -d: -f2)
+          echo "accounts: ${count:-0}"
+          # A container that boots to an empty database is a demo of nothing.
+          [ "${count:-0}" -gt 100 ] || {
+            echo "::error::the image booted but the demo dataset is missing"
+            docker logs targetdash
+            exit 1
+          }
+
+      - name: Container logs
+        if: always()
+        run: docker logs targetdash 2>&1 | tail -40
