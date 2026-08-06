@@ -10,6 +10,7 @@
  */
 
 import { CONNECTORS, COMMON_PLACEHOLDERS, type ConnectorSpec, type EnvSpec } from "./registry";
+import { isWeakSecret } from "@shared/weak-secret";
 
 export type Severity = "ready" | "incomplete" | "invalid" | "not-configured";
 
@@ -155,11 +156,10 @@ export function checkCore(env: NodeJS.ProcessEnv = process.env): CoreFinding[] {
   const out: CoreFinding[] = [];
 
   const secret = env.JWT_SECRET ?? "";
-  const weakSecret =
-    !secret ||
-    secret.length < 16 ||
-    secret === "change-this-to-a-long-random-string" ||
-    secret.startsWith("dev-only-insecure");
+  // Same predicate the server signs with, so the doctor cannot say a secret is fine
+  // while sdk.getSessionSecret treats it as a placeholder — or, as was the case,
+  // the reverse: preflight caught the shipped value and the server did not.
+  const weakSecret = isWeakSecret(secret);
   out.push({
     name: "JWT_SECRET",
     ok: !weakSecret,

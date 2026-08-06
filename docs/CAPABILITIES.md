@@ -8,12 +8,13 @@ Every backend capability, and whether anything in the product actually reaches i
 
 | | Count |
 |---|---|
-| Procedures total | 185 |
+| Procedures total | 165 |
 | Reachable from the UI | 118 |
 | External by design (webhooks, probes, connector actions) | 44 |
 | **Built but not routed anywhere** | **0** |
+| ↳ exempted from that zero (maps in `server/inventory.ts`, plus the `integrations.*` rule) | 47 |
 | ↳ of those, called only by unreachable client code | 0 |
-| Superseded by a live capability (kept, not a to-do) | 23 |
+| Superseded by a live capability (kept, not a to-do) | 3 |
 | App routes | 34 |
 | Client modules unreachable from `main.tsx` | 9 |
 | Integration connectors | 24 |
@@ -26,29 +27,9 @@ Working code that nothing calls because something better does the same job. Not 
 
 | Procedure | Why |
 |---|---|
-| `ai.enrichAccount` | superseded by `intel.accountBrief` — answers the same question (score, insights, recommendations) without the evidence validation |
-| `ai.generateAccountResearch` | superseded by `ai.compileResearch` — both call the same enrichment, but compileResearch caches and is the one the UI uses |
-| `ai.generateOutreachRecommendation` | declared in the source as an alias that reuses generateOutreachEmail |
-| `ai.generateEmail` | superseded by `outreach.generateEmail` — the wired one carries the grounding rules that stop it inventing facts about the account |
-| `ai.prioritizeContacts` | superseded by `people.prioritize`, which the Contacts page uses |
-| `ai.generateAccountSummary` | superseded by `intel.accountBrief` — a summary with no evidence validation behind it |
-| `ai.compileOverview` | superseded by `intel.accountBrief` — same engine, but returns markdown instead of the structured judgement the UI renders |
-| `ai.generateStrategicInsights` | superseded by `intel.accountBrief` — string-splits the same brief on '## Signal Readout' to recover its judgement section |
-| `auth.listAccessRequests` | superseded by `admin.getPendingRequests`, which is what the approvals screen calls |
-| `auth.reviewAccessRequest` | superseded by `admin.approveAccessRequest` / `admin.denyAccessRequest` |
 | `calls.list` | superseded by `gong.listPaginated`, which the Calls page uses and which pages rather than loading every call |
 | `calls.create` | superseded by the Gong sync — calls arrive from the connector, not by hand |
-| `calls.getByAccountId` | superseded by `intel.accountSignals` — same reason as gong.getByAccountId |
-| `deepThink.chat` | superseded by `ai.chat`, which the assistant uses on every page |
-| `gong.getByCompany` | superseded by `intel.accountSignals` — keyed on a company-name string where the pack is keyed on the account id |
-| `gong.getByAccountId` | superseded by `intel.accountSignals` — conversations, topics and open action items arrive with the pack |
 | `intentScores.list` | superseded by `intel.accountSignals` — the pack carries the same series plus its computed trend and largest jump |
-| `opportunities.getById` | superseded by `opportunities.list` — there is no single-opportunity page, and the list already carries every field one would show |
-| `opportunities.getByAccountId` | superseded by `intel.accountSignals` — the pack also carries the probability-weighted total this returns raw |
-| `people.listPaginated` | superseded by `people.list` for UI purposes — `list` caps its result and supports search, which a contact list needs and this doesn't |
-| `people.getByCompany` | superseded by `intel.accountSignals` — same reason as gong.getByCompany |
-| `people.getByAccountId` | superseded by `intel.accountSignals` — returns the same contacts, ranked by seniority, in the pack the page already loads |
-| `priorityActions.getRepTerritory` | superseded by `priorityActions.getRepStats` + `getEnriched`, which the dashboard uses and which already scope to the rep |
 
 ## Unreachable client modules
 

@@ -7,6 +7,10 @@ import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+import { isWeakSecret, WEAK_SECRET_MESSAGE } from "@shared/weak-secret";
 import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
@@ -159,24 +163,54 @@ class SDKServer {
     // An empty or default JWT_SECRET means sessions are trivially forgeable. Refuse to sign
     // with it in production so a deployer can't accidentally ship insecure auth. Demo/dev
     // fall back to a random per-process secret (sessions just don't survive a restart).
-    const isWeak = !secret || secret.length < 16 || secret === "change-this-to-a-long-random-string";
-    if (isWeak) {
+    // Shared with preflight so the doctor and the server cannot disagree about what
+    // counts as a secret — and so the placeholder .env.example actually ships is caught,
+    // which the previous literal-string comparison did not do.
+    if (isWeakSecret(secret)) {
       if (ENV.isProduction && ENV.demoMode !== true) {
-        throw new Error(
-          "JWT_SECRET is missing or too weak. Set JWT_SECRET to a long random string (>=32 chars) before running in production."
-        );
+        throw new Error(WEAK_SECRET_MESSAGE);
       }
       return new TextEncoder().encode(this.getEphemeralSecret());
     }
     return new TextEncoder().encode(secret);
   }
 
-  private _ephemeralSecret?: string;
+  private _devSecret?: string;
+
+  /**
+   * A real secret for dev and demo, generated once per checkout and kept on disk.
+   *
+   * This used to be `Math.random()` per process, which meant every server restart
+   * invalidated every session. Under `pnpm dev` that is a restart on every file save:
+   * you sign in, edit something, and are signed out. Tightening the weak-secret check
+   * would have made that the default experience for anyone following the README,
+   * because the placeholder it ships is now correctly treated as no secret at all.
+   *
+   * Written to .dev-session-secret (gitignored) so sessions survive a restart, while
+   * never being a value that exists in the repository for anyone to read.
+   */
   private getEphemeralSecret(): string {
-    if (!this._ephemeralSecret) {
-      this._ephemeralSecret = "dev-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    if (this._devSecret) return this._devSecret;
+
+    const file = path.join(process.cwd(), ".dev-session-secret");
+    try {
+      if (fs.existsSync(file)) {
+        const existing = fs.readFileSync(file, "utf8").trim();
+        if (existing.length >= 32) return (this._devSecret = existing);
+      }
+      const generated = crypto.randomBytes(48).toString("base64");
+      fs.writeFileSync(file, generated, { mode: 0o600 });
+      console.warn(
+        "[auth] JWT_SECRET is unset or still the placeholder. Generated a local " +
+          "development secret in .dev-session-secret so sessions survive restarts. " +
+          "Run `openssl rand -base64 48` and set JWT_SECRET before deploying."
+      );
+      return (this._devSecret = generated);
+    } catch {
+      // Read-only filesystem (a container, CI): fall back to per-process, which still
+      // works — it just does not survive a restart.
+      return (this._devSecret = crypto.randomBytes(48).toString("base64"));
     }
-    return this._ephemeralSecret;
   }
 
   /**

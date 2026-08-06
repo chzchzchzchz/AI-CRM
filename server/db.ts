@@ -290,6 +290,36 @@ function saveDemoDb(data: any): void {
 }
 
 // Query builder for local JSON DB
+/**
+ * Merge an upsert into an existing demo row.
+ *
+ * Only the fields the caller actually passed, plus whatever the ON DUPLICATE KEY
+ * UPDATE set named. Never the schema-padded record.
+ *
+ * The insert path fills every column the caller omitted with `null` before writing,
+ * which is right for a genuinely new row and catastrophic for an existing one. Spread
+ * over a match it nulled everything unmentioned — and the one upsert that runs on
+ * every authenticated request passes only { openId, lastSignedIn }.
+ *
+ * So the seeded demo user lost its email, password hash, role and approval on the
+ * first request after signing in, and the credentials in the README stopped working
+ * before anyone had finished looking at the dashboard. `id` is held fixed so a merge
+ * can never renumber a row other things point at.
+ */
+function mergeExisting(existing: any, passed: any, duplicateUpdate: any): any {
+  const merged: any = { ...existing };
+  for (const [k, v] of Object.entries(passed || {})) {
+    if (v === undefined || k === "id") continue;
+    merged[k] = v instanceof Date ? v.toISOString() : v;
+  }
+  for (const [k, v] of Object.entries(duplicateUpdate || {})) {
+    if (v === undefined || k === "id") continue;
+    merged[k] = v instanceof Date ? v.toISOString() : v;
+  }
+  merged.updatedAt = new Date().toISOString();
+  return merged;
+}
+
 class MockDrizzleQueryBuilder {
   private operation: 'select' | 'insert' | 'update' | 'delete';
   private tableName: string = '';
@@ -298,6 +328,7 @@ class MockDrizzleQueryBuilder {
   private limitCount: number = 0;
   private offsetCount: number = 0;
   private insertValues: any = null;
+  private duplicateUpdate: any = null;
   private updateValues: any = null;
   private orderByField: string = '';
   private orderDirection: 'asc' | 'desc' = 'asc';
@@ -379,7 +410,15 @@ class MockDrizzleQueryBuilder {
     return this;
   }
 
+  /**
+   * Remember the ON DUPLICATE KEY UPDATE set.
+   *
+   * This used to discard it and return `this`, which is why a sparse upsert wiped
+   * a row: the insert path below merged the schema-padded record — every column the
+   * caller never mentioned, filled with null — over the existing one.
+   */
   onDuplicateKeyUpdate(options: any) {
+    this.duplicateUpdate = options?.set ?? null;
     return this;
   }
 
@@ -535,7 +574,7 @@ class MockDrizzleQueryBuilder {
         if (this.tableName === 'users' && record.openId) {
           const idx = tableData.findIndex((r: any) => r.openId === record.openId);
           if (idx !== -1) {
-            tableData[idx] = { ...tableData[idx], ...newRecord, updatedAt: new Date().toISOString() };
+            tableData[idx] = mergeExisting(tableData[idx], record, this.duplicateUpdate);
             inserted.push(tableData[idx]);
             continue;
           }
@@ -544,7 +583,7 @@ class MockDrizzleQueryBuilder {
         if (this.tableName === 'accounts' && record.sfdcAccountId) {
           const idx = tableData.findIndex((r: any) => r.sfdcAccountId === record.sfdcAccountId);
           if (idx !== -1) {
-            tableData[idx] = { ...tableData[idx], ...newRecord, updatedAt: new Date().toISOString() };
+            tableData[idx] = mergeExisting(tableData[idx], record, this.duplicateUpdate);
             inserted.push(tableData[idx]);
             continue;
           }
@@ -553,7 +592,7 @@ class MockDrizzleQueryBuilder {
         if (this.tableName === 'contacts' && record.sfdcContactId) {
           const idx = tableData.findIndex((r: any) => r.sfdcContactId === record.sfdcContactId);
           if (idx !== -1) {
-            tableData[idx] = { ...tableData[idx], ...newRecord, updatedAt: new Date().toISOString() };
+            tableData[idx] = mergeExisting(tableData[idx], record, this.duplicateUpdate);
             inserted.push(tableData[idx]);
             continue;
           }
@@ -565,7 +604,7 @@ class MockDrizzleQueryBuilder {
         if (this.tableName === 'opportunities' && record.id != null) {
           const idx = tableData.findIndex((r: any) => r.id === record.id);
           if (idx !== -1) {
-            tableData[idx] = { ...tableData[idx], ...newRecord, updatedAt: new Date().toISOString() };
+            tableData[idx] = mergeExisting(tableData[idx], record, this.duplicateUpdate);
             inserted.push(tableData[idx]);
             continue;
           }
