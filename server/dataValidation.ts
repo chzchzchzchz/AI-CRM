@@ -1,3 +1,4 @@
+import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
 import { invokeLLM, llmText, isLlmUnavailable } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
 import { getAllAccounts, getAllPeople } from "./db";
@@ -106,8 +107,7 @@ async function verifyCompanyDomain(companyName: string, domain: string | null): 
 Company Name: ${companyName}
 Claimed Domain: ${domain}
 
-Web Search Results:
-${searchResults}
+${wrapUntrusted("web search results", searchResults)}
 
 Based on the search results, does the domain "${domain}" actually belong to "${companyName}"?
 
@@ -191,8 +191,7 @@ async function verifyEmployeeCount(companyName: string, claimedCount: number | n
 Company: ${companyName}
 Claimed Employee Count: ${claimedCount}
 
-Web Search Results:
-${searchResults}
+${wrapUntrusted("web search results", searchResults)}
 
 Based on search results, is the claimed employee count accurate?
 
@@ -279,8 +278,7 @@ Contact: ${contactName}
 Title: ${title || 'Unknown'}
 Company: ${companyName}
 
-Web Search Results (LinkedIn, company websites, news):
-${searchResults}
+${wrapUntrusted("web search results", searchResults)}
 
 Based on search results, does this person work at this company in this role?
 

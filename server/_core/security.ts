@@ -34,17 +34,24 @@ function getClientIP(req: Request): string {
  */
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
+    // Allow requests with no origin (mobile apps, curl, same-origin navigations).
     if (!origin) return callback(null, true);
-    
-    // In production, specify allowed origins
-    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173'];
-    
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS policy: Origin not allowed'), false);
-    }
+
+    if (process.env.NODE_ENV !== "production") return callback(null, true);
+
+    // A deployment that never sets ALLOWED_ORIGINS used to fall back to a hardcoded
+    // localhost:5173, so every browser request from the real domain was "not allowed".
+    // Unset now means "same-origin only" — enforced by simply not granting CORS headers.
+    const allowed = (process.env.ALLOWED_ORIGINS ?? "")
+      .split(",")
+      .map((o) => o.trim())
+      .filter(Boolean);
+
+    // Never throw. An Error here becomes a 500 from the CORS middleware, which runs before
+    // static files — so one disallowed Origin turned every asset request into an HTML error
+    // page (stylesheets rejected for MIME type, app renders blank). Denying simply means
+    // withholding the CORS headers; the browser then enforces the policy itself.
+    callback(null, allowed.includes(origin));
   },
   credentials: true,
   optionsSuccessStatus: 200

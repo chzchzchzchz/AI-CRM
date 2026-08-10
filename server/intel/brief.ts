@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { invokeLLM } from "../_core/llm";
 import { getCompanyConfig } from "../config";
+import { wrapUntrusted, INJECTION_GUARD } from "../_core/untrusted";
 import { storeContext, getContext } from "../aiContext";
 import { gatherAccountSignals, type SignalPack } from "./signals";
 
@@ -322,13 +323,16 @@ Return ONLY a JSON object matching this shape:
 }
 Aim for 2-4 whyNow points, 3-5 actions, 1-3 risks.`;
 
+  // The signal pack is built from data this deployment did not author — account descriptions
+  // and trigger events from Clay, topics and action items from Gong, rows from an uploaded
+  // CSV. Fence it so a planted "ignore previous instructions" reads as data, not as a turn.
   const user = `SIGNAL PACK (the only facts you may use):
 
-${JSON.stringify(pack, null, 2)}
+${wrapUntrusted("account signal pack", pack)}
 
-Produce the JSON judgement object for ${pack.account.name}.`;
+Produce the JSON judgement object for the account named in the pack.`;
 
-  return { system, user };
+  return { system: `${system}\n\n${INJECTION_GUARD}`, user };
 }
 
 function parseJudgement(raw: string): Judgement | null {

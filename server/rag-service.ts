@@ -1,3 +1,4 @@
+import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
 import { getDb } from "./db";
 import { knowledgeBase, documentChunks, userInteractions, generatedContent } from "../drizzle/schema";
 import { eq, desc, sql } from "drizzle-orm";

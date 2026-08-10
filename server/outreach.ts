@@ -1,6 +1,7 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
+import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
 import { eq, inArray } from "drizzle-orm";
 import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -159,11 +160,11 @@ GROUNDING RULES:
   the tools they use, their vendors, or their pain points — if a fact is not provided, do
   not assert it.
 - Personalize from the real signals given, not from assumptions about their stack.
-- Be specific and concise; no marketing filler, no fabricated statistics.`;
+- Be specific and concise; no marketing filler, no fabricated statistics.` + "\n\n" + INJECTION_GUARD;
 
       const emailPrompt = `Write a cold email for this prospect.
 
-${accountContext}${contactContext}
+${wrapUntrusted("prospect account and contact fields", accountContext + contactContext)}
 
 Additional context from rep: ${input.prompt || "Focus on the prospect's likely pain points and our key differentiators."}
 

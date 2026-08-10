@@ -1,3 +1,4 @@
+import { INJECTION_GUARD } from "./_core/untrusted";
 /**
  * Recursive Cognitive Protocol (RCP-v1) System Prompt
  * This prompt is prepended to ALL AI/LLM calls to enhance reasoning quality
@@ -160,8 +161,13 @@ Concrete, time-bound actions:
  * Helper function to prepend RCP prompt to any system message
  */
 export function withRCP(systemMessage: string, facts?: ContextInput): string {
+  // The trust boundary goes in every system prompt this app builds. These features all
+  // reason over text from Clay, Gong, uploaded files or scraped pages, so the rule that
+  // data can never issue instructions has to hold everywhere, not per call site.
   return (
     RCP_SYSTEM_PROMPT +
+    "\n\n---\n\n" +
+    INJECTION_GUARD +
     "\n\n---\n\nADDITIONAL CONTEXT:\n" +
     withFacts(systemMessage, facts)
   );
@@ -213,5 +219,6 @@ export function asRevenueArchitect(taskContext: string, facts?: ContextInput): s
   const dynamicPersona = getDynamicPersona();
   return dynamicPersona +
     "\n\n---\n\nTASK:\n" + withFacts(taskContext, facts) +
+    "\n\n---\n\n" + INJECTION_GUARD +
     "\n\n---\n\n" + STANDARDIZED_OUTPUT_STRUCTURE;
 }

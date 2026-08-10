@@ -1,3 +1,4 @@
+import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
 import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
 import { getDb } from "./db";
 import { aiResponseCache } from "../drizzle/schema";
@@ -207,12 +208,12 @@ export async function deepThink(params: {
   // LAYER 1: RECURSIVE REASONING ENGINE
   // ============================================
   const layer1Input = context 
-    ? `CONTEXT:\n${context}\n\nQUERY:\n${query}`
+    ? `${wrapUntrusted("account and page context", context)}\n\nQUERY:\n${query}`
     : query;
 
   const layer1Response = await invokeLLM({
     messages: [
-      { role: "system", content: LAYER_1_PROMPT },
+      { role: "system", content: LAYER_1_PROMPT + "\n\n" + INJECTION_GUARD },
       { role: "user", content: layer1Input }
     ]
   });
@@ -233,7 +234,7 @@ Transform this into a polished, human response.`;
 
   const layer2Response = await invokeLLM({
     messages: [
-      { role: "system", content: LAYER_2_PROMPT },
+      { role: "system", content: LAYER_2_PROMPT + "\n\n" + INJECTION_GUARD },
       { role: "user", content: layer2Input }
     ]
   });

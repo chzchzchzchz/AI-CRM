@@ -1,3 +1,4 @@
+import { wrapUntrusted, INJECTION_GUARD } from "../_core/untrusted";
 import crypto from "crypto";
 import { invokeLLM } from "../_core/llm";
 import { getCompanyConfig } from "../config";
@@ -200,7 +201,7 @@ export async function learnCycle(force = false): Promise<BrainDigest> {
       messages: [
         {
           role: "system",
-          content: `You are the continuously-learning memory of a ${getCompanyConfig().companyName} sales workspace.
+          content: INJECTION_GUARD + "\n\n" + `You are the continuously-learning memory of a ${getCompanyConfig().companyName} sales workspace.
 Each cycle you receive (a) the current verified data snapshot and (b) the lessons you yourself
 recorded in prior cycles. Update your understanding:
 - KEEP prior lessons that the new data still supports (you may tighten their wording).
