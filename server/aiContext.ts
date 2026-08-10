@@ -1,3 +1,4 @@
+import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
 import { getDb } from "./db";
 import { contextStore } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
@@ -200,9 +201,9 @@ Provide actionable, specific answers. When making recommendations, cite specific
 
   const userPrompt = `${query}
 
-${accountData ? `\nACCOUNT DATA:\n${JSON.stringify(accountData, null, 2)}` : ''}
-${contactData ? `\nCONTACT DATA:\n${JSON.stringify(contactData, null, 2)}` : ''}
-${relatedCalls.length > 0 ? `\nRECENT CALLS (${relatedCalls.length}):\n${JSON.stringify(relatedCalls.slice(0, 3), null, 2)}` : ''}
+${accountData ? `\nACCOUNT DATA:\n${wrapUntrusted("account data", accountData)}` : ''}
+${contactData ? `\nCONTACT DATA:\n${wrapUntrusted("contact data", contactData)}` : ''}
+${relatedCalls.length > 0 ? `\nRECENT CALLS (${relatedCalls.length}):\n${wrapUntrusted("related calls", relatedCalls.slice(0, 3))}` : ''}
 ${intentSpikeContext}`;
 
   const messages = [
@@ -369,13 +370,13 @@ CRITICAL RULES:
 - If data missing, state 'Data not available' - do NOT invent
 
 ACCOUNT DATA:
-${JSON.stringify(account[0], null, 2)}
+${wrapUntrusted("account record", account[0])}
 
 REAL CONTACTS:
 ${contactNames}
 
 RECENT CALLS:
-${accountCalls.length > 0 ? JSON.stringify(accountCalls.slice(0, 3), null, 2) : 'No calls recorded'}
+${accountCalls.length > 0 ? wrapUntrusted("recent calls", accountCalls.slice(0, 3)) : 'No calls recorded'}
 
 ${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `- ${i.value}`).join('\n')}` : ''}`;
 

@@ -1,3 +1,4 @@
+import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM, isLlmUnavailable, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
@@ -292,7 +293,7 @@ ${ragContext}`);
       const userPrompt = `Create ${input.contentType} content for:
 
 CONTEXT:
-${input.context}
+${wrapUntrusted("user-supplied context", input.context)}
 
 ${input.targetAccount ? `TARGET ACCOUNT: ${input.targetAccount}` : ''}
 ${input.targetContact ? `TARGET CONTACT: ${input.targetContact}` : ''}

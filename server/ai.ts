@@ -1,3 +1,4 @@
+import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
 import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
 import { getAllAccounts, getAllPeople, getAllGongCalls } from "./db";
 import { withRCP, asRevenueArchitect } from "./ai-system-prompt";
@@ -68,7 +69,7 @@ export async function enrichAccountWithAI(accountData: any): Promise<EnrichmentR
 Analyze this target account and provide sales intelligence:
 
 ACCOUNT DATA:
-${JSON.stringify(accountData, null, 2)}
+${wrapUntrusted("account data", accountData)}
 
 Provide a JSON response with:
 1. summary: 2-3 sentence executive summary of this account's fit and priority
@@ -129,7 +130,7 @@ export async function analyzeGongCall(callData: any): Promise<any> {
 Analyze this sales call transcript and extract key insights:
 
 CALL DATA:
-${JSON.stringify(callData, null, 2)}
+${wrapUntrusted("call transcript data", callData)}
 
 Provide a JSON response with:
 1. summary: Brief call summary (2-3 sentences)
@@ -189,8 +190,8 @@ export async function generateOutreachEmail(accountData: any, contactData: any, 
 
 Generate a personalized outreach email for this prospect:
 
-ACCOUNT: ${JSON.stringify(accountData, null, 2)}
-CONTACT: ${JSON.stringify(contactData, null, 2)}
+ACCOUNT: ${wrapUntrusted("account data", accountData)}
+CONTACT: ${wrapUntrusted("contact data", contactData)}
 ${context ? `ADDITIONAL CONTEXT: ${context}` : ''}
 
 Write a compelling, personalized email that:
@@ -396,8 +397,8 @@ export async function prioritizeContacts(contacts: any[], accountContext: any): 
 
 Given these contacts at the same account, rank them by outreach priority:
 
-ACCOUNT CONTEXT: ${JSON.stringify(accountContext, null, 2)}
-CONTACTS: ${JSON.stringify(contacts, null, 2)}
+ACCOUNT CONTEXT: ${wrapUntrusted("account context", accountContext)}
+CONTACTS: ${wrapUntrusted("contact list", contacts)}
 
 Return a JSON array of contact IDs sorted by priority (highest first), with reasoning for each.
 `;
