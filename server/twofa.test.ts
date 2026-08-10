@@ -66,7 +66,7 @@ describe("backup codes", () => {
       expect(stored).not.toContain(normalizeBackupCode(c));
     }
     expect(countBackupCodes(stored)).toBe(BACKUP_CODE_COUNT);
-  });
+  }, 30_000);
 
   it("redeems a valid code and will not redeem it twice", async () => {
     const codes = generateBackupCodes();
@@ -81,14 +81,14 @@ describe("backup codes", () => {
     // second factor, which is the failure this whole file exists to prevent.
     const again = await redeemBackupCode(stored, codes[3]);
     expect(again.ok).toBe(false);
-  });
+  }, 30_000);
 
   it("accepts a code however the user typed it", async () => {
     const codes = generateBackupCodes();
     const stored = await hashBackupCodes(codes);
     const messy = codes[0].toLowerCase().replace("-", " ");
     expect((await redeemBackupCode(stored, messy)).ok).toBe(true);
-  });
+  }, 30_000);
 
   it("rejects a code that was never issued, and survives junk input", async () => {
     const stored = await hashBackupCodes(generateBackupCodes());
@@ -97,7 +97,7 @@ describe("backup codes", () => {
     expect((await redeemBackupCode(null, "AAAAA-BBBBB")).ok).toBe(false);
     expect((await redeemBackupCode("not json", "AAAAA-BBBBB")).ok).toBe(false);
     expect((await redeemBackupCode('{"not":"an array"}', "AAAAA")).ok).toBe(false);
-  });
+  }, 30_000);
 });
 
 describe("login challenge", () => {

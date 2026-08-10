@@ -49,8 +49,11 @@ export function GlobalAIChat() {
     if (onAuthRoute) return;
     if (localStorage.getItem('hasSeenAIAssistant')) return;
 
+    // Seed the greeting but do NOT force the panel open. Auto-opening a chat window
+    // covered the page's primary content — on an account that's the brief itself, the
+    // whole reason the user is there. Instead the launcher shows an unread dot, and the
+    // greeting is already waiting the first time they choose to open it.
     const timer = setTimeout(() => {
-      setIsOpen(true);
       setHasShownWelcome(true);
       localStorage.setItem('hasSeenAIAssistant', 'true');
       setMessages([{
@@ -152,9 +155,18 @@ export function GlobalAIChat() {
         // clipped it. The pulsing "notification" dot that used to sit here was
         // accent-on-accent, so it rendered invisible while still costing layout.
         className="fixed right-6 bottom-6 z-40 size-14 rounded-md p-0 shadow-lg"
-        aria-label="Open AI assistant"
+        aria-label={hasShownWelcome ? "Open AI assistant (1 unread)" : "Open AI assistant"}
       >
         <MessageSquare className="size-6" />
+        {/* Unread marker for the seeded greeting. Sits on the button's edge in a
+            contrasting colour so it reads against the accent fill — the previous dot was
+            accent-on-accent and therefore invisible. */}
+        {hasShownWelcome && (
+          <span
+            className="absolute -right-0.5 -top-0.5 size-3 rounded-full bg-emerald-400 ring-2 ring-background"
+            aria-hidden="true"
+          />
+        )}
       </Button>
     );
   }

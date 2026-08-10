@@ -303,3 +303,10 @@ Questions, bugs, or feature requests? Open a [GitHub issue](https://github.com/c
 ## License
 
 MIT License, free for personal & commercial use. See [LICENSE](LICENSE).
+
+## Case study & screenshots
+
+A written case study — the problem, the grounded-AI approach, architecture, and the
+security/performance findings — lives at [`docs/case-study.html`](docs/case-study.html)
+(open it in a browser). Full-size screenshots of every major surface are in
+[`docs/screenshots/`](docs/screenshots/).
