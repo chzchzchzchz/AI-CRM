@@ -92,7 +92,11 @@ export default function LeadProcessor() {
       setResult(response);
       toast.success(`Processed ${response.cleanedCount} leads successfully!`);
     } catch (error) {
-      toast.error("Failed to process files. Please try again.");
+      // e.g. ".xlsx" uploads throw a specific "export to CSV" error server-side —
+      // flattening every failure into one generic message would hide that actionable
+      // reason behind advice ("try again") that can't fix a file-format problem.
+      const message = error instanceof Error && error.message ? error.message : "Failed to process files. Please try again.";
+      toast.error(message);
       console.error(error);
     } finally {
       setIsProcessing(false);
@@ -101,6 +105,14 @@ export default function LeadProcessor() {
 
   const downloadCSV = () => {
     if (!result?.cleanedData) return;
+    if (result.cleanedData.length === 0) {
+      // Every row got filtered out (personal email, unqualified title, or no
+      // contact info). Downloading here would produce a header-less, empty file
+      // while still telling the user "CSV downloaded!" — a success claim for an
+      // action that produced nothing usable.
+      toast.error("Nothing to download — every row was filtered out. See the issues list below.");
+      return;
+    }
 
     // Convert to CSV
     const headers = Object.keys(result.cleanedData[0] || {});
@@ -291,9 +303,15 @@ export default function LeadProcessor() {
               </div>
             )}
 
-            <Button onClick={downloadCSV} className="w-full" variant="outline">
+            <Button
+              onClick={downloadCSV}
+              className="w-full"
+              variant="outline"
+              disabled={result.cleanedData.length === 0}
+              title={result.cleanedData.length === 0 ? "Every row was filtered out — nothing to download" : undefined}
+            >
               <Download className="h-4 w-4 mr-2" />
-              Download Clean CSV
+              {result.cleanedData.length === 0 ? "Nothing to Download" : "Download Clean CSV"}
             </Button>
           </CardContent>
         </Card>

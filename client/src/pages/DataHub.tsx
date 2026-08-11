@@ -24,7 +24,6 @@ interface ProcessingResult {
   issues: string[];
   cleanedData: any[];
   dataType: DataType;
-  fieldMappings: Record<string, string>;
 }
 
 export default function DataHub() {
@@ -131,7 +130,6 @@ export default function DataHub() {
       setResult({
         ...result,
         dataType: detected,
-        fieldMappings: {} // Would come from server
       });
 
       setStatus('complete');
@@ -139,14 +137,25 @@ export default function DataHub() {
       toast.success(`Processed ${result.cleanedCount} records successfully!`);
 
     } catch (error) {
+      // e.g. ".xlsx" uploads throw a specific "export to CSV" error server-side —
+      // flattening every failure into one generic message would hide that actionable
+      // reason behind advice ("try again") that can't fix a file-format problem.
       console.error('Processing error:', error);
       setStatus('error');
-      toast.error('Failed to process files. Please try again.');
+      const message = error instanceof Error && error.message ? error.message : 'Failed to process files. Please try again.';
+      toast.error(message);
     }
   };
 
   const downloadCleanedData = () => {
     if (!result?.cleanedData) return;
+    if (result.cleanedData.length === 0) {
+      // Every row got filtered out by processLeads (personal email, unqualified
+      // title, or no contact info). A download here would be a header-less, empty
+      // file with no indication anything went wrong.
+      toast.error("Nothing to download — every row was filtered out. See the issues list below.");
+      return;
+    }
 
     const headers = Object.keys(result.cleanedData[0] || {});
     const csv = [
@@ -213,7 +222,10 @@ export default function DataHub() {
                 Upload Data
               </CardTitle>
               <CardDescription>
-                Drop any CSV or Excel file - AI will detect the data type and apply smart processing
+                Drop any CSV file - runs through the lead-cleaning pipeline (email/phone/company
+                normalization, personal-email and unqualified-title filtering). The badge below
+                is a heuristic header guess to help you sanity-check the upload, not a signal
+                that changes how the file gets processed.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -298,9 +310,14 @@ export default function DataHub() {
                 </Button>
                 
                 {result && (
-                  <Button variant="outline" onClick={downloadCleanedData}>
+                  <Button
+                    variant="outline"
+                    onClick={downloadCleanedData}
+                    disabled={result.cleanedData.length === 0}
+                    title={result.cleanedData.length === 0 ? "Every row was filtered out — nothing to download" : undefined}
+                  >
                     <Download className="h-4 w-4 mr-2" />
-                    Download Clean Data
+                    {result.cleanedData.length === 0 ? "Nothing to Download" : "Download Clean Data"}
                   </Button>
                 )}
               </div>
