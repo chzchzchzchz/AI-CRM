@@ -3,6 +3,7 @@ import { isDecisionMaker } from "@shared/taxonomy";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
+import { wrapUntrusted } from "./_core/untrusted";
 import bcrypt from "bcryptjs";
 import { users, accessRequests, Account, Contact, Call } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -1004,7 +1005,7 @@ Or go to the Admin Panel: /admin/approval`
             },
             {
               role: "user",
-              content: `Compile research insights for this account:\n\n${JSON.stringify(researchContext, null, 2)}`
+              content: `Compile research insights for this account:\n\n${wrapUntrusted("account research context", researchContext)}`
             }
           ]
         });
@@ -1057,7 +1058,7 @@ Or go to the Admin Panel: /admin/approval`
             },
             {
               role: "user",
-              content: `Analyze this technology stack and categorize it:\n\n${stackString}\n\nProvide a clear breakdown with categories.`
+              content: `Analyze this technology stack and categorize it:\n\n${wrapUntrusted("account technology stack", stackString)}\n\nProvide a clear breakdown with categories.`
             }
           ],
           response_format: {

@@ -1,6 +1,7 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
+import { wrapUntrusted } from "./_core/untrusted";
 import { withRCP } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
 
@@ -76,11 +77,14 @@ export const csvProcessorRouter = router({
       // Build the prompt for AI field mapping
       const prompt = `You are a data mapping expert. Analyze these CSV headers and sample data, then map them to the target SFDC/HubSpot webinar import template.
 
-SOURCE CSV HEADERS:
+${wrapUntrusted(
+  "uploaded CSV headers and sample rows",
+  `SOURCE CSV HEADERS:
 ${sourceHeaders.join(", ")}
 
 SAMPLE DATA (first 3 rows):
-${sampleRows.slice(0, 3).map((row, i) => `Row ${i + 1}: ${JSON.stringify(row)}`).join("\n")}
+${sampleRows.slice(0, 3).map((row, i) => `Row ${i + 1}: ${JSON.stringify(row)}`).join("\n")}`
+)}
 
 TARGET TEMPLATE FIELDS:
 ${TARGET_FIELDS.map(f => `- "${f.name}" (${f.required ? "REQUIRED" : "optional"}): ${f.description}`).join("\n")}

@@ -213,7 +213,14 @@ Return ONLY JSON: {"lessons":[{"lesson":"...","evidence":"..."}]} with at most $
         },
         {
           role: "user",
-          content: `PRIOR LESSONS (cycle ${persisted.cycles}):\n${JSON.stringify(persisted.lessons.map(({ lesson, evidence }) => ({ lesson, evidence })), null, 1)}\n\nCURRENT SNAPSHOT:\n${JSON.stringify(snapshot, null, 1)}`,
+          // Both halves are untrusted, for different reasons. The snapshot aggregates
+          // account text from external systems; the prior lessons were themselves written
+          // by a model reading earlier snapshots, so an instruction that ever landed in one
+          // would otherwise be re-fed to every future cycle — injection with a memory.
+          content: `${wrapUntrusted(
+            `prior lessons (cycle ${persisted.cycles})`,
+            persisted.lessons.map(({ lesson, evidence }) => ({ lesson, evidence }))
+          )}\n\n${wrapUntrusted("current workspace snapshot", snapshot)}`,
         },
       ],
       response_format: { type: "json_object" },

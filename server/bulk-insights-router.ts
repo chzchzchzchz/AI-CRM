@@ -3,6 +3,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { getAccountById, getContactsByAccountId, getGongCallsByAccountId } from "./db";
 import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
+import { wrapUntrusted } from "./_core/untrusted";
 
 export const bulkInsightsRouter = router({
   generateForTopLeads: protectedProcedure
@@ -105,7 +106,10 @@ CRITICAL RULES:
               },
               {
                 role: "user",
-                content: `Generate strategic insights using the standardized structure above. Use ONLY the real data provided below:\n\nACCOUNT DATA:\n${JSON.stringify(strategicContext, null, 2)}\n\nREAL CONTACTS (use these EXACT names):\n${contactList.map((c: any) => `- ${c.name} - ${c.title}`).join('\n')}`
+                content: `Generate strategic insights using the standardized structure above. Use ONLY the real data provided below:\n\n${wrapUntrusted(
+                  "account data and contacts",
+                  `ACCOUNT DATA:\n${JSON.stringify(strategicContext, null, 2)}\n\nREAL CONTACTS (use these EXACT names):\n${contactList.map((c: any) => `- ${c.name} - ${c.title}`).join('\n')}`
+                )}`
               }
             ]
           });

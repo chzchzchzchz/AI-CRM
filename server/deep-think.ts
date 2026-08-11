@@ -277,12 +277,15 @@ export async function deepThinkSales(params: {
   // Build rich context
   let context = getCompanyContext();
 
+  // Account and contact records carry text this deployment did not author (descriptions
+  // and triggers from enrichment, topics lifted off calls), so they are fenced rather than
+  // pasted — the sales assistant answers questions about them, it does not take orders.
   if (accountData) {
-    context += `\n\nACCOUNT DATA:\n${JSON.stringify(accountData, null, 2)}`;
+    context += `\n\n${wrapUntrusted("account data", accountData)}`;
   }
 
   if (contactData) {
-    context += `\n\nCONTACT DATA:\n${JSON.stringify(contactData, null, 2)}`;
+    context += `\n\n${wrapUntrusted("contact data", contactData)}`;
   }
 
   if (additionalContext) {
