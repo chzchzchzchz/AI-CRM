@@ -144,6 +144,12 @@ export function AccountJudgement({ accountId }: { accountId: number }) {
                 <p className="text-xs leading-relaxed text-foreground">
                   No model was reachable, so this account has facts but no interpretation.
                   The figures below are read directly from your data.
+                  {" "}
+                  <span className="text-ink-muted">
+                    To turn interpretation on, set <code className="font-mono">OPENROUTER_API_KEY</code> in
+                    {" "}<code className="font-mono">.env</code>, or run a local model with
+                    {" "}<code className="font-mono">ollama serve</code>. See SETUP.md.
+                  </span>
                 </p>
               </div>
             )}
