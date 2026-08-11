@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
-import { getCompanyByDomain, getCompanyByIP, enrichAccount, enrichAccountDetailed } from "./sixsense";
+import {
+  getCompanyByIP,
+  enrichAccountDetailed,
+  isSixsenseConfigured,
+} from "./sixsense";
 // Real intent-spike detection, computed from the intentScores time series.
 import { detectIntentSpikes } from "./intel/spikes";
 const detectAndNotifyIntentSpikes = () => detectIntentSpikes();
@@ -99,10 +103,24 @@ export const sixsenseRouter = router({
     )
     .mutation(async ({ input }) => {
       try {
+        // Say so up front rather than looping every account, failing each lookup, and
+        // reporting "Synced 0 accounts, 0 failed" as though the run had succeeded.
+        if (!isSixsenseConfigured()) {
+          return {
+            success: false,
+            message:
+              "6sense is not configured. Set SIXSENSE_API_KEY to enable syncing.",
+            results: { total: 0, synced: 0, failed: 0, skipped: 0 },
+          };
+        }
+
         const db = await getDb();
         if (!db) throw new Error("Database not available");
-        
-        // Get accounts that need syncing (haven't been synced in last 24 hours)
+
+        // `where(eq(accounts.domain, accounts.domain))` used to sit here claiming to
+        // "filter out null domains". It compares the column to itself, so it filters
+        // nothing it intends to — the null check that actually matters is done per-row
+        // below. Select plainly instead of implying a predicate that isn't one.
         const accountsToSync = await db
           .select({
             id: accounts.id,
@@ -111,7 +129,6 @@ export const sixsenseRouter = router({
             lastSixsenseSync: accounts.lastSixsenseSync,
           })
           .from(accounts)
-          .where(eq(accounts.domain, accounts.domain)) // Filter out null domains
           .limit(input.limit);
 
         const results = {
@@ -128,12 +145,18 @@ export const sixsenseRouter = router({
           }
 
           try {
-            const sixsenseData = await enrichAccount(account.domain);
+            // Detailed variant so "no data for this domain" (a genuine miss, worth
+            // skipping) is distinguishable from a revoked key or a network failure
+            // (worth counting as a failure). The plain variant collapsed all of them
+            // into null, so a completely broken run looked like a clean one.
+            const enriched = await enrichAccountDetailed(account.domain);
 
-            if (!sixsenseData) {
-              results.skipped++;
+            if (!enriched.ok) {
+              if (enriched.reason === "no_match") results.skipped++;
+              else results.failed++;
               continue;
             }
+            const sixsenseData = enriched.account;
 
             await db
               .update(accounts)

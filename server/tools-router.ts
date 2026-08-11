@@ -450,12 +450,14 @@ Generate professional, actionable content.`;
 
   generateWebinarContent: protectedProcedure
     .input(z.object({
-      contentAssets: z.string(),
-      speaker1: z.string().optional(),
-      speaker2: z.string().optional(),
-      painPoints: z.string().optional(),
-      styleGuidelines: z.string().optional(),
-      brandContext: z.string().optional(),
+      // Bounded: this is pasted material that goes straight into a prompt, so an
+      // unbounded string is both a cost and an availability problem.
+      contentAssets: z.string().min(1).max(40_000),
+      speaker1: z.string().max(4_000).optional(),
+      speaker2: z.string().max(4_000).optional(),
+      painPoints: z.string().max(4_000).optional(),
+      styleGuidelines: z.string().max(4_000).optional(),
+      brandContext: z.string().max(8_000).optional(),
       contentType: z.enum(['landing', 'email', 'social', 'all']).default('all')
     }))
     .mutation(async ({ input }) => {
@@ -463,8 +465,8 @@ Generate professional, actionable content.`;
       
       const systemPrompt = asRevenueArchitect(`You are a B2B marketing content specialist. Generate compelling webinar promotional content.
 
-${brandContext ? `BRAND CONTEXT:\n${brandContext}\n` : ''}
-${styleGuidelines ? `STYLE GUIDELINES:\n${styleGuidelines}\n` : ''}
+${brandContext ? wrapUntrusted("brand context", brandContext) + "\n" : ''}
+${styleGuidelines ? wrapUntrusted("style guidelines", styleGuidelines) + "\n" : ''}
 
 Generate content that:
 - Speaks directly to IT/Security decision makers
@@ -475,12 +477,11 @@ Generate content that:
 
       const userPrompt = `Generate webinar promotional content based on:
 
-WEBINAR CONTENT:
-${contentAssets}
+${wrapUntrusted("webinar material pasted by the rep", contentAssets)}
 
-${speaker1 ? `SPEAKER 1:\n${speaker1}\n` : ''}
-${speaker2 ? `SPEAKER 2:\n${speaker2}\n` : ''}
-${painPoints ? `TARGET PAIN POINTS:\n${painPoints}\n` : ''}
+${speaker1 ? wrapUntrusted("speaker 1 bio", speaker1) + "\n" : ''}
+${speaker2 ? wrapUntrusted("speaker 2 bio", speaker2) + "\n" : ''}
+${painPoints ? wrapUntrusted("target pain points", painPoints) + "\n" : ''}
 
 Generate the following content types: ${contentType === 'all' ? 'landing page, email sequence, social posts' : contentType}
 
@@ -568,11 +569,26 @@ Format your response as JSON with these keys:
         // JSON.parse of the note yields an object with none of the webinar fields, so
         // the page renders empty headings rather than saying why.
         const { content: messageContent, available } = llmText(response);
-        if (!available) throw new Error(LLM_UNAVAILABLE_NOTE);
-        return JSON.parse(messageContent);
+        if (!available) {
+          // Actionable, not generic. This is a configuration state, not a crash: the old
+          // code threw the reason and then the catch below flattened every failure into
+          // "Failed to generate webinar content", so an unset API key was indistinguishable
+          // from malformed model output and "please try again" was useless advice.
+          throw new Error(
+            "AI is not configured, so webinar content can't be generated. Set OPENROUTER_API_KEY in .env, or run a local model with `ollama serve`. See SETUP.md."
+          );
+        }
+        try {
+          return JSON.parse(messageContent);
+        } catch {
+          throw new Error(
+            "The model returned content that wasn't valid JSON, so it couldn't be turned into webinar assets. Try generating again."
+          );
+        }
       } catch (error) {
         console.error('[WebinarContent] Error:', error);
-        throw new Error('Failed to generate webinar content');
+        // Preserve the specific reason — the caller shows it to the user.
+        throw error instanceof Error ? error : new Error('Failed to generate webinar content');
       }
     }),
 

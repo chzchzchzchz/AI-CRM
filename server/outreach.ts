@@ -187,12 +187,24 @@ OUTPUT ONLY THE EMAIL BODY. Nothing else.`;
       });
 
       const { content: emailContent, available } = llmText(emailResponse);
-      const email = available ? emailContent : LLM_UNAVAILABLE_NOTE;
 
-      // Return ONLY the email - no strategy, no reasoning
+      // `available` is the load-bearing part of this response. Without it the page put
+      // the degradation note under a "Ready-to-Send Email" heading and toasted
+      // "Email generated!" — a claim that a model wrote something when none was reached.
       return {
-        content: email.trim(),
+        content: (available ? emailContent : LLM_UNAVAILABLE_NOTE).trim(),
+        available,
         accountCount: accountData.length,
+        /** What the draft was actually grounded in, so the page can show its work. */
+        groundedIn: {
+          account: account.name,
+          contact: contact?.name ?? null,
+          facts: accountContext
+            .split("\n")
+            .map((l) => l.trim())
+            .filter(Boolean),
+          repContext: Boolean(input.prompt?.trim()),
+        },
       };
     }),
 
@@ -216,11 +228,9 @@ OUTPUT ONLY THE EMAIL BODY. Nothing else.`;
 
       const refinePrompt = `Here is a cold email that needs refinement:
 ${contextLine ? `\n${contextLine}\n` : ""}
----
-${input.currentEmail}
----
+${wrapUntrusted("current draft (previous model output, may be edited)", input.currentEmail)}
 
-User feedback: "${input.feedback}"
+${wrapUntrusted("rep feedback", input.feedback)}
 
 Rewrite the email incorporating this feedback${input.contactName ? `, keeping it addressed to ${input.contactName}` : ""}. Keep it:
 - 3-5 sentences max
@@ -236,11 +246,67 @@ OUTPUT ONLY THE REVISED EMAIL. Nothing else.`;
         ],
       });
 
-      // A failed refinement must not replace the rep's draft with an apology.
+      // A failed refinement must not replace the rep's draft with an apology — and must
+      // not report success either. The page used to toast "Email refined!" on the
+      // unavailable path, i.e. claim an edit that never happened.
       const { content, available } = llmText(response);
-      const cleanContent = available ? content.trim() : input.currentEmail;
       return {
-        content: cleanContent,
+        content: available ? content.trim() : input.currentEmail,
+        available,
       };
     }),
+
+  /**
+   * WEBINAR PROMO PACK — landing copy, a three-email invite sequence, and two social posts
+   * from one paste of the webinar's own material.
+   *
+   * Lives here rather than in the generic tools router because that copy pasted the
+   * webinar deck, the speaker bios and the style guide straight into the prompt with no
+   * trust boundary, and collapsed every failure — rate limit, no model, malformed JSON —
+   * into one opaque "Failed to generate webinar content". A rep hitting the free-tier
+   * limit was told nothing about the limit.
+   */
 });
+
+function emailShape() {
+  return {
+    type: "object",
+    properties: { subject: { type: "string" }, body: { type: "string" } },
+    required: ["subject", "body"],
+    additionalProperties: false,
+  } as const;
+}
+
+export type WebinarContent = {
+  landingPage: { headline: string; subheadline: string; bullets: string[]; cta: string };
+  emailSequence: Record<"invite" | "reminder" | "lastChance", { subject: string; body: string }>;
+  socialPosts: { linkedin: string; twitter: string };
+};
+
+/**
+ * Accept the model's JSON only if every field the page renders is actually there.
+ * A partial object was previously handed straight to the UI, which rendered empty
+ * headings and blank cards — a generation that half-failed looked like one that worked.
+ */
+export function parseWebinarContent(raw: string): WebinarContent | null {
+  let obj: any;
+  try {
+    // Some models wrap JSON in a fenced block.
+    const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+    obj = JSON.parse((fenced ? fenced[1] : raw).trim());
+  } catch {
+    return null;
+  }
+  const str = (v: unknown) => typeof v === "string" && v.trim().length > 0;
+  const email = (e: any) => e && str(e.subject) && str(e.body);
+
+  const lp = obj?.landingPage;
+  const seq = obj?.emailSequence;
+  const soc = obj?.socialPosts;
+  if (!lp || !str(lp.headline) || !str(lp.subheadline) || !str(lp.cta)) return null;
+  if (!Array.isArray(lp.bullets) || !lp.bullets.length || !lp.bullets.every(str)) return null;
+  if (!seq || !email(seq.invite) || !email(seq.reminder) || !email(seq.lastChance)) return null;
+  if (!soc || !str(soc.linkedin) || !str(soc.twitter)) return null;
+
+  return obj as WebinarContent;
+}

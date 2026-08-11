@@ -65,7 +65,13 @@ export default function WebinarGenerator() {
       setGeneratedContent(result);
       toast.success("Content generated successfully!");
     } catch (error) {
-      toast.error("Failed to generate content. Please try again.");
+      // Show the server's actual reason. "Please try again" was wrong advice for the most
+      // common failure here — an unconfigured model, which no amount of retrying fixes.
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Couldn't generate content.";
+      toast.error(message, { duration: 8000 });
       console.error(error);
     } finally {
       setIsGenerating(false);
