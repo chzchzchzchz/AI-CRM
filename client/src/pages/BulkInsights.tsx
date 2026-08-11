@@ -106,6 +106,13 @@ export default function BulkInsights() {
               </div>
             )}
 
+            {generateMutation.isError && (
+              <div className="rounded-sm border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+                <p className="font-semibold mb-1">Generation failed</p>
+                <p>{(generateMutation.error as any)?.message || "An unexpected error occurred."}</p>
+              </div>
+            )}
+
             <div className="bg-muted p-4 rounded-sm space-y-2">
               <p className="text-sm font-medium">How It Works:</p>
               <ul className="text-sm text-muted-foreground space-y-1">
@@ -174,11 +181,19 @@ export default function BulkInsights() {
                   </div>
                 </div>
 
-                <div className="bg-positive border border-positive/30 p-4 rounded-sm">
-                  <p className="text-sm text-positive">
-                    ✅ Insights have been cached and are now available on each account's AI Insights tab. Navigate to any of the processed accounts to view their strategic recommendations.
-                  </p>
-                </div>
+                {results.processed > 0 ? (
+                  <div className="bg-positive border border-positive/30 p-4 rounded-sm">
+                    <p className="text-sm text-positive">
+                      {results.processed} of {results.total} accounts got real insights, now cached on each account's AI Insights tab.
+                      {results.failed > 0 ? ` ${results.failed} failed — see the reasons above.` : ""}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-sm border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+                    <p className="font-semibold mb-1">Nothing was generated</p>
+                    <p>All {results.total} account{results.total === 1 ? "" : "s"} failed — see the reasons above.</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -102,7 +102,14 @@ CRITICAL RULES:
 - Use EXACT employee counts, intent scores, and metrics from data
 - Reference REAL call transcripts if provided
 - NEVER use placeholder names like 'Jennifer Smith' or 'John Doe'
-- If data is missing, state 'Data not available' - do NOT make up information`)
+- If data is missing, state 'Data not available' - do NOT make up information
+- Timelines in "Next Best Actions" must be relative (e.g., "within 1 week", "by end of month")
+  — NEVER invent a specific calendar date. There is no date in the data above, so any
+  date you'd write would be fabricated, and it has been observed landing years in the past.
+- Output ONLY the structure above, starting directly with "## Executive Summary". Do not
+  include any reasoning, planning, chain-of-thought, or tags like <COGNITION_START> before
+  or around it — this text is stored as the account's insight and shown to a sales rep, not
+  a scratchpad.`)
               },
               {
                 role: "user",
@@ -115,12 +122,34 @@ CRITICAL RULES:
           });
 
           const { content: recommendations, available } = llmText(response);
-          const recommendationsText = available ? recommendations : LLM_UNAVAILABLE_NOTE;
+
+          // If the model was unreachable, nothing was actually generated for this
+          // account — caching the "unavailable" note and reporting success would show
+          // a green checkmark for work that never happened. Count it as a failure with
+          // the real reason instead, and leave any prior cached insight untouched.
+          if (!available) {
+            results.push({
+              accountId: account.id,
+              accountName: account.name,
+              success: false,
+              error: LLM_UNAVAILABLE_NOTE
+            });
+            failed++;
+            continue;
+          }
+
+          // Defense in depth for the prompt rule above: some reasoning-style free-tier
+          // models wrap the requested markdown in their own scratchpad (observed live:
+          // <COGNITION_START>...<FINAL_RESPONSE>) despite being told not to. Strip
+          // anything before the actual "## Executive Summary" heading so what gets
+          // cached and shown to a rep is the insight, not the model's internal planning.
+          const summaryIdx = recommendations.search(/##\s*Executive Summary/i);
+          const cleanedRecommendations = summaryIdx > 0 ? recommendations.slice(summaryIdx) : recommendations;
 
           // Store in cache
           const { updateAccount } = await import("./db");
           await updateAccount(account.id, {
-            aiInsightsCache: recommendationsText,
+            aiInsightsCache: cleanedRecommendations,
             aiCacheUpdatedAt: new Date()
           } as any);
 
@@ -128,7 +157,7 @@ CRITICAL RULES:
             accountId: account.id,
             accountName: account.name,
             success: true,
-            insights: recommendationsText
+            insights: cleanedRecommendations
           });
           processed++;
         } catch (error: any) {
