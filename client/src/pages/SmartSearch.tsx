@@ -23,8 +23,13 @@ export default function SmartSearch() {
   const handleSearch = async () => {
     if (!query.trim()) return;
 
-    const result = await searchMutation.mutateAsync({ query });
-    setSearchResults(result);
+    setSearchResults(null);
+    try {
+      const result = await searchMutation.mutateAsync({ query });
+      setSearchResults(result);
+    } catch {
+      // error surfaced below via searchMutation.error / searchMutation.isError
+    }
   };
 
   return (
@@ -128,6 +133,13 @@ export default function SmartSearch() {
               <p className="text-sm text-muted-foreground">
                 No matching records found for that query.
               </p>
+            )}
+
+            {searchMutation.isError && (
+              <div className="rounded-sm border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+                <p className="font-semibold mb-1">Search failed</p>
+                <p>{(searchMutation.error as any)?.message || "An unexpected error occurred."}</p>
+              </div>
             )}
           </CardContent>
         </Card>
