@@ -67,14 +67,14 @@ export default function SixsenseSync() {
                 <div className="text-2xl font-semibold">{syncStatus?.total || 0}</div>
                 <div className="text-sm text-muted-foreground">Total Accounts</div>
               </div>
-              <div className="text-center p-4 bg-positive dark:bg-positive rounded-sm">
-                <div className="text-2xl font-semibold text-positive dark:text-positive">
+              <div className="text-center p-4 bg-positive-subtle rounded-sm">
+                <div className="text-2xl font-semibold text-positive">
                   {syncStatus?.synced || 0}
                 </div>
                 <div className="text-sm text-muted-foreground">Synced</div>
               </div>
-              <div className="text-center p-4 bg-caution dark:bg-caution rounded-sm">
-                <div className="text-2xl font-semibold text-caution dark:text-caution">
+              <div className="text-center p-4 bg-caution-subtle rounded-sm">
+                <div className="text-2xl font-semibold text-caution">
                   {syncStatus?.unsynced || 0}
                 </div>
                 <div className="text-sm text-muted-foreground">Unsynced</div>

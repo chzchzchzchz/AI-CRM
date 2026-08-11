@@ -3,59 +3,44 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, Database, Zap, CheckCircle2, XCircle, Clock } from "lucide-react";
-import { toast } from "sonner";
+import { Loader2, RefreshCw, Database, Zap, CheckCircle2, XCircle, TrendingUp, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function Admin() {
   const { user, loading } = useAuth();
-  const [enriching, setEnriching] = useState(false);
-  const [queueing, setQueueing] = useState(false);
-  const [processing, setProcessing] = useState(false);
+  const [lastSyncResult, setLastSyncResult] = useState<{
+    success: boolean;
+    message: string;
+    results?: { total: number; synced: number; failed: number; skipped: number };
+  } | null>(null);
+  const [lastSpikeResult, setLastSpikeResult] = useState<{ spikesDetected: number } | null>(null);
 
-  // const enrichAccount = trpc.sixsense.enrichAccount.useMutation();
-  // const enrichAll = trpc.sixsense.enrichAllAccounts.useMutation();
-  // const queueJobs = trpc.sixsense.queueEnrichmentJobs.useMutation();
-  // const processQueue = trpc.sixsense.processQueue.useMutation();
+  // Real endpoints only. There is no background job queue anywhere in this codebase
+  // (client or server) — the previous version of this page had "Queue All Jobs" and
+  // "Process Queue" buttons wired to commented-out mutations that just showed a
+  // success toast after a fake delay. Nothing was ever queued or processed.
+  const { data: status, refetch: refetchStatus } = trpc.admin.getSystemStatus.useQuery(
+    undefined,
+    { enabled: user?.role === "admin" }
+  );
+  const { data: syncStatus, refetch: refetchSyncStatus } = trpc.sixsense.getSyncStatus.useQuery(
+    undefined,
+    { enabled: user?.role === "admin" }
+  );
 
-  const handleEnrichAll = async (highPriorityOnly: boolean) => {
-    setEnriching(true);
-    try {
-      // await enrichAll.mutateAsync({ highPriorityOnly });
-      toast.info("Enrich feature temporarily disabled");
-      toast.success(highPriorityOnly ? "High-priority accounts enriched!" : "All accounts enriched!");
-    } catch (error: any) {
-      toast.error(`Enrichment failed: ${error.message}`);
-    } finally {
-      setEnriching(false);
-    }
-  };
+  const syncAll = trpc.sixsense.syncAllAccounts.useMutation({
+    onSuccess: (data) => {
+      setLastSyncResult(data);
+      refetchSyncStatus();
+    },
+    onError: (error) => {
+      setLastSyncResult({ success: false, message: error.message });
+    },
+  });
 
-  const handleQueueJobs = async () => {
-    setQueueing(true);
-    try {
-      // await queueJobs.mutateAsync();
-      toast.info("Queue feature temporarily disabled");
-      toast.success("Enrichment jobs queued!");
-    } catch (error: any) {
-      toast.error(`Queue failed: ${error.message}`);
-    } finally {
-      setQueueing(false);
-    }
-  };
-
-  const handleProcessQueue = async () => {
-    setProcessing(true);
-    try {
-      // await processQueue.mutateAsync({ limit: 20 });
-      toast.info("Process queue feature temporarily disabled");
-      toast.success("Queue processed!");
-    } catch (error: any) {
-      toast.error(`Processing failed: ${error.message}`);
-    } finally {
-      setProcessing(false);
-    }
-  };
+  const detectSpikes = trpc.sixsense.detectIntentSpikes.useMutation({
+    onSuccess: (data) => setLastSpikeResult({ spikesDetected: data.spikesDetected }),
+  });
 
   // Admin access control
   if (loading) {
@@ -91,7 +76,7 @@ export default function Admin() {
       <div className="container py-1 space-y-5 max-w-6xl mx-auto">
         <div>
           <h1 className="text-xl font-semibold text-foreground mb-2">Admin Panel</h1>
-          <p className="text-ink-muted">Manage data enrichment, background jobs, and system health</p>
+          <p className="text-ink-muted">Manage data enrichment and system health</p>
         </div>
 
         {/* 6sense Enrichment */}
@@ -100,126 +85,134 @@ export default function Admin() {
             <div className="flex flex-wrap items-center gap-3">
               <Database className="size-5 shrink-0 text-ink-faint" />
               <div>
-                <CardTitle>6sense Live Enrichment</CardTitle>
-                <CardDescription>Pull fresh intent data, keywords, and campaigns from 6sense API</CardDescription>
+                <CardTitle>6sense Bulk Enrichment</CardTitle>
+                <CardDescription>
+                  Pull intent scores, buying stages, and firmographics from the 6sense
+                  Company Identification API for accounts that have a domain.
+                </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 [&>*]:min-w-0">
+              <div className="text-center p-2 sm:p-3 bg-muted rounded-sm">
+                <div className="text-xl sm:text-2xl font-semibold tabular-nums">{syncStatus?.total ?? 0}</div>
+                <div className="text-2xs sm:text-xs text-ink-muted truncate">Total accounts</div>
+              </div>
+              <div className="text-center p-2 sm:p-3 bg-muted rounded-sm">
+                <div className="text-xl sm:text-2xl font-semibold tabular-nums text-positive">{syncStatus?.synced ?? 0}</div>
+                <div className="text-2xs sm:text-xs text-ink-muted truncate">Synced</div>
+              </div>
+              <div className="text-center p-2 sm:p-3 bg-muted rounded-sm">
+                <div className="text-xl sm:text-2xl font-semibold tabular-nums text-caution">{syncStatus?.unsynced ?? 0}</div>
+                <div className="text-2xs sm:text-xs text-ink-muted truncate">Unsynced</div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Button
-                onClick={() => handleEnrichAll(true)}
-                disabled={enriching}
+                onClick={() => syncAll.mutate({ limit: 50 })}
+                disabled={syncAll.isPending}
                 className="h-auto py-4 flex-col items-start gap-2"
                 variant="outline"
               >
-                {enriching ? (
+                {syncAll.isPending ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <Zap className="h-5 w-5 text-caution" />
                 )}
                 <div className="text-left">
-                  <div className="font-semibold">Enrich High-Priority Accounts</div>
+                  <div className="font-semibold">Sync next 50 accounts</div>
                   <div className="text-xs text-muted-foreground font-normal">
-                    Intent score ≥ 50 (faster, recommended)
+                    Faster — good for a spot check
                   </div>
                 </div>
               </Button>
 
               <Button
-                onClick={() => handleEnrichAll(false)}
-                disabled={enriching}
+                onClick={() => syncAll.mutate({ limit: 200 })}
+                disabled={syncAll.isPending}
                 className="h-auto py-4 flex-col items-start gap-2"
                 variant="outline"
               >
-                {enriching ? (
+                {syncAll.isPending ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <RefreshCw className="h-5 w-5 text-accent" />
                 )}
                 <div className="text-left">
-                  <div className="font-semibold">Enrich All Accounts</div>
+                  <div className="font-semibold">Sync next 200 accounts</div>
                   <div className="text-xs text-muted-foreground font-normal">
-                    All 777 accounts (slower, ~6-7 minutes)
+                    Rate-limited to 100ms between requests
                   </div>
                 </div>
               </Button>
             </div>
 
-            <div className="p-4 bg-accent rounded-sm border border-accent/30">
-              <h4 className="font-semibold text-sm text-accent mb-2">What gets enriched:</h4>
-              <ul className="text-sm text-accent space-y-1">
-                <li>• Intent scores (with spike detection)</li>
-                <li>• Buying stage changes</li>
-                <li>• Keyword research & trending topics</li>
-                <li>• Campaign engagement data</li>
-                <li>• Change tracking & audit logs</li>
+            {lastSyncResult && (
+              <div
+                className={
+                  lastSyncResult.success
+                    ? "p-3 rounded-sm border border-positive/30 bg-positive-subtle text-sm"
+                    : "p-3 rounded-sm border border-critical/30 bg-critical-subtle text-sm text-critical"
+                }
+              >
+                <div className="font-medium">{lastSyncResult.message}</div>
+                {lastSyncResult.results && (
+                  <div className="mt-1 text-xs text-ink-muted">
+                    {lastSyncResult.results.synced} synced · {lastSyncResult.results.failed} failed ·{" "}
+                    {lastSyncResult.results.skipped} skipped (no domain / no match)
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="p-4 bg-muted rounded-sm border border-border-strong">
+              <h4 className="font-semibold text-sm text-foreground mb-2">What gets enriched:</h4>
+              <ul className="text-sm text-ink-muted space-y-1">
+                <li>• Intent scores</li>
+                <li>• Buying stage</li>
+                <li>• Firmographics (industry, employee count, revenue, region)</li>
+                <li>• 6sense segments</li>
               </ul>
             </div>
           </CardContent>
         </Card>
 
-        {/* Background Job Queue */}
+        {/* Intent Spike Detection */}
         <Card className="border-accent/30 shadow-lg">
           <CardHeader>
             <div className="flex flex-wrap items-center gap-3">
-              <Clock className="size-5 shrink-0 text-ink-faint" />
+              <TrendingUp className="size-5 shrink-0 text-ink-faint" />
               <div>
-                <CardTitle>Background Job Queue</CardTitle>
-                <CardDescription>Schedule and process enrichment jobs asynchronously</CardDescription>
+                <CardTitle>Intent Spike Detection</CardTitle>
+                <CardDescription>
+                  Scan the accounts you just synced for a 20+ point jump in intent score.
+                  Runs on a schedule too — this triggers it now.
+                </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Button
-                onClick={handleQueueJobs}
-                disabled={queueing}
-                className="h-auto py-4 flex-col items-start gap-2"
-                variant="outline"
-              >
-                {queueing ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="h-5 w-5 text-positive" />
-                )}
-                <div className="text-left">
-                  <div className="font-semibold">Queue All Jobs</div>
-                  <div className="text-xs text-muted-foreground font-normal">
-                    Add all accounts to enrichment queue
-                  </div>
-                </div>
-              </Button>
-
-              <Button
-                onClick={handleProcessQueue}
-                disabled={processing}
-                className="h-auto py-4 flex-col items-start gap-2"
-                variant="outline"
-              >
-                {processing ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Zap className="h-5 w-5 text-accent" />
-                )}
-                <div className="text-left">
-                  <div className="font-semibold">Process Queue (20 jobs)</div>
-                  <div className="text-xs text-muted-foreground font-normal">
-                    Run next 20 pending jobs
-                  </div>
-                </div>
-              </Button>
-            </div>
-
-            <div className="p-4 bg-accent rounded-sm border border-accent/30">
-              <h4 className="font-semibold text-sm text-accent mb-2">How it works:</h4>
-              <ul className="text-sm text-accent space-y-1">
-                <li>• Jobs are prioritized by intent score (high intent = higher priority)</li>
-                <li>• Rate-limited to 500ms between requests (avoid API throttling)</li>
-                <li>• Failed jobs are retried with exponential backoff</li>
-                <li>• Results stored in database with full audit trail</li>
-              </ul>
-            </div>
+            <Button
+              onClick={() => detectSpikes.mutate()}
+              disabled={detectSpikes.isPending}
+              variant="outline"
+            >
+              {detectSpikes.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <TrendingUp className="h-4 w-4 mr-2" />
+              )}
+              Detect intent spikes now
+            </Button>
+            {lastSpikeResult && (
+              <p className="text-sm text-ink-muted">
+                {lastSpikeResult.spikesDetected > 0
+                  ? `${lastSpikeResult.spikesDetected} intent spike${lastSpikeResult.spikesDetected === 1 ? "" : "s"} detected.`
+                  : "No spikes — nothing moved enough to flag."}
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -227,37 +220,70 @@ export default function Admin() {
         <Card className="border-border shadow-lg">
           <CardHeader>
             <CardTitle>System Status</CardTitle>
-            <CardDescription>Current enrichment and data quality metrics</CardDescription>
+            <CardDescription>Live configuration and data-quality checks</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-positive rounded-sm border border-positive/30">
+              <div
+                className={
+                  status?.sixsenseConfigured
+                    ? "p-4 bg-positive-subtle rounded-sm border border-positive/30"
+                    : "p-4 bg-caution-subtle rounded-sm border border-caution/30"
+                }
+              >
                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <CheckCircle2 className="h-5 w-5 text-positive" />
-                  <span className="font-semibold text-positive">6sense API</span>
+                  {status?.sixsenseConfigured ? (
+                    <CheckCircle2 className="h-5 w-5 text-positive" />
+                  ) : (
+                    <AlertTriangle className="h-5 w-5 text-caution" />
+                  )}
+                  <span className="font-semibold text-foreground">6sense API</span>
                 </div>
-                <Badge variant="outline" className="bg-positive text-positive border-positive/30">
-                  Connected
+                <Badge
+                  variant="outline"
+                  className={
+                    status?.sixsenseConfigured
+                      ? "bg-positive-subtle text-positive border-positive/30"
+                      : "bg-caution-subtle text-caution border-caution/30"
+                  }
+                >
+                  {status === undefined ? "Checking…" : status.sixsenseConfigured ? "Configured" : "Not configured"}
+                </Badge>
+                {status && !status.sixsenseConfigured && (
+                  <p className="mt-2 text-2xs text-ink-muted">Set SIXSENSE_API_KEY to enable syncing.</p>
+                )}
+              </div>
+
+              <div
+                className={
+                  status?.databaseHealthy
+                    ? "p-4 bg-positive-subtle rounded-sm border border-positive/30"
+                    : "p-4 bg-critical-subtle rounded-sm border border-critical/30"
+                }
+              >
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <Database className={status?.databaseHealthy ? "h-5 w-5 text-positive" : "h-5 w-5 text-critical"} />
+                  <span className="font-semibold text-foreground">Database</span>
+                </div>
+                <Badge
+                  variant="outline"
+                  className={
+                    status?.databaseHealthy
+                      ? "bg-positive-subtle text-positive border-positive/30"
+                      : "bg-critical-subtle text-critical border-critical/30"
+                  }
+                >
+                  {status === undefined ? "Checking…" : status.databaseHealthy ? "Healthy" : "Unavailable"}
                 </Badge>
               </div>
 
-              <div className="p-4 bg-accent rounded-sm border border-accent/30">
+              <div className="p-4 bg-muted rounded-sm border border-border-strong">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <Database className="h-5 w-5 text-accent" />
-                  <span className="font-semibold text-accent">Database</span>
+                  <RefreshCw className="h-5 w-5 text-ink-faint" />
+                  <span className="font-semibold text-foreground">6sense sync coverage</span>
                 </div>
-                <Badge variant="outline" className="bg-accent text-accent border-accent/30">
-                  Healthy
-                </Badge>
-              </div>
-
-              <div className="p-4 bg-accent rounded-sm border border-accent/30">
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <Clock className="h-5 w-5 text-accent" />
-                  <span className="font-semibold text-accent">Job Queue</span>
-                </div>
-                <Badge variant="outline" className="bg-accent text-accent border-accent/30">
-                  Ready
+                <Badge variant="outline" className="border-border-strong">
+                  {syncStatus ? `${syncStatus.synced} / ${syncStatus.total} synced` : "Loading…"}
                 </Badge>
               </div>
             </div>

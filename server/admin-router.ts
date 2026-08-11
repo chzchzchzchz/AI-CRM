@@ -4,8 +4,23 @@ import { users, accessRequests } from "../drizzle/schema";
 import { getDb } from "./db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import { isSixsenseConfigured } from "./sixsense";
 
 export const adminRouter = router({
+  // Real configuration/health check — the Admin page used to hardcode "6sense API:
+  // Connected" and "Database: Healthy" regardless of whether either was true. This
+  // reports what is actually true right now.
+  getSystemStatus: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user?.role !== "admin") {
+      throw new Error("Admin access required");
+    }
+    const db = await getDb();
+    return {
+      sixsenseConfigured: isSixsenseConfigured(),
+      databaseHealthy: !!db,
+    };
+  }),
+
   getPendingRequests: protectedProcedure.query(async ({ ctx }) => {
     if (ctx.user?.role !== "admin") {
       throw new Error("Admin access required");
