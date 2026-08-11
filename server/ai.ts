@@ -125,22 +125,33 @@ Focus on:
  * Analyze Gong call and extract insights
  */
 export async function analyzeGongCall(callData: any): Promise<any> {
+  // We do not store full transcript text for Gong calls — only metadata (title,
+  // duration, sentiment, and topics/action items already extracted at ingest time).
+  // Telling the model this is a "transcript" invites it to invent specifics (named
+  // competitors, objections, buying signals) that were never actually said on the
+  // call. Be explicit about what's real so the model elaborates on the given data
+  // instead of fabricating detail to fill required fields.
   const prompt = `${getCompanyContext()}
 
-Analyze this sales call transcript and extract key insights:
+Below is METADATA for a sales call — NOT the full transcript. No transcript text is
+available. The metadata includes the call title, duration, sentiment, and topics/action
+items that were already extracted from the call.
 
-CALL DATA:
-${wrapUntrusted("call transcript data", callData)}
+CALL METADATA:
+${wrapUntrusted("call metadata", callData)}
 
-Provide a JSON response with:
-1. summary: Brief call summary (2-3 sentences)
-2. keyTopics: Array of main topics discussed
-3. objections: Array of objections or concerns raised
-4. nextSteps: Array of agreed next steps
-5. sentiment: Overall sentiment (positive/neutral/negative)
-6. buyingSignals: Array of buying signals detected
-7. competitorsMentioned: Array of competitors mentioned
-8. actionItems: Array of specific action items for the rep
+Using ONLY the metadata given above, provide a JSON response with:
+1. summary: Brief summary of the call based on the metadata (2-3 sentences)
+2. keyTopics: Array of main topics — reuse/refine the topics already present in the metadata
+3. objections: Array of objections or concerns — ONLY if evidenced by the metadata, otherwise an empty array
+4. nextSteps: Array of agreed next steps — reuse/refine the action items already present in the metadata
+5. sentiment: Overall sentiment (positive/neutral/negative) — use the sentiment field if present
+6. buyingSignals: Array of buying signals — ONLY if evidenced by the metadata, otherwise an empty array
+7. competitorsMentioned: Array of competitors — ONLY if a competitor is explicitly named in the metadata, otherwise an empty array. Do NOT guess or name typical competitors that are not actually present in the data.
+8. actionItems: Array of specific action items for the rep — reuse/refine the action items already present in the metadata
+
+Do not invent details that are not present in the metadata above. If information for a
+field isn't in the data, return an empty array rather than a plausible-sounding guess.
 `;
 
   const response = await invokeLLM({

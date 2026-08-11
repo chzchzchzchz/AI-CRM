@@ -271,7 +271,7 @@ export default function Calls() {
                         onClick={() => toggleExpanded(call.id)}
                         className="mt-2 w-full justify-between text-xs text-ink-muted hover:bg-muted hover:text-foreground"
                       >
-                        <span>View Transcript</span>
+                        <span>Transcript link</span>
                         {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                       </Button>
                     )}
@@ -289,8 +289,18 @@ export default function Calls() {
                     )}
 
                     {isExpanded && call.transcriptUrl && (
-                      <div className="mt-2 p-3 rounded-sm bg-muted text-xs text-ink-muted whitespace-pre-wrap max-h-64 overflow-y-auto">
-                        {call.transcriptUrl}
+                      <div className="mt-2 p-3 rounded-sm bg-muted text-xs text-ink-muted">
+                        {/* We only store the Gong link, not transcript text — say that plainly
+                            rather than dressing a URL up as a transcript. */}
+                        <p className="mb-1">No transcript text is stored locally for this call. Open it on Gong:</p>
+                        <a
+                          href={call.transcriptUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-accent hover:underline break-all"
+                        >
+                          {call.transcriptUrl}
+                        </a>
                       </div>
                     )}
                   </CardContent>
