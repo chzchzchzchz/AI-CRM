@@ -273,7 +273,62 @@ pending.forEach((acc, idx) => {
 });
 
 // ---- write -------------------------------------------------------------------------
-const out = { ...base, accounts, contacts, calls, opportunities, intentScores };
+// ---- RFPs ---------------------------------------------------------------------------
+// The RFP feature is real (it pulls from SAM.gov and stores here), but it shipped with an
+// empty table, so anyone opening the page without a federal API key saw a blank screen and
+// reasonably concluded the feature was broken. Seed a small, plausible set — public-sector
+// solicitations skew to a handful of agencies and a long tail of IT modernisation work.
+const AGENCIES = [
+  "General Services Administration", "Department of Veterans Affairs",
+  "Department of Homeland Security", "Department of Health and Human Services",
+  "Department of Defense", "Department of Energy", "NASA",
+  "Department of Transportation", "Small Business Administration",
+  "Environmental Protection Agency",
+];
+const RFP_SUBJECTS = [
+  "Customer Relationship Management Platform Modernization",
+  "Enterprise Sales Analytics and Reporting Services",
+  "Cloud Data Warehouse Migration Support",
+  "Identity and Access Management Modernization",
+  "Contact Center Analytics Platform",
+  "Zero Trust Architecture Implementation Services",
+  "Enterprise Data Integration and Governance",
+  "Constituent Engagement Platform",
+  "Revenue Operations Software and Support",
+  "Business Intelligence Modernization Initiative",
+  "Secure Collaboration Platform Licensing",
+  "Workforce Analytics and Planning System",
+];
+const RFP_STATUS = [["open", 62], ["closed", 24], ["awarded", 14]];
+
+const rfps = [];
+const rfpCount = 24;
+for (let i = 0; i < rfpCount; i++) {
+  const agency = pick(AGENCIES);
+  const posted = randInt(5, 180);                 // days ago
+  const deadline = posted - randInt(20, 90);      // may be in the past → closed
+  const status = deadline > 0 ? "open" : weighted(RFP_STATUS);
+  // Most solicitations aren't tied to an account we track; a few are.
+  const linked = chance(0.3) ? pick(accounts).id : null;
+  rfps.push({
+    id: i + 1,
+    accountId: linked,
+    title: `${pick(RFP_SUBJECTS)}`,
+    description: `${agency} is seeking qualified vendors for ${pick(RFP_SUBJECTS).toLowerCase()}. Responses must address technical approach, past performance, and pricing.`,
+    agency,
+    solicitationNumber: `${["GS", "VA", "HS", "HHS", "DOD"][randInt(0, 4)]}-${randInt(20, 26)}-R-${randInt(1000, 9999)}`,
+    postedDate: iso(posted),
+    responseDeadline: iso(deadline),
+    awardAmount: chance(0.55) ? String(randInt(150, 9800) * 1000) : null,
+    samGovId: `sam_${randInt(100000, 999999)}_${i}`,
+    url: `https://sam.gov/opp/${randInt(100000, 999999).toString(16)}/view`,
+    status,
+    createdAt: iso(posted),
+    updatedAt: iso(randInt(0, 5)),
+  });
+}
+
+const out = { ...base, accounts, contacts, calls, opportunities, intentScores, rfps };
 // trim internal fields
 out.accounts.forEach((a) => { delete a._has6sense; });
 fs.writeFileSync(seedPath, JSON.stringify(out, null, 1));

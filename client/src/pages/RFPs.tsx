@@ -15,6 +15,20 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { AddRfpDialog } from "@/components/AddRfpDialog";
 
+/**
+ * awardAmount is a free-text column: SAM.gov leaves it null, and the Add-RFP form accepts
+ * whatever a user types. The previous render called .toLocaleString() on it and prefixed a
+ * "$" — but String.prototype.toLocaleString returns the string unchanged, so "8504000"
+ * displayed as $8504000, and a value that already carried a currency symbol rendered as
+ * "$$8,504,000". Parse when it's a number, pass through when it isn't.
+ */
+function formatAward(raw: string): string {
+  const digits = String(raw).replace(/[^0-9.]/g, "");
+  const n = Number(digits);
+  if (!digits || !Number.isFinite(n) || n === 0) return String(raw);
+  return `$${n.toLocaleString("en-US")}`;
+}
+
 export default function RFPs() {
   const utils = trpc.useUtils();
   const [searchQuery, setSearchQuery] = useState("");
@@ -229,7 +243,7 @@ export default function RFPs() {
                           {rfp.awardAmount && (
                             <span className="flex flex-wrap items-center gap-1">
                               <DollarSign className="h-4 w-4" />
-                              ${rfp.awardAmount.toLocaleString()}
+                              {formatAward(rfp.awardAmount)}
                             </span>
                           )}
                         </div>
