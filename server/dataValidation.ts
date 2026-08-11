@@ -34,9 +34,52 @@ export interface ValidationCache {
 }
 
 /**
- * Search the web for verification data using direct HTTP scraping
+ * Sentinel returned by searchWeb when the scrape produced nothing usable — no snippet
+ * text and no domains beyond the search engine's own chrome (support pages, consent
+ * links, etc). Callers must treat this as "we don't know", never as "we checked and
+ * it's wrong": Google's result markup changes without notice (it did — the old
+ * `BNeawe`-class snippet regex now matches zero results, silently), and on a break
+ * like that the domain regex still "succeeds" by picking up google.com/support.google.com
+ * links from the page's own furniture. Handing that to the model as "evidence" gets a
+ * confident, fabricated verdict against real, correct data — the exact failure mode
+ * the product's "every number is real and shows its work" promise exists to prevent.
+ */
+export const NO_SEARCH_EVIDENCE = "NO_SEARCH_EVIDENCE";
+
+/**
+ * Tracks how many searchWeb() calls came back empty during the current validation run,
+ * so a caller can tell "checked and found clean" apart from "couldn't check" — the
+ * latter must never render as "passed verification". Module-level rather than threaded
+ * through every function signature: this app runs one bulk validation at a time, so the
+ * simplicity is worth the (accepted) risk of cross-contamination between two concurrent
+ * validation runs, which nothing in this UI currently allows a single user to trigger.
+ * JS's single-threaded execution means the increments themselves are never racy.
+ */
+export const searchEvidenceStats = { checked: 0, noEvidence: 0 };
+export function resetSearchEvidenceStats(): void {
+  searchEvidenceStats.checked = 0;
+  searchEvidenceStats.noEvidence = 0;
+}
+
+// Domains that can show up in a scraped results page without being an actual result —
+// the search engine's own chrome, consent screens, and support pages.
+const SEARCH_ENGINE_OWN_DOMAINS = new Set([
+  "google.com", "www.google.com", "support.google.com", "accounts.google.com",
+  "policies.google.com", "consent.google.com", "duckduckgo.com", "html.duckduckgo.com",
+]);
+
+/**
+ * Search the web for verification data using direct HTTP scraping.
+ *
+ * No search API key is configured for this app, so this scrapes a public search
+ * results page. That's inherently fragile — the target site can change its markup,
+ * rate-limit, or serve a JS-rendered shell with no static content — so the result is
+ * always checked for usable evidence before being trusted. When there isn't any, this
+ * returns NO_SEARCH_EVIDENCE rather than an empty-looking string that a caller might
+ * mistake for "checked, found nothing wrong."
  */
 async function searchWeb(query: string): Promise<string> {
+  searchEvidenceStats.checked++;
   try {
     // Use Google search HTML scraping (no API key needed)
     const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=5`;
@@ -45,34 +88,38 @@ async function searchWeb(query: string): Promise<string> {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       }
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    
+
     const html = await response.text();
-    
+
     // Extract search result snippets using regex
     const snippetRegex = /<div class="[^"]*BNeawe[^"]*"[^>]*>([^<]+)<\/div>/g;
     const snippets: string[] = [];
     let match;
-    
+
     while ((match = snippetRegex.exec(html)) !== null && snippets.length < 10) {
       const text = match[1].trim();
       if (text.length > 20 && !snippets.includes(text)) {
         snippets.push(text);
       }
     }
-    
-    // Also try to extract domain mentions
+
+    // Also try to extract domain mentions — excluding the search engine's own domains,
+    // which show up on every page regardless of query and are not a "result".
     const domainRegex = /https?:\/\/([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
     const domains = new Set<string>();
     let domainMatch;
-    
+
     while ((domainMatch = domainRegex.exec(html)) !== null && domains.size < 5) {
-      domains.add(domainMatch[1]);
+      const domain = domainMatch[1].toLowerCase();
+      if (!SEARCH_ENGINE_OWN_DOMAINS.has(domain)) {
+        domains.add(domainMatch[1]);
+      }
     }
-    
+
     let results = '';
     if (snippets.length > 0) {
       results += 'Search snippets:\n' + snippets.join('\n') + '\n\n';
@@ -80,12 +127,13 @@ async function searchWeb(query: string): Promise<string> {
     if (domains.size > 0) {
       results += 'Found domains: ' + Array.from(domains).join(', ');
     }
-    
-    return results || 'No results found';
+
+    if (!results) searchEvidenceStats.noEvidence++;
+    return results || NO_SEARCH_EVIDENCE;
   } catch (error) {
     console.error('Web search failed:', error);
-    // Fallback: Just check if domain resolves
-    return `Search unavailable. Domain check needed.`;
+    searchEvidenceStats.noEvidence++;
+    return NO_SEARCH_EVIDENCE;
   }
 }
 
@@ -100,6 +148,11 @@ async function verifyCompanyDomain(companyName: string, domain: string | null): 
   // Search for "CompanyName official website"
   const searchQuery = `${companyName} official website domain`;
   const searchResults = await searchWeb(searchQuery);
+
+  // No real evidence to reason from — asking the model to render a verdict here would
+  // just be guessing dressed up as verification. Say nothing rather than say something
+  // false with a confident-looking percentage attached.
+  if (searchResults === NO_SEARCH_EVIDENCE) return null;
 
   // Use AI to analyze if search results confirm the domain match
   const prompt = `You are verifying if a company name matches its domain.
@@ -186,6 +239,8 @@ async function verifyEmployeeCount(companyName: string, claimedCount: number | n
   const searchQuery = `${companyName} number of employees 2024`;
   const searchResults = await searchWeb(searchQuery);
 
+  if (searchResults === NO_SEARCH_EVIDENCE) return null;
+
   const prompt = `You are verifying employee count data.
 
 Company: ${companyName}
@@ -271,6 +326,8 @@ async function verifyContactEmployment(
   // Search for contact at company
   const searchQuery = `"${contactName}" ${title || ''} ${companyName} LinkedIn`;
   const searchResults = await searchWeb(searchQuery);
+
+  if (searchResults === NO_SEARCH_EVIDENCE) return null;
 
   const prompt = `You are verifying if a contact works at a company.
 

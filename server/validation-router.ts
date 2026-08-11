@@ -6,6 +6,8 @@ import {
   validateAllAccounts,
   validateAllContacts,
   getValidationSummary,
+  resetSearchEvidenceStats,
+  searchEvidenceStats,
   ValidationIssue
 } from "./dataValidation";
 import { getAccountById, getAllAccounts, getAllPeople } from "./db";
@@ -97,8 +99,9 @@ export const validationRouter = router({
       limit: z.number().default(20).optional()
     }))
     .mutation(async ({ input }) => {
+      resetSearchEvidenceStats();
       const issues = await validateAllAccounts(input.limit || 20);
-      
+
       // Group issues by account
       const issuesByAccount = issues.reduce((acc, issue) => {
         if (!acc[issue.entityId]) {
@@ -107,12 +110,18 @@ export const validationRouter = router({
         acc[issue.entityId].push(issue);
         return acc;
       }, {} as Record<number, ValidationIssue[]>);
-      
+
       return {
         totalIssues: issues.length,
         accountsWithIssues: Object.keys(issuesByAccount).length,
         issuesByAccount,
-        allIssues: issues
+        allIssues: issues,
+        // Web search is a best-effort scrape with no API key behind it — when it comes
+        // back empty, the check is skipped rather than reported as clean (see
+        // NO_SEARCH_EVIDENCE in dataValidation.ts). Surface that so "0 issues" can be
+        // told apart from "nothing could actually be checked".
+        searchChecksAttempted: searchEvidenceStats.checked,
+        searchChecksUnavailable: searchEvidenceStats.noEvidence,
       };
     }),
 
@@ -124,8 +133,9 @@ export const validationRouter = router({
       limit: z.number().default(30).optional()
     }))
     .mutation(async ({ input }) => {
+      resetSearchEvidenceStats();
       const issues = await validateAllContacts(input.limit || 30);
-      
+
       // Group issues by contact
       const issuesByContact = issues.reduce((acc, issue) => {
         if (!acc[issue.entityId]) {
@@ -134,12 +144,14 @@ export const validationRouter = router({
         acc[issue.entityId].push(issue);
         return acc;
       }, {} as Record<number, ValidationIssue[]>);
-      
+
       return {
         totalIssues: issues.length,
         contactsWithIssues: Object.keys(issuesByContact).length,
         issuesByContact,
-        allIssues: issues
+        allIssues: issues,
+        searchChecksAttempted: searchEvidenceStats.checked,
+        searchChecksUnavailable: searchEvidenceStats.noEvidence,
       };
     }),
 
@@ -148,13 +160,14 @@ export const validationRouter = router({
    */
   validateAllAccountsBulk: protectedProcedure
     .mutation(async () => {
+      resetSearchEvidenceStats();
       const accounts = await getAllAccounts();
       const totalAccounts = accounts.length;
-      
+
       // Process in batches of 50 to avoid timeout
       const batchSize = 50;
       const allIssues: ValidationIssue[] = [];
-      
+
       for (let i = 0; i < totalAccounts; i += batchSize) {
         const batch = accounts.slice(i, i + batchSize);
         const batchIssues = await Promise.all(
@@ -162,13 +175,18 @@ export const validationRouter = router({
         );
         allIssues.push(...batchIssues.flat());
       }
-      
+
       return {
         totalAccounts,
         totalIssues: allIssues.length,
         criticalIssues: allIssues.filter(i => i.severity === 'critical').length,
         warningIssues: allIssues.filter(i => i.severity === 'warning').length,
-        issues: allIssues
+        // Named to match validateAccounts/validateContacts' shape — the results panel
+        // renders whichever of the three mutations last ran, and used to crash on this
+        // one specifically: it returned `issues` while the panel always read `allIssues`.
+        allIssues,
+        searchChecksAttempted: searchEvidenceStats.checked,
+        searchChecksUnavailable: searchEvidenceStats.noEvidence,
       };
     }),
 

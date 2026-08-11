@@ -146,8 +146,10 @@ export default function DataValidation() {
           <h2 className="text-xl font-semibold text-foreground mb-2">Deep verification</h2>
           <p className="text-sm text-ink-muted mb-4">
             The checks above find what's <em>missing</em>. This finds what's <em>wrong</em>:
-            DuckDuckGo search plus AI analysis, confirming company domains, employee counts,
-            and whether a contact still works where the record says they do.
+            a web search plus AI analysis, confirming company domains, employee counts,
+            and whether a contact still works where the record says they do. No search API
+            key is configured, so this scrapes public search results — when a scrape comes
+            back empty, that record is skipped rather than reported as clean.
           </p>
           <div className="space-y-4">
             <div className="flex flex-wrap gap-4">
@@ -252,11 +254,32 @@ export default function DataValidation() {
               </Badge>
             </div>
 
+            {/* Web search is a best-effort scrape with no API key behind it. When a scrape
+                comes back empty, the check is skipped rather than counted as "passed" — so
+                a 0-issues result with unavailable searches means "couldn't verify", not
+                "verified clean", and the panel below must say which one happened. */}
+            {typeof validationResults.searchChecksUnavailable === "number" &&
+              validationResults.searchChecksUnavailable > 0 && (
+                <div className="mb-4 flex items-start gap-2 rounded-sm border border-caution/30 bg-caution-subtle p-3 text-sm text-foreground">
+                  <AlertTriangle className="h-4 w-4 text-caution shrink-0 mt-0.5" />
+                  <span>
+                    Web search returned no usable results for{" "}
+                    <span className="tabular-nums font-medium">{validationResults.searchChecksUnavailable}</span> of{" "}
+                    <span className="tabular-nums font-medium">{validationResults.searchChecksAttempted}</span> checks —
+                    those records were skipped, not confirmed clean.
+                  </span>
+                </div>
+              )}
+
             {validationResults.totalIssues === 0 ? (
               <div className="text-center py-8 text-ink-muted">
                 <CheckCircle className="h-12 w-12 mx-auto mb-3 text-positive" />
                 <p className="font-medium text-foreground">No issues found</p>
-                <p className="text-sm">All validated data passed verification checks.</p>
+                <p className="text-sm">
+                  {validationResults.searchChecksUnavailable > 0
+                    ? "No issues in what could be checked — some records were skipped because web search returned nothing usable (see above)."
+                    : "All validated data passed verification checks."}
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -311,7 +334,7 @@ export default function DataValidation() {
           <Card className="bg-card border-border shadow-none p-6">
             <h3 className="font-semibold text-foreground mb-3">How It Works</h3>
             <ul className="text-sm text-ink-muted space-y-2">
-              <li>• <strong className="text-foreground">Web Search Verification:</strong> Uses DuckDuckGo to search for company info, LinkedIn profiles, employee counts</li>
+              <li>• <strong className="text-foreground">Web Search Verification:</strong> Scrapes public search results for company info, LinkedIn profiles, employee counts — no search API key is configured, so a scrape that comes back empty is skipped, not reported as passing</li>
               <li>• <strong className="text-foreground">AI Analysis:</strong> AI analyzes search results to determine if data is accurate</li>
               <li>• <strong className="text-foreground">Domain Matching:</strong> Verifies company names match their domains</li>
               <li>• <strong className="text-foreground">Employment Verification:</strong> Checks if contacts actually work at assigned companies</li>
