@@ -16,6 +16,39 @@ import { getDb } from "./db";
 import { transcriptReports } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
 
+// Mirrors the json_schema passed to invokeLLM for analyzeTranscript. Free-tier fallback
+// models don't always honor response_format, so the parsed JSON is validated against this
+// before being trusted — see the comment at the analyzeTranscript call site.
+const TranscriptAnalysisSchema = z.object({
+  aboutProspect: z.object({
+    jobTitle: z.string(),
+    industry: z.string(),
+    companyName: z.string(),
+    aiToolsUsed: z.object({
+      enterprise: z.array(z.string()),
+      other: z.array(z.string()),
+    }),
+    aiUsageContext: z.string(),
+  }),
+  topRisks: z.array(z.string()),
+  topChallenges: z.array(z.string()),
+  currentSecurityStack: z.object({
+    toolsUsed: z.array(z.string()),
+    toolsConsidered: z.array(z.string()),
+  }),
+  budgetTimelinePriority: z.string(),
+  urgencyDrivers: z.string(),
+  feedbackPoints: z.array(z.string()),
+  betaInterest: z.object({
+    interestLevel: z.string(),
+    apprehensions: z.string(),
+    interestQuote: z.string(),
+  }),
+  topQuotes: z.array(z.string()),
+  additionalInsights: z.array(z.string()),
+  nextSteps: z.array(z.string()),
+});
+
 // Field name aliases for intelligent mapping
 const FIELD_ALIASES: Record<string, string[]> = {
   'firstName': ['firstname', 'first name', 'fname', 'givenname', 'first_name'],
@@ -595,11 +628,11 @@ Format your response as JSON with these keys:
   // Transcript Analysis endpoints
   analyzeTranscript: protectedProcedure
     .input(z.object({
-      transcript: z.string().min(100, 'Transcript must be at least 100 characters')
+      transcript: z.string().min(100, 'Transcript must be at least 100 characters').max(40_000, 'Transcript is too long (40,000 character limit)')
     }))
     .mutation(async ({ ctx, input }) => {
       const startTime = Date.now();
-      
+
       const systemPrompt = `You are an expert analyzer of sales call transcripts. Extract specific insights from meeting transcripts.
 
 Rules for extraction:
@@ -610,11 +643,15 @@ Rules for extraction:
 5. For Security Stack, distinguish between tools they use vs tools they considered.
 6. For AI Tools, distinguish enterprise accounts vs individual/free usage.
 7. Be specific in risks/challenges - include context and examples from the call.
-8. Capture valuable drill-down details in additionalInsights.`;
+8. Capture valuable drill-down details in additionalInsights.
 
+${INJECTION_GUARD}`;
+
+      // A pasted transcript is untrusted input — wrap it so it can't impersonate
+      // prompt structure or override the extraction rules above.
       const userPrompt = `Analyze this meeting transcript and extract insights:
 
-${input.transcript}`;
+${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
 
       try {
         const response = await invokeLLM({
@@ -687,8 +724,21 @@ ${input.transcript}`;
 
         const { content: messageContent, available } = llmText(response);
         if (!available) throw new Error(LLM_UNAVAILABLE_NOTE);
-        const analysis = JSON.parse(messageContent);
-        
+        const parsedJson = JSON.parse(messageContent);
+
+        // Free-tier fallback models (OpenRouter's rate-limited free rotation) don't
+        // reliably honor `response_format.json_schema` — one was observed returning
+        // an entirely different shape (a "prospectInsights" wrapper instead of the
+        // flat fields below) despite the schema above. Validate before trusting the
+        // shape, so a model that ignored the schema produces a clear server error
+        // instead of a client-side crash on `undefined.jobTitle`.
+        const parseResult = TranscriptAnalysisSchema.safeParse(parsedJson);
+        if (!parseResult.success) {
+          console.error('[TranscriptAnalysis] Model output did not match expected schema:', parseResult.error.message, messageContent.slice(0, 500));
+          throw new Error('The AI model returned analysis in an unexpected format (this can happen with the free-tier fallback model). Please try again.');
+        }
+        const analysis = parseResult.data;
+
         // Auto-link to account by fuzzy matching company name
         let linkedAccount = null;
         if (analysis.aboutProspect?.companyName) {
@@ -742,7 +792,10 @@ ${input.transcript}`;
         };
       } catch (error) {
         console.error('[TranscriptAnalysis] Error:', error);
-        throw new Error('Failed to analyze transcript');
+        // Preserve the specific reason (e.g. "no API key configured", a JSON parse
+        // failure) — flattening it into a generic message hides an unfixable config
+        // problem behind text that tells the user to "try again".
+        throw error instanceof Error ? error : new Error('Failed to analyze transcript');
       }
     }),
 
