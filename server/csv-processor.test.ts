@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mockAuthContext } from "./test-utils";
 
 describe("CSV Processor", () => {
@@ -138,6 +138,59 @@ describe("CSV Processor", () => {
       expect(result.preview.length).toBeLessThanOrEqual(5);
     });
 
+    it("normalizes any non-header value the model writes for an unmatched field to null", async () => {
+      // The prompt used to tell the model to write the literal string "UNMAPPED" for a
+      // field with no match. The client's <Select> only recognizes `null` as "not
+      // mapped" — any other value (even "UNMAPPED") matches no <SelectItem> and the
+      // dropdown renders blank instead of "-- Not mapped --". Simulate a model response
+      // that still does this (or hallucinates some other non-header string) and confirm
+      // the router normalizes it to null regardless of what the model wrote.
+      vi.resetModules();
+      vi.doMock("./_core/llm", async (importOriginal) => {
+        const actual = await importOriginal<typeof import("./_core/llm")>();
+        return {
+          ...actual,
+          invokeLLM: vi.fn().mockResolvedValue({
+            choices: [{
+              message: {
+                role: "assistant",
+                content: JSON.stringify({
+                  mappings: {
+                    "First Name": "fname",
+                    "Email": "email_address",
+                    "Company": "UNMAPPED",
+                    "Revenue": "some_field_the_model_made_up",
+                  },
+                  transformations: [],
+                  warnings: [],
+                  confidence: 0.9,
+                }),
+              },
+            }],
+          }),
+        };
+      });
+
+      const { csvProcessorRouter } = await import("./csv-processor-router");
+      const caller = csvProcessorRouter.createCaller(mockAuthContext);
+
+      const result = await caller.analyzeAndMap({
+        sourceHeaders: ["fname", "email_address"],
+        sampleRows: [{ fname: "Jane", email_address: "jane@example.com" }],
+        eventName: "Test",
+        defaultStatus: "Registered",
+      });
+
+      expect(result.mappings["First Name"]).toBe("fname");
+      expect(result.mappings["Email"]).toBe("email_address");
+      // Neither "UNMAPPED" nor a hallucinated header survives normalization.
+      expect(result.mappings["Company"]).toBeNull();
+      expect(result.mappings["Revenue"]).toBeNull();
+
+      vi.doUnmock("./_core/llm");
+      vi.resetModules();
+    });
+
     it("should apply country transformation correctly", async () => {
       const { csvProcessorRouter } = await import("./csv-processor-router");
       const caller = csvProcessorRouter.createCaller(mockAuthContext);
@@ -175,5 +228,56 @@ describe("CSV Processor", () => {
       expect(result.csvContent).toContain("Canada");
       expect(result.csvContent).toContain("United Kingdom");
     });
+  });
+
+  describe("analyzeAndMap — degraded (no LLM reachable)", () => {
+    const savedEnv = {
+      OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+      BUILT_IN_FORGE_API_KEY: process.env.BUILT_IN_FORGE_API_KEY,
+      LOCAL_LLM_URL: process.env.LOCAL_LLM_URL,
+      LLM_TOTAL_DEADLINE_MS: process.env.LLM_TOTAL_DEADLINE_MS,
+      LLM_REQUEST_TIMEOUT_MS: process.env.LLM_REQUEST_TIMEOUT_MS,
+    };
+
+    beforeEach(() => {
+      // Force the unavailable path: no hosted key, unreachable local model, short
+      // deadline — so this test never hangs waiting on a real network call.
+      process.env.OPENROUTER_API_KEY = "";
+      process.env.BUILT_IN_FORGE_API_KEY = "";
+      process.env.LOCAL_LLM_URL = "http://127.0.0.1:1";
+      process.env.LLM_TOTAL_DEADLINE_MS = "2000";
+      process.env.LLM_REQUEST_TIMEOUT_MS = "2000";
+    });
+
+    afterEach(() => {
+      for (const [key, value] of Object.entries(savedEnv)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    });
+
+    it("falls back to heuristic mapping and says so, instead of failing silently or hanging", async () => {
+      const { csvProcessorRouter } = await import("./csv-processor-router");
+      const caller = csvProcessorRouter.createCaller(mockAuthContext);
+
+      const result = await caller.analyzeAndMap({
+        sourceHeaders: ["first_name", "last_name", "email_address", "company_name"],
+        sampleRows: [{
+          first_name: "Jane", last_name: "Doe",
+          email_address: "jane@example.com", company_name: "Acme Corp",
+        }],
+        eventName: "Test",
+        defaultStatus: "Registered",
+      });
+
+      // Still reports success (the UI can proceed with a manual/heuristic mapping),
+      // but is honest that the AI pass didn't run — never a silent, unexplained result.
+      expect(result.success).toBe(true);
+      expect(result.warnings.join(" ")).toMatch(/AI mapping failed/i);
+      expect(result.mappings["First Name"]).toBe("first_name");
+      expect(result.mappings["Last Name"]).toBe("last_name");
+      expect(result.mappings["Email"]).toBe("email_address");
+      expect(result.mappings["Company"]).toBe("company_name");
+    }, 15_000);
   });
 });

@@ -91,7 +91,7 @@ ${TARGET_FIELDS.map(f => `- "${f.name}" (${f.required ? "REQUIRED" : "optional"}
 
 INSTRUCTIONS:
 1. Match each source header to the most appropriate target field
-2. For fields with no match, suggest "UNMAPPED"
+2. For fields with no match, return null (the server normalizes any non-matching value to null anyway)
 3. If multiple source fields could map to one target, pick the best one
 4. Consider common variations: "email_address" -> "Email", "fname" -> "First Name", etc.
 5. For country/state fields, note if data needs transformation (e.g., "US" -> "United States")
@@ -162,9 +162,21 @@ Return a JSON object with this structure:
         if (!available) throw new Error(LLM_UNAVAILABLE_NOTE);
 
         const result = JSON.parse(content);
+        // The model is instructed to write the literal string "UNMAPPED" for fields it
+        // couldn't match (see prompt above). The client's <Select> only treats `null` as
+        // "not mapped" — anything else must be a real source header, or the dropdown
+        // renders blank instead of showing "-- Not mapped --". Normalize here so every
+        // value is either a real source header or null, regardless of what the model wrote.
+        const sourceHeaderSet = new Set(sourceHeaders);
+        const normalizedMappings: Record<string, string | null> = {};
+        for (const [targetField, sourceField] of Object.entries(result.mappings || {})) {
+          normalizedMappings[targetField] =
+            typeof sourceField === "string" && sourceHeaderSet.has(sourceField) ? sourceField : null;
+        }
         return {
           success: true,
           ...result,
+          mappings: normalizedMappings,
           eventName: eventName || "",
           defaultStatus: defaultStatus || "Registered",
         };
