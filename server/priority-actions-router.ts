@@ -3,21 +3,12 @@ import { z } from "zod";
 import { getAllAccounts, getContactsByAccountId, getGongCallsByAccountId, getAllOpportunities } from "./db";
 import { Account, Contact, Call } from "../drizzle/schema";
 import { calculateVectorScores, type AccountData } from "./vectorScoring";
+import { territoryFor, matchesTerritory } from "@shared/territories";
 import { isDecisionMaker } from "@shared/taxonomy";
 
 // Rep territory assignments
 // Under 2000 employees: Zane (Central), Morgan (West), Miranda (East)
 // Over 2000 employees: Jeff (Central), Dan (West), Kevin (East)
-const REP_TERRITORIES: Record<string, { region: string; minEmployees: number; maxEmployees: number }> = {
-  // Under 2000 employees
-  "zane.torres@{COMPANY_EMAIL_DOMAIN}": { region: "Central", minEmployees: 0, maxEmployees: 2000 },
-  "morgan.iler@{COMPANY_EMAIL_DOMAIN}": { region: "West", minEmployees: 0, maxEmployees: 2000 },
-  "miranda.thomas@{COMPANY_EMAIL_DOMAIN}": { region: "East", minEmployees: 0, maxEmployees: 2000 },
-  // Over 2000 employees
-  "jeff.klein@{COMPANY_EMAIL_DOMAIN}": { region: "Central", minEmployees: 2000, maxEmployees: Infinity },
-  "dan.hamilton@{COMPANY_EMAIL_DOMAIN}": { region: "West", minEmployees: 2000, maxEmployees: Infinity },
-  "kevin.huelster@{COMPANY_EMAIL_DOMAIN}": { region: "East", minEmployees: 2000, maxEmployees: Infinity },
-};
 
 // "Key title" is the same question as "decision maker", so it uses the same answer.
 // It used to be a local list of twelve fragments matched with .includes(), which
@@ -68,14 +59,13 @@ export const priorityActionsRouter = router({
       let accounts = await getAllAccounts(isDemoUser);
       
       // Apply rep-specific filtering only for non-demo users
-      if (!isDemoUser && userEmail && REP_TERRITORIES[userEmail]) {
-        const territory = REP_TERRITORIES[userEmail];
-        accounts = accounts.filter((a: Account) => {
-          const empCount = a.employeeCount || 0;
-          return a.region === territory.region && 
-            empCount >= territory.minEmployees && 
-            empCount < territory.maxEmployees;
-        });
+      // Filter for whichever rep is selected, demo or not: the dashboard labels these
+      // results with that rep's territory, so skipping the filter mislabels the data.
+      const territory = territoryFor(userEmail);
+      if (territory) {
+        accounts = accounts.filter((a: Account) =>
+          matchesTerritory(territory, a.region || "", a.employeeCount || 0)
+        );
       }
       
       const hotAccounts = accounts
@@ -285,14 +275,11 @@ export const priorityActionsRouter = router({
       let accounts = await getAllAccounts(isDemoUser);
       
       // Apply rep-specific filtering if user email matches a known rep
-      if (input?.userEmail && REP_TERRITORIES[input.userEmail]) {
-        const territory = REP_TERRITORIES[input.userEmail];
-        accounts = accounts.filter((a: Account) => {
-          const empCount = a.employeeCount || 0;
-          return a.region === territory.region && 
-            empCount >= territory.minEmployees && 
-            empCount < territory.maxEmployees;
-        });
+      const territory = territoryFor(input?.userEmail);
+      if (territory) {
+        accounts = accounts.filter((a: Account) =>
+          matchesTerritory(territory, a.region || "", a.employeeCount || 0)
+        );
       }
       
       const hotLeads = accounts.filter((a: Account) => (a.intentScore || 0) >= 70).length;

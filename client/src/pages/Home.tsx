@@ -141,8 +141,10 @@ export default function Home() {
     return score >= 40 && score < 70;
   }).length ?? 0;
   const totalAccounts = repStats?.totalAccounts ?? accounts?.length ?? 0;
-  // For demo users, use a proportion of their accounts; otherwise use repStats
-  const sixQAGap = repStats?.sixQAGap !== undefined ? repStats.sixQAGap : Math.floor(totalAccounts * 0.8);
+  // No invented fallback. This tile is a count of qualified accounts with no opportunity;
+  // guessing "80% of everything" when the server hasn't answered yet put a fabricated
+  // number under a real-looking label. Until repStats arrives, show nothing.
+  const sixQAGap = repStats?.sixQAGap;
 
   const timeOfDay = (() => {
     const h = new Date().getHours();
@@ -151,9 +153,21 @@ export default function Home() {
     return "evening";
   })();
 
+  // Scoped to the rep's territory like every other tile in this row. Summing every open
+  // opportunity in the workspace put a $21.3M company-wide figure under a heading that
+  // reads "West territory", which overstates a 66-account book by roughly twentyfold.
+  const territoryAccountIds = new Set(
+    (accounts ?? [])
+      .filter((a: any) => matchesTerritory(a.region || "", a.employeeCount || 0))
+      .map((a: any) => a.id)
+  );
   const openPipeline =
     opportunitiesData
-      ?.filter((opp: any) => String(opp.status ?? "Open").toLowerCase() === "open")
+      ?.filter(
+        (opp: any) =>
+          String(opp.status ?? "Open").toLowerCase() === "open" &&
+          territoryAccountIds.has(opp.accountId)
+      )
       .reduce((sum: number, opp: any) => sum + (Number(opp.amount) || 0), 0) || 0;
 
   // Use enriched priority actions with contact data
@@ -232,11 +246,17 @@ export default function Home() {
           />
           <StatCard
             title="Unworked 6QA"
-            value={sixsenseSummary?.sixQA?.unworked || 0}
+            // Territory-scoped, like every other tile in this row. It previously read from
+            // the workspace-wide 6sense summary, so a rep saw a global count sitting under
+            // their own territory heading — the same mismatch that made "Accounts" say
+            // 1,000 for a 66-account territory.
+            value={sixQAGap ?? "—"}
             subtitle={
-              sixsenseSummary?.sixQA?.total
-                ? `${Math.round(((sixsenseSummary.sixQA.unworked || 0) / sixsenseSummary.sixQA.total) * 100)}% of qualified accounts`
-                : "No 6QA data"
+              sixQAGap !== undefined && hotLeads > 0
+                ? `${Math.round((sixQAGap / hotLeads) * 100)}% of qualified accounts`
+                : sixQAGap !== undefined
+                  ? "No qualified accounts"
+                  : "Loading"
             }
             icon={Target}
             tone="accent"

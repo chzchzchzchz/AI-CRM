@@ -1,19 +1,12 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { REP_TERRITORIES, matchesTerritory as matchesTerritoryShared, territoryFor, type RepEmail } from "@shared/territories";
+
+// Re-exported so existing importers (RepSwitcher, TopAccounts, Home) keep working.
+export { REP_TERRITORIES };
+export type { RepEmail };
 
 // Rep territory definitions.
 // This is the SINGLE demo roster used across the app (dropdowns, TopAccounts,
-// territory filtering). Replace these entries with your own reps — the email is
-// just an opaque identifier; filtering is driven by region + sizeFilter.
-export const REP_TERRITORIES = {
-  "alex.rivera@demo.example.com": { name: "Alex Rivera", region: "Central", sizeFilter: "<2000", label: "Central <2K" },
-  "jordan.bailey@demo.example.com": { name: "Jordan Bailey", region: "West", sizeFilter: "<2000", label: "West <2K" },
-  "sam.okoye@demo.example.com": { name: "Sam Okoye", region: "East", sizeFilter: "<2000", label: "East <2K" },
-  "taylor.brooks@demo.example.com": { name: "Taylor Brooks", region: "Central", sizeFilter: ">=2000", label: "Central 2K+" },
-  "casey.morgan@demo.example.com": { name: "Casey Morgan", region: "West", sizeFilter: ">=2000", label: "West 2K+" },
-  "riley.nguyen@demo.example.com": { name: "Riley Nguyen", region: "East", sizeFilter: ">=2000", label: "East 2K+" },
-} as const;
-
-export type RepEmail = keyof typeof REP_TERRITORIES | "";
 
 export interface RepInfo {
   email: RepEmail;
@@ -67,21 +60,9 @@ export function RepProvider({ children }: { children: ReactNode }) {
   const isRepMode = !!repInfo;
 
   // Helper function to check if an account matches the rep's territory
-  const matchesTerritory = (region: string, employeeCount: number): boolean => {
-    if (!repInfo) return true; // No rep selected = show all
-    
-    // Check region match
-    if (region !== repInfo.region) return false;
-    
-    // Check size filter
-    if (repInfo.sizeFilter === "<2000") {
-      return employeeCount < 2000;
-    } else if (repInfo.sizeFilter === ">=2000") {
-      return employeeCount >= 2000;
-    }
-    
-    return true;
-  };
+  // The predicate lives in @shared/territories so the server applies the identical rule.
+  const matchesTerritory = (region: string, employeeCount: number): boolean =>
+    matchesTerritoryShared(territoryFor(selectedRep), region, employeeCount);
 
   return (
     <RepContext.Provider value={{ selectedRep, setSelectedRep, repInfo, isRepMode, matchesTerritory }}>
