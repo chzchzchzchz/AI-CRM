@@ -1367,6 +1367,14 @@ function ContentStudioTool() {
 
   const generateMutation = trpc.tools.generateContent.useMutation({
     onSuccess: (data) => {
+      // The server returns `available: false` (not a thrown error) when no model was
+      // reachable — `data.content` in that case is the degradation note, not real
+      // content. Ignoring `available` here would show "Content generated!" and drop
+      // the note into the output panel as if it were the asset the user asked for.
+      if (data.available === false) {
+        toast.error(data.content || 'AI generation is unavailable right now.');
+        return;
+      }
       setGeneratedContent(data.content);
       toast.success('Content generated!');
     },

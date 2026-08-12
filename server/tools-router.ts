@@ -392,7 +392,9 @@ Generate professional, actionable content.`;
         };
       } catch (error) {
         console.error('[GenerateContent] Error:', error);
-        throw new Error('Failed to generate content');
+        // Preserve the specific reason instead of flattening it — same fix already
+        // applied to generateWebinarContent this session.
+        throw error instanceof Error ? error : new Error('Failed to generate content');
       }
     }),
 
