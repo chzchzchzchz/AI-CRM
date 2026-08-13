@@ -14,7 +14,9 @@ The everyday user is a B2B sales rep or account executive working a territory (t
 
 ## Product Purpose
 
-TargetDash is an AI prospect-intelligence layer that sits on top of a team's existing sales data — CRM/Salesforce accounts and contacts, 6sense intent, Gong calls, Clay enrichment — and turns it into a clear read on each account: what's happening, why it matters now, and what to do next. It exists because reps drown in raw signals and generic CRMs surface data without judgment. Success is a rep opening an account and, within seconds, trusting the brief enough to act on it — and the tool being good enough to sell as a standalone B2B product and to stand as portfolio-grade work.
+TargetDash is an AI prospect-intelligence layer that sits on top of a team's existing sales data — CRM/Salesforce accounts and contacts, 6sense intent, Gong calls, Clay enrichment — and turns it into a clear read on each account: what's happening, why it matters now, and what to do next. It exists because reps drown in raw signals and generic CRMs surface data without judgment. Success is a rep opening an account and, within seconds, trusting the brief enough to act on it.
+
+This is a personal project built as portfolio work — there is no company, no customers, and no roadmap to sell it. The bar it holds itself to is craft: it should read and behave like a product a real team ships, and every claim it makes on screen should survive someone checking it.
 
 ## Positioning
 

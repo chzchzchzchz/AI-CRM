@@ -169,10 +169,18 @@ curl -s -X POST 'http://localhost:3333/api/trpc/clay.receiveAccount?batch=1' \
 # → [{"result":{"data":{"json":{"success":true,"action":"created"}}}}]
 ```
 
-### 5.4 Gong (call intelligence) — data-in-DB, not a live pull
+### 5.4 Gong (call intelligence)
 Gong calls live in the `calls` table and power call analysis, action-item extraction, and priority
-actions (`server/ai.ts → analyzeGongCall`). Calls are loaded via import/Clay/seed today; a **live
-Gong API pull is on the roadmap** (not yet implemented). `GONG_API_KEY` is reserved in config for it.
+actions (`server/ai.ts → analyzeGongCall`). They arrive two ways:
+
+- **Live API pull** — set `GONG_API_KEY` (and `GONG_API_SECRET`) and the connector fetches from
+  `/v2/calls` (cursor-paged) plus `/v2/calls/transcript`. Client in
+  `server/integrations/gong.ts`, wired at `server/routers.ts`, covered by `server/gong.test.ts`.
+- **Import / Clay / seed** — how the demo dataset's 152 calls get there.
+
+Gong does the transcribing; this fetches what it produced. Note that transcript *text* is only
+stored when it comes from the API pull — seeded calls carry a link, and the UI labels it as a
+link rather than dressing a URL up as a transcript.
 
 ---
 

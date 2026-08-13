@@ -73,7 +73,11 @@ interface AnalysisResult {
   topQuotes: string[];
   additionalInsights: string[];
   nextSteps: string[];
-  linkedAccount?: { id: number; name: string; industry: string; intentScore: number };
+  // The server returns `null` (not an absent key) when the transcript matched no account —
+  // see server/tools-router.ts. Typing this as only-optional made the procedure's real
+  // return type unassignable here, which `pnpm build` never caught because esbuild strips
+  // types rather than checking them.
+  linkedAccount?: { id: number; name: string; industry: string; intentScore: number } | null;
 }
 
 interface SavedReport {

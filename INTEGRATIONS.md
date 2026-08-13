@@ -8,6 +8,13 @@ connector is a thin, real HTTP client against the vendor's documented API
 
 `integrations.status` returns which connectors are configured.
 
+> **What "real" means here, precisely.** Each client is written against the vendor's published
+> API and covered by unit tests that assert the request it builds and how it handles the
+> documented failure modes — with the transport mocked. This is a personal project, so I don't
+> hold enterprise tenants for most of these; treat them as implemented and tested, not as
+> proven in production against a live paid account. `pnpm doctor` will tell you which ones your
+> environment can actually reach.
+
 ## Connectors
 
 | Tool | tRPC endpoint | What it does | Config (env) |

@@ -37,7 +37,15 @@ function walk(dir, exts, acc = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, e.name);
     if (e.isDirectory()) {
-      if (e.name === "node_modules" || e.name === "dist" || e.name === ".git") continue;
+      // `.worktrees/` holds gitignored scratch checkouts. CI never sees them, so scanning
+      // them locally only produces failures for code that isn't in the repo.
+      if (
+        e.name === "node_modules" ||
+        e.name === "dist" ||
+        e.name === ".git" ||
+        e.name === ".worktrees"
+      )
+        continue;
       walk(full, exts, acc);
     } else if (exts.some(x => e.name.endsWith(x))) acc.push(full);
   }
