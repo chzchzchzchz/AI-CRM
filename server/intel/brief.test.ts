@@ -234,6 +234,117 @@ describe('structured judgement carries the same guarantee as the prose', () => {
     expect(out.actions[0].evidence).toContain('98,000');
   });
 
+  /**
+   * Reproduces a brief that shipped to the UI on account 18 (Cobaltreach Health). Its only
+   * Competitor readings were 7 and 5; the brief cited "intent.competitor 6" and validation
+   * returned no dropped claims, so the citation under "every claim cites the signal it rests
+   * on" disagreed with the signal panel rendered directly beside it.
+   */
+  describe('figures cited against a signal-pack field', () => {
+    const intentPack: SignalPack = {
+      ...pack,
+      intent: {
+        ...pack.intent,
+        score: 5,
+        history: [
+          { score: 5, category: 'Pain Point', source: '6sense', at: '2026-06-18T11:54:55.900Z' },
+          { score: 7, category: 'Competitor', source: '6sense', at: '2026-06-26T11:54:55.900Z' },
+          { score: 6, category: 'Compliance', source: '6sense', at: '2026-07-09T11:54:55.900Z' },
+          { score: 5, category: 'Competitor', source: '6sense', at: '2026-07-17T11:54:55.900Z' },
+        ],
+      },
+    };
+
+    it('drops a claim whose cited score was never recorded under that category', () => {
+      const { judgement: out, validation } = validateJudgement(
+        judgement({
+          whyNow: [{
+            point: 'Competitor activity detected in past month',
+            evidence: 'intent.competitor 6 score from 2026-07-17T11:54:55.900Z',
+          }],
+        }),
+        intentPack
+      );
+
+      expect(out.whyNow).toHaveLength(0);
+      expect(validation.dropped[0].reason).toContain('intent.competitor 6');
+      // The reason names what the pack does hold, so the gap is legible rather than just refused.
+      expect(validation.dropped[0].reason).toContain('5, 7');
+    });
+
+    it('keeps a score that was recorded under the category it is cited against', () => {
+      const { judgement: out, validation } = validateJudgement(
+        judgement({
+          whyNow: [
+            { point: 'Compliance interest', evidence: 'intent.compliance 6 score from 2026-07-09T11:54:55.900Z' },
+            { point: 'Competitor pressure', evidence: 'intent.competitor 7 score from 2026-06-26T11:54:55.900Z' },
+          ],
+          risks: [
+            { risk: 'Low purchase intent', evidence: 'intent.score 5' },
+            { risk: 'No stakeholders mapped', evidence: 'stakeholders.total 2' },
+          ],
+        }),
+        intentPack
+      );
+
+      expect(validation.dropped).toHaveLength(0);
+      expect(out.whyNow).toHaveLength(2);
+      expect(out.risks).toHaveLength(2);
+    });
+
+    it('reads a trailing timestamp as a date being quoted, not a figure being claimed', () => {
+      // "intent.compliance 2026-07-09" must not be read as a claim that the score is 2026.
+      const { validation } = validateJudgement(
+        judgement({ whyNow: [{ point: 'Recent signal', evidence: 'intent.compliance 2026-07-09T11:54:55.900Z' }] }),
+        intentPack
+      );
+      expect(validation.dropped).toHaveLength(0);
+    });
+
+    // Punctuation must not be a way out of the check. Excluding "." and "," outright to
+    // dodge decimals and thousands separators also exempted the two commonest ways a
+    // sentence ends, and a skipped claim is reported exactly like a passing one.
+    it.each([
+      ['a sentence-ending period', 'intent.competitor 6.'],
+      ['a trailing comma', 'intent.competitor 6, which is unusual'],
+      ['a closing parenthesis', 'intent.competitor 6)'],
+    ])('still catches a wrong figure followed by %s', (_label, evidence) => {
+      const { judgement: out, validation } = validateJudgement(
+        judgement({ whyNow: [{ point: 'Competitor activity', evidence }] }),
+        intentPack
+      );
+      expect(validation.dropped).toHaveLength(1);
+      expect(out.whyNow).toHaveLength(0);
+    });
+
+    it('reads a comma-grouped figure as one number', () => {
+      // "1" followed by ",500" must not be checked as the number 1 — nor skipped entirely.
+      const grouped: SignalPack = {
+        ...intentPack,
+        pipeline: { ...intentPack.pipeline, totalValue: 1500 },
+      };
+      const good = validateJudgement(
+        judgement({ risks: [{ risk: 'Small deal', evidence: 'pipeline.totalValue 1,500' }] }),
+        grouped
+      );
+      expect(good.validation.dropped).toHaveLength(0);
+
+      const bad = validateJudgement(
+        judgement({ risks: [{ risk: 'Small deal', evidence: 'pipeline.totalValue 2,500' }] }),
+        grouped
+      );
+      expect(bad.validation.dropped).toHaveLength(1);
+    });
+
+    it('leaves a field it does not model alone rather than guessing', () => {
+      const { validation } = validateJudgement(
+        judgement({ whyNow: [{ point: 'Keyword volume', evidence: 'intent.keywordVolume 41' }] }),
+        intentPack
+      );
+      expect(validation.dropped).toHaveLength(0);
+    });
+  });
+
   it('blanks a fabricating situation so the caller can substitute a real one', () => {
     // generateAccountBrief swaps the blank for deterministicSituation(pack). If validation
     // returned the fabricated text instead, the structured path would ship it verbatim.

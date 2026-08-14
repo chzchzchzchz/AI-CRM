@@ -456,11 +456,78 @@ function buildKnownAmounts(pack: SignalPack): Set<string> {
   return amounts;
 }
 
+/**
+ * Legitimate values for each `section.field` an evidence string can cite.
+ *
+ * The evidence line is the brief's entire claim to credibility — it is rendered to the rep as
+ * the citation beneath the point it supports, under a heading that promises "every claim cites
+ * the signal it rests on". Nothing checked the numbers in it. Observed live on account 18:
+ * the pack's only Competitor readings are 7 (26 Jun) and 5 (17 Jul), and the brief shipped
+ * "intent.competitor 6 score from 2026-07-17T11:54:55.900Z" with droppedClaims empty. The
+ * panel beside it showed 5. A rep reading the citation to check the claim got a different
+ * number than the one they were checking against.
+ */
+function buildFieldFigures(pack: SignalPack): Map<string, Set<number>> {
+  const figures = new Map<string, Set<number>>();
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const put = (key: string, ...values: Array<number | null | undefined>) => {
+    const set = figures.get(key) ?? new Set<number>();
+    for (const v of values) if (v != null && Number.isFinite(v)) set.add(Math.round(v));
+    figures.set(key, set);
+  };
+
+  put("intent.score", pack.intent.score);
+  put("intent.delta", pack.intent.delta);
+  put("intent.largestjump", pack.intent.largestJump);
+  // A model cites one reading by its category — "intent.competitor 7" — so each category
+  // carries only the scores actually recorded under it, not the union of every reading.
+  for (const h of pack.intent.history) {
+    if (h.category) put(`intent.${norm(h.category)}`, h.score);
+    put("intent.history", h.score);
+  }
+
+  put("stakeholders.total", pack.stakeholders.total);
+  put("stakeholders.withemail", pack.stakeholders.withEmail);
+  for (const [level, n] of Object.entries(pack.stakeholders.bySeniority ?? {})) {
+    put(`stakeholders.${norm(level)}`, n as number);
+  }
+
+  put("conversations.total", pack.conversations.total);
+  put("conversations.dayssincelastcall", pack.conversations.daysSinceLastCall);
+  put("conversations.totaldurationminutes", pack.conversations.totalDurationMinutes);
+
+  put("pipeline.total", pack.pipeline.total);
+  put("pipeline.open", pack.pipeline.open);
+  put("pipeline.won", pack.pipeline.won);
+  put("pipeline.lost", pack.pipeline.lost);
+  put("pipeline.totalvalue", pack.pipeline.totalValue);
+  put("pipeline.weightedvalue", pack.pipeline.weightedValue);
+
+  put("account.employeecount", pack.account.employeeCount);
+  return figures;
+}
+
+/**
+ * `section.field N` — the citation convention the system prompt asks for. The trailing
+ * lookahead keeps this off timestamps: in "intent.compliance 2026-07-09" the 2026 is
+ * followed by a hyphen, so it is a date being quoted, not a figure being claimed.
+ *
+ * The lookahead rejects `.` and `,` only when a digit follows, because those are the two
+ * characters that can continue a number. Excluding them outright — which is what this did
+ * first — silently exempted "intent.competitor 6." and "intent.competitor 6, and rising"
+ * from the check, and a sentence-ending period is one of the likelier ways a model writes
+ * a citation. A rule that skips the claim rather than failing it is the dangerous
+ * direction: the brief reports droppedClaims empty either way.
+ */
+const FIELD_FIGURE_REF =
+  /\b(intent|stakeholders|conversations|pipeline|account)\.([A-Za-z][A-Za-z0-9_]*)\s+(-?\d+(?:,\d{3})+(?:\.\d+)?|-?\d+(?:\.\d+)?)(?!\d|[.,]\d|[:\-/%])/g;
+
 /** Returns a reason string when the text makes an unsupported claim, else null. */
 function findFabrication(
   text: string,
   known: Set<string>,
-  amounts: Set<string>
+  amounts: Set<string>,
+  figures: Map<string, Set<number>>
 ): string | null {
   if (!text) return null;
 
@@ -491,16 +558,31 @@ function findFabrication(
     return `cites ${raw.trim()}, which does not match any recorded amount`;
   }
 
+  // 3. A figure attached to a signal-pack field reference. Only fires on the citation
+  //    convention the prompt asks for, and only for fields we actually model — an
+  //    unrecognised field is left alone rather than guessed at, so this can flag a wrong
+  //    number but never invents a rule about one it cannot check.
+  for (const m of text.matchAll(FIELD_FIGURE_REF)) {
+    const key = `${m[1].toLowerCase()}.${m[2].toLowerCase()}`;
+    const legitimate = figures.get(key);
+    if (!legitimate || legitimate.size === 0) continue;
+    // "1,500" is one figure, not a 1 that happens to precede a 500.
+    if (legitimate.has(Math.round(Number(m[3].replace(/,/g, ""))))) continue;
+    const recorded = [...legitimate].sort((a, b) => a - b).join(", ");
+    return `cites ${m[1]}.${m[2]} ${m[3]}, but the pack records ${recorded}`;
+  }
+
   return null;
 }
 
 export function validateJudgement(j: Judgement, pack: SignalPack): { judgement: Judgement; validation: Validation } {
   const known = buildKnownTokens(pack);
   const amounts = buildKnownAmounts(pack);
+  const figures = buildFieldFigures(pack);
   const dropped: Validation["dropped"] = [];
 
   const check = (section: string, text: string) => {
-    const reason = findFabrication(text, known, amounts);
+    const reason = findFabrication(text, known, amounts, figures);
     if (reason) dropped.push({ section, text: text.slice(0, 160), reason });
     return !reason;
   };
@@ -513,7 +595,7 @@ export function validateJudgement(j: Judgement, pack: SignalPack): { judgement: 
 
   // The situation paragraph is the brief's opening line; if it fabricates, replace it
   // with the deterministic version rather than dropping it entirely.
-  const situationReason = findFabrication(j.situation, known, amounts);
+  const situationReason = findFabrication(j.situation, known, amounts, figures);
   if (situationReason) {
     dropped.push({ section: "Situation", text: j.situation.slice(0, 160), reason: situationReason });
   }
@@ -703,20 +785,58 @@ export async function generateAccountBrief(
       .filter((s) => s.signalHash === signalHash && s.version === BRIEF_VERSION && s.markdown)
       .sort((a, b) => (b.generatedAt || "").localeCompare(a.generatedAt || ""))[0];
     if (latest && Date.now() - new Date(latest.generatedAt).getTime() < CACHE_TTL_MS) {
-      return {
-        accountId,
-        accountName: pack.account.name,
-        markdown: latest.markdown!,
-        judgement: latest.judgement ?? null,
-        signals: pack,
-        metrics,
-        signalHash,
-        version: BRIEF_VERSION,
-        generatedAt: latest.generatedAt,
-        cached: true,
-        degraded: false,
-        validation: latest.validation ?? { dropped: [] },
-      };
+      // Re-validate before serving. Validation used to be a property of *generating* a
+      // brief, which meant the guarantee on screen — "every claim cites the signal it
+      // rests on" — was only ever as good as the rules in force the day that brief was
+      // written. The cache key is signalHash + BRIEF_VERSION, and adding a rule changes
+      // neither, so a claim a new rule rejects kept being served for its full TTL with
+      // `droppedClaims: []` vouching for it. Observed on account 18: the citation
+      // "intent.competitor 6" survived a rule written specifically to catch it.
+      //
+      // validateJudgement is pure and LLM-free, so this costs nothing to redo per read,
+      // and it makes the guarantee a property of *serving* instead — a brief is checked
+      // against the rules in force now, not the ones that existed when it was cached.
+      if (latest.judgement) {
+        const rechecked = validateJudgement(latest.judgement, pack);
+        const judgement: Judgement = {
+          ...rechecked.judgement,
+          situation: rechecked.judgement.situation || deterministicSituation(pack),
+        };
+        // Only re-render when something was actually dropped; an unchanged brief keeps
+        // its stored markdown byte for byte. If a claim did fall, the stored prose still
+        // contains it, so the prose has to be rebuilt from the surviving judgement —
+        // otherwise the structured path is clean while the rendered brief is not.
+        const markdown = rechecked.validation.dropped.length
+          ? assembleBrief(
+              pack,
+              renderJudgement(rechecked.judgement, deterministicSituation(pack)),
+              rechecked.validation
+            )
+          : latest.markdown!;
+        if (rechecked.validation.dropped.length) {
+          console.warn(
+            `[brief] cached brief for account ${accountId} failed ${rechecked.validation.dropped.length} current validation rule(s); serving the filtered version`
+          );
+        }
+        return {
+          accountId,
+          accountName: pack.account.name,
+          markdown,
+          judgement,
+          signals: pack,
+          metrics,
+          signalHash,
+          version: BRIEF_VERSION,
+          generatedAt: latest.generatedAt,
+          cached: true,
+          degraded: false,
+          validation: rechecked.validation,
+        };
+      }
+      // A snapshot with prose but no structured judgement predates persisted judgements,
+      // so there is nothing to re-check it against. Reporting `{ dropped: [] }` for it —
+      // which is what this did — states that it was checked and came back clean. Fall
+      // through and regenerate instead of vouching for something unverifiable.
     }
   }
 
