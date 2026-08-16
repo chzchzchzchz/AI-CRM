@@ -11,7 +11,7 @@ const detectAndNotifyIntentSpikes = () => detectIntentSpikes();
 const getRecentIntentSpikes = (limit: number = 10) => detectIntentSpikes({ limit });
 import { getDb } from "./db";
 import { accounts } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, isNotNull, sql } from "drizzle-orm";
 
 export const sixsenseRouter = router({
   /**
@@ -247,19 +247,35 @@ export const sixsenseRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       
-      const totalAccounts = await db
-        .select({ count: accounts.id })
+      // Two bugs, stacked. `{ count: accounts.id }` is not a SQL count aggregate — it's a
+      // plain column reference under a key that happens to be named "count" — but the
+      // demo-mode query shim keys its aggregate handling purely off that key name, so it
+      // collapsed the whole result into a single-row `[{ count: N }]` array. `.length` on
+      // that array is then always 1, regardless of how many accounts actually matched.
+      // `sql\`count(*)\`` is the real aggregate form already used correctly elsewhere in
+      // this codebase (db.ts getSyncStatus) — it goes through the same collapse, honestly.
+      //
+      // Separately, `eq(accounts.lastSixsenseSync, accounts.lastSixsenseSync)` compares
+      // the column to itself: a tautology in real SQL (true for every non-null row, and
+      // — depending on NULL comparison semantics — never reliably distinguishes synced
+      // from unsynced). It was meant to ask "has this account ever synced", which is
+      // isNotNull, not self-equality.
+      const [totalRow] = await db
+        .select({ count: sql<number>`count(*)` })
         .from(accounts);
 
-      const syncedAccounts = await db
-        .select({ count: accounts.id })
+      const [syncedRow] = await db
+        .select({ count: sql<number>`count(*)` })
         .from(accounts)
-        .where(eq(accounts.lastSixsenseSync, accounts.lastSixsenseSync));
+        .where(isNotNull(accounts.lastSixsenseSync));
+
+      const total = totalRow?.count ?? 0;
+      const synced = syncedRow?.count ?? 0;
 
       return {
-        total: totalAccounts.length,
-        synced: syncedAccounts.length,
-        unsynced: totalAccounts.length - syncedAccounts.length,
+        total,
+        synced,
+        unsynced: total - synced,
       };
     } catch (error) {
       console.error("[6sense] Failed to get sync status:", error);

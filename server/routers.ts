@@ -9,6 +9,7 @@ import { users, accessRequests, Account, Contact, Call } from "../drizzle/schema
 import { getDb } from "./db";
 import { eq } from "drizzle-orm";
 import { sdk } from "./_core/sdk";
+import { toPublicUser } from "./_core/publicUser";
 import { z } from "zod";
 import { getAllAccounts, getAccountById, updateAccount, getAllPeople, getPeoplePaginated, getPeopleByCompany, getContactsByAccountId, getPersonById, /* createClayRequest, updateClayRequest, getAllClayRequests, getClayRequest, */ upsertAccount, upsertPerson, getAllGongCalls, getGongCallsPaginated, getGongCallsByCompany, getGongCallsByAccountId, getAllOpportunities, getOpportunityById, getOpportunitiesByAccountId, upsertOpportunity } from "./db";
 import { enrichAccountWithAI, analyzeGongCall, generateOutreachEmail, intelligentSearch, prioritizeContacts } from "./ai";
@@ -40,7 +41,7 @@ import { salesforceRouter } from "./routers/salesforce";
 import { notifyOwner } from "./_core/notification";
 import { getApprovalLinks } from "./admin-approval-api";
 import { hotLeadsRouter } from "./hot-leads-router";
-import { recordFailedLogin, clearLoginAttempts, getLoginLockout, validatePasswordComplexity, logSecurityEvent } from "./_core/security";
+import { recordFailedLogin, clearLoginAttempts, getLoginLockout, validatePasswordComplexity, logSecurityEvent, getClientIP } from "./_core/security";
 import { twoFARouter } from "./twofa-router";
 import {
   createChallenge,
@@ -224,7 +225,10 @@ export const appRouter = router({
   // which cannot live here because they run before a session exists.
   twoFA: twoFARouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    // ctx.user is the full drizzle row — passwordHash, twoFactorSecret and the
+    // recovery-code blob included. Shipping it verbatim to the client meant every
+    // signed-in user's browser held their own hash and TOTP secret on every page load.
+    me: publicProcedure.query(opts => toPublicUser(opts.ctx.user)),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -326,11 +330,11 @@ Or go to the Admin Panel: /admin/approval`
         const db = await getDb();
         if (!db) throw new Error("Database not available");
         
-        // Get client IP for brute force protection
-        const clientIP = ctx.req.headers["x-forwarded-for"]?.toString().split(",")[0].trim() ||
-                         ctx.req.ip ||
-                         ctx.req.socket.remoteAddress ||
-                         "unknown";
+        // Get client IP for brute force protection. This used to read x-forwarded-for
+        // directly — a client-controlled header — so the lockout below could be reset
+        // just by sending a different value for it on the next request. getClientIP
+        // only trusts that header when the operator has confirmed a real proxy sets it.
+        const clientIP = getClientIP(ctx.req);
 
         // Enforce the brute-force lockout on the tRPC path (the express loginRateLimiter
         // doesn't cover /api/trpc). Without this the 5-attempt lockout was never applied.

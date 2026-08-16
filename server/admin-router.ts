@@ -5,6 +5,7 @@ import { getDb } from "./db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { isSixsenseConfigured } from "./sixsense";
+import { toPublicUser } from "./_core/publicUser";
 
 export const adminRouter = router({
   // Real configuration/health check — the Admin page used to hardcode "6sense API:
@@ -106,7 +107,7 @@ export const adminRouter = router({
     }
     const db = await getDb();
     if (!db) throw new Error("Database not available");
-    return await db.select({
+    const rows = await db.select({
       id: users.id,
       name: users.name,
       email: users.email,
@@ -116,6 +117,7 @@ export const adminRouter = router({
       createdAt: users.createdAt,
       lastSignedIn: users.lastSignedIn,
     }).from(users).orderBy(users.createdAt);
+    return rows.map(toPublicUser);
   }),
 
   // Get pending users (registered but not approved)
@@ -125,7 +127,7 @@ export const adminRouter = router({
     }
     const db = await getDb();
     if (!db) throw new Error("Database not available");
-    return await db.select({
+    const rows = await db.select({
       id: users.id,
       name: users.name,
       email: users.email,
@@ -134,6 +136,7 @@ export const adminRouter = router({
       loginMethod: users.loginMethod,
       createdAt: users.createdAt,
     }).from(users).where(eq(users.isApproved, false)).orderBy(users.createdAt);
+    return rows.map(toPublicUser);
   }),
 
   // Approve a registered user

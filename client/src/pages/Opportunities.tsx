@@ -6,7 +6,16 @@ import { Button } from"@/components/ui/button";
 import { BrainCircuit, Plus, CalendarDays } from"lucide-react";
 import { format } from"date-fns";
 
-const STAGES = ["Discovery","Validation","Proposal","Negotiation","Closed Won","Closed Lost"];
+/**
+ * The board always shows these, in this order, even with zero deals in one — that's the
+ * expected shape of the pipeline. Any OTHER stage actually present in the data gets its
+ * own column too, appended after. This used to be the full, fixed list of columns: a
+ * deal in "Qualification" (a real stage seeded in demo-db.json, not a typo) rendered on
+ * no column at all — invisible on a board whose header still summed it into "$X across N
+ * open deals" a few lines above. A rep scanning every column for that $334,000 would
+ * never find it, because it was never drawn anywhere.
+ */
+const KNOWN_STAGE_ORDER = ["Discovery","Validation","Proposal","Negotiation","Closed Won","Closed Lost"];
 
 // Status is color-coded, so it always carries a glyph + word (never color alone).
 function statusMeta(status: string) {
@@ -79,6 +88,14 @@ export default function Opportunities() {
     (o: any) => !String(o.stage ||"").toLowerCase().startsWith("closed")
   );
   const openValue = openOpps.reduce((s: number, o: any) => s + (Number(o.amount) || 0), 0);
+  const unrecognizedStages: string[] = Array.from(
+    new Set<string>(
+      allOpps
+        .map((o: any) => o.stage as string)
+        .filter((s: string) => !!s && !KNOWN_STAGE_ORDER.includes(s))
+    )
+  ).sort();
+  const STAGES: string[] = [...KNOWN_STAGE_ORDER, ...unrecognizedStages];
 
   return (
     <div className="text-foreground">

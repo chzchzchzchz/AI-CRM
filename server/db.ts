@@ -383,8 +383,31 @@ class MockDrizzleQueryBuilder {
             op: 'in',
             values: inValues.map((p: any) => (p && typeof p === 'object' && 'value' in p ? p.value : p)),
           });
+        } else if (scalarParam) {
+          this.filters.push({ field, value: scalarParam.value });
         } else {
-          this.filters.push({ field, value: scalarParam ? scalarParam.value : null });
+          // No literal value chunk — either an isNotNull()/isNull() condition (a text
+          // chunk carries "is not null" / "is null", no Param) or a column-to-column
+          // comparison this mock cannot evaluate (eq(col, col) — observed live as a
+          // copy-paste self-compare meant to mean "has a value", which instead matched
+          // every row with a value and none without, since both sides read identically).
+          // This used to fall through to `value: null` unconditionally, which reads as
+          // "field equals the literal string 'null'" — excluding every real row on an
+          // IS NOT NULL check, the opposite of the intended filter.
+          const text = condition.queryChunks
+            .filter((c: any) => c && Array.isArray(c.value))
+            .map((c: any) => c.value.join(''))
+            .join(' ')
+            .toLowerCase();
+          if (text.includes('is not null')) {
+            this.filters.push({ field, value: null, op: 'is_not_null' });
+          } else if (text.includes('is null')) {
+            this.filters.push({ field, value: null, op: 'is_null' });
+          }
+          // Otherwise: a comparison the mock cannot evaluate. Adding no filter returns
+          // too many rows rather than too few — the safer failure direction for a
+          // count/status query, and it surfaces as a wrong number instead of a
+          // confidently wrong empty result.
         }
       }
     } else {
@@ -458,6 +481,8 @@ class MockDrizzleQueryBuilder {
       for (const filter of this.filters) {
         if (filter.op === 'is_not_null') {
           results = results.filter((item: any) => item[filter.field] !== null && item[filter.field] !== undefined);
+        } else if (filter.op === 'is_null') {
+          results = results.filter((item: any) => item[filter.field] === null || item[filter.field] === undefined);
         } else if (filter.op === 'in') {
           const set = new Set((filter.values || []).map((v: any) => String(v)));
           results = results.filter((item: any) => set.has(String(item[filter.field])));

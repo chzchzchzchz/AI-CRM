@@ -17,15 +17,33 @@ const LOGIN_MAX_ATTEMPTS = 5; // Max login attempts before lockout
 const LOGIN_LOCKOUT_MS = 15 * 60 * 1000; // 15 minute lockout
 
 /**
- * Get client IP address from request
+ * Get client IP address from request.
+ *
+ * `X-Forwarded-For` is a request header — the client sets it, same as any other. It is
+ * only meaningful when a real proxy in front of this process overwrites whatever the
+ * client sent with the actual upstream address. Reading it unconditionally (as this did)
+ * means anyone can pick their own value for it, and the login lockout below is keyed on
+ * this return value. Confirmed live: five wrong passwords sent with
+ * `x-forwarded-for: 10.9.9.9` locks that string out; the very next request — same
+ * client, same connection — with the header changed to `10.9.9.13` is back to "Invalid
+ * email or password" instead of "Too many attempts". The header costs nothing to change
+ * and the lockout was resetting every time, which is unlimited password guessing from a
+ * single real host.
+ *
+ * `req.socket.remoteAddress` is the actual TCP peer address Node observed — it is not a
+ * header, so nothing in the request body or headers can set it. Only fall back to the
+ * client-supplied header when the operator has explicitly confirmed a trusted proxy sits
+ * in front and controls it (`TRUST_PROXY=true`); this app sets no such thing by default.
  */
-function getClientIP(req: Request): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (forwarded) {
-    const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
-    return ips.trim();
+export function getClientIP(req: Request): string {
+  if (process.env.TRUST_PROXY === "true") {
+    const forwarded = req.headers["x-forwarded-for"];
+    if (forwarded) {
+      const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
+      return ips.trim();
+    }
   }
-  return req.ip || req.socket.remoteAddress || "unknown";
+  return req.socket.remoteAddress || req.ip || "unknown";
 }
 
 /**
