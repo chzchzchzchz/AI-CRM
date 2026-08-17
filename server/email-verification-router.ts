@@ -159,14 +159,22 @@ export const emailVerificationRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
+      // Stored addresses are lowercased at signup (server/routers.ts signUp) —
+      // normalize here too, or a user who types a different case than they signed up
+      // with is told (indirectly, via the anti-enumeration success response) that a
+      // code was sent when no account was actually found.
       const userResults = await db
         .select()
         .from(users)
-        .where(eq(users.email, input.email))
+        .where(eq(users.email, input.email.trim().toLowerCase()))
         .limit(1);
 
       if (!userResults[0]) {
-        return { success: true };
+        // Deliberately indistinguishable from the "sent" branch below — a different
+        // response here would let a caller learn whether an email has an account
+        // (`emailSent` present vs absent, or a different value) without ever needing a
+        // password. This is the standard anti-enumeration shape for a reset flow.
+        return { success: true, emailSent: true };
       }
 
       const user = userResults[0];
@@ -184,8 +192,16 @@ export const emailVerificationRouter = router({
         expiresAt,
       });
 
-      await sendPasswordResetEmail(input.email, code).catch(() => false);
-      return isDemo() ? { success: true, code } : { success: true };
+      // Capture whether the send actually worked instead of discarding it. The client
+      // used to say "Reset code sent to your email!" unconditionally — including with
+      // no SENDGRID_API_KEY configured, where sendEmail() warns and returns false and
+      // nothing was ever sent. In demo mode the code rides along in the response either
+      // way, which is how a self-hosted install with no mailer configured can still
+      // complete the flow — but the CLIENT never read it, so even that safety net was
+      // dead code, and a real deployment with a broken mailer told the user their
+      // recovery code was on its way when it was gone.
+      const emailSent = await sendPasswordResetEmail(input.email, code).catch(() => false);
+      return isDemo() ? { success: true, emailSent, code } : { success: true, emailSent };
     }),
 
   resetPassword: publicProcedure

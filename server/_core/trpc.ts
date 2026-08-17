@@ -5,6 +5,17 @@ import type { TrpcContext } from "./context";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
+  // tRPC's default shape includes the server-side stack trace in `error.data` for
+  // every error, in every environment — confirmed live: a plain validation failure
+  // ("Password must contain at least one uppercase letter") came back with a full
+  // stack including this server's absolute filesystem path
+  // (/Users/.../server/routers.ts:250:17). The message a caller needs is `.message`;
+  // the stack is for this process's own logs, not the network.
+  errorFormatter({ shape, error }) {
+    const { stack: _stack, ...dataWithoutStack } = shape.data as Record<string, unknown>;
+    void error;
+    return { ...shape, data: dataWithoutStack };
+  },
 });
 
 export const router = t.router;

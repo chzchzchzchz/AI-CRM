@@ -7,7 +7,12 @@ export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
-  email: varchar("email", { length: 320 }),
+  // App-level checks (server/routers.ts signUp) already reject a duplicate before
+  // inserting, but that check-then-insert has a race window on concurrent requests,
+  // and it's only as good as every call site remembering to run it. A unique index is
+  // the actual guarantee; MySQL allows multiple NULLs through a unique column, so this
+  // doesn't constrain the OAuth users who sign up with no email at all.
+  email: varchar("email", { length: 320 }).unique(),
   passwordHash: varchar("passwordHash", { length: 255 }), // For email/password auth
   loginMethod: varchar("loginMethod", { length: 64 }), // 'oauth', 'email', 'demo'
   isApproved: boolean("isApproved").default(false), // For demo access approval
@@ -32,10 +37,15 @@ export const accessRequests = mysqlTable("access_requests", {
   email: varchar("email", { length: 320 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   company: varchar("company", { length: 255 }),
-  reason: text("reason"), // Why they want access
+  reason: text("reason"), // Why the applicant wants access
   status: mysqlEnum("status", ["pending", "approved", "denied"]).default("pending").notNull(),
   reviewedBy: int("reviewedBy"), // Admin who reviewed
   reviewedAt: timestamp("reviewedAt"),
+  // Why the admin denied it — distinct from `reason` above (the applicant's own words).
+  // denyAccessRequest's zod input already accepted this and the deny dialog already
+  // prompted for it; there was no column to put it in, so it was validated, submitted,
+  // and silently thrown away every time.
+  denialReason: text("denialReason"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

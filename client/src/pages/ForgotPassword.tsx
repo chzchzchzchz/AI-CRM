@@ -19,8 +19,21 @@ export default function ForgotPassword() {
 
   const sendResetCode = trpc.emailVerification.sendPasswordResetCode.useMutation({
     onSuccess: (data: any) => {
-      toast.success("Reset code sent to your email!");
-      setResetCode(data.code || "");
+      // `code` only ever comes back in demo mode (server/email-verification-router.ts) —
+      // real deployments never see it here, by design. It used to be captured into state
+      // and then never read anywhere, so demo mode's whole point — completing this flow
+      // with no mailer configured — was unreachable. `emailSent` used to be discarded
+      // too, so a real deployment with a broken or unconfigured mailer said "sent!"
+      // regardless of whether anything actually went out.
+      if (data.code) {
+        setResetCode(data.code);
+        setCode(data.code);
+        toast.info("No mailer configured — using the code below (demo mode only).");
+      } else if (data.emailSent) {
+        toast.success("Reset code sent to your email!");
+      } else {
+        toast.warning("We couldn't send the email right now. You can try again in a moment.");
+      }
       setStep("code");
     },
     onError: (error: any) => {
@@ -126,10 +139,19 @@ export default function ForgotPassword() {
 
           {step === "code" && (
             <form onSubmit={handleResetPassword} className="space-y-4">
-              <div className="p-3 bg-accent-subtle border border-accent/30 rounded-sm text-sm text-accent">
-                <p className="font-medium mb-1">Code sent to {email}</p>
-                <p className="text-xs text-accent/70">Check your email for the 32-character reset code</p>
-              </div>
+              {resetCode ? (
+                <div className="p-3 bg-accent-subtle border border-accent/30 rounded-sm text-sm text-accent">
+                  <p className="font-medium mb-1">No mailer is configured (demo mode)</p>
+                  <p className="text-xs text-accent/70">
+                    Your reset code has been filled in below: <span className="font-mono">{resetCode}</span>
+                  </p>
+                </div>
+              ) : (
+                <div className="p-3 bg-accent-subtle border border-accent/30 rounded-sm text-sm text-accent">
+                  <p className="font-medium mb-1">Code sent to {email}</p>
+                  <p className="text-xs text-accent/70">Check your email for the 32-character reset code</p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Reset Code</label>

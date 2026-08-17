@@ -4,8 +4,23 @@ import { users, accessRequests } from "../drizzle/schema";
 import { getDb } from "./db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { isSixsenseConfigured } from "./sixsense";
 import { toPublicUser } from "./_core/publicUser";
+import { sendAccessApprovalEmail } from "./_core/email";
+
+/**
+ * Real mysql2 resolves `db.update(...)`/`db.delete(...)` to a `[ResultSetHeader, ...]`
+ * tuple; the demo-mode JSON shim (server/db.ts) resolves to a plain `{ affectedRows }`
+ * object instead. Neither shape survives being read the other way — destructuring the
+ * shim's result as a tuple throws, and reading `.affectedRows` off the real tuple reads
+ * it off an array. This normalizes both so a caller can check the one thing that
+ * actually matters here: did the row exist.
+ */
+function affectedRows(result: unknown): number {
+  const row = Array.isArray(result) ? result[0] : result;
+  return (row as { affectedRows?: number } | undefined)?.affectedRows ?? 0;
+}
 
 export const adminRouter = router({
   // Real configuration/health check — the Admin page used to hardcode "6sense API:
@@ -49,7 +64,9 @@ export const adminRouter = router({
       if (!request[0]) throw new Error("Request not found");
 
       const openId = `email_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-      const tempPassword = Math.random().toString(36).substring(2, 15);
+      // crypto.randomBytes, not Math.random() — this becomes the account's actual login
+      // credential, same reasoning as the 2FA recovery codes (server/twofa-router.ts).
+      const tempPassword = crypto.randomBytes(12).toString("base64url");
       const passwordHash = await bcrypt.hash(tempPassword, 10);
 
       await db.insert(users).values({
@@ -71,7 +88,15 @@ export const adminRouter = router({
         })
         .where(eq(accessRequests.id, input.requestId));
 
-      return { success: true, tempPassword };
+      // The password created above has to reach the new user somehow, and until now it
+      // reached nowhere: sendAccessApprovalEmail existed but nothing called it, and the
+      // client discarded `tempPassword` from this response entirely. The account was
+      // real but permanently unreachable — no one, including the approving admin, ever
+      // saw the credential that would let it be logged into.
+      const emailSent = await sendAccessApprovalEmail(request[0].email, request[0].name, tempPassword)
+        .catch(() => false);
+
+      return { success: true, tempPassword, emailSent, email: request[0].email };
     }),
 
   denyAccessRequest: protectedProcedure
@@ -88,14 +113,16 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      await db
+      const result = await db
         .update(accessRequests)
         .set({
           status: "denied",
           reviewedBy: ctx.user?.id,
           reviewedAt: new Date(),
+          denialReason: input.reason,
         })
         .where(eq(accessRequests.id, input.requestId));
+      if (affectedRows(result) === 0) throw new Error(`Request ${input.requestId} not found`);
 
       return { success: true };
     }),
@@ -149,10 +176,14 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      await db
+      const result = await db
         .update(users)
         .set({ isApproved: true })
         .where(eq(users.id, input.userId));
+      // A bare UPDATE with no affectedRows check reported success for a userId that
+      // matched nothing — confirmed live, id 999999999 and id -1 both returned
+      // {success:true} with no user actually approved.
+      if (affectedRows(result) === 0) throw new Error(`User ${input.userId} not found`);
 
       return { success: true };
     }),
@@ -167,14 +198,15 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      await db.delete(users).where(eq(users.id, input.userId));
+      const result = await db.delete(users).where(eq(users.id, input.userId));
+      if (affectedRows(result) === 0) throw new Error(`User ${input.userId} not found`);
 
       return { success: true };
     }),
 
   // Update user role
   updateUserRole: protectedProcedure
-    .input(z.object({ 
+    .input(z.object({
       userId: z.number(),
       role: z.enum(["user", "admin"])
     }))
@@ -185,10 +217,11 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      await db
+      const result = await db
         .update(users)
         .set({ role: input.role })
         .where(eq(users.id, input.userId));
+      if (affectedRows(result) === 0) throw new Error(`User ${input.userId} not found`);
 
       return { success: true };
     }),

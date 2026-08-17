@@ -135,7 +135,24 @@ export function registerAdminApprovalRoutes(app: Express) {
   });
 }
 
+/**
+ * `renderResultPage`'s `message` argument is built from `user.name` / `user.email` at
+ * every call site — fields set at signup with no format restriction beyond
+ * `z.string().min(1)`. Interpolated unescaped into `<p>${message}</p>`, a name like
+ * `<img src=x onerror=...>` executes in the browser of whoever clicks the one-click
+ * approve/deny link from their email — normally an admin, so this is a stored-XSS path
+ * into an admin's own session. Escape both dynamic fields at the one place they're
+ * rendered, so no future call site can reintroduce this by forgetting to.
+ */
+export function escapeHtml(input: string): string {
+  return input.replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[c] as string);
+}
+
 function renderResultPage(title: string, message: string, success: boolean): string {
+  title = escapeHtml(title);
+  message = escapeHtml(message);
   const bgColor = success ? "#10b981" : "#ef4444";
   const icon = success ? "✓" : "✕";
   

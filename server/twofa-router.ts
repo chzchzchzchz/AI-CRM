@@ -72,6 +72,20 @@ export const twoFARouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
+      // disable() and regenerateBackupCodes() both confirm the request against the
+      // account's password (bcrypt.compare against an unlockable laptop, not the TOTP
+      // code, so a second factor can't be removed just by having a signed-in session).
+      // A passwordless account — OAuth or the demo login — has nothing for that compare
+      // to ever match, so enrolling here created a 2FA account with no way to ever turn
+      // it off again. Confirmed live: disable("anything") against a passwordHash-null
+      // user returns "Invalid password" for every input, including the empty string.
+      const [self] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      if (!self?.passwordHash) {
+        throw new Error(
+          "Set a password first (use “Forgot password”) before enabling two-factor authentication — disabling it later requires one."
+        );
+      }
+
       if (!verifyTotp(input.secret, input.verificationCode)) {
         throw new Error("That code didn't match. Check your authenticator app and try again.");
       }

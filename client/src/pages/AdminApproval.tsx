@@ -29,6 +29,10 @@ export default function AdminApproval() {
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [denyReason, setDenyReason] = useState("");
   const [showDenyDialog, setShowDenyDialog] = useState(false);
+  // Set only when approval created an account but could not email its credential —
+  // the one place left for that password to actually reach a person, since nothing
+  // else in this flow shows it. See the approveMutation onSuccess handler below.
+  const [pendingCredential, setPendingCredential] = useState<{ email: string; tempPassword: string } | null>(null);
 
   // Fetch pending access requests
   const { data: requests, isLoading, refetch } = trpc.admin.getPendingRequests.useQuery(
@@ -50,8 +54,16 @@ export default function AdminApproval() {
 
   // Approve request mutation
   const approveMutation = trpc.admin.approveAccessRequest.useMutation({
-    onSuccess: () => {
-      toast.success("Access request approved!");
+    onSuccess: (data) => {
+      if (data.emailSent) {
+        toast.success("Access request approved — credentials emailed to the user.");
+      } else {
+        // No mailer configured (or the send failed): the temp password this created
+        // has nowhere else to go. Showing it here is the only way it reaches anyone —
+        // previously this branch just said "approved!" and the password was gone.
+        toast.warning("Approved, but no email was sent — hand these credentials to the user directly.");
+        setPendingCredential({ email: data.email, tempPassword: data.tempPassword });
+      }
       refetch();
     },
     onError: (error: any) => {
@@ -562,6 +574,31 @@ export default function AdminApproval() {
               )}
               Deny Request
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!pendingCredential} onOpenChange={(open) => !open && setPendingCredential(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deliver these credentials manually</DialogTitle>
+            <DialogDescription>
+              No email could be sent for this approval. This is the only copy of the
+              temporary password — it is not stored anywhere and will not be shown again.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 rounded-md border border-border bg-muted/40 p-4 font-mono text-sm">
+            <div>
+              <span className="text-ink-muted">Email: </span>
+              {pendingCredential?.email}
+            </div>
+            <div>
+              <span className="text-ink-muted">Temporary password: </span>
+              {pendingCredential?.tempPassword}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setPendingCredential(null)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

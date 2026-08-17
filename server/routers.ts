@@ -254,21 +254,27 @@ export const appRouter = router({
           throw new Error(passwordError);
         }
         
-        // Check if email already exists
-        const existing = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
+        // Email addresses are case-insensitive (RFC 5321's local-part is technically
+        // case-sensitive, but no real mail provider treats it that way, and every other
+        // check in this app already assumes one address = one identity). Normalize once
+        // here so the dup check and the stored value agree — "DEMO@AI-CRM.COM" used to
+        // pass this check and create a second account for an address that already had
+        // one, confirmed live against demo@ai-crm.com.
+        const normalizedEmail = input.email.trim().toLowerCase();
+        const existing = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
         if (existing.length > 0) {
           throw new Error("An account with this email already exists");
         }
-        
+
         // Hash password
         const passwordHash = await bcrypt.hash(input.password, 10);
-        
+
         // Create user with unique openId
         const openId = `email_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-        
+
         const result = await db.insert(users).values({
           openId,
-          email: input.email,
+          email: normalizedEmail,
           name: input.name,
           passwordHash,
           loginMethod: "email",
@@ -344,8 +350,10 @@ Or go to the Admin Panel: /admin/approval`
           throw new Error(`Too many login attempts. Try again in ${Math.ceil(lockout.retryAfterSeconds / 60)} minute(s).`);
         }
 
-        // Find user by email
-        const userResults = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
+        // Find user by email. Stored addresses are lowercased at signup (see signUp
+        // above) — normalize the login attempt the same way so a user who typed their
+        // email in a different case at signup than at login isn't told it's wrong.
+        const userResults = await db.select().from(users).where(eq(users.email, input.email.trim().toLowerCase())).limit(1);
         const user = userResults[0];
         
         if (!user || !user.passwordHash) {
