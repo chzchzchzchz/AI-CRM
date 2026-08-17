@@ -37,7 +37,6 @@ export default function Home() {
   const { data: repStats } = trpc.priorityActions.getRepStats.useQuery({ userEmail }, { enabled: !!user });
   const { data: accounts, isLoading: accountsLoading } = trpc.accounts.list.useQuery(undefined, { enabled: !!user });
   const { data: enrichedPriorityActions, isLoading: priorityLoading } = trpc.priorityActions.getEnriched.useQuery({ limit: 3, userEmail }, { enabled: !!user });
-  const { data: sixsenseSummary } = trpc.sixsenseAnalytics.getSummary.useQuery(undefined, { enabled: !!user });
   const { data: topKeywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 10 }, { enabled: !!user });
   const { data: opportunitiesData } = trpc.opportunities.list.useQuery(undefined, { enabled: !!user });
 
@@ -555,7 +554,13 @@ export default function Home() {
                 <div className="flex flex-wrap items-start gap-3 group">
                   <Checkbox id="task3" className="mt-1" />
                   <label htmlFor="task3" className="text-sm font-medium leading-relaxed cursor-pointer group-hover:text-primary transition-colors">
-                    Work unworked 6QAs ({sixsenseSummary?.sixQA?.unworked || 0} accounts)
+                    {/* Every other item in this list is scoped to the rep's own territory
+                        (task1/task2 already append "in {region}"); this one read from
+                        sixsenseAnalytics.getSummary, which is workspace-wide with no
+                        territory parameter at all. It also now matches the "Unworked 6QA"
+                        tile above by construction — both read sixQAGap — instead of the
+                        tile and the checklist item beside it citing two different sources. */}
+                    Work unworked 6QAs ({sixQAGap ?? 0} accounts{globalRepInfo ? ` in ${globalRepInfo.region}` : ''})
                   </label>
                 </div>
                 <div className="flex flex-wrap items-start gap-3 group">

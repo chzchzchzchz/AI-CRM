@@ -75,6 +75,22 @@ export default function Insights() {
     if (!territoryAccountNames) return allContacts;
     return allContacts.filter((c: any) => territoryAccountNames.has(c.company?.toLowerCase()));
   }, [allContacts, territoryAccountNames]);
+
+  // The Overview tab's other tiles are all territory-scoped; "calls logged" read from
+  // the unfiltered gong.list — a rep with 66 accounts in their territory saw the
+  // workspace's full call count next to tiles counting only their own book. Calls carry
+  // accountId directly, so this scopes the same way accounts.list already does, rather
+  // than the name-based join contacts needs (calls has no company/name field to join on).
+  const territoryAccountIds = useMemo(() => {
+    if (!accounts || !isRepMode) return null;
+    return new Set(accounts.map((a: any) => a.id));
+  }, [accounts, isRepMode]);
+
+  const scopedCalls = useMemo(() => {
+    if (!calls) return undefined;
+    if (!territoryAccountIds) return calls;
+    return calls.filter((c: any) => territoryAccountIds.has(c.accountId));
+  }, [calls, territoryAccountIds]);
   const { data: keywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 50 });
   const { data: engagement } = trpc.sixsenseAnalytics.getEngagement.useQuery();
   const { data: buyingStages } = trpc.sixsenseAnalytics.getBuyingStages.useQuery();
@@ -89,7 +105,7 @@ export default function Insights() {
 
   // Calculate metrics
   const totalAccounts = accounts?.length || 0;
-  const totalCalls = calls?.length || 0;
+  const totalCalls = scopedCalls?.length || 0;
   // Same cap, same problem: "of 1,500 contacts" was the page size, not the dataset.
   const totalContacts = territoryAccountNames
     ? contacts?.length || 0
@@ -182,62 +198,27 @@ export default function Insights() {
           return (account.region || "Unknown") === activeFilter.value;
         case "buyingStage":
           return (account.sixsenseBuyingStage || "Unknown") === activeFilter.value;
-        case "keyword":
-          // Smart keyword filtering based on category and keyword content
-          const keyword = activeFilter.value.toLowerCase();
-          const category = activeFilter.category?.toLowerCase() || "";
-          const securityStack = (account.securityStack || "").toLowerCase();
-          const techStack = (account.techStack || "").toLowerCase();
-          const rawData = account.rawData as Record<string, unknown> | null;
-          const ssoProvider = (rawData?.['SSO Provider'] as string || "").toLowerCase();
-          const intentScore = Number(account.intentScore) || 0;
-          const buyingStage = (account.sixsenseBuyingStage || "").toLowerCase();
-
-          // Competitor keywords - match accounts using that competitor
-          if (category === "competitor") {
-            const competitorMatches =
-              securityStack.includes(keyword) ||
-              ssoProvider.includes(keyword) ||
-              techStack.includes(keyword);
-            if (competitorMatches) return true;
-            // Also include high-intent accounts in Decision/Purchase stage
-            if (intentScore >= 60 && ["decision", "purchase"].includes(buyingStage)) return true;
-            return false;
-          }
-
-          // Threat keywords - show high-intent accounts (likely researching threats)
-          if (category === "threat") {
-            return intentScore >= 50; // Show accounts with moderate+ intent
-          }
-
-          // Compliance keywords - show accounts in regulated industries
-          if (category === "compliance") {
-            const regulatedIndustries = ["finance", "financial services", "healthcare", "insurance", "government", "banking"];
-            const industry = (account.industry || "").toLowerCase();
-            if (regulatedIndustries.some(ri => industry.includes(ri))) return true;
-            return intentScore >= 60;
-          }
-
-          // Product keywords - show accounts in active buying stages
-          if (category === "product") {
-            const activeBuyingStages = ["consideration", "decision", "purchase"];
-            if (activeBuyingStages.includes(buyingStage)) return true;
-            return intentScore >= 70; // Hot leads
-          }
-
-          // Brand keywords ({COMPANY_NAME}) - show engaged accounts
-          if (category === "brand") {
-            const engagementActivities = Number(rawData?.engagementActivities) || 0;
-            return engagementActivities > 0 || intentScore >= 60;
-          }
-
-          // Default: show high-intent accounts
-          return intentScore >= 60;
+        case "keyword": {
+          // The real accounts this keyword's intentScores rows reference — computed
+          // server-side (server/sixsense-analytics.ts computeKeywords) from the same
+          // join that produces this keyword's own counts, so "accounts 1" on the card
+          // and the accounts shown here are guaranteed to agree.
+          //
+          // This used to dispatch on CATEGORY alone (competitor/threat/compliance/...)
+          // with an intent-score-threshold heuristic per category, never once reading
+          // which keyword was actually clicked — every keyword sharing a category
+          // rendered the identical account list. Confirmed live: clicking "New VP Sales
+          // hire" (a Security-category keyword, 1 real matching account) rendered 148
+          // accounts, the same 148 any other Security keyword would have shown.
+          const match = keywords?.keywords?.find((k: any) => k.keyword === activeFilter.value);
+          const accountIds: number[] = match?.accountIds ?? [];
+          return accountIds.includes(account.id);
+        }
         default:
           return false;
       }
     }).sort((a: any, b: any) => (Number(b.intentScore) || 0) - (Number(a.intentScore) || 0));
-  }, [accounts, activeFilter]);
+  }, [accounts, activeFilter, keywords]);
 
   const handleFilterClick = (type: FilterType, value: string, label: string, category?: string) => {
     if (activeFilter?.type === type && activeFilter?.value === value) {
@@ -311,7 +292,13 @@ export default function Insights() {
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-foreground">Data Analytics Studio</h1>
             <p className="mt-1 text-sm text-ink-muted">
-              {isRepMode ? `${repInfo?.region} territory · ` : ''}Every figure is computed from live account data — click any segment to drill in.
+              {/* Only Overview is actually scoped to the selected territory — Keywords,
+                  Engagement and 6QA Performance all read from sixsenseAnalytics
+                  procedures that compute over every account, with no territory
+                  parameter. A blanket "West territory" claim here read as true for all
+                  four tabs when it only ever held for one; each unscoped tab now says so
+                  itself, the same way Home.tsx already labels its company-wide tile. */}
+              {isRepMode ? `${repInfo?.region} territory (Overview) · ` : ''}Every figure is computed from live account data — click any segment to drill in.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3 shrink-0">
@@ -702,6 +689,11 @@ export default function Insights() {
 
           {/* Keywords Tab */}
           <TabsContent value="keywords" className="mt-6">
+            {isRepMode && (
+              <p className="mb-4 text-xs text-ink-muted">
+                Company-wide (all territories) — sixsenseAnalytics.getKeywords is not scoped to {repInfo?.region}.
+              </p>
+            )}
             <Card className={`${CARD} mb-6`}>
               <CardHeader>
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -880,6 +872,11 @@ export default function Insights() {
 
           {/* Engagement Tab */}
           <TabsContent value="engagement" className="mt-6">
+            {isRepMode && (
+              <p className="mb-4 text-xs text-ink-muted">
+                Company-wide (all territories) — sixsenseAnalytics.getEngagement is not scoped to {repInfo?.region}.
+              </p>
+            )}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Engagement States */}
               <Card className={CARD}>
@@ -968,6 +965,11 @@ export default function Insights() {
 
           {/* 6QA Performance Tab */}
           <TabsContent value="6qa" className="mt-6">
+            {isRepMode && (
+              <p className="mb-4 text-xs text-ink-muted">
+                Company-wide (all territories) — sixsenseAnalytics.get6QAPerformance is not scoped to {repInfo?.region}.
+              </p>
+            )}
             <Card className={CARD}>
               <CardHeader>
                 <CardTitle className="text-foreground text-base flex flex-wrap items-center gap-2">

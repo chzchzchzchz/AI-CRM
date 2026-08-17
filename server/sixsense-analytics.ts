@@ -184,17 +184,27 @@ function computeEngagement(d: RealData) {
 
 /** Keyword performance aggregated from the intentScores time series across accounts. */
 function computeKeywords(d: RealData) {
-  // keyword -> set of accountIds, plus the category it appeared under
-  const byKeyword = new Map<string, { accounts: Set<number>; category: string }>();
+  // keyword -> accountIds, plus how many rows carried each category it appeared under.
+  // A keyword shows up across many rows, and those rows don't all agree on category —
+  // observed live, "CRM migration" appears under 5-6 different categories, and the card
+  // shipped whichever one its FIRST row happened to carry (Retail Tech, from 1 row out
+  // of 321 — Pricing, the actual plurality at 73, lost to arrival order). Tracking every
+  // category's count and picking the plurality at the end reports what the data mostly
+  // says instead of what it said first.
+  const byKeyword = new Map<string, { accounts: Set<number>; categoryCounts: Map<string, number> }>();
   for (const row of d.intent) {
     const accountId = row.accountId;
     const category = row.category || "other";
     for (const kw of parseKeywords(row.keywords)) {
-      const entry = byKeyword.get(kw) || { accounts: new Set<number>(), category };
+      const entry = byKeyword.get(kw) || { accounts: new Set<number>(), categoryCounts: new Map<string, number>() };
       if (accountId != null) entry.accounts.add(accountId);
+      entry.categoryCounts.set(category, (entry.categoryCounts.get(category) || 0) + 1);
       byKeyword.set(kw, entry);
     }
   }
+
+  const plurality = (counts: Map<string, number>): string =>
+    Array.from(counts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
 
   const dataAsOf = d.now;
   const keywords = Array.from(byKeyword.entries())
@@ -207,12 +217,20 @@ function computeKeywords(d: RealData) {
       const withOpps = ids.filter((id) => d.hasOpenOpp.has(id) || d.hasWonOpp.has(id)).length;
       return {
         keyword,
+        // The real account ids this keyword's intentScores rows actually reference —
+        // the join already exists two lines up (`e.accounts`) to compute the counts
+        // below; it just never left this function. Without it, the client's
+        // "Accounts researching X" drill-down had no real list to show and fell back
+        // to filtering by category + intent score instead, which is why every keyword
+        // in a category rendered the identical account list regardless of which one
+        // was clicked.
+        accountIds: ids,
         totalAccounts: ids.length,
         accountsWithWebVisits: ids.filter((id) => (d.callsByAccount.get(id) || 0) > 0 || (d.contactsByAccount.get(id) || 0) > 0).length,
         accountsWith6QA: with6QA,
         accountsWithOpportunities: withOpps,
         accountsWithRelevantOpportunities: withOpps,
-        category: e.category,
+        category: plurality(e.categoryCounts),
         dataAsOf,
       };
     })
@@ -293,7 +311,21 @@ export const sixsenseAnalyticsRouter = router({
       latest: {
         day: q.latestDay,
         total6QAs: q.total6QAs,
-        new6QAs: q.trend.length >= 2 ? Math.max(0, q.total6QAs - q.trend[q.trend.length - 2].total6QAs) : q.total6QAs,
+        // The old formula subtracted two different measures: q.total6QAs counts accounts
+        // whose CURRENT account.intentScore is >= threshold (a live snapshot), while
+        // trend[n-2].total6QAs counts accounts with an intentScores READING >= threshold
+        // on that specific day (a historical time-series point). Confirmed live: the
+        // snapshot read 105 while the trend's own most recent day read only 30 for what
+        // the payload calls the same "latest" day — subtracting a historical point from
+        // an unrelated live snapshot produced "+72" for a series whose actual day-over-day
+        // change, computed within itself, was -3. Comparing the trend to itself is the
+        // only version of this number that means anything — and honestly, that includes
+        // being negative, which the client already handles: it only shows the "+N new
+        // 6QAs" panel when this is greater than zero.
+        new6QAs:
+          q.trend.length >= 2
+            ? q.trend[q.trend.length - 1].total6QAs - q.trend[q.trend.length - 2].total6QAs
+            : null,
         worked: q.worked,
         unworked: q.unworked,
         workedPercent: q.workedPercent,

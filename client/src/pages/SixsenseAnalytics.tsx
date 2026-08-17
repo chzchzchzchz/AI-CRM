@@ -209,7 +209,13 @@ export default function SixsenseAnalytics() {
                     <span aria-hidden>●</span> Engagement gap
                   </div>
                   <p className="mt-1 text-sm text-ink-muted">
-                    <span className="tabular-nums text-foreground">{summary?.engagement?.noEngagement || 0}</span> accounts
+                    {/* "showing intent signals, zero engagement" describes the Intent bucket
+                        (intentScore >= 40, no contacts/calls/opps) — not noEngagement, which
+                        is the opposite population (intentScore < 40 AND no engagement).
+                        Confirmed live: intent=19, noEngagement=114, and none of the 114
+                        show intent — this line was citing a bucket that means the reverse
+                        of the sentence describing it. */}
+                    <span className="tabular-nums text-foreground">{summary?.engagement?.intent || 0}</span> accounts
                     showing intent signals have zero engagement with marketing or sales — warm prospects going cold.
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -330,7 +336,13 @@ export default function SixsenseAnalytics() {
                             <Icon className="h-3.5 w-3.5" /> {m.label}
                           </div>
                           <div className="mt-1 tabular-nums text-2xl text-foreground">
-                            {Number(m.value || 0).toFixed(1)}
+                            {/* avgDaysToFirstActivity/avgDaysSinceLastActivity are genuinely
+                                null (server/sixsense-analytics.ts never computes them) rather
+                                than zero — `m.value || 0` treated "not computed" the same as
+                                "zero days", rendering a confident "0.0" for a figure that was
+                                never measured. Insights.tsx already renders these same two
+                                fields correctly with `?? "—"`; this tile grid just didn't. */}
+                            {m.value == null ? "—" : Number(m.value).toFixed(1)}
                           </div>
                           <div className="mt-0.5 text-xs text-ink-muted">{m.note}</div>
                         </div>
@@ -342,31 +354,55 @@ export default function SixsenseAnalytics() {
                 {/* 6QA Trend */}
                 <div className="mt-6 pt-4 border-t border-border">
                   <h4 className="mb-4 text-sm font-semibold text-foreground">6QA trend · last 10 days</h4>
+                  {/* server/sixsense-analytics.ts compute6QA only ever knows the CURRENT
+                      worked/unworked split — whether an account has a contact, call or
+                      opportunity today. It has no timestamped history of when an account
+                      became "worked", so every trend day's worked/unworked was hardcoded
+                      null. This rendered as a worked/unworked bar permanently pinned at
+                      0%/0% and a ratio with no numerator ("/25", "/31") for all 10 days —
+                      a chart implying a daily breakdown this dataset cannot actually
+                      support. Showing the real total per day, with no fabricated split,
+                      is the honest version of this chart. */}
                   <div className="space-y-2">
-                    {performance?.trend?.slice(-10).map((day) => (
-                      <div key={String(day.day)} className="flex flex-wrap items-center gap-4">
-                        <span className="w-24 tabular-nums text-xs text-ink-muted">
-                          {new Date(day.day!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                        </span>
-                        <div className="flex-1 flex flex-wrap items-center gap-2">
-                          <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden flex">
-                            <div className="h-full bg-positive" style={{ width: `${((day.worked || 0) / (day.total6QAs || 1)) * 100}%` }} />
-                            <div className="h-full bg-caution" style={{ width: `${((day.unworked || 0) / (day.total6QAs || 1)) * 100}%` }} />
-                          </div>
-                          <span className="w-16 text-right tabular-nums text-xs text-ink-muted">
-                            {day.worked}/{day.total6QAs}
+                    {performance?.trend?.slice(-10).map((day) => {
+                      const maxTotal = Math.max(1, ...(performance.trend ?? []).slice(-10).map((d) => d.total6QAs || 0));
+                      return (
+                        <div key={String(day.day)} className="flex flex-wrap items-center gap-4">
+                          <span className="w-24 tabular-nums text-xs text-ink-muted">
+                            {/* day.day is a bare "YYYY-MM-DD" with no time component.
+                                new Date(str) parses that as UTC midnight, so
+                                toLocaleDateString() in any timezone west of UTC (all of
+                                the Americas) rendered the day BEFORE the one the data
+                                actually named — confirmed live: the API's last trend day
+                                "2026-07-17" rendered as "Jul 16". Formatting in UTC
+                                sidesteps the viewer's timezone entirely instead of
+                                guessing at it. */}
+                            {new Date(`${day.day}T00:00:00Z`).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              timeZone: "UTC",
+                            })}
                           </span>
+                          <div className="flex-1 flex flex-wrap items-center gap-2">
+                            <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden flex">
+                              <div
+                                className="h-full bg-accent"
+                                style={{ width: `${((day.total6QAs || 0) / maxTotal) * 100}%` }}
+                              />
+                            </div>
+                            <span className="w-10 text-right tabular-nums text-xs text-ink-muted">
+                              {day.total6QAs}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   <div className="mt-3 flex flex-wrap gap-4 text-xs text-ink-muted">
                     <span className="flex flex-wrap items-center gap-1.5">
-                      <span aria-hidden className="text-positive">▲</span> Worked
+                      <span aria-hidden className="text-accent">●</span> 6QAs that day
                     </span>
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      <span aria-hidden className="text-caution">●</span> Unworked
-                    </span>
+                    <span>Worked/unworked is only known for the current snapshot, shown above.</span>
                   </div>
                 </div>
               </CardContent>
