@@ -121,6 +121,69 @@ Focus on:
   return JSON.parse(content);
 }
 
+/** Fields may arrive as a real array, a JSON string, or a comma-joined string. */
+function toArray(value: unknown): string[] {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value.map((v) => String(v).trim()).filter(Boolean);
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed.map((v) => String(v).trim()).filter(Boolean);
+      } catch { /* fall through to comma-split */ }
+    }
+    return trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+/** Shares a real word (4+ chars, to skip "the"/"and"-type noise) with a known-good string. */
+function overlapsKnownText(candidate: string, knownWords: Set<string>): boolean {
+  const words = candidate.toLowerCase().match(/[a-z0-9]{4,}/g) || [];
+  return words.some((w) => knownWords.has(w));
+}
+
+/**
+ * The prompt tells the model explicitly to reuse the metadata's own topics/action
+ * items and to leave objections/buyingSignals/competitorsMentioned empty unless
+ * evidenced — but nothing checked that it actually did. Confirmed live: call 13's
+ * real keyTopics were ["budget","expansion"], and analyzeGongCall returned
+ * ["budget","expansion","AI-powered insights","operational improvement"] plus a
+ * buyingSignal ("Technology stack shifts") absent from the metadata entirely, and
+ * a summary claiming the account was in "financial services" when the account's
+ * real industry recorded elsewhere is different. This drops any array entry that
+ * doesn't share real text with the call's own metadata, the same "computed facts,
+ * not model claims" principle server/intel/brief.ts already applies to briefs.
+ */
+export function sanitizeCallAnalysis(analysis: any, callData: any): any {
+  const knownWords = new Set<string>();
+  const add = (s: unknown) => {
+    for (const w of String(s || "").toLowerCase().match(/[a-z0-9]{4,}/g) || []) knownWords.add(w);
+  };
+  add(callData?.title);
+  add(callData?.sentiment);
+  toArray(callData?.keyTopics).forEach(add);
+  toArray(callData?.actionItems).forEach(add);
+
+  const filterArray = (items: unknown): string[] =>
+    toArray(items).filter((item) => overlapsKnownText(item, knownWords));
+
+  return {
+    ...analysis,
+    keyTopics: filterArray(analysis?.keyTopics),
+    nextSteps: filterArray(analysis?.nextSteps),
+    actionItems: filterArray(analysis?.actionItems),
+    // Stricter fields: the prompt says these must be empty unless directly
+    // evidenced, so anything that doesn't overlap known text is dropped outright
+    // rather than kept-with-a-caveat.
+    objections: filterArray(analysis?.objections),
+    buyingSignals: filterArray(analysis?.buyingSignals),
+    competitorsMentioned: filterArray(analysis?.competitorsMentioned),
+  };
+}
+
 /**
  * Analyze Gong call and extract insights
  */
@@ -190,7 +253,7 @@ field isn't in the data, return an empty array rather than a plausible-sounding 
       sentiment: "neutral", buyingSignals: [], competitorsMentioned: [], actionItems: [],
     };
   }
-  return JSON.parse(content);
+  return sanitizeCallAnalysis(JSON.parse(content), callData);
 }
 
 /**

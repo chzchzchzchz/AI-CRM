@@ -428,6 +428,16 @@ export default function Sequences() {
                               context: `Step ${i + 1} of the "${editing.name || "untitled"}" sequence, sent on day ${step.day}. ${editing.description || ""}`.trim(),
                               additionalNotes: step.subject || undefined,
                             });
+                            // The server returns `available: false` (not a thrown error) when
+                            // no model was reachable — `res.content` is the degradation note in
+                            // that case, not real copy. AITools.tsx already guards this exact
+                            // response shape (server/tools-router.ts generateContent); this
+                            // button called the same endpoint and wrote the note into the step
+                            // as if a rep had reviewed and approved it.
+                            if (res.available === false) {
+                              toast.error(res.content || "AI generation is unavailable right now.");
+                              return;
+                            }
                             patchStep(step.id, { content: res.content });
                           } catch (err) {
                             toast.error(err instanceof Error ? err.message : "Draft failed");

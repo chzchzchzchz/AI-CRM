@@ -196,6 +196,20 @@ async function storeRFPs(opportunities: SAMOpportunity[]): Promise<number> {
   return inserted;
 }
 
+/**
+ * `status` is written once, at ingest (SAM.gov import or manual add), and nothing
+ * ever revisits it as the deadline passes. Confirmed live: 18 of 25 seeded RFPs
+ * carried `status: "open"` with a `responseDeadline` months in the past — including
+ * one with an `awardAmount` already populated, still showing a green "Open" badge.
+ * Deriving the effective status at read time (rather than trying to keep the
+ * stored column continuously correct, which would need a background job) means the
+ * badge and the stats tile can't drift from what the deadline actually says.
+ */
+export function effectiveRfpStatus(rfp: RFP): RFP["status"] {
+  if (rfp.status !== "open" || !rfp.responseDeadline) return rfp.status;
+  return new Date(rfp.responseDeadline) < new Date() ? "closed" : "open";
+}
+
 export const rfpRouter = router({
   /**
    * Get all RFPs from database
@@ -210,15 +224,15 @@ export const rfpRouter = router({
       const db = await getDb();
       if (!db) return [];
 
-      let query = db.select().from(rfps);
+      // Filtering by effective status (not the stored column) needs every row in
+      // hand first — fine at this table's size (tens of rows, not millions).
+      const all = await db.select().from(rfps).orderBy(desc(rfps.createdAt));
+      const withEffectiveStatus = all.map((r: RFP) => ({ ...r, status: effectiveRfpStatus(r) }));
+      const filtered = input?.status
+        ? withEffectiveStatus.filter((r: RFP) => r.status === input.status)
+        : withEffectiveStatus;
 
-      if (input?.status) {
-        query = query.where(eq(rfps.status, input.status)) as any;
-      }
-
-      const results = await query.orderBy(desc(rfps.createdAt)).limit(input?.limit || 100);
-
-      return results;
+      return filtered.slice(0, input?.limit || 100);
     }),
 
   /**
@@ -259,12 +273,13 @@ export const rfpRouter = router({
     if (!db) return { total: 0, open: 0, closed: 0, awarded: 0 };
 
     const allRfps = await db.select().from(rfps);
+    const effectiveStatuses = allRfps.map((r: RFP) => effectiveRfpStatus(r));
 
     return {
       total: allRfps.length,
-      open: allRfps.filter((r: RFP) => r.status === "open").length,
-      closed: allRfps.filter((r: RFP) => r.status === "closed").length,
-      awarded: allRfps.filter((r: RFP) => r.status === "awarded").length,
+      open: effectiveStatuses.filter((s: string | null) => s === "open").length,
+      closed: effectiveStatuses.filter((s: string | null) => s === "closed").length,
+      awarded: effectiveStatuses.filter((s: string | null) => s === "awarded").length,
       government: 0, // type column doesn't exist in schema
       private: 0, // type column doesn't exist in schema
     };

@@ -57,23 +57,33 @@ export default function Outreach() {
 
   const generateMutation = trpc.outreach.generateEmail.useMutation({
     onSuccess: (data) => {
+      // `available` is the field the server comment calls load-bearing (server/outreach.ts):
+      // when no model was reachable, `data.content` is the degradation note, not a real
+      // draft. This page toasted "Email generated!" and filled the "Ready-to-Send Email"
+      // panel with that note regardless — the exact bug the same file's comment says was
+      // already fixed for the response shape, just not wired up here on the client.
+      if (data.available === false) {
+        toast.error(data.content || "AI generation is unavailable right now.");
+        return;
+      }
+
       // Get the clean email directly - no more strategy section
       const content = typeof data.content === 'string' ? data.content : '';
-      
+
       // Strip any XML reasoning tags (just in case)
       const cleanEmail = stripXmlReasoning(content).trim();
-      
+
       // Set the email directly - no strategy parsing needed
       setGeneratedEmail(cleanEmail);
       setStrategy(''); // Clear any old strategy
       setRawReasoning(''); // No reasoning to show
-      
+
       // Add to conversation history
       setConversationHistory(prev => [
         ...prev,
         { role: 'assistant', content: cleanEmail }
       ]);
-      
+
       toast.success("Email generated!");
     },
     onError: (error) => {

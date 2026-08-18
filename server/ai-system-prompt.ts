@@ -214,11 +214,42 @@ export function withRevenueArchitect(taskContext: string, facts?: ContextInput):
 /**
  * Helper function for simple Revenue Architect without RCP overhead
  * Use for faster, simpler AI calls that don't need deep reasoning
+ *
+ * STANDARDIZED_OUTPUT_STRUCTURE (EXECUTIVE SUMMARY / STAKEHOLDERS TABLE / TALKING
+ * POINTS / NEXT ACTIONS / RISKS & OBJECTIONS) used to be appended unconditionally —
+ * to every caller, regardless of what it actually asked the model to produce. Three
+ * of this function's four real callers ask for something else entirely (an outreach
+ * email, arbitrary content-studio copy in ten different formats, webinar promo
+ * copy), and the fourth requests strict JSON via response_format, which the
+ * standardized structure's markdown sections just as directly contradict.
+ *
+ * A prompt that says "write a LinkedIn message" and then "your response MUST
+ * include these sections: EXECUTIVE SUMMARY, STAKEHOLDERS TABLE..." is internally
+ * contradictory, and a contradictory prompt is not a neutral no-op — confirmed
+ * live: generateContent(contentType: "email") returned an account-brief-shaped
+ * response with a fabricated "63%... per Verizon" statistic, and
+ * generateContent(contentType: "call_script") returned a hallucinated fake
+ * "SECURITY-BLOCKED-RESPONSE / DENY-ACCESS-SELF" refusal — invented text
+ * masquerading as a system security message, returned as `available: true`
+ * successful content. Weaker models resolve the contradiction by picking one
+ * instruction and improvising to reconcile the other, which is exactly the kind
+ * of ungrounded improvisation this whole codebase exists to prevent.
+ *
+ * Now opt-in, so a future account-brief-shaped caller can still request it
+ * explicitly instead of every caller getting it by default.
  */
-export function asRevenueArchitect(taskContext: string, facts?: ContextInput): string {
+export function asRevenueArchitect(
+  taskContext: string,
+  facts?: ContextInput,
+  opts?: { includeStandardStructure?: boolean }
+): string {
   const dynamicPersona = getDynamicPersona();
-  return dynamicPersona +
+  let prompt =
+    dynamicPersona +
     "\n\n---\n\nTASK:\n" + withFacts(taskContext, facts) +
-    "\n\n---\n\n" + INJECTION_GUARD +
-    "\n\n---\n\n" + STANDARDIZED_OUTPUT_STRUCTURE;
+    "\n\n---\n\n" + INJECTION_GUARD;
+  if (opts?.includeStandardStructure) {
+    prompt += "\n\n---\n\n" + STANDARDIZED_OUTPUT_STRUCTURE;
+  }
+  return prompt;
 }
