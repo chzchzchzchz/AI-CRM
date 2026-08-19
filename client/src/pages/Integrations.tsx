@@ -44,6 +44,7 @@ export default function Integrations() {
   const slack = trpc.integrations.slackNotify.useMutation();
   const discord = trpc.integrations.discordNotify.useMutation();
   const teams = trpc.integrations.teamsNotify.useMutation();
+  const googleChat = trpc.integrations.googleChatNotify.useMutation();
   const [urls, setUrls] = useState<Record<string, string>>({});
 
   // Gong is the one connector here that can be checked for real rather than by the
@@ -57,10 +58,18 @@ export default function Integrations() {
     if (!url) { toast.error("Paste a webhook URL to test"); return; }
     const text = "✅ TargetDash test — your integration works!";
     try {
+      // Google Chat had no branch here at all — it fell into the trailing `else`
+      // and silently called the Teams connector against whatever URL the user
+      // pasted into the Google Chat card. Every webhook connector now gets an
+      // explicit branch (no catch-all `else`) so a future connector added to
+      // CONNECTORS without a matching case here fails loudly (the fallback
+      // throws) instead of quietly reusing Teams's request shape again.
       const res =
         key === "slack" ? await slack.mutateAsync({ text, webhookUrl: url })
         : key === "discord" ? await discord.mutateAsync({ content: text, webhookUrl: url })
-        : await teams.mutateAsync({ text, webhookUrl: url });
+        : key === "teams" ? await teams.mutateAsync({ text, webhookUrl: url })
+        : key === "googleChat" ? await googleChat.mutateAsync({ text, webhookUrl: url })
+        : (() => { throw new Error(`No test handler wired for connector "${key}"`); })();
       if ((res as any).ok) toast.success(`${key}: delivered (HTTP ${(res as any).status})`);
       else toast.error(`${key}: ${(res as any).error || "failed"}`);
     } catch (e: any) { toast.error(e?.message || "request failed"); }

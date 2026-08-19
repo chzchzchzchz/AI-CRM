@@ -76,6 +76,17 @@ export default function TopAccounts() {
     return acc;
   }, {} as Record<string, typeof accounts>);
 
+  // The true count per region, independent of the 15-row cap above — the badge
+  // next to each region's name used to read `accountsByRegion[region].length`,
+  // which can never exceed 15 because that array is already sliced. Confirmed
+  // live: Central shows a badge of "15" for 188 real accounts, West "15" for 207.
+  // Every region/AE with more than 15 accounts (nearly all of them) showed a
+  // number that looked like a total but was actually just the display cap.
+  const regionCounts: Record<string, number> = REGIONS.reduce((acc: Record<string, number>, region: string) => {
+    acc[region] = (accounts || []).filter((a: any) => a.region === region).length;
+    return acc;
+  }, {});
+
   // Get accounts for selected AE
   const getAEAccounts = (aeEmail: string) => {
     const ae = AE_LIST.find(a => a.email === aeEmail);
@@ -95,6 +106,19 @@ export default function TopAccounts() {
       }))
       .sort((a: any, b: any) => b.intentScoreNum - a.intentScoreNum)
       .slice(0, 15);
+  };
+
+  // Same problem as regionCounts above, for the AE cards' badges.
+  const getAECount = (aeEmail: string) => {
+    const ae = AE_LIST.find(a => a.email === aeEmail);
+    if (!ae) return 0;
+    const isSmall = ae.size === "<2K";
+    return (accounts || []).filter((a: any) => {
+      const matchesRegion = a.region === ae.region;
+      const empCount = a.employeeCount || 0;
+      const matchesSize = isSmall ? empCount < 2000 : empCount >= 2000;
+      return matchesRegion && matchesSize;
+    }).length;
   };
 
   // Detailed ranked row for the single-region / single-AE views.
@@ -191,7 +215,7 @@ export default function TopAccounts() {
                           {region}
                         </CardTitle>
                         <Badge variant="outline" className="border-border-strong text-ink-muted tabular-nums">
-                          {accountsByRegion[region]?.length || 0}
+                          {regionCounts[region] || 0}
                         </Badge>
                       </div>
                     </CardHeader>
@@ -272,7 +296,7 @@ export default function TopAccounts() {
                             </CardDescription>
                           </div>
                           <Badge variant="outline" className="border-border-strong text-ink-muted tabular-nums">
-                            {aeAccounts.length}
+                            {getAECount(ae.email)}
                           </Badge>
                         </div>
                       </CardHeader>
@@ -314,7 +338,7 @@ export default function TopAccounts() {
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <Badge variant="outline" className="border-border-strong text-ink-muted tabular-nums">
-                        {getAEAccounts(selectedAE).length} accounts
+                        {getAECount(selectedAE)} accounts
                       </Badge>
                       {repStats && (
                         <div className="flex flex-wrap gap-3 text-xs">
