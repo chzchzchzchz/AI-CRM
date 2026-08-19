@@ -358,11 +358,28 @@ Examples:
   } catch { /* fall back to text-only search below */ }
 
   // Actually run the search against real data — the whole point the page was missing.
-  const { results, resultType } = runSearch(query, interp, accounts, people);
-  if (!interp.explanation) {
-    interp.explanation = `Interpreted as a ${resultType} search. ${results.length} match${results.length === 1 ? "" : "es"} found.`;
-  }
-  return { ...interp, resultType, resultCount: results.length, results };
+  const { results, resultType, appliedFilters } = runSearch(query, interp, accounts, people);
+
+  // interp.filters/explanation are the model's own unverified claims about what it
+  // did — spread into the response untouched, they could describe constraints that
+  // were never actually enforced against `results`. Confirmed live: an empty query
+  // returned an explanation naming an industry allowlist and a >1000-employee floor,
+  // while the results themselves included accounts with as few as 31 employees in
+  // "Professional Services" — a filter description that didn't match the filtering
+  // that actually ran. appliedFilters is what runSearch really checked; report that
+  // instead of relaying the model's account of itself.
+  const definedFilters = Object.fromEntries(
+    Object.entries(appliedFilters).filter(([, v]) => v !== undefined)
+  );
+  const filterSummary = Object.entries(definedFilters)
+    .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+    .join(" · ");
+  const explanation =
+    `Interpreted as a ${resultType} search.` +
+    (filterSummary ? ` Applied — ${filterSummary}.` : " No specific filter recognized in the query; ranked by relevance.") +
+    ` ${results.length} match${results.length === 1 ? "" : "es"} found.`;
+
+  return { ...interp, filters: definedFilters, explanation, resultType, resultCount: results.length, results };
 }
 
 /**
@@ -375,7 +392,7 @@ function runSearch(
   interp: { intent: string; filters: Record<string, any> },
   accounts: any[],
   people: any[]
-): { results: any[]; resultType: "account" | "contact" } {
+): { results: any[]; resultType: "account" | "contact"; appliedFilters: Record<string, unknown> } {
   const q = (query || "").toLowerCase();
   const f = interp.filters || {};
 
@@ -412,10 +429,36 @@ function runSearch(
 
   // A seniority word in the question means the rep is asking about people, so that
   // test comes from the shared taxonomy rather than a fourth list of executive titles.
+  // isDecisionMaker() and the literal word list below both require a whole-token
+  // match ("ciso", not "cisos"), so a plural title query never set either one —
+  // even though titleKeywords two lines up already recognized "ciso" inside
+  // "cisos" via substring match. Confirmed live: the app's own suggested example
+  // query, "Find CISOs at companies with 1000+ employees", routed to account
+  // (company) search 3/3 runs instead of contact (person) search, and so did
+  // "find CTOs". titleKeywords having found anything already means the rep is
+  // asking about people by title — that's the more direct signal, use it.
   const wantsContacts =
     interp.intent === "contact_search" ||
     isDecisionMaker(q) ||
+    titleKeywords.length > 0 ||
     /\b(who|contact|contacts|person|people|decision maker)\b/.test(q);
+
+  // Whether ANY real constraint — structured filter or a recognized title/intent/
+  // stage keyword in the query text — actually narrowed this search. Used below
+  // so a query with none of these (gibberish, emoji, SQL-shaped text, an unknown
+  // company name) can't fall through to "everyone, ranked by intent score" and
+  // still be reported as N query matches.
+  const hasStructuredConstraint = !!(
+    industry || region || minIntent != null || employeeFloor != null || stageSet.size || titleKeywords.length
+  );
+  const appliedFilters: Record<string, unknown> = {
+    industry: industry || undefined,
+    region: region || undefined,
+    minIntentScore: minIntent ?? undefined,
+    minEmployees: employeeFloor ?? undefined,
+    buyingStage: stages.length ? stages : undefined,
+    titleKeywords: titleKeywords.length ? titleKeywords : undefined,
+  };
 
   // ---- contact search --------------------------------------------------------------
   if (wantsContacts) {
@@ -432,12 +475,20 @@ function runSearch(
         if (acc) score += (acc.intentScore || 0) * 0.2;
         // text relevance
         const hay = `${p.name} ${p.title} ${p.company || ""} ${acc?.name || ""}`.toLowerCase();
-        if (q.split(/\s+/).some((w) => w.length > 3 && hay.includes(w))) score += 5;
+        const textHit = q.split(/\s+/).some((w) => w.length > 3 && hay.includes(w));
+        if (textHit) score += 5;
+        // Nothing about this query narrowed the search AND nothing about this
+        // record actually matches its text — without this, a query with no
+        // recognized structure (gibberish, emoji, an unknown name) fell through
+        // to "everyone, ranked by intent score" and was reported as N real
+        // matches. Confirmed live on four such queries, all returning a full
+        // page of 25 confidently-labelled "matches".
+        if (!hasStructuredConstraint && !textHit) return null;
         return { ...p, accountName: acc?.name, _score: Math.round(score) };
       })
       .filter(Boolean) as any[];
     scored.sort((a, b) => b._score - a._score);
-    return { results: scored.slice(0, 25), resultType: "contact" };
+    return { results: scored.slice(0, 25), resultType: "contact", appliedFilters };
   }
 
   // ---- account search --------------------------------------------------------------
@@ -451,7 +502,12 @@ function runSearch(
       if (stageSet.size) { if (!stageSet.has((a.sixsenseBuyingStage || "").toLowerCase())) return null; score += 20; }
       score += (a.intentScore || 0) * 0.5;
       const hay = `${a.name} ${a.industry || ""} ${a.region || ""} ${a.description || ""} ${a.techStack || ""}`.toLowerCase();
-      if (q.split(/\s+/).some((w) => w.length > 3 && hay.includes(w))) score += 8;
+      const textHit = q.split(/\s+/).some((w) => w.length > 3 && hay.includes(w));
+      if (textHit) score += 8;
+      // Same reasoning as the contact branch above: with no structured filter
+      // and no text overlap, this record isn't a match for the query — it's
+      // just a highly-scored account that would appear for any query at all.
+      if (!hasStructuredConstraint && !textHit) return null;
       return {
         id: a.id, name: a.name, domain: a.domain, industry: a.industry, region: a.region,
         employeeCount: a.employeeCount, intentScore: a.intentScore,
@@ -460,7 +516,7 @@ function runSearch(
     })
     .filter(Boolean) as any[];
   scored.sort((a, b) => b._score - a._score);
-  return { results: scored.slice(0, 25), resultType: "account" };
+  return { results: scored.slice(0, 25), resultType: "account", appliedFilters };
 }
 
 /**

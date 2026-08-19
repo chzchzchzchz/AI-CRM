@@ -13,6 +13,7 @@ import {
   HelpCircle, Wand2, RefreshCw
 } from"lucide-react";
 import { trpc } from"@/lib/trpc";
+import { toast } from "sonner";
 
 interface UploadedFile {
   name: string;
@@ -41,6 +42,7 @@ export default function CsvProcessor() {
   const [contactOwner, setContactOwner] = useState("");
   const [processedCsv, setProcessedCsv] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<Record<string, string>[] | null>(null);
+  const [processedCount, setProcessedCount] = useState<number | null>(null);
   const [step, setStep] = useState<"upload" |"configure" |"map" |"preview" |"export">("upload");
   const [warnings, setWarnings] = useState<string[]>([]);
   const [confidence, setConfidence] = useState<number>(0);
@@ -51,52 +53,100 @@ export default function CsvProcessor() {
   const analyzeAndMapMutation = trpc.csvProcessor.analyzeAndMap.useMutation();
   const processDataMutation = trpc.csvProcessor.processData.useMutation();
 
+  /**
+   * Parse a whole CSV file into rows of raw string fields (before headers are
+   * applied). A single state machine over the entire text, tracking quote state
+   * across the whole scan — not per-line.
+   *
+   * The previous version split the text into lines with `text.split(/\r?\n/)`
+   * BEFORE any quote-awareness ran, so a quoted field containing a literal
+   * newline — an ordinary, RFC-4180-legal CSV field, and common in Notes/
+   * Comments/Address columns exported from HubSpot, Wistia, and similar tools
+   * this page's own copy says it supports — got torn in half at that newline.
+   * Confirmed live: 'Email,Comments\na@x.com,"line one\nline two"\nb@x.com,...'
+   * produced a phantom row with "line two" shoved into the Email column and an
+   * empty Comments cell, silently corrupting real data with no warning.
+   */
+  const parseCSVRows = (text: string): string[][] => {
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let field = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (inQuotes) {
+        if (char === '"') {
+          if (text[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          field += char;
+        }
+        continue;
+      }
+
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ",") {
+        row.push(field.trim());
+        field = "";
+      } else if (char === "\n" || char === "\r") {
+        if (char === "\r" && text[i + 1] === "\n") i++;
+        row.push(field.trim());
+        field = "";
+        // Drop a fully blank line (no fields, or a single empty field) rather
+        // than emitting an empty row — matches the previous line-filter behavior.
+        if (row.length > 1 || row[0] !== "") rows.push(row);
+        row = [];
+      } else {
+        field += char;
+      }
+    }
+    // Final field/row with no trailing newline.
+    if (field !== "" || row.length > 0) {
+      row.push(field.trim());
+      if (row.length > 1 || row[0] !== "") rows.push(row);
+    }
+    return rows;
+  };
+
+  /**
+   * Header names repeat when combining exports from multiple tools (two
+   * "Phone" or "Company" columns is common). Assigning by plain object key
+   * silently overwrote the first column's value with the second's, with no
+   * warning and no way to map the first column at all. Suffix every repeat
+   * so both survive as distinct, mappable source fields.
+   */
+  function disambiguateHeaders(headers: string[]): string[] {
+    const seen = new Map<string, number>();
+    return headers.map((h) => {
+      const count = (seen.get(h) || 0) + 1;
+      seen.set(h, count);
+      return count === 1 ? h : `${h} (${count})`;
+    });
+  }
+
   // Parse CSV file
   const parseCSV = (text: string): { headers: string[]; rows: Record<string, string>[] } => {
-    const lines = text.split(/\r?\n/).filter(line => line.trim());
-    if (lines.length === 0) return { headers: [], rows: [] };
+    const rawRows = parseCSVRows(text);
+    if (rawRows.length === 0) return { headers: [], rows: [] };
 
-    // Parse header
-    const headers = parseCSVLine(lines[0]);
-    
-    // Parse rows
+    const headers = disambiguateHeaders(rawRows[0]);
     const rows: Record<string, string>[] = [];
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i]);
+    for (let i = 1; i < rawRows.length; i++) {
+      const values = rawRows[i];
       const row: Record<string, string> = {};
       headers.forEach((header, idx) => {
-        row[header] = values[idx] ||"";
+        row[header] = values[idx] || "";
       });
       rows.push(row);
     }
 
     return { headers, rows };
-  };
-
-  // Parse a single CSV line handling quotes
-  const parseCSVLine = (line: string): string[] => {
-    const result: string[] = [];
-    let current ="";
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char ==="," && !inQuotes) {
-        result.push(current.trim());
-        current ="";
-      } else {
-        current += char;
-      }
-    }
-    result.push(current.trim());
-    return result;
   };
 
   // Handle file upload
@@ -236,6 +286,7 @@ export default function CsvProcessor() {
       if (result.success) {
         setProcessedCsv(result.csvContent);
         setPreviewData(result.preview);
+        setProcessedCount(result.processedCount);
         setStep("preview");
       }
     } catch (error) {
@@ -248,6 +299,16 @@ export default function CsvProcessor() {
   // Download processed CSV
   const downloadCsv = () => {
     if (!processedCsv) return;
+    if (!previewData || previewData.length === 0) {
+      // The server still returns success:true and a header-only csvContent when
+      // every row was filtered out or the upload had no data rows — confirmed
+      // live: rows:[] returns {success:true, processedCount:0, preview:[]}.
+      // Downloading that silently would produce a file with a header and
+      // nothing else, matching the "Nothing to download" guard LeadProcessor.tsx
+      // already applies to the identical zero-row scenario.
+      toast.error("Nothing to download — 0 rows were processed. Check your field mapping.");
+      return;
+    }
 
     const blob = new Blob([processedCsv], { type:"text/csv" });
     const url = URL.createObjectURL(blob);
@@ -271,6 +332,7 @@ export default function CsvProcessor() {
     setContactOwner("");
     setProcessedCsv(null);
     setPreviewData(null);
+    setProcessedCount(null);
     setStep("upload");
     setWarnings([]);
     setConfidence(0);
@@ -562,14 +624,35 @@ export default function CsvProcessor() {
             {/* Step 4: Preview */}
             {step ==="preview" && (
               <div className="space-y-6">
+                {/* processedCount is the server's own authoritative row count
+                    (server/csv-processor-router.ts), not the source row count —
+                    this used to show a green checkmark and "Processing Complete"
+                    unconditionally, including for 0 processed rows (e.g. every
+                    row filtered out by field mapping, or a header-only upload),
+                    with a live Download button that produced a header-only file.
+                    Confirmed live: rows:[] still returns success:true,
+                    processedCount:0. */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold flex items-center gap-2 text-foreground">
-                      <CheckCircle2 className="h-5 w-5 text-positive" />
-                      Processing Complete
-                    </h3>
+                    {processedCount === 0 ? (
+                      <h3 className="font-semibold flex items-center gap-2 text-caution">
+                        <AlertCircle className="h-5 w-5" />
+                        Nothing to process
+                      </h3>
+                    ) : (
+                      <h3 className="font-semibold flex items-center gap-2 text-foreground">
+                        <CheckCircle2 className="h-5 w-5 text-positive" />
+                        Processing Complete
+                      </h3>
+                    )}
                     <p className="text-sm text-ink-muted">
-                      <span className="tabular-nums text-ink-muted">{combinedData?.rows.length}</span> rows transformed • Preview first 5 rows below
+                      {processedCount === 0 ? (
+                        "0 rows transformed — check your field mapping, or that the uploaded file has data rows."
+                      ) : (
+                        <>
+                          <span className="tabular-nums text-ink-muted">{processedCount}</span> rows transformed • Preview first 5 rows below
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -607,6 +690,7 @@ export default function CsvProcessor() {
                     onClick={downloadCsv}
                     variant="signal"
                     className="flex-1"
+                    disabled={processedCount === 0}
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Download Processed CSV
