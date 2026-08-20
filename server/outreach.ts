@@ -1,7 +1,7 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
-import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
+import { wrapUntrusted, INJECTION_GUARD, stripLeakedFence } from "./_core/untrusted";
 import { eq, inArray } from "drizzle-orm";
 import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -192,7 +192,10 @@ OUTPUT ONLY THE EMAIL BODY. Nothing else.`;
       // the degradation note under a "Ready-to-Send Email" heading and toasted
       // "Email generated!" — a claim that a model wrote something when none was reached.
       return {
-        content: (available ? emailContent : LLM_UNAVAILABLE_NOTE).trim(),
+        // Same defense as the webinar generator (server/tools-router.ts): a model
+        // with nothing real to reference for a missing field can echo the
+        // wrapUntrusted fence's own ID back as a stand-in value.
+        content: (available ? stripLeakedFence(emailContent) : LLM_UNAVAILABLE_NOTE).trim(),
         available,
         accountCount: accountData.length,
         /** What the draft was actually grounded in, so the page can show its work. */
@@ -251,7 +254,7 @@ OUTPUT ONLY THE REVISED EMAIL. Nothing else.`;
       // unavailable path, i.e. claim an edit that never happened.
       const { content, available } = llmText(response);
       return {
-        content: available ? content.trim() : input.currentEmail,
+        content: available ? stripLeakedFence(content.trim()) : input.currentEmail,
         available,
       };
     }),

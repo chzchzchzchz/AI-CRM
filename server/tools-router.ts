@@ -1,4 +1,4 @@
-import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
+import { wrapUntrusted, INJECTION_GUARD, stripLeakedFence, stripLeakedFenceDeep } from "./_core/untrusted";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM, isLlmUnavailable, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
@@ -342,7 +342,7 @@ Generate professional, actionable content.`;
           ]
         });
         
-        const { content, available } = llmText(response);
+        const { content: rawContent, available } = llmText(response);
         const durationMs = Date.now() - startTime;
 
         // No model was reachable, so this is the degradation note, not content. It used
@@ -351,13 +351,20 @@ Generate professional, actionable content.`;
         // "Generated Blog Post".
         if (!available) {
           return {
-            content,
+            content: rawContent,
             contentId: null,
             ragSourcesUsed: false,
             durationMs,
             available: false as const,
           };
         }
+
+        // Confirmed live in the sibling webinar generator: with no real subject
+        // name in the pasted context, a model wrote the untrusted-data fence's
+        // own ID into generated copy as a stand-in company name. Same wrapUntrusted
+        // usage two prompts above, same risk — sanitize before this is saved to
+        // the content library or shown to the rep.
+        const content = stripLeakedFence(rawContent);
 
         // Save generated content (only if logged in)
         let contentId: number | null = null;
@@ -614,7 +621,13 @@ Format your response as JSON with these keys:
           );
         }
         try {
-          return JSON.parse(messageContent);
+          // Confirmed live: with no company name in the pasted material, the model
+          // wrote the untrusted-data fence's own ID into the copy as a stand-in
+          // company name ("[untrusted-data:7f3c]'s security posture") six times in
+          // one response. The prompt-level fix (server/_core/untrusted.ts
+          // INJECTION_GUARD) is the primary defense; this catches it if a model
+          // ignores that instruction anyway, before it reaches a rep as real copy.
+          return stripLeakedFenceDeep(JSON.parse(messageContent));
         } catch {
           throw new Error(
             "The model returned content that wasn't valid JSON, so it couldn't be turned into webinar assets. Try generating again."

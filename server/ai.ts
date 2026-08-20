@@ -1,4 +1,4 @@
-import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
+import { wrapUntrusted, INJECTION_GUARD, stripLeakedFence } from "./_core/untrusted";
 import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
 import { getAllAccounts, getAllPeople, getAllGongCalls } from "./db";
 import { withRCP, asRevenueArchitect } from "./ai-system-prompt";
@@ -172,6 +172,11 @@ export function sanitizeCallAnalysis(analysis: any, callData: any): any {
 
   return {
     ...analysis,
+    // The array fields above are already dropped if fabricated; summary is prose,
+    // so it can't be filtered the same way — but it can still leak the untrusted-
+    // data fence's own ID the same way webinar-generator output did (server/
+    // tools-router.ts), so strip that defensively rather than leaving it unguarded.
+    summary: typeof analysis?.summary === "string" ? stripLeakedFence(analysis.summary) : analysis?.summary,
     keyTopics: filterArray(analysis?.keyTopics),
     nextSteps: filterArray(analysis?.nextSteps),
     actionItems: filterArray(analysis?.actionItems),
