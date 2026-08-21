@@ -247,6 +247,14 @@ describe("CSV Processor", () => {
       process.env.LOCAL_LLM_URL = "http://127.0.0.1:1";
       process.env.LLM_TOTAL_DEADLINE_MS = "2000";
       process.env.LLM_REQUEST_TIMEOUT_MS = "2000";
+      // server/_core/env.ts reads process.env into a plain object once, at import
+      // time — without this, a dynamic import cached from an earlier test in this
+      // file keeps whatever ENV it resolved THEN, and the overrides above silently
+      // do nothing. This test's env-var overrides never actually took effect; it
+      // only ever passed because nothing was listening on localhost:11434 on
+      // whatever machine ran it. This session started a real local Ollama server as
+      // a genuine reliability improvement, which is exactly what exposed that.
+      vi.resetModules();
     });
 
     afterEach(() => {

@@ -1,6 +1,6 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
+import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE, parseLlmJson } from "./_core/llm";
 import { wrapUntrusted } from "./_core/untrusted";
 import { withRCP } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
@@ -161,7 +161,7 @@ Return a JSON object with this structure:
         // silently mark every row as enriched-with-nothing.
         if (!available) throw new Error(LLM_UNAVAILABLE_NOTE);
 
-        const result = JSON.parse(content);
+        const result = parseLlmJson<any>(content);
         // The model is instructed to write the literal string "UNMAPPED" for fields it
         // couldn't match (see prompt above). The client's <Select> only treats `null` as
         // "not mapped" — anything else must be a real source header, or the dropdown

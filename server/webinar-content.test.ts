@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll } from "vitest";
+import { describe, expect, it, beforeAll, vi } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
@@ -50,7 +50,17 @@ describe("webinar content generation", () => {
   });
 
   it("names the remedy when no model is configured, rather than a generic failure", async () => {
-    const caller = appRouter.createCaller(ctx());
+    // appRouter above is a static top-level import, already bound before beforeAll's
+    // env overrides ever run — those overrides had no effect on it. server/_core/env.ts
+    // reads process.env into a plain object once, at import time, so this needs its
+    // own fresh dynamic import (forced via resetModules) after the env is set, the
+    // same fix applied to server/csv-processor.test.ts's equivalent test. This test
+    // only ever passed because nothing was listening on localhost:11434 on whatever
+    // machine ran it; this session started a real local Ollama server as a genuine
+    // reliability improvement, which is exactly what exposed the gap.
+    vi.resetModules();
+    const { appRouter: freshRouter } = await import("./routers");
+    const caller = freshRouter.createCaller(ctx());
     let message = "";
     try {
       await caller.tools.generateWebinarContent({

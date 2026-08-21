@@ -1,5 +1,5 @@
 import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
-import { invokeLLM, llmText, isLlmUnavailable } from "./_core/llm";
+import { invokeLLM, llmText, isLlmUnavailable, parseLlmJson } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
 import { getAllAccounts, getAllPeople } from "./db";
 
@@ -202,7 +202,7 @@ Return JSON:
     // as "not invalid" and quietly passes every record through as clean.
     const { content, available } = llmText(response);
     if (available) {
-      const result = JSON.parse(content);
+      const result = parseLlmJson<any>(content);
       
       if (!result.isValid) {
         return {
@@ -290,7 +290,7 @@ Return JSON:
     // as "not invalid" and quietly passes every record through as clean.
     const { content, available } = llmText(response);
     if (available) {
-      const result = JSON.parse(content);
+      const result = parseLlmJson<any>(content);
       
       if (!result.isValid && result.confidence > 0.6) {
         return {
@@ -377,7 +377,7 @@ Return JSON:
     // as "not invalid" and quietly passes every record through as clean.
     const { content, available } = llmText(response);
     if (available) {
-      const result = JSON.parse(content);
+      const result = parseLlmJson<any>(content);
       
       if (!result.isValid && result.confidence > 0.7) {
         return {

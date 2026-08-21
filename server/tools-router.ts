@@ -1,7 +1,7 @@
 import { wrapUntrusted, INJECTION_GUARD, stripLeakedFence, stripLeakedFenceDeep } from "./_core/untrusted";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { invokeLLM, isLlmUnavailable, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
+import { invokeLLM, isLlmUnavailable, llmText, LLM_UNAVAILABLE_NOTE, parseLlmJson } from "./_core/llm";
 import { asRevenueArchitect } from "./ai-system-prompt";
 import { 
   uploadDocument, 
@@ -627,7 +627,7 @@ Format your response as JSON with these keys:
           // one response. The prompt-level fix (server/_core/untrusted.ts
           // INJECTION_GUARD) is the primary defense; this catches it if a model
           // ignores that instruction anyway, before it reaches a rep as real copy.
-          return stripLeakedFenceDeep(JSON.parse(messageContent));
+          return stripLeakedFenceDeep(parseLlmJson(messageContent));
         } catch {
           throw new Error(
             "The model returned content that wasn't valid JSON, so it couldn't be turned into webinar assets. Try generating again."
@@ -739,7 +739,7 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
 
         const { content: messageContent, available } = llmText(response);
         if (!available) throw new Error(LLM_UNAVAILABLE_NOTE);
-        const parsedJson = JSON.parse(messageContent);
+        const parsedJson = parseLlmJson<any>(messageContent);
 
         // Free-tier fallback models (OpenRouter's rate-limited free rotation) don't
         // reliably honor `response_format.json_schema` — one was observed returning

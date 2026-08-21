@@ -1060,7 +1060,7 @@ Or go to the Admin Panel: /admin/approval`
         const stackString = JSON.stringify(stackData, null, 2);
 
         // Use AI to categorize and filter the tech stack
-        const { invokeLLM, llmText } = await import("./_core/llm");
+        const { invokeLLM, llmText, parseLlmJson } = await import("./_core/llm");
         const { withRCP } = await import("./ai-system-prompt");
         const response = await invokeLLM({
           messages: [
@@ -1104,7 +1104,7 @@ Or go to the Admin Panel: /admin/approval`
           return { categories: {}, raw: stackString };
         }
 
-        const categories = JSON.parse(content);
+        const categories = parseLlmJson<any>(content);
         return { categories, raw: stackString };
       }),
   }),

@@ -30,6 +30,22 @@ beforeEach(() => {
   process.env.DEMO_DB_PATH = DB;
   try { fs.unlinkSync(DB); } catch { /* not there */ }
   vi.resetModules();
+  // These tests exercise runSearch's deterministic filter/routing logic, which
+  // behaves identically whether the model answers or not — so no test here should
+  // depend on a real network round-trip. Left unmocked, intelligentSearch's real
+  // invokeLLM tries the actual configured OpenRouter key and then, now that this
+  // session started a real local Ollama fallback, a genuine CPU inference — both
+  // real network/compute time a unit test has no business waiting on. Default to
+  // a fast, deterministic "no model" response; the one test that needs specific
+  // model output overrides this with its own vi.doMock before its own dynamic import.
+  vi.doMock("./_core/llm", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("./_core/llm")>();
+    return {
+      ...actual,
+      invokeLLM: vi.fn().mockResolvedValue({ choices: [{ message: { content: actual.LLM_UNAVAILABLE_NOTE } }] }),
+      llmText: () => ({ content: actual.LLM_UNAVAILABLE_NOTE, available: false }),
+    };
+  });
 });
 
 afterEach(() => {

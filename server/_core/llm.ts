@@ -258,6 +258,18 @@ const resolveProviders = (): LLMProvider[] => {
 // interactive request (an account brief, a chat reply) for minutes.
 const REQUEST_TIMEOUT_MS = Number(process.env.LLM_REQUEST_TIMEOUT_MS || 45_000);
 
+// OpenRouter's free-tier default (openrouterModel in env.ts) is a comma-separated list
+// of THREE models, tried in sequence. Each one gets up to REQUEST_TIMEOUT_MS (45s) by
+// default before doFetch's own signal aborts it — three slow-but-not-instantly-failing
+// attempts can consume the entire TOTAL_DEADLINE_MS on their own, leaving the local
+// Ollama fallback below zero seconds to even attempt a cold model load. Confirmed live:
+// with a real local Ollama server running and reachable, two runs still failed with
+// "AI is not configured" at exactly the 60s ceiling, because OpenRouter's retry loop
+// used the whole budget before Ollama's tier was ever reached. This is a fixed,
+// separate cap so the free-tier's own flakiness can't crowd out the "always tried,
+// always free" fallback the comment two providers below promises.
+const OPENROUTER_REQUEST_TIMEOUT_MS = Number(process.env.LLM_OPENROUTER_REQUEST_TIMEOUT_MS || 12_000);
+
 // Hard ceiling on the WHOLE call, across every provider and fallback model. Per-request
 // timeouts alone still stack: three providers that each hang for REQUEST_TIMEOUT_MS add up
 // to minutes of dead air. Once this deadline passes we stop trying and degrade.
@@ -371,7 +383,12 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
       },
       body: JSON.stringify(payloadFor(p, model)),
       // Never wait past the overall deadline, even if the per-request budget is larger.
-      signal: AbortSignal.timeout(Math.max(1_000, Math.min(REQUEST_TIMEOUT_MS, timeLeft()))),
+      // OpenRouter gets a shorter per-attempt cap (see OPENROUTER_REQUEST_TIMEOUT_MS)
+      // so its 3-model retry list can't consume the whole deadline before the local
+      // Ollama fallback — the last, always-tried tier — ever gets a turn.
+      signal: AbortSignal.timeout(
+        Math.max(1_000, Math.min(p.isOpenRouter ? OPENROUTER_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS, timeLeft()))
+      ),
     });
 
   let lastError = "";
@@ -464,6 +481,53 @@ export function llmText(response: InvokeResult): { content: string; available: b
   const raw = (response as any)?.choices?.[0]?.message?.content;
   const content = typeof raw === "string" ? raw : raw == null ? "" : JSON.stringify(raw);
   return { content, available: content.length > 0 && !isLlmUnavailable(content) };
+}
+
+/**
+ * Parse JSON out of LLM output that may not be bare JSON.
+ *
+ * `payloadFor()` above downgrades `response_format: json_schema` to the looser
+ * `json_object` for every non-Forge provider — "smaller models are unreliable with
+ * strict json_schema". `json_object` mode only guarantees the response CONTAINS valid
+ * JSON, not that it IS the entire response with nothing else around it. A model that
+ * wraps its answer in a ```json fence, or adds a sentence of preamble before the
+ * object, is behaving normally — but every caller in this repo did a bare
+ * `JSON.parse(content)`, which throws on both. Confirmed live: tools.generateWebinarContent
+ * failed with "wasn't valid JSON" against the exact free-tier chain this app falls back
+ * to by default, on a request that had nothing else wrong with it.
+ *
+ * Tries, in order: the raw text as-is (the common case — this changes nothing for a
+ * model that already returns bare JSON), a ```json fenced block, then the outermost
+ * {...}/[...] span in the text. If nothing parses, re-runs the plain `JSON.parse` on
+ * the original text so the exact same exception a caller's existing catch block
+ * expects still fires — this is a wider net, not a replacement error path.
+ */
+export function parseLlmJson<T = unknown>(text: string): T {
+  const trimmed = (text ?? "").trim();
+
+  try {
+    return JSON.parse(trimmed);
+  } catch { /* fall through */ }
+
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced) {
+    try {
+      return JSON.parse(fenced[1].trim());
+    } catch { /* fall through */ }
+  }
+
+  const start = trimmed.search(/[{[]/);
+  if (start !== -1) {
+    const closeChar = trimmed[start] === "{" ? "}" : "]";
+    const end = trimmed.lastIndexOf(closeChar);
+    if (end > start) {
+      try {
+        return JSON.parse(trimmed.slice(start, end + 1));
+      } catch { /* fall through */ }
+    }
+  }
+
+  return JSON.parse(trimmed);
 }
 
 /** True when this text is the degradation note rather than model output. */

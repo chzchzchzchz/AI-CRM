@@ -1,5 +1,5 @@
 import { wrapUntrusted, INJECTION_GUARD, stripLeakedFence } from "./_core/untrusted";
-import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
+import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE, parseLlmJson } from "./_core/llm";
 import { getAllAccounts, getAllPeople, getAllGongCalls } from "./db";
 import { withRCP, asRevenueArchitect } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
@@ -118,7 +118,7 @@ Focus on:
   if (!available) {
     return { summary: LLM_UNAVAILABLE_NOTE, score: 0, insights: [], recommendations: [], confidence: 0 };
   }
-  return JSON.parse(content);
+  return parseLlmJson(content);
 }
 
 /** Fields may arrive as a real array, a JSON string, or a comma-joined string. */
@@ -258,7 +258,7 @@ field isn't in the data, return an empty array rather than a plausible-sounding 
       sentiment: "neutral", buyingSignals: [], competitorsMentioned: [], actionItems: [],
     };
   }
-  return sanitizeCallAnalysis(JSON.parse(content), callData);
+  return sanitizeCallAnalysis(parseLlmJson(content), callData);
 }
 
 /**
@@ -358,7 +358,7 @@ Examples:
     const { content, available } = llmText(response);
     // Without a model the deterministic interpretation below still answers the query.
     if (!available) throw new Error("no model");
-    const parsed = JSON.parse(content);
+    const parsed = parseLlmJson(content);
     if (parsed && typeof parsed === "object") interp = { ...interp, ...parsed };
   } catch { /* fall back to text-only search below */ }
 
@@ -576,7 +576,7 @@ Return a JSON array of contact IDs sorted by priority (highest first), with reas
   // quality of the list rather than emptying it.
   const { content, available } = llmText(response);
   if (!available) return [...contacts].sort(bySeniority);
-  const rankings = JSON.parse(content).rankings;
+  const rankings = parseLlmJson<{ rankings: any[] }>(content).rankings;
   
   // Map rankings back to full contact objects, sorted by priority
   const contactMap = new Map(contacts.map(c => [c.id, c]));
