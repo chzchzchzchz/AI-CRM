@@ -37,27 +37,30 @@ export default function DataHub() {
   const processLeadsMutation = trpc.tools.processLeads.useMutation();
   // Knowledge-base upload moved into <KnowledgeBase />, next to the list it changes.
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const droppedFiles = Array.from(e.dataTransfer.files).filter(
-      f => f.name.endsWith('.csv') || f.name.endsWith('.xlsx')
-    );
-    if (droppedFiles.length > 0) {
-      setFiles(droppedFiles);
+  // Only CSV is parseable — tools-router rejects .xlsx with an "export to CSV" error.
+  // Filtering silently would leave a dropped file looking accepted but doing nothing.
+  const acceptFiles = useCallback((incoming: File[]) => {
+    if (incoming.length === 0) return;
+    const accepted = incoming.filter(f => /\.csv$/i.test(f.name));
+    const rejected = incoming.filter(f => !/\.csv$/i.test(f.name));
+    if (rejected.some(f => /\.xlsx?$/i.test(f.name))) {
+      toast.error('Excel files are not supported. Export to CSV and re-upload.');
+    } else if (rejected.length > 0) {
+      toast.error(`Skipped ${rejected.length} non-CSV file(s).`);
+    }
+    if (accepted.length > 0) {
+      setFiles(accepted);
       setResult(null);
     }
   }, []);
 
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    acceptFiles(Array.from(e.dataTransfer.files));
+  }, [acceptFiles]);
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const selectedFiles = Array.from(e.target.files).filter(
-        f => f.name.endsWith('.csv') || f.name.endsWith('.xlsx')
-      );
-      if (selectedFiles.length > 0) {
-        setFiles(selectedFiles);
-        setResult(null);
-      }
-    }
+    acceptFiles(Array.from(e.target.files ?? []));
   };
 
   const detectDataType = (headers: string[]): DataType => {
@@ -119,7 +122,7 @@ export default function DataHub() {
       setStatus('processing');
       setProgress(50);
 
-      // Process through AI
+      // Deterministic rule pipeline — no model call.
       const result = await processLeadsMutation.mutateAsync({
         fileContents,
         fileNames
@@ -206,7 +209,7 @@ export default function DataHub() {
           <div>
             <h1 className="text-xl font-semibold">AI Data Hub</h1>
             <p className="text-muted-foreground">
-              Intelligent data processing that learns from your corrections
+              Rule-based cleaning, plus the knowledge base and feedback that ground generated content
             </p>
           </div>
         </div>
@@ -238,7 +241,7 @@ export default function DataHub() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".csv,.xlsx"
+                  accept=".csv"
                   multiple
                   onChange={handleFileSelect}
                   className="hidden"
@@ -266,7 +269,7 @@ export default function DataHub() {
                     <div>
                       <p className="font-medium">Drop files here or click to browse</p>
                       <p className="text-sm text-muted-foreground">
-                        Supports CSV and Excel files
+                        CSV only — export Excel files to CSV first
                       </p>
                     </div>
                   </div>
@@ -304,7 +307,7 @@ export default function DataHub() {
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4 mr-2" />
-                      Process with AI
+                      Clean & Process
                     </>
                   )}
                 </Button>
@@ -380,7 +383,7 @@ export default function DataHub() {
             <CardHeader>
               <CardTitle className="text-base flex flex-wrap items-center gap-2">
                 <Zap className="h-4 w-4 text-caution" />
-                AI Processing Rules
+                Processing Rules
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">

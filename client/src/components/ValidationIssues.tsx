@@ -15,6 +15,7 @@ import {
   Info,
   Loader2,
   Lock,
+  ShieldAlert,
   ShieldCheck,
 } from "lucide-react";
 import { Link } from "wouter";
@@ -64,7 +65,9 @@ export function ValidationIssues() {
   // and are the only way this engine was reachable; when you are looking at a single bad
   // row, checking that row is the thing you actually want.
   const [verifying, setVerifying] = useState<string | null>(null);
-  const [verdicts, setVerdicts] = useState<Record<string, string>>({});
+  const [verdicts, setVerdicts] = useState<
+    Record<string, { text: string; checked: boolean }>
+  >({});
 
   const verifyAccount = trpc.validation.validateAccount.useMutation();
   const verifyContact = trpc.validation.validateContact.useMutation();
@@ -77,11 +80,20 @@ export function ValidationIssues() {
           ? await verifyAccount.mutateAsync({ accountId: issue.entityId })
           : await verifyContact.mutateAsync({ contactId: issue.entityId });
       const found = res.issueCount;
+      // A zero count means "found nothing wrong" only if the web check actually
+      // produced evidence. When every search came back empty (markup change,
+      // rate-limit, no network) nothing was verified, and saying otherwise turns a
+      // failed check into a clean bill of health.
+      const noEvidence =
+        res.searchChecksAttempted > 0 &&
+        res.searchChecksUnavailable >= res.searchChecksAttempted;
       setVerdicts(v => ({
         ...v,
         [issue.id]: found
-          ? `${found} issue${found === 1 ? "" : "s"} confirmed against the web`
-          : "Verified — nothing contradicted by the web",
+          ? { text: `${found} issue${found === 1 ? "" : "s"} confirmed against the web`, checked: true }
+          : noEvidence
+            ? { text: "Could not check — web search returned no usable results", checked: false }
+            : { text: "Verified — nothing contradicted by the web", checked: true },
       }));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Verification failed");
@@ -230,9 +242,17 @@ export function ValidationIssues() {
                       <p className="mt-0.5 text-2xs text-ink-subtle">{issue.suggestion}</p>
 
                       {verdicts[issue.id] && (
-                        <p className="mt-1 flex items-center gap-1 text-2xs text-accent">
-                          <ShieldCheck className="size-3" />
-                          {verdicts[issue.id]}
+                        <p
+                          className={`mt-1 flex items-center gap-1 text-2xs ${
+                            verdicts[issue.id].checked ? "text-accent" : "text-caution"
+                          }`}
+                        >
+                          {verdicts[issue.id].checked ? (
+                            <ShieldCheck className="size-3" />
+                          ) : (
+                            <ShieldAlert className="size-3" />
+                          )}
+                          {verdicts[issue.id].text}
                         </p>
                       )}
 
