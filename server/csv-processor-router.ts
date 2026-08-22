@@ -291,10 +291,30 @@ function createBasicMapping(headers: string[]): Record<string, string | null> {
     "Inbound Comments": ["comments", "notes", "description", "inboundcomments"],
   };
 
+  // A plain substring match lets "address" inside "email_address" satisfy the Street
+  // Address pattern — confirmed live, mapping a CSV's email column into the address
+  // field. Two guards: prefer a whole-token match over a substring one (so
+  // "email_address" splits into ["email","address"] and only the "email" token can
+  // match "email"'s own pattern, not partially match "address" via substring), and once
+  // a source header is claimed by a target field, remove it from consideration so the
+  // same column can't be silently reused for something unrelated.
+  const headerTokens: string[][] = headers.map((h: string) =>
+    h.toLowerCase().split(/[_\-\s]+/).filter(Boolean)
+  );
+  const claimed = new Set<number>();
+
   for (const [targetField, patterns] of Object.entries(fieldPatterns)) {
-    const matchIndex = headerLower.findIndex((h: string) => patterns.some((p: string) => h.includes(p)));
+    let matchIndex = headerTokens.findIndex(
+      (tokens: string[], i: number) => !claimed.has(i) && patterns.some((p: string) => tokens.includes(p))
+    );
+    if (matchIndex === -1) {
+      matchIndex = headerLower.findIndex(
+        (h: string, i: number) => !claimed.has(i) && patterns.some((p: string) => h.includes(p))
+      );
+    }
     if (matchIndex !== -1) {
       mappings[targetField] = headers[matchIndex];
+      claimed.add(matchIndex);
     } else {
       mappings[targetField] = null;
     }
