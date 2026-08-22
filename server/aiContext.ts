@@ -2,7 +2,7 @@ import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
 import { getDb } from "./db";
 import { contextStore } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
+import { invokeLLM, llmText } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
 // Real intent-spike detection, computed from the intentScores time series — so the AI
@@ -217,7 +217,10 @@ ${intentSpikeContext}`;
   // it reads like an answer, and everything below would then mine it for "insights"
   // and write those into the conversation memory.
   const { content: answer, available } = llmText(response);
-  if (!available) return { answer: LLM_UNAVAILABLE_NOTE, insights: [] };
+  // `answer` already IS the real reason when unavailable (llm.ts distinguishes "nothing
+  // configured" from "a configured provider timed out"); LLM_UNAVAILABLE_NOTE would
+  // discard that for the generic case regardless of what actually happened.
+  if (!available) return { answer, insights: [] };
   const answerStr = answer;
 
   // Extract insights and store for future use
@@ -391,7 +394,7 @@ ${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `
   // summary AND cached under account_insight, so the apology became the stored answer
   // and outlived the outage.
   const { content: summary, available } = llmText(response);
-  if (!available) return LLM_UNAVAILABLE_NOTE;
+  if (!available) return summary;
   const summaryStr = summary;
 
   // Store the summary
@@ -485,7 +488,7 @@ Be specific, actionable, and avoid generic statements. Focus on what makes this 
   // summary AND cached under account_insight, so the apology became the stored answer
   // and outlived the outage.
   const { content: summary, available } = llmText(response);
-  if (!available) return LLM_UNAVAILABLE_NOTE;
+  if (!available) return summary;
   const summaryStr = summary;
 
   // Store the summary

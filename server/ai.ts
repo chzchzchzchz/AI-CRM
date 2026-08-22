@@ -1,5 +1,5 @@
 import { wrapUntrusted, INJECTION_GUARD, stripLeakedFence } from "./_core/untrusted";
-import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE, parseLlmJson } from "./_core/llm";
+import { invokeLLM, llmText, parseLlmJson, unavailableReason } from "./_core/llm";
 import { getAllAccounts, getAllPeople, getAllGongCalls } from "./db";
 import { withRCP, asRevenueArchitect } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
@@ -116,7 +116,7 @@ Focus on:
   // fields below, and every caller would read undefined off it.
   const { content, available } = llmText(response);
   if (!available) {
-    return { summary: LLM_UNAVAILABLE_NOTE, score: 0, insights: [], recommendations: [], confidence: 0 };
+    return { summary: unavailableReason(content), score: 0, insights: [], recommendations: [], confidence: 0 };
   }
   return parseLlmJson(content);
 }
@@ -254,7 +254,7 @@ field isn't in the data, return an empty array rather than a plausible-sounding 
   const { content, available } = llmText(response);
   if (!available) {
     return {
-      summary: LLM_UNAVAILABLE_NOTE, keyTopics: [], objections: [], nextSteps: [],
+      summary: unavailableReason(content), keyTopics: [], objections: [], nextSteps: [],
       sentiment: "neutral", buyingSignals: [], competitorsMentioned: [], actionItems: [],
     };
   }
@@ -291,8 +291,8 @@ Return only the email body (no subject line).
     ]
   });
 
-  const { content, available } = llmText(response);
-  return available ? content : LLM_UNAVAILABLE_NOTE;
+  const { content } = llmText(response);
+  return content;
 }
 
 /**

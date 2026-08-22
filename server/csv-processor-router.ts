@@ -1,6 +1,6 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE, parseLlmJson } from "./_core/llm";
+import { invokeLLM, llmText, parseLlmJson, unavailableReason } from "./_core/llm";
 import { wrapUntrusted } from "./_core/untrusted";
 import { withRCP } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
@@ -158,8 +158,11 @@ Return a JSON object with this structure:
 
         const { content, available } = llmText(response);
         // Parsing the note would yield an object with none of the expected fields and
-        // silently mark every row as enriched-with-nothing.
-        if (!available) throw new Error(LLM_UNAVAILABLE_NOTE);
+        // silently mark every row as enriched-with-nothing. json_schema mode means
+        // `content` is the note wrapped as {"available":false,"note":"..."} — unwrap it
+        // rather than throwing the generic constant, so a real timeout on a configured
+        // provider doesn't get reported as nothing being set up.
+        if (!available) throw new Error(unavailableReason(content));
 
         const result = parseLlmJson<any>(content);
         // The model is instructed to write the literal string "UNMAPPED" for fields it

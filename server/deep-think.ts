@@ -1,5 +1,5 @@
 import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
-import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
+import { invokeLLM, llmText } from "./_core/llm";
 import { getDb } from "./db";
 import { aiResponseCache } from "../drizzle/schema";
 import { eq, and, gt } from "drizzle-orm";
@@ -218,8 +218,7 @@ export async function deepThink(params: {
     ]
   });
 
-  const { content: reasoning, available: reasoningAvailable } = llmText(layer1Response);
-  const reasoningStr = reasoningAvailable ? reasoning : LLM_UNAVAILABLE_NOTE;
+  const { content: reasoningStr } = llmText(layer1Response);
 
   // ============================================
   // LAYER 2: SYNTHESIZER
@@ -241,7 +240,7 @@ Transform this into a polished, human response.`;
 
   // Caching the degradation note would make one outage look like a permanent answer.
   const { content: answer, available } = llmText(layer2Response);
-  if (!available) return { answer: LLM_UNAVAILABLE_NOTE, reasoning: reasoningStr, cached: false };
+  if (!available) return { answer, reasoning: reasoningStr, cached: false };
   const answerStr = answer;
 
   // Store in cache for future use

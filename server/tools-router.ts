@@ -1,7 +1,7 @@
 import { wrapUntrusted, INJECTION_GUARD, stripLeakedFence, stripLeakedFenceDeep } from "./_core/untrusted";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { invokeLLM, isLlmUnavailable, llmText, LLM_UNAVAILABLE_NOTE, parseLlmJson, unavailableReason } from "./_core/llm";
+import { invokeLLM, llmText, parseLlmJson, unavailableReason } from "./_core/llm";
 import { asRevenueArchitect } from "./ai-system-prompt";
 import { 
   uploadDocument, 
@@ -740,7 +740,7 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
         });
 
         const { content: messageContent, available } = llmText(response);
-        if (!available) throw new Error(LLM_UNAVAILABLE_NOTE);
+        if (!available) throw new Error(unavailableReason(messageContent));
         const parsedJson = parseLlmJson<any>(messageContent);
 
         // Free-tier fallback models (OpenRouter's rate-limited free rotation) don't
@@ -879,8 +879,8 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
           }
         ]
       });
-      const { content: answer, available } = llmText(response);
-      return { answer: available ? answer : LLM_UNAVAILABLE_NOTE };
+      const { content: answer } = llmText(response);
+      return { answer };
     }),
 
   deleteTranscriptReport: protectedProcedure

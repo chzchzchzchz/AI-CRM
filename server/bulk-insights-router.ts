@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getAccountById, getContactsByAccountId, getGongCallsByAccountId } from "./db";
-import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
+import { invokeLLM, llmText } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
 import { wrapUntrusted } from "./_core/untrusted";
 
@@ -132,7 +132,7 @@ CRITICAL RULES:
               accountId: account.id,
               accountName: account.name,
               success: false,
-              error: LLM_UNAVAILABLE_NOTE
+              error: recommendations
             });
             failed++;
             continue;
