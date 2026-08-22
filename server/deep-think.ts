@@ -218,7 +218,17 @@ export async function deepThink(params: {
     ]
   });
 
-  const { content: reasoningStr } = llmText(layer1Response);
+  const { content: reasoningStr, available: layer1Available } = llmText(layer1Response);
+
+  // If layer 1 produced nothing real, layer 2 has no way to tell a genuine reasoning
+  // log apart from the degradation note sitting in its place — its job is literally to
+  // "transform this into a polished, human response", so it did: it rewrote "AI
+  // generation is unavailable" into vague, confident-sounding filler ("try reviewing
+  // ongoing projects") that reads like real advice. Confirmed live. Skip layer 2
+  // entirely rather than let it launder a failure into something that looks like one.
+  if (!layer1Available) {
+    return { answer: reasoningStr, reasoning: undefined, cached: false };
+  }
 
   // ============================================
   // LAYER 2: SYNTHESIZER
