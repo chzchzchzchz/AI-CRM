@@ -1007,7 +1007,7 @@ Or go to the Admin Panel: /admin/approval`
           news: newsData
         };
 
-        const { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } = await import("./_core/llm");
+        const { invokeLLM, llmText } = await import("./_core/llm");
         const { withRCP } = await import("./ai-system-prompt");
         const response = await invokeLLM({
           messages: [
@@ -1022,20 +1022,27 @@ Or go to the Admin Panel: /admin/approval`
           ]
         });
 
+        // `content` already IS the real reason when unavailable — llm.ts distinguishes
+        // "nothing configured" from "a configured provider timed out" and says so in the
+        // text itself. Substituting the static LLM_UNAVAILABLE_NOTE here discarded that
+        // and told a working-but-slow setup to go install what it already has.
         const { content: insights, available } = llmText(response);
-        const insightsText = available ? insights : LLM_UNAVAILABLE_NOTE;
-        
+
         const result = {
-          insights: insightsText,
+          insights,
           rawTriggers: triggers,
           rawNews: newsData
         };
 
-        // Store in cache
-        await updateAccount(input.accountId, {
-          aiResearchCache: JSON.stringify(result),
-          aiCacheUpdatedAt: new Date()
-        } as any);
+        // Only cache a real result. Caching a degraded one would pin a transient outage
+        // (a slow Ollama, a rate-limited free tier) as this account's research for a full
+        // 24 hours, long after the provider recovers.
+        if (available) {
+          await updateAccount(input.accountId, {
+            aiResearchCache: JSON.stringify(result),
+            aiCacheUpdatedAt: new Date()
+          } as any);
+        }
 
         return { ...result, cached: false, cacheAge: 0 };
       }),
