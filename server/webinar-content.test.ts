@@ -70,7 +70,7 @@ describe("webinar content generation", () => {
       message = String(e?.message ?? "");
     }
     expect(message).not.toMatch(/^Failed to generate webinar content$/);
-    expect(message).toMatch(/not configured/i);
+    expect(message).toMatch(/no api key is set|no local model is reachable/i);
     expect(message).toMatch(/OPENROUTER_API_KEY|ollama/i);
   }, 20_000);
 

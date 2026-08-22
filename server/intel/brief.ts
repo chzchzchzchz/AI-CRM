@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { invokeLLM } from "../_core/llm";
+import { invokeLLM, llmText, unavailableReason } from "../_core/llm";
 import { getCompanyConfig } from "../config";
 import { wrapUntrusted, INJECTION_GUARD } from "../_core/untrusted";
 import { storeContext, getContext } from "../aiContext";
@@ -64,6 +64,15 @@ export type AccountBrief = {
   cached: boolean;
   /** True when the narrative fell back to a deterministic render (no LLM available). */
   degraded: boolean;
+  /**
+   * Why this brief is degraded, straight from the LLM layer. Null when not degraded.
+   *
+   * llm.ts distinguishes "nothing configured" from "configured provider timed out
+   * / errored" and says so in this text — surface it instead of a single static
+   * caption, so a rep sees a timeout for what it is rather than being told to set up
+   * infrastructure that already works.
+   */
+  degradedReason: string | null;
   /** Statements removed because they could not be verified against the signal pack. */
   validation: Validation;
 };
@@ -830,6 +839,7 @@ export async function generateAccountBrief(
           generatedAt: latest.generatedAt,
           cached: true,
           degraded: false,
+          degradedReason: null,
           validation: rechecked.validation,
         };
       }
@@ -842,6 +852,7 @@ export async function generateAccountBrief(
 
   const { system, user } = buildJudgementPrompt(pack);
   let judgement: Judgement | null = null;
+  let degradedReason: string | null = null;
   try {
     const response = await invokeLLM({
       messages: [
@@ -850,10 +861,22 @@ export async function generateAccountBrief(
       ],
       response_format: { type: "json_schema", json_schema: { name: "judgement", schema: JUDGEMENT_SCHEMA as any } },
     });
-    const content = response.choices?.[0]?.message?.content;
-    judgement = parseJudgement(typeof content === "string" ? content : JSON.stringify(content));
+    // Check availability before parsing: an unreachable model returns the degradation
+    // note as prose, not JSON, so parseJudgement would fail on it anyway — but silently,
+    // discarding the specific reason llm.ts already worked out (not configured vs.
+    // configured-but-timed-out) in favor of a generic "generation failed" catch.
+    const { content, available } = llmText(response);
+    if (!available) {
+      degradedReason = unavailableReason(content);
+    } else {
+      judgement = parseJudgement(content);
+      if (!judgement) {
+        degradedReason = "The model responded, but its output wasn't a usable judgement.";
+      }
+    }
   } catch (error) {
     console.error(`[brief] judgement generation failed for account ${accountId}:`, error);
+    degradedReason = error instanceof Error ? error.message : String(error);
   }
 
   const degraded = !judgement;
@@ -917,6 +940,7 @@ export async function generateAccountBrief(
     generatedAt,
     cached: false,
     degraded,
+    degradedReason: degraded ? degradedReason : null,
     validation,
   };
 }

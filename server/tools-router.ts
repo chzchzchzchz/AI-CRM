@@ -1,7 +1,7 @@
 import { wrapUntrusted, INJECTION_GUARD, stripLeakedFence, stripLeakedFenceDeep } from "./_core/untrusted";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { invokeLLM, isLlmUnavailable, llmText, LLM_UNAVAILABLE_NOTE, parseLlmJson } from "./_core/llm";
+import { invokeLLM, isLlmUnavailable, llmText, LLM_UNAVAILABLE_NOTE, parseLlmJson, unavailableReason } from "./_core/llm";
 import { asRevenueArchitect } from "./ai-system-prompt";
 import { 
   uploadDocument, 
@@ -616,9 +616,11 @@ Format your response as JSON with these keys:
           // code threw the reason and then the catch below flattened every failure into
           // "Failed to generate webinar content", so an unset API key was indistinguishable
           // from malformed model output and "please try again" was useless advice.
-          throw new Error(
-            "AI is not configured, so webinar content can't be generated. Set OPENROUTER_API_KEY in .env, or run a local model with `ollama serve`. See SETUP.md."
-          );
+          //
+          // The reason itself comes straight from llm.ts, which distinguishes "nothing
+          // configured" from "a configured provider timed out / errored" — surfacing it
+          // means a working setup that's just slow doesn't get told to reinstall itself.
+          throw new Error(unavailableReason(messageContent));
         }
         try {
           // Confirmed live: with no company name in the pasted material, the model

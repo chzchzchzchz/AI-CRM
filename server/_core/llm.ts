@@ -557,6 +557,22 @@ export function isLlmUnavailable(text: unknown): boolean {
   }
 }
 
+/**
+ * Read the human-readable reason out of a degradation note, whichever form it's in.
+ *
+ * `llmText()` only says available/not; callers that want to *show* the reason (not
+ * just detect it) need the plain sentence, not the JSON-schema callers' raw
+ * `{"available":false,"note":"..."}` string — that's meant for a model to read
+ * back, not for a UI to render verbatim.
+ */
+export function unavailableReason(text: string): string {
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed?.available === false && typeof parsed?.note === "string") return parsed.note;
+  } catch { /* not JSON — already plain text */ }
+  return text;
+}
+
 // Returned when no LLM is available at all (no key + no local Ollama), or when every
 // configured provider was tried and failed. Keeps AI features functional-but-honest
 // instead of crashing — but the two cases have different remedies (configure something
