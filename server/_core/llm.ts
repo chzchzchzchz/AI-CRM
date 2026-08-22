@@ -393,6 +393,12 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
 
   let lastError = "";
   let sawForge = false;
+  // "Configured" (a URL/key is set) is not the same as "reached" — local Ollama has a
+  // default URL even when nothing is running there. Track whether any attempt actually
+  // got a response or timed out waiting for one (both mean something was listening) as
+  // opposed to failing to connect at all, so the fallback message below can tell "you
+  // haven't set anything up" apart from "what's set up isn't responding right now".
+  let contactedAnyProvider = false;
 
   for (const provider of providers) {
     if (provider.isForge) sawForge = true;
@@ -422,10 +428,16 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
           }
         }
       } catch (err) {
-        // Unreachable or timed out (no Ollama running, provider stalled) — try the next one.
-        lastError = `${provider.url}: ${(err as Error)?.message || "request failed"}`;
+        // Unreachable (connection refused, DNS failure — nothing was ever there) vs timed
+        // out (AbortSignal.timeout fired, which only happens once a request is in flight,
+        // meaning something accepted the connection and was just slow to answer).
+        const e = err as Error;
+        if (e?.name === "TimeoutError" || e?.name === "AbortError") contactedAnyProvider = true;
+        lastError = `${provider.url}: ${e?.message || "request failed"}`;
         continue;
       }
+
+      contactedAnyProvider = true;
 
       // Body reads can abort too (the timeout signal is still armed). Keep them inside the
       // guarded path so a stalled read falls through to the next provider instead of
@@ -446,7 +458,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   // so surface a hard error there; otherwise degrade so AI features never crash the app.
   if (!sawForge) {
     console.error(`[llm] all providers failed. Last error: ${lastError}`);
-    return llmUnavailableFallback(normalizedResponseFormat);
+    return llmUnavailableFallback(normalizedResponseFormat, contactedAnyProvider, lastError);
   }
   throw new Error(`LLM invoke failed: ${lastError}`);
 }
@@ -461,8 +473,10 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
  * database as a generated asset. Honest text presented as a success is still a lie
  * about what happened.
  */
+const LLM_UNAVAILABLE_PREFIX = "AI generation is unavailable right now";
+
 export const LLM_UNAVAILABLE_NOTE =
-  "AI generation is unavailable right now: no API key is set and no local model is reachable. " +
+  `${LLM_UNAVAILABLE_PREFIX}: no API key is set and no local model is reachable. ` +
   "To enable free local AI: install Ollama, run `ollama serve`, then `ollama pull phi3:mini`. " +
   "Or set BUILT_IN_FORGE_API_KEY for hosted AI.";
 
@@ -533,7 +547,7 @@ export function parseLlmJson<T = unknown>(text: string): T {
 /** True when this text is the degradation note rather than model output. */
 export function isLlmUnavailable(text: unknown): boolean {
   if (typeof text !== "string") return false;
-  if (text.includes(LLM_UNAVAILABLE_NOTE)) return true;
+  if (text.includes(LLM_UNAVAILABLE_PREFIX)) return true;
   // The JSON form, for callers that asked for structured output.
   try {
     const parsed = JSON.parse(text);
@@ -543,12 +557,23 @@ export function isLlmUnavailable(text: unknown): boolean {
   }
 }
 
-// Returned when no LLM is available at all (no key + no local Ollama). Keeps the AI
-// features functional-but-honest for a zero-install user instead of erroring out.
+// Returned when no LLM is available at all (no key + no local Ollama), or when every
+// configured provider was tried and failed. Keeps AI features functional-but-honest
+// instead of crashing — but the two cases have different remedies (configure something
+// vs. retry / check why the configured provider is down), so they get different text.
+// A live Ollama that times out under load is not the same problem as no Ollama at all,
+// and telling a user with a working setup to go install what they already installed
+// sends them chasing a config problem that doesn't exist.
 function llmUnavailableFallback(
-  responseFormat: { type: string } | undefined
+  responseFormat: { type: string } | undefined,
+  contactedAnyProvider: boolean,
+  lastError: string
 ): InvokeResult {
-  const note = LLM_UNAVAILABLE_NOTE;
+  const note = contactedAnyProvider
+    ? `${LLM_UNAVAILABLE_PREFIX}: every configured provider failed to respond` +
+      (lastError ? ` — ${lastError}` : "") +
+      ". This may be a transient network issue or an overloaded local model; try again shortly."
+    : LLM_UNAVAILABLE_NOTE;
   const isJson =
     responseFormat?.type === "json_object" ||
     responseFormat?.type === "json_schema";
