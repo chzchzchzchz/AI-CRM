@@ -670,88 +670,121 @@ ${INJECTION_GUARD}`;
 
 ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
 
+      const transcriptResponseFormat = {
+        type: "json_schema" as const,
+        json_schema: {
+          name: "transcript_analysis",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              aboutProspect: {
+                type: "object",
+                properties: {
+                  jobTitle: { type: "string" },
+                  industry: { type: "string" },
+                  companyName: { type: "string" },
+                  aiToolsUsed: {
+                    type: "object",
+                    properties: {
+                      enterprise: { type: "array", items: { type: "string" } },
+                      other: { type: "array", items: { type: "string" } }
+                    },
+                    required: ["enterprise", "other"],
+                    additionalProperties: false
+                  },
+                  aiUsageContext: { type: "string" }
+                },
+                required: ["jobTitle", "industry", "companyName", "aiToolsUsed", "aiUsageContext"],
+                additionalProperties: false
+              },
+              topRisks: { type: "array", items: { type: "string" } },
+              topChallenges: { type: "array", items: { type: "string" } },
+              currentSecurityStack: {
+                type: "object",
+                properties: {
+                  toolsUsed: { type: "array", items: { type: "string" } },
+                  toolsConsidered: { type: "array", items: { type: "string" } }
+                },
+                required: ["toolsUsed", "toolsConsidered"],
+                additionalProperties: false
+              },
+              budgetTimelinePriority: { type: "string" },
+              urgencyDrivers: { type: "string" },
+              feedbackPoints: { type: "array", items: { type: "string" } },
+              betaInterest: {
+                type: "object",
+                properties: {
+                  interestLevel: { type: "string" },
+                  apprehensions: { type: "string" },
+                  interestQuote: { type: "string" }
+                },
+                required: ["interestLevel", "apprehensions", "interestQuote"],
+                additionalProperties: false
+              },
+              topQuotes: { type: "array", items: { type: "string" } },
+              additionalInsights: { type: "array", items: { type: "string" } },
+              nextSteps: { type: "array", items: { type: "string" } }
+            },
+            required: ["aboutProspect", "topRisks", "topChallenges", "currentSecurityStack", "budgetTimelinePriority", "urgencyDrivers", "feedbackPoints", "betaInterest", "topQuotes", "additionalInsights", "nextSteps"],
+            additionalProperties: false
+          }
+        }
+      };
+
       try {
         const response = await invokeLLM({
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt }
           ],
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: "transcript_analysis",
-              strict: true,
-              schema: {
-                type: "object",
-                properties: {
-                  aboutProspect: {
-                    type: "object",
-                    properties: {
-                      jobTitle: { type: "string" },
-                      industry: { type: "string" },
-                      companyName: { type: "string" },
-                      aiToolsUsed: {
-                        type: "object",
-                        properties: {
-                          enterprise: { type: "array", items: { type: "string" } },
-                          other: { type: "array", items: { type: "string" } }
-                        },
-                        required: ["enterprise", "other"],
-                        additionalProperties: false
-                      },
-                      aiUsageContext: { type: "string" }
-                    },
-                    required: ["jobTitle", "industry", "companyName", "aiToolsUsed", "aiUsageContext"],
-                    additionalProperties: false
-                  },
-                  topRisks: { type: "array", items: { type: "string" } },
-                  topChallenges: { type: "array", items: { type: "string" } },
-                  currentSecurityStack: {
-                    type: "object",
-                    properties: {
-                      toolsUsed: { type: "array", items: { type: "string" } },
-                      toolsConsidered: { type: "array", items: { type: "string" } }
-                    },
-                    required: ["toolsUsed", "toolsConsidered"],
-                    additionalProperties: false
-                  },
-                  budgetTimelinePriority: { type: "string" },
-                  urgencyDrivers: { type: "string" },
-                  feedbackPoints: { type: "array", items: { type: "string" } },
-                  betaInterest: {
-                    type: "object",
-                    properties: {
-                      interestLevel: { type: "string" },
-                      apprehensions: { type: "string" },
-                      interestQuote: { type: "string" }
-                    },
-                    required: ["interestLevel", "apprehensions", "interestQuote"],
-                    additionalProperties: false
-                  },
-                  topQuotes: { type: "array", items: { type: "string" } },
-                  additionalInsights: { type: "array", items: { type: "string" } },
-                  nextSteps: { type: "array", items: { type: "string" } }
-                },
-                required: ["aboutProspect", "topRisks", "topChallenges", "currentSecurityStack", "budgetTimelinePriority", "urgencyDrivers", "feedbackPoints", "betaInterest", "topQuotes", "additionalInsights", "nextSteps"],
-                additionalProperties: false
-              }
-            }
-          }
+          response_format: transcriptResponseFormat
         });
 
         const { content: messageContent, available } = llmText(response);
         if (!available) throw new Error(unavailableReason(messageContent));
         const parsedJson = parseLlmJson<any>(messageContent);
 
-        // Free-tier fallback models (OpenRouter's rate-limited free rotation) don't
-        // reliably honor `response_format.json_schema` — one was observed returning
-        // an entirely different shape (a "prospectInsights" wrapper instead of the
-        // flat fields below) despite the schema above. Validate before trusting the
-        // shape, so a model that ignored the schema produces a clear server error
-        // instead of a client-side crash on `undefined.jobTitle`.
-        const parseResult = TranscriptAnalysisSchema.safeParse(parsedJson);
+        // Free-tier fallback models (OpenRouter's rate-limited free rotation) and small
+        // local models don't reliably honor `response_format.json_schema` — one was
+        // observed returning an entirely different shape (a "prospectInsights" wrapper,
+        // or even a completely unrelated field set like {prospect, conversation_insights})
+        // despite the schema above. `payloadFor()` downgrades json_schema to the looser
+        // json_object for every non-Forge provider, which only guarantees valid JSON
+        // syntax, not this shape — so a mismatch here is the common case for these
+        // models, not a fluke. One repair attempt, showing the model its own wrong
+        // output next to the exact validation errors, recovers most of these; if that
+        // also fails, still surface a clear error rather than a client-side crash.
+        let parseResult = TranscriptAnalysisSchema.safeParse(parsedJson);
         if (!parseResult.success) {
-          console.error('[TranscriptAnalysis] Model output did not match expected schema:', parseResult.error.message, messageContent.slice(0, 500));
+          console.error('[TranscriptAnalysis] Model output did not match expected schema, attempting repair:', parseResult.error.message, messageContent.slice(0, 500));
+          try {
+            const repairResponse = await invokeLLM({
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
+                { role: "assistant", content: messageContent },
+                {
+                  role: "user",
+                  content: `That response did not match the required JSON shape. Validation errors:\n${parseResult.error.message}\n\nReturn ONLY a corrected JSON object with exactly these top-level keys: aboutProspect, topRisks, topChallenges, currentSecurityStack, budgetTimelinePriority, urgencyDrivers, feedbackPoints, betaInterest, topQuotes, additionalInsights, nextSteps. No other keys, no wrapper object.`,
+                },
+              ],
+              response_format: transcriptResponseFormat,
+            });
+            const { content: repairContent, available: repairAvailable } = llmText(repairResponse);
+            if (repairAvailable) {
+              parseResult = TranscriptAnalysisSchema.safeParse(parseLlmJson<any>(repairContent));
+              if (!parseResult.success) {
+                console.error('[TranscriptAnalysis] Repair attempt still did not match schema:', parseResult.error.message, repairContent.slice(0, 500));
+              }
+            } else {
+              console.error('[TranscriptAnalysis] Repair attempt got no model response:', repairContent.slice(0, 300));
+            }
+          } catch (repairError) {
+            console.error('[TranscriptAnalysis] Repair attempt itself failed:', repairError);
+          }
+        }
+        if (!parseResult.success) {
           throw new Error('The AI model returned analysis in an unexpected format (this can happen with the free-tier fallback model). Please try again.');
         }
         const analysis = parseResult.data;
