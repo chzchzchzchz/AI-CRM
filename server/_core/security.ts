@@ -102,9 +102,16 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
   
   // Content Security Policy (basic - adjust as needed)
   // Note: This is a permissive CSP for development; tighten for production
+  //
+  // worker-src needs its own directive with blob: — mermaid (pulled in by the
+  // streamdown markdown renderer used by every AI chat surface) renders diagrams
+  // in a blob: worker. Without this, worker-src falls back to script-src, which
+  // has no blob:, and the browser silently blocks the worker: mermaid code blocks
+  // in an AI response render as nothing, with only a console CSP violation to
+  // explain why.
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https:;"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https:;"
   );
   
   next();
