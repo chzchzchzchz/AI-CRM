@@ -167,6 +167,7 @@ function CallAnalyzerTool({ sharedReportId }: { sharedReportId: string | null })
   const [reportName, setReportName] = useState('');
   const [followUpQuestion, setFollowUpQuestion] = useState('');
   const [followUpAnswer, setFollowUpAnswer] = useState('');
+  const [followUpAvailable, setFollowUpAvailable] = useState(true);
   const [askingFollowUp, setAskingFollowUp] = useState(false);
   const [showSavedReports, setShowSavedReports] = useState(false);
   const [viewingReport, setViewingReport] = useState<SavedReport | null>(null);
@@ -246,6 +247,7 @@ function CallAnalyzerTool({ sharedReportId }: { sharedReportId: string | null })
   const askFollowUpMutation = trpc.tools.askTranscriptQuestion.useMutation({
     onSuccess: (data) => {
       setFollowUpAnswer(typeof data.answer === 'string' ? data.answer : String(data.answer));
+      setFollowUpAvailable(data.available);
       setAskingFollowUp(false);
     },
     onError: (error) => {
@@ -804,7 +806,13 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               </Button>
             </div>
             {followUpAnswer && (
-              <div className="p-4 bg-accent-subtle border border-accent/30 rounded-sm">
+              <div
+                className={
+                  followUpAvailable
+                    ? "p-4 bg-accent-subtle border border-accent/30 rounded-sm"
+                    : "p-4 bg-caution-subtle border border-caution/30 rounded-sm"
+                }
+              >
                 <p className="text-sm text-foreground">{followUpAnswer}</p>
               </div>
             )}

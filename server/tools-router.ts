@@ -912,8 +912,11 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
           }
         ]
       });
-      const { content: answer } = llmText(response);
-      return { answer };
+      const { content: answer, available } = llmText(response);
+      // Same class of bug fixed elsewhere this session: without `available`, a
+      // degradation note renders in the UI indistinguishable from a real answer to
+      // the rep's question.
+      return { answer: available ? answer : unavailableReason(answer), available };
     }),
 
   deleteTranscriptReport: protectedProcedure
