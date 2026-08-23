@@ -411,15 +411,18 @@ ${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `
 /**
  * Auto-generate contact summary with AI, optionally including LinkedIn data
  */
-export async function generateContactSummary(contactId: number, includeLinkedIn: boolean = false): Promise<string> {
+export async function generateContactSummary(
+  contactId: number,
+  includeLinkedIn: boolean = false
+): Promise<{ summary: string; available: boolean }> {
   const db = await getDb();
-  if (!db) return "Unable to generate summary";
+  if (!db) return { summary: "Unable to generate summary", available: false };
 
   const { contacts, calls, accounts } = await import("../drizzle/schema");
   const { getLinkedInContextForContact } = await import("./linkedin");
   
   const contact = await db.select().from(contacts).where(eq(contacts.id, contactId)).limit(1);
-  if (!contact[0]) return "Contact not found";
+  if (!contact[0]) return { summary: "Contact not found", available: false };
 
   // Get account context if available
   let accountContext = '';
@@ -488,7 +491,7 @@ Be specific, actionable, and avoid generic statements. Focus on what makes this 
   // summary AND cached under account_insight, so the apology became the stored answer
   // and outlived the outage.
   const { content: summary, available } = llmText(response);
-  if (!available) return summary;
+  if (!available) return { summary, available: false };
   const summaryStr = summary;
 
   // Store the summary
@@ -499,5 +502,5 @@ Be specific, actionable, and avoid generic statements. Focus on what makes this 
     metadata: { type: 'profile', fullSummary: summaryStr }
   });
 
-  return summary;
+  return { summary, available: true };
 }

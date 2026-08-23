@@ -60,12 +60,16 @@ export default function ContactDetail() {
     }
     setIsGenerating(true);
     try {
-      const summary = await summaryMutation.mutateAsync({
+      const result = await summaryMutation.mutateAsync({
         contactId: personId,
         includeLinkedIn: true
       });
-      setAiSummary(summary);
-      toast.success("AI summary generated from LinkedIn!");
+      setAiSummary(result.summary);
+      if (result.available) {
+        toast.success("AI summary generated from LinkedIn!");
+      } else {
+        toast.error(result.summary);
+      }
     } catch (error) {
       toast.error("Failed to generate summary");
     } finally {
