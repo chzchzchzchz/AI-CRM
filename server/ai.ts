@@ -477,6 +477,13 @@ function runSearch(
         if (titleKeywords.length) { if (!titleHit) return null; score += 40; }
         if (industry && acc) { if (!(acc.industry || "").toLowerCase().includes(industry)) return null; score += 20; }
         if (employeeFloor != null && acc) { if ((acc.employeeCount || 0) < employeeFloor) return null; score += 10; }
+        // The account branch below enforces this as a hard filter; this branch only
+        // ever used it to nudge the score, so a contact whose account's intent score
+        // was well under the threshold still came back — while appliedFilters (and the
+        // "Applied — minIntentScore: 70" explanation shown to the rep) claimed it had
+        // been enforced. Confirmed live: "hot accounts in security" routed to a contact
+        // search and returned a contact at an account with intentScore 24.
+        if (minIntent != null && acc) { if ((acc.intentScore || 0) < minIntent) return null; score += 15; }
         if (acc) score += (acc.intentScore || 0) * 0.2;
         // text relevance
         const hay = `${p.name} ${p.title} ${p.company || ""} ${acc?.name || ""}`.toLowerCase();
