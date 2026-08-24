@@ -9,6 +9,14 @@ import path from "node:path";
  * demo mode returns into a state variable nothing ever read, so even the intended
  * no-mailer fallback was unreachable. The server now reports the real `emailSent`
  * boolean, and does so identically whether or not the email exists (anti-enumeration).
+ *
+ * sendVerificationCode and resendVerificationCode had the identical bug and were never
+ * fixed alongside it: both called sendVerificationEmail(...).catch(() => false) and threw
+ * the result away, always answering `{ success: true }`. A real deployment with no
+ * SENDGRID_API_KEY (or a dead one) told every new signup "We sent a 6-digit code to
+ * you@company.com" — SignUp.tsx has no branch for a failed send, only a thrown error,
+ * which this path never produces — and the account sat on the verify screen forever with
+ * a code that was never mailed and a resend button that reported the same false success.
  */
 
 const DB = path.join(process.cwd(), "demo-db.test-reset-honesty.json");
@@ -60,5 +68,47 @@ describe("emailVerification.sendPasswordResetCode", () => {
     expect(result.success).toBe(true);
     expect(result.emailSent).toBe(true);
     expect(result.code).toBeUndefined();
+  });
+});
+
+describe("emailVerification.sendVerificationCode", () => {
+  it("reports emailSent:false when no mailer is configured", async () => {
+    const { getDb } = await import("./db");
+    const { users } = await import("../drizzle/schema");
+    const db: any = await getDb();
+    await db.delete(users);
+    await db.insert(users).values({
+      id: 802, openId: "u802", email: "newsignup@example.com", name: "New Signup",
+      role: "user", isApproved: false, loginMethod: "email",
+    });
+
+    const { emailVerificationRouter } = await import("./email-verification-router");
+    const caller = emailVerificationRouter.createCaller(anyCtx());
+    const result: any = await caller.sendVerificationCode({ userId: 802, email: "newsignup@example.com" });
+
+    // Demo mode still hands back the code so the flow is completable with no mailer —
+    // but it must not claim the email itself went anywhere.
+    expect(result.emailSent).toBe(false);
+    expect(result.code).toBeTruthy();
+  });
+});
+
+describe("emailVerification.resendVerificationCode", () => {
+  it("reports emailSent:false when no mailer is configured", async () => {
+    const { getDb } = await import("./db");
+    const { users } = await import("../drizzle/schema");
+    const db: any = await getDb();
+    await db.delete(users);
+    await db.insert(users).values({
+      id: 803, openId: "u803", email: "resend@example.com", name: "Resend Case",
+      role: "user", isApproved: false, loginMethod: "email",
+    });
+
+    const { emailVerificationRouter } = await import("./email-verification-router");
+    const caller = emailVerificationRouter.createCaller(anyCtx());
+    const result: any = await caller.resendVerificationCode({ userId: 803, email: "resend@example.com" });
+
+    expect(result.emailSent).toBe(false);
+    expect(result.code).toBeTruthy();
   });
 });

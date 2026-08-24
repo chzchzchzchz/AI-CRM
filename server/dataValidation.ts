@@ -1,5 +1,5 @@
 import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
-import { invokeLLM, llmText, isLlmUnavailable, parseLlmJson } from "./_core/llm";
+import { invokeLLM, llmText, parseLlmJson } from "./_core/llm";
 import { withRCP } from "./ai-system-prompt";
 import { getAllAccounts, getAllPeople } from "./db";
 
@@ -59,6 +59,22 @@ export const searchEvidenceStats = { checked: 0, noEvidence: 0 };
 export function resetSearchEvidenceStats(): void {
   searchEvidenceStats.checked = 0;
   searchEvidenceStats.noEvidence = 0;
+}
+
+/**
+ * Same problem as searchEvidenceStats, one layer downstream: web evidence can come back
+ * fine and the MODEL call that reasons over it can still fail (no key configured, Forge
+ * rate-limited or down — invokeLLM throws rather than degrades on some failures; see
+ * _core/llm.ts). Every verify* function below used to let that fall through to the same
+ * `return null` as "checked the evidence, found nothing wrong" — isLlmUnavailable was
+ * imported and never actually called anywhere in this file. A rep verifying a flagged
+ * record during a Forge outage saw a confident "Verified — nothing contradicted by the
+ * web," not "the check didn't run."
+ */
+export const llmEvidenceStats = { checked: 0, unavailable: 0 };
+export function resetLlmEvidenceStats(): void {
+  llmEvidenceStats.checked = 0;
+  llmEvidenceStats.unavailable = 0;
 }
 
 // Domains that can show up in a scraped results page without being an actual result —
@@ -172,6 +188,7 @@ Return JSON:
   "suggestion": "Correct domain if found"
 }`;
 
+  llmEvidenceStats.checked++;
   try {
     const response = await invokeLLM({
       messages: [
@@ -201,26 +218,30 @@ Return JSON:
     // Parsing the degradation note gives an object with no isValid field, which reads
     // as "not invalid" and quietly passes every record through as clean.
     const { content, available } = llmText(response);
-    if (available) {
-      const result = parseLlmJson<any>(content);
-      
-      if (!result.isValid) {
-        return {
-          id: `domain-mismatch-${companyName}`,
-          type: 'account',
-          severity: 'critical',
-          entityId: 0, // Will be set by caller
-          entityName: companyName,
-          field: 'domain',
-          issue: result.issue,
-          suggestion: result.suggestion,
-          confidence: result.confidence,
-          searchResults: searchResults.substring(0, 500),
-          lastChecked: new Date()
-        };
-      }
+    if (!available) {
+      llmEvidenceStats.unavailable++;
+      return null;
+    }
+
+    const result = parseLlmJson<any>(content);
+
+    if (!result.isValid) {
+      return {
+        id: `domain-mismatch-${companyName}`,
+        type: 'account',
+        severity: 'critical',
+        entityId: 0, // Will be set by caller
+        entityName: companyName,
+        field: 'domain',
+        issue: result.issue,
+        suggestion: result.suggestion,
+        confidence: result.confidence,
+        searchResults: searchResults.substring(0, 500),
+        lastChecked: new Date()
+      };
     }
   } catch (error) {
+    llmEvidenceStats.unavailable++;
     console.error('Domain verification failed:', error);
   }
 
@@ -259,6 +280,7 @@ Return JSON:
   "suggestion": "Correction if found"
 }`;
 
+  llmEvidenceStats.checked++;
   try {
     const response = await invokeLLM({
       messages: [
@@ -289,26 +311,30 @@ Return JSON:
     // Parsing the degradation note gives an object with no isValid field, which reads
     // as "not invalid" and quietly passes every record through as clean.
     const { content, available } = llmText(response);
-    if (available) {
-      const result = parseLlmJson<any>(content);
-      
-      if (!result.isValid && result.confidence > 0.6) {
-        return {
-          id: `employee-count-${companyName}`,
-          type: 'account',
-          severity: 'warning',
-          entityId: 0,
-          entityName: companyName,
-          field: 'employeeCount',
-          issue: result.issue,
-          suggestion: result.suggestion,
-          confidence: result.confidence,
-          searchResults: searchResults.substring(0, 500),
-          lastChecked: new Date()
-        };
-      }
+    if (!available) {
+      llmEvidenceStats.unavailable++;
+      return null;
+    }
+
+    const result = parseLlmJson<any>(content);
+
+    if (!result.isValid && result.confidence > 0.6) {
+      return {
+        id: `employee-count-${companyName}`,
+        type: 'account',
+        severity: 'warning',
+        entityId: 0,
+        entityName: companyName,
+        field: 'employeeCount',
+        issue: result.issue,
+        suggestion: result.suggestion,
+        confidence: result.confidence,
+        searchResults: searchResults.substring(0, 500),
+        lastChecked: new Date()
+      };
     }
   } catch (error) {
+    llmEvidenceStats.unavailable++;
     console.error('Employee count verification failed:', error);
   }
 
@@ -347,6 +373,7 @@ Return JSON:
   "suggestion": "Correction if found"
 }`;
 
+  llmEvidenceStats.checked++;
   try {
     const response = await invokeLLM({
       messages: [
@@ -376,26 +403,30 @@ Return JSON:
     // Parsing the degradation note gives an object with no isValid field, which reads
     // as "not invalid" and quietly passes every record through as clean.
     const { content, available } = llmText(response);
-    if (available) {
-      const result = parseLlmJson<any>(content);
-      
-      if (!result.isValid && result.confidence > 0.7) {
-        return {
-          id: `employment-${contactName}-${companyName}`,
-          type: 'contact',
-          severity: 'critical',
-          entityId: 0,
-          entityName: contactName,
-          field: 'accountId',
-          issue: result.issue,
-          suggestion: result.suggestion,
-          confidence: result.confidence,
-          searchResults: searchResults.substring(0, 500),
-          lastChecked: new Date()
-        };
-      }
+    if (!available) {
+      llmEvidenceStats.unavailable++;
+      return null;
+    }
+
+    const result = parseLlmJson<any>(content);
+
+    if (!result.isValid && result.confidence > 0.7) {
+      return {
+        id: `employment-${contactName}-${companyName}`,
+        type: 'contact',
+        severity: 'critical',
+        entityId: 0,
+        entityName: contactName,
+        field: 'accountId',
+        issue: result.issue,
+        suggestion: result.suggestion,
+        confidence: result.confidence,
+        searchResults: searchResults.substring(0, 500),
+        lastChecked: new Date()
+      };
     }
   } catch (error) {
+    llmEvidenceStats.unavailable++;
     console.error('Employment verification failed:', error);
   }
 

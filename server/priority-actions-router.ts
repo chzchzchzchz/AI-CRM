@@ -292,7 +292,14 @@ export const priorityActionsRouter = router({
       // 6QA opportunity gap: qualified accounts (intent >= 70) with no opportunity yet.
       // Previously this read rawData.sixqa_qualified / has_opportunity, which nothing
       // populates, so it was always 0 and fell back to a fabricated 80% of all accounts.
-      const allOpps = await getAllOpportunities().catch(() => []);
+      //
+      // getAllOpportunities already returns [] on its own when there's genuinely no
+      // database configured (see server/db.ts) — a `.catch(() => [])` here only ever
+      // fires on a real query failure, which is not the same fact as "no opportunities
+      // exist." Swallowing it inflated sixQAGap to every hot account, the maximum
+      // possible value, with nothing to show a rep the number was manufactured rather
+      // than measured. getAllAccounts above is not caught for the same reason.
+      const allOpps = await getAllOpportunities();
       const accountsWithOpp = new Set(
         (allOpps as any[]).map((o) => o.accountId).filter((id) => id != null)
       );

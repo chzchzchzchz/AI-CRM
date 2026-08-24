@@ -128,17 +128,24 @@ async function searchSAMGov(apiKey: string, keyword: string, limit: number = 100
 }
 
 /**
- * Scrape RFPs from SAM.gov for the configured keywords
+ * Scrape RFPs from SAM.gov for the configured keywords.
+ *
+ * Per-keyword failures used to be logged and swallowed, so a rejected/expired API key —
+ * every keyword search fails identically with the same 401/403 — produced the exact
+ * same [] as a genuinely quiet week for the configured keywords. Callers get the
+ * per-keyword failure count so they can tell "checked, found nothing" apart from
+ * "couldn't check any of them."
  */
-async function scrapeAllRFPs(apiKey: string): Promise<SAMOpportunity[]> {
+async function scrapeAllRFPs(apiKey: string): Promise<{ opportunities: SAMOpportunity[]; failedKeywords: string[] }> {
   const allOpportunities: SAMOpportunity[] = [];
   const seenIds = new Set<string>();
+  const failedKeywords: string[] = [];
 
   for (const keyword of RFP_KEYWORDS) {
     try {
       console.log(`[RFP Scraper] Searching for: ${keyword}`);
       const opportunities = await searchSAMGov(apiKey, keyword, 100);
-      
+
       // Deduplicate by noticeId
       for (const opp of opportunities) {
         if (!seenIds.has(opp.noticeId)) {
@@ -146,16 +153,17 @@ async function scrapeAllRFPs(apiKey: string): Promise<SAMOpportunity[]> {
           allOpportunities.push(opp);
         }
       }
-      
+
       // Rate limiting: wait 1 second between requests
       await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (error) {
       console.error(`[RFP Scraper] Error searching for "${keyword}":`, error);
+      failedKeywords.push(keyword);
     }
   }
 
   console.log(`[RFP Scraper] Found ${allOpportunities.length} unique opportunities`);
-  return allOpportunities;
+  return { opportunities: allOpportunities, failedKeywords };
 }
 
 /**
@@ -248,14 +256,29 @@ export const rfpRouter = router({
         if (!apiKey) {
           return { success: false, error: "SAM.gov API key not configured (set SAM_GOV_API_KEY)" };
         }
-        const opportunities = await scrapeAllRFPs(apiKey);
+        const { opportunities, failedKeywords } = await scrapeAllRFPs(apiKey);
+
+        // Every keyword failing identically (401/403 from a rejected or expired key,
+        // or SAM.gov being down) used to look exactly like a genuinely quiet week: []
+        // in, "Scraped 0 opportunities" out. A rep has no way to tell a broken
+        // credential apart from a slow week unless the two report differently.
+        if (failedKeywords.length > 0 && failedKeywords.length === RFP_KEYWORDS.length) {
+          return {
+            success: false,
+            error: `SAM.gov search failed for every configured keyword (${failedKeywords.length}). Check SAM_GOV_API_KEY — see server logs for the underlying error.`,
+          };
+        }
+
         const inserted = await storeRFPs(opportunities);
 
         return {
           success: true,
           total: opportunities.length,
           inserted,
-          message: `Scraped ${opportunities.length} opportunities, inserted ${inserted} new RFPs`
+          failedKeywordCount: failedKeywords.length,
+          message: failedKeywords.length
+            ? `Scraped ${opportunities.length} opportunities, inserted ${inserted} new RFPs (${failedKeywords.length}/${RFP_KEYWORDS.length} keyword searches failed — see server logs)`
+            : `Scraped ${opportunities.length} opportunities, inserted ${inserted} new RFPs`,
         };
       } catch (error: any) {
         return {

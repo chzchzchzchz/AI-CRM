@@ -58,8 +58,15 @@ export const emailVerificationRouter = router({
         expiresAt,
       });
 
-      await sendVerificationEmail(input.email, code).catch(() => false);
-      return isDemo() ? { success: true, code, expiresAt } : { success: true };
+      // Capture whether the send actually worked instead of discarding it — see
+      // sendPasswordResetCode below, which had the identical bug. SignUp.tsx has no
+      // branch for a failed send, only a thrown error, which this mutation never
+      // produces on its own: it always resolved successfully even when
+      // sendVerificationEmail returned false because SendGrid was unconfigured or down,
+      // so the verify screen said "We sent a 6-digit code" to an address that never
+      // got one, with resend reporting the same false success.
+      const emailSent = await sendVerificationEmail(input.email, code).catch(() => false);
+      return isDemo() ? { success: true, emailSent, code, expiresAt } : { success: true, emailSent };
     }),
 
   verifyEmail: publicProcedure
@@ -146,8 +153,8 @@ export const emailVerificationRouter = router({
         expiresAt,
       });
 
-      await sendVerificationEmail(input.email, code).catch(() => false);
-      return isDemo() ? { success: true, code, expiresAt } : { success: true };
+      const emailSent = await sendVerificationEmail(input.email, code).catch(() => false);
+      return isDemo() ? { success: true, emailSent, code, expiresAt } : { success: true, emailSent };
     }),
 
   sendPasswordResetCode: publicProcedure
