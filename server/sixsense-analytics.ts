@@ -70,11 +70,17 @@ async function loadReal(): Promise<RealData> {
       return [] as any[];
     }
   };
+  // Not caught into [] on failure — see server/intel/brain.ts's crawlSnapshot for the
+  // same fix and the reasoning: these already return [] on their own when there's no
+  // database configured, so a .catch(() => []) here only ever hides a real query
+  // failure behind a "0 accounts / 0 opportunities" analytics dashboard that looks
+  // exactly like a workspace that is genuinely empty. Every call site below sits behind
+  // a protectedProcedure.query, so a throw here becomes a normal client-facing error.
   const [accounts, opportunities, contacts, calls, intent] = await Promise.all([
-    getAllAccounts().catch(() => []),
-    getAllOpportunities().catch(() => []),
-    getAllPeople().catch(() => []),
-    getAllGongCalls().catch(() => []),
+    getAllAccounts(),
+    getAllOpportunities(),
+    getAllPeople(),
+    getAllGongCalls(),
     fetchIntent(),
   ]);
 

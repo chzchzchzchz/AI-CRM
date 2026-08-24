@@ -182,10 +182,16 @@ export async function gatherAccountSignals(accountId: number): Promise<SignalPac
   const account = await getAccountById(accountId);
   if (!account) throw new Error(`Account ${accountId} not found`);
 
+  // Not caught into [] on failure: a genuine query error here (as opposed to "this
+  // account really has no contacts") would otherwise read as a verified fact — feeding
+  // an AI-written brief that confidently states an account has zero contacts, zero
+  // calls, or zero opportunities when the truth is the fetch broke mid-request. Every
+  // caller of gatherAccountSignals already either sits behind a tRPC procedure (which
+  // turns a throw into a normal client-facing error) or its own try/catch.
   const [people, calls, opps, intentRows] = await Promise.all([
-    getContactsByAccountId(accountId).catch(() => []),
-    getGongCallsByAccountId(accountId).catch(() => []),
-    getOpportunitiesByAccountId(accountId).catch(() => []),
+    getContactsByAccountId(accountId),
+    getGongCallsByAccountId(accountId),
+    getOpportunitiesByAccountId(accountId),
     fetchIntentHistory(accountId),
   ]);
 

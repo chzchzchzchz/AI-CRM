@@ -78,13 +78,25 @@ const num = (v: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
-/** Deterministic full-workspace crawl. Pure code — every figure is real. */
+/**
+ * Deterministic full-workspace crawl. Pure code — every figure is real.
+ *
+ * That guarantee depends on NOT catching these four fetches into `[]`. Each of
+ * getAllAccounts/People/GongCalls/Opportunities already returns [] on its own when
+ * there's genuinely no database configured (see server/db.ts) — a .catch(() => []) here
+ * only ever fires on a real query failure, mid-connection, which is not the same fact as
+ * "the workspace has no accounts." Swallowing it produced a fully-formed, well-typed
+ * all-zero snapshot — still labeled "verified figures" by every consumer — instead of
+ * surfacing that the crawl itself broke. Both callers of getBrainDigest/crawlSnapshot
+ * outside this file already treat a thrown error as "brain unavailable, proceed without
+ * it," which is the honest degrade; this only needs to actually throw for that to work.
+ */
 export async function crawlSnapshot(): Promise<BrainSnapshot> {
   const [accounts, people, calls, opps] = await Promise.all([
-    getAllAccounts().catch(() => []),
-    getAllPeople().catch(() => []),
-    getAllGongCalls().catch(() => []),
-    getAllOpportunities().catch(() => []),
+    getAllAccounts(),
+    getAllPeople(),
+    getAllGongCalls(),
+    getAllOpportunities(),
   ]);
 
   const contactsByAccount = new Map<number, number>();
