@@ -407,7 +407,7 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-accent" />
           </div>
-        ) : savedReportsQuery.data?.length === 0 ? (
+        ) : savedReportsQuery.data?.reports.length === 0 ? (
           <Card className="bg-card/50 border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <FileText className="w-12 h-12 text-muted-foreground mb-4" />
@@ -419,7 +419,14 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           </Card>
         ) : (
           <div className="grid gap-4">
-            {savedReportsQuery.data?.map((report: SavedReport) => (
+            {/* The query caps at 100 most-recent reports — hasMore means there are
+                older ones this list doesn't show, not that these are all of them. */}
+            {savedReportsQuery.data?.hasMore && (
+              <p className="text-xs text-muted-foreground">
+                Showing your {savedReportsQuery.data.reports.length} most recent reports.
+              </p>
+            )}
+            {savedReportsQuery.data?.reports.map((report: SavedReport) => (
               <Card key={report.id} className="bg-card/50 hover:bg-card/70 transition-colors cursor-pointer">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
