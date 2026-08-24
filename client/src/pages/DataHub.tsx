@@ -134,7 +134,16 @@ export default function DataHub() {
 
       setStatus('complete');
       setProgress(100);
-      toast.success(`Processed ${result.cleanedCount} records successfully!`);
+      // originalCount > 0 && cleanedCount === 0 means every row was filtered out —
+      // downloadCleanedData below already treats that as a failure ("Nothing to
+      // download"); this toast, shown first in the exact same run, was still calling
+      // it a success. Status stays 'complete' so the issues list this message points
+      // to is actually visible.
+      if (result.originalCount > 0 && result.cleanedCount === 0) {
+        toast.error(`Every row was filtered out of ${result.originalCount} uploaded. See the issues list below.`);
+      } else {
+        toast.success(`Processed ${result.cleanedCount} records successfully!`);
+      }
 
     } catch (error) {
       // e.g. ".xlsx" uploads throw a specific "export to CSV" error server-side —

@@ -90,7 +90,15 @@ export default function LeadProcessor() {
 
       setProgress(100);
       setResult(response);
-      toast.success(`Processed ${response.cleanedCount} leads successfully!`);
+      // originalCount > 0 && cleanedCount === 0 means every row was filtered out
+      // (personal email, unqualified title, or no contact info) — downloadCSV below
+      // already treats that as a failure ("Nothing to download"); this toast, shown
+      // first and reached in the exact same run, was still calling it a success.
+      if (response.originalCount > 0 && response.cleanedCount === 0) {
+        toast.error(`Every row was filtered out of ${response.originalCount} uploaded. See the issues list below.`);
+      } else {
+        toast.success(`Processed ${response.cleanedCount} leads successfully!`);
+      }
     } catch (error) {
       // e.g. ".xlsx" uploads throw a specific "export to CSV" error server-side —
       // flattening every failure into one generic message would hide that actionable

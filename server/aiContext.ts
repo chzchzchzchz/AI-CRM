@@ -408,15 +408,18 @@ ${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `
 /**
  * Auto-generate contact summary with AI, optionally including LinkedIn data
  */
-export async function generateContactSummary(contactId: number, includeLinkedIn: boolean = false): Promise<string> {
+export async function generateContactSummary(
+  contactId: number,
+  includeLinkedIn: boolean = false
+): Promise<{ content: string; available: boolean }> {
   const db = await getDb();
-  if (!db) return "Unable to generate summary";
+  if (!db) return { content: "Unable to generate summary", available: false };
 
   const { contacts, calls, accounts } = await import("../drizzle/schema");
   const { getLinkedInContextForContact } = await import("./linkedin");
-  
+
   const contact = await db.select().from(contacts).where(eq(contacts.id, contactId)).limit(1);
-  if (!contact[0]) return "Contact not found";
+  if (!contact[0]) return { content: "Contact not found", available: false };
 
   // Get account context if available
   let accountContext = '';
@@ -483,9 +486,11 @@ Be specific, actionable, and avoid generic statements. Focus on what makes this 
 
   // With no model reachable this is the degradation note. It used to be returned as the
   // summary AND cached under account_insight, so the apology became the stored answer
-  // and outlived the outage.
+  // and outlived the outage. It was also handed to the client as an ordinary successful
+  // string with no `available` flag — ContactDetail.tsx toasted "AI summary generated
+  // from LinkedIn!" over a panel that literally said the model was unreachable.
   const { content: summary, available } = llmText(response);
-  if (!available) return LLM_UNAVAILABLE_NOTE;
+  if (!available) return { content: LLM_UNAVAILABLE_NOTE, available: false };
   const summaryStr = summary;
 
   // Store the summary
@@ -496,5 +501,5 @@ Be specific, actionable, and avoid generic statements. Focus on what makes this 
     metadata: { type: 'profile', fullSummary: summaryStr }
   });
 
-  return summary;
+  return { content: summary, available: true };
 }
