@@ -35,7 +35,14 @@ export default function SignUp() {
 
   const sendCode = trpc.emailVerification.sendVerificationCode.useMutation({
     onSuccess: res => {
-      setDemoCode("code" in res ? (res.code as string) : null);
+      const demo = "code" in res ? (res.code as string) : null;
+      setDemoCode(demo);
+      // `emailSent` used to be discarded, so a broken or unconfigured mailer still
+      // landed on "We sent a 6-digit code to you@company.com" with no code ever sent
+      // and no way off the screen except abandoning verification via "Do this later".
+      if (!demo && res.emailSent === false) {
+        setNotice("We couldn't send a verification email right now. You can try again or verify later.");
+      }
       setStage("verify");
     },
     // A failed send must not strand the account: it exists and is queued for approval
@@ -68,9 +75,14 @@ export default function SignUp() {
 
   const resend = trpc.emailVerification.resendVerificationCode.useMutation({
     onSuccess: res => {
-      setDemoCode("code" in res ? (res.code as string) : null);
+      const demo = "code" in res ? (res.code as string) : null;
+      setDemoCode(demo);
       setError("");
-      setNotice("A new code is on its way.");
+      setNotice(
+        demo || res.emailSent !== false
+          ? "A new code is on its way."
+          : "We couldn't send that email right now. Please try again in a moment."
+      );
     },
     onError: err => setError(err.message),
   });
