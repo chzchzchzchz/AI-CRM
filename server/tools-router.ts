@@ -840,12 +840,16 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
     .query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new Error('Database not available');
-      // Return only reports owned by the current user
-      const reports = await db.select().from(transcriptReports)
+      // Return only reports owned by the current user. Fetch one past the display cap
+      // so a full page can be told apart from the true end of the list — TranscriptAnalyzer.tsx
+      // shows this array's length in a "Saved Reports (N)" tab label, which read as the
+      // real total even past 100 saved reports, the same silent-truncation shape already
+      // fixed for Salesforce's contact/account sync (server/salesforce.ts's queryAll).
+      const rows = await db.select().from(transcriptReports)
         .where(eq(transcriptReports.userId, ctx.user.id))
         .orderBy(desc(transcriptReports.createdAt))
-        .limit(100);
-      return reports;
+        .limit(101);
+      return { reports: rows.slice(0, 100), hasMore: rows.length > 100 };
     }),
 
   getReportByShareId: publicProcedure
