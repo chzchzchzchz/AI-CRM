@@ -8,6 +8,8 @@ import {
   getValidationSummary,
   resetSearchEvidenceStats,
   searchEvidenceStats,
+  resetLlmEvidenceStats,
+  llmEvidenceStats,
   ValidationIssue
 } from "./dataValidation";
 import { getAccountById, getAllAccounts, getAllPeople } from "./db";
@@ -54,13 +56,23 @@ export const validationRouter = router({
       if (!account) {
         throw new Error(`Account ${input.accountId} not found`);
       }
-      
+
+      resetSearchEvidenceStats();
+      resetLlmEvidenceStats();
       const issues = await validateAccount(account);
       return {
         accountId: input.accountId,
         accountName: account.name,
         issues,
-        issueCount: issues.length
+        issueCount: issues.length,
+        // 0 issues means nothing WRONG was found — it does not mean every check
+        // actually ran. See llmEvidenceStats in dataValidation.ts: the client used to
+        // show "Verified — nothing contradicted by the web" whenever a Forge outage or
+        // missing key silently skipped the model step that would have found something.
+        llmChecksAttempted: llmEvidenceStats.checked,
+        llmChecksUnavailable: llmEvidenceStats.unavailable,
+        searchChecksAttempted: searchEvidenceStats.checked,
+        searchChecksUnavailable: searchEvidenceStats.noEvidence,
       };
     }),
 
@@ -78,16 +90,22 @@ export const validationRouter = router({
       if (!contact) {
         throw new Error(`Contact ${input.contactId} not found`);
       }
-      
+
       const accounts = await getAllAccounts();
       const account = accounts.find((a: Account) => a.id === contact.accountId);
-      
+
+      resetSearchEvidenceStats();
+      resetLlmEvidenceStats();
       const issues = await validateContact(contact, account);
       return {
         contactId: input.contactId,
         contactName: contact.name,
         issues,
-        issueCount: issues.length
+        issueCount: issues.length,
+        llmChecksAttempted: llmEvidenceStats.checked,
+        llmChecksUnavailable: llmEvidenceStats.unavailable,
+        searchChecksAttempted: searchEvidenceStats.checked,
+        searchChecksUnavailable: searchEvidenceStats.noEvidence,
       };
     }),
 
@@ -100,6 +118,7 @@ export const validationRouter = router({
     }))
     .mutation(async ({ input }) => {
       resetSearchEvidenceStats();
+      resetLlmEvidenceStats();
       const issues = await validateAllAccounts(input.limit || 20);
 
       // Group issues by account
@@ -122,6 +141,10 @@ export const validationRouter = router({
         // told apart from "nothing could actually be checked".
         searchChecksAttempted: searchEvidenceStats.checked,
         searchChecksUnavailable: searchEvidenceStats.noEvidence,
+        // Same distinction one layer downstream: search succeeded but the model call
+        // that reasons over it failed (see llmEvidenceStats in dataValidation.ts).
+        llmChecksAttempted: llmEvidenceStats.checked,
+        llmChecksUnavailable: llmEvidenceStats.unavailable,
       };
     }),
 
@@ -134,6 +157,7 @@ export const validationRouter = router({
     }))
     .mutation(async ({ input }) => {
       resetSearchEvidenceStats();
+      resetLlmEvidenceStats();
       const issues = await validateAllContacts(input.limit || 30);
 
       // Group issues by contact
@@ -152,6 +176,8 @@ export const validationRouter = router({
         allIssues: issues,
         searchChecksAttempted: searchEvidenceStats.checked,
         searchChecksUnavailable: searchEvidenceStats.noEvidence,
+        llmChecksAttempted: llmEvidenceStats.checked,
+        llmChecksUnavailable: llmEvidenceStats.unavailable,
       };
     }),
 
@@ -161,6 +187,7 @@ export const validationRouter = router({
   validateAllAccountsBulk: protectedProcedure
     .mutation(async () => {
       resetSearchEvidenceStats();
+      resetLlmEvidenceStats();
       const accounts = await getAllAccounts();
       const totalAccounts = accounts.length;
 
@@ -187,6 +214,8 @@ export const validationRouter = router({
         allIssues,
         searchChecksAttempted: searchEvidenceStats.checked,
         searchChecksUnavailable: searchEvidenceStats.noEvidence,
+        llmChecksAttempted: llmEvidenceStats.checked,
+        llmChecksUnavailable: llmEvidenceStats.unavailable,
       };
     }),
 

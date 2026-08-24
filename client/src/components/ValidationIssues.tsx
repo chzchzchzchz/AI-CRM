@@ -64,7 +64,7 @@ export function ValidationIssues() {
   // and are the only way this engine was reachable; when you are looking at a single bad
   // row, checking that row is the thing you actually want.
   const [verifying, setVerifying] = useState<string | null>(null);
-  const [verdicts, setVerdicts] = useState<Record<string, string>>({});
+  const [verdicts, setVerdicts] = useState<Record<string, { text: string; ok: boolean }>>({});
 
   const verifyAccount = trpc.validation.validateAccount.useMutation();
   const verifyContact = trpc.validation.validateContact.useMutation();
@@ -77,11 +77,17 @@ export function ValidationIssues() {
           ? await verifyAccount.mutateAsync({ accountId: issue.entityId })
           : await verifyContact.mutateAsync({ contactId: issue.entityId });
       const found = res.issueCount;
+      // 0 issues means nothing WRONG turned up — it does not mean every check actually
+      // ran. A Forge outage or a missing key used to be indistinguishable here from a
+      // clean result: both said "Verified — nothing contradicted by the web."
+      const gap = res.llmChecksUnavailable > 0 || res.searchChecksUnavailable > 0;
       setVerdicts(v => ({
         ...v,
         [issue.id]: found
-          ? `${found} issue${found === 1 ? "" : "s"} confirmed against the web`
-          : "Verified — nothing contradicted by the web",
+          ? { text: `${found} issue${found === 1 ? "" : "s"} confirmed against the web`, ok: true }
+          : gap
+            ? { text: "Could not fully verify — the web or model check didn't complete. Try again shortly.", ok: false }
+            : { text: "Verified — nothing contradicted by the web", ok: true },
       }));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Verification failed");
@@ -230,9 +236,18 @@ export function ValidationIssues() {
                       <p className="mt-0.5 text-2xs text-ink-subtle">{issue.suggestion}</p>
 
                       {verdicts[issue.id] && (
-                        <p className="mt-1 flex items-center gap-1 text-2xs text-accent">
-                          <ShieldCheck className="size-3" />
-                          {verdicts[issue.id]}
+                        <p
+                          className={cn(
+                            "mt-1 flex items-center gap-1 text-2xs",
+                            verdicts[issue.id].ok ? "text-accent" : "text-caution"
+                          )}
+                        >
+                          {verdicts[issue.id].ok ? (
+                            <ShieldCheck className="size-3" />
+                          ) : (
+                            <AlertTriangle className="size-3" />
+                          )}
+                          {verdicts[issue.id].text}
                         </p>
                       )}
 
