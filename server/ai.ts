@@ -253,12 +253,18 @@ field isn't in the data, return an empty array rather than a plausible-sounding 
 
   const { content, available } = llmText(response);
   if (!available) {
+    // `summary` used to be the only place this showed up — inside a JSON blob dumped
+    // to the page (Calls.tsx renders the whole response with JSON.stringify), next to
+    // several genuinely-empty arrays. Nothing marked the object itself as a failure,
+    // so the row still expanded and read as "not much happened on this call" rather
+    // than "the analysis didn't run."
     return {
       summary: LLM_UNAVAILABLE_NOTE, keyTopics: [], objections: [], nextSteps: [],
       sentiment: "neutral", buyingSignals: [], competitorsMentioned: [], actionItems: [],
+      available: false,
     };
   }
-  return sanitizeCallAnalysis(parseLlmJson(content), callData);
+  return { ...sanitizeCallAnalysis(parseLlmJson(content), callData), available: true };
 }
 
 /**
