@@ -79,7 +79,12 @@ export const clayImportRouter = router({
       }
 
       return {
-        success: true,
+        // Unconditional before this: an automation driving this endpoint (there is no
+        // client UI for it — see inventory.ts) that checks `success` first, the normal
+        // fast path, saw true even when every single row failed (e.g. a Clay export
+        // renamed its domain column, so accountData.domain was empty on every row).
+        // false only when there was something to import and none of it landed.
+        success: !(errors > 0 && imported === 0 && updated === 0),
         imported,
         updated,
         errors,
@@ -150,7 +155,7 @@ export const clayImportRouter = router({
       }
 
       return {
-        success: true,
+        success: !(errors > 0 && imported === 0 && updated === 0),
         imported,
         updated,
         errors,
