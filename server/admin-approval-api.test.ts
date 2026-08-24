@@ -1,5 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { escapeHtml } from "./admin-approval-api";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import { escapeHtml, generateApprovalToken, resolveApprovalToken } from "./admin-approval-api";
 
 /**
  * The one-click approve/deny email links render a result page whose message is built
@@ -39,5 +41,113 @@ describe("escapeHtml", () => {
     const escaped = escapeHtml(payload);
     expect(escaped).not.toContain("<script>");
     expect(escaped).not.toContain("</p>");
+  });
+});
+
+/**
+ * approve and deny tokens for the same signup are meant to be mutually exclusive: one
+ * decision, two links, only one should ever actually resolve. Before this, using one
+ * left the other fully live for its whole 7-day window — sitting in the same email as
+ * the one that was already acted on. An admin who approved a user and later re-opened
+ * that email (cleanup, mistaking it for a different, newer request, a forwarded copy)
+ * and clicked Deny deleted an already-approved, possibly-active account. The same
+ * exposure exists for a corporate link-scanner that GETs every link in an email before
+ * a human opens it — nothing stopped it from resolving both.
+ */
+describe("resolveApprovalToken — sibling token retirement", () => {
+  const DB = path.join(process.cwd(), "demo-db.test-approval-tokens.json");
+  const ORIGINAL_ENV = { ...process.env };
+
+  beforeEach(() => {
+    process.env.DEMO_MODE = "true";
+    process.env.DEMO_DB_PATH = DB;
+    try { fs.unlinkSync(DB); } catch { /* not there */ }
+  });
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+    try { fs.unlinkSync(DB); } catch { /* not there */ }
+  });
+
+  async function seedUser(id: number) {
+    const { getDb } = await import("./db");
+    const { users } = await import("../drizzle/schema");
+    const db: any = await getDb();
+    await db.insert(users).values({
+      id, openId: `u${id}`, email: `pending${id}@example.com`, name: `Pending ${id}`,
+      role: "user", isApproved: false, loginMethod: "email",
+    });
+  }
+
+  it("invalidates the deny link once the approve link has been used", async () => {
+    await seedUser(901);
+    const approveToken = generateApprovalToken(901, "approve");
+    const denyToken = generateApprovalToken(901, "deny");
+
+    const approved = await resolveApprovalToken(approveToken, "approve");
+    expect(approved.kind).toBe("approved");
+
+    // The deny link was never clicked, but it must no longer be live — re-clicking it
+    // (or a link-scanner resolving it) must not delete the account that was just approved.
+    const denied = await resolveApprovalToken(denyToken, "deny");
+    expect(denied.kind).toBe("invalid");
+
+    const { getDb } = await import("./db");
+    const { users } = await import("../drizzle/schema");
+    const { eq } = await import("drizzle-orm");
+    const db: any = await getDb();
+    const [stillThere] = await db.select().from(users).where(eq(users.id, 901));
+    expect(stillThere).toBeDefined();
+    expect(stillThere.isApproved).toBe(true);
+  });
+
+  it("invalidates the approve link once the deny link has been used", async () => {
+    await seedUser(902);
+    const approveToken = generateApprovalToken(902, "approve");
+    const denyToken = generateApprovalToken(902, "deny");
+
+    const denied = await resolveApprovalToken(denyToken, "deny");
+    expect(denied.kind).toBe("denied");
+
+    const approved = await resolveApprovalToken(approveToken, "approve");
+    expect(approved.kind).toBe("invalid");
+  });
+
+  it("invalidates the deny link when the approve link is re-clicked on an already-approved user", async () => {
+    await seedUser(903);
+    const approveToken = generateApprovalToken(903, "approve");
+    const denyToken = generateApprovalToken(903, "deny");
+
+    await resolveApprovalToken(approveToken, "approve");
+    // Re-clicking the same approve link a second time (e.g. a slow email client
+    // double-firing the request) is the "already-approved" branch, not "approved" —
+    // it must retire the sibling exactly the same way.
+    const again = await resolveApprovalToken(approveToken, "approve");
+    expect(again.kind).toBe("invalid");
+
+    const denied = await resolveApprovalToken(denyToken, "deny");
+    expect(denied.kind).toBe("invalid");
+  });
+
+  it("still approves and denies correctly when only one link is ever used", async () => {
+    await seedUser(904);
+    const approveOnly = generateApprovalToken(904, "approve");
+    const approved = await resolveApprovalToken(approveOnly, "approve");
+    expect(approved.kind).toBe("approved");
+    if (approved.kind === "approved") {
+      expect(approved.user.email).toBe("pending904@example.com");
+    }
+
+    await seedUser(905);
+    const denyOnly = generateApprovalToken(905, "deny");
+    const denied = await resolveApprovalToken(denyOnly, "deny");
+    expect(denied.kind).toBe("denied");
+
+    const { getDb } = await import("./db");
+    const { users } = await import("../drizzle/schema");
+    const { eq } = await import("drizzle-orm");
+    const db: any = await getDb();
+    const [gone] = await db.select().from(users).where(eq(users.id, 905));
+    expect(gone).toBeUndefined();
   });
 });
