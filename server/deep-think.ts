@@ -81,6 +81,11 @@ export interface DeepThinkResult {
   reasoning?: string; // Only included in debug mode
   cached?: boolean; // Indicates if response was from cache
   cacheHitCount?: number; // How many times this response has been served
+  // False only when no model was reachable and `answer` is LLM_UNAVAILABLE_NOTE, not
+  // a real answer. ContextualAI.tsx and SupportBot.tsx both used to do
+  // `result.answer || fallback` — a non-empty degradation note is truthy, so it
+  // rendered straight into the chat as if a model had actually answered the question.
+  available?: boolean;
 }
 
 /**
@@ -198,7 +203,10 @@ export async function deepThink(params: {
       console.log(`[DeepThink] Cache HIT for query: "${query.substring(0, 50)}..."`);
       return {
         ...cachedResult,
-        reasoning: debugMode ? cachedResult.reasoning : undefined
+        reasoning: debugMode ? cachedResult.reasoning : undefined,
+        // Only a real answer is ever written to the cache (see the comment below,
+        // at the point that writes it) — a cache hit is always available.
+        available: true,
       };
     }
     console.log(`[DeepThink] Cache MISS for query: "${query.substring(0, 50)}..."`);
@@ -241,7 +249,9 @@ Transform this into a polished, human response.`;
 
   // Caching the degradation note would make one outage look like a permanent answer.
   const { content: answer, available } = llmText(layer2Response);
-  if (!available) return { answer: LLM_UNAVAILABLE_NOTE, reasoning: reasoningStr, cached: false };
+  if (!available) {
+    return { answer: LLM_UNAVAILABLE_NOTE, reasoning: reasoningStr, cached: false, available: false };
+  }
   const answerStr = answer;
 
   // Store in cache for future use
@@ -256,7 +266,8 @@ Transform this into a polished, human response.`;
   return {
     answer: answerStr,
     reasoning: debugMode ? reasoningStr : undefined,
-    cached: false
+    cached: false,
+    available: true
   };
 }
 
