@@ -13,6 +13,7 @@ import {
   consumeChallenge,
   __resetChallenges,
   BACKUP_CODE_COUNT,
+  withUserLock,
 } from "./twofa";
 
 const sp = speakeasy as any;
@@ -137,5 +138,75 @@ describe("login challenge", () => {
     const b = createChallenge(2);
     expect(claimChallengeAttempt(a)).toEqual({ ok: true, userId: 1 });
     expect(claimChallengeAttempt(b)).toEqual({ ok: true, userId: 2 });
+  });
+});
+
+/**
+ * redeemBackupCode is a pure read-modify-write helper: the caller reads the stored
+ * hashes, calls this, and writes back what's left. With no lock, two callers who both
+ * read before either wrote could each remove a different code from the SAME starting
+ * snapshot, and whichever write landed last would silently restore the other "used"
+ * code. withUserLock closes that by queuing every call for a given userId behind the
+ * one before it, so a later call's work always starts after the earlier one's finished
+ * — see server/twofa-login.test.ts for the end-to-end version of this exact scenario.
+ */
+describe("withUserLock", () => {
+  it("runs calls for the same key one at a time, in order", async () => {
+    const order: number[] = [];
+    const started: number[] = [];
+
+    // Deliberately have call 1 take longer than call 2, so completion order would
+    // differ from start order if they were allowed to run concurrently.
+    const p1 = withUserLock(1, async () => {
+      started.push(1);
+      await new Promise((r) => setTimeout(r, 20));
+      order.push(1);
+    });
+    const p2 = withUserLock(1, async () => {
+      started.push(2);
+      order.push(2);
+    });
+
+    await Promise.all([p1, p2]);
+    // Call 2 must not have even STARTED until call 1 fully finished.
+    expect(started).toEqual([1, 2]);
+    expect(order).toEqual([1, 2]);
+  });
+
+  it("does not block calls for a different key", async () => {
+    const order: string[] = [];
+
+    const slow = withUserLock(10, async () => {
+      await new Promise((r) => setTimeout(r, 20));
+      order.push("slow-10");
+    });
+    const fast = withUserLock(20, async () => {
+      order.push("fast-20");
+    });
+
+    await Promise.all([slow, fast]);
+    // The unrelated user's fast call finishes first — it was never queued behind 10's.
+    expect(order).toEqual(["fast-20", "slow-10"]);
+  });
+
+  it("propagates a failure to its own caller without jamming the queue for the next one", async () => {
+    await expect(
+      withUserLock(30, async () => {
+        throw new Error("boom");
+      })
+    ).rejects.toThrow("boom");
+
+    // A later call for the same user must still actually run.
+    const result = await withUserLock(30, async () => "still works");
+    expect(result).toBe("still works");
+  });
+
+  it("returns each call's own result, not another call's", async () => {
+    const [a, b] = await Promise.all([
+      withUserLock(40, async () => "a"),
+      withUserLock(40, async () => "b"),
+    ]);
+    expect(a).toBe("a");
+    expect(b).toBe("b");
   });
 });

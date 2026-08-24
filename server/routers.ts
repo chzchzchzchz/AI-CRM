@@ -50,6 +50,7 @@ import {
   verifyTotp,
   redeemBackupCode,
   countBackupCodes,
+  withUserLock,
 } from "./twofa";
 
 /**
@@ -446,17 +447,25 @@ Or go to the Admin Panel: /admin/approval`
         }
 
         if (input.isBackupCode) {
-          const redeemed = await redeemBackupCode(
-            user.twoFactorBackupCodes as string | null,
-            input.code
-          );
+          // Queued per user: redeemBackupCode reads a snapshot, removes one code, and
+          // hands back what's left for this caller to write — with no lock, two
+          // concurrent redemptions (someone who has two different valid codes and
+          // fires both at once) can both read the same starting set and each remove
+          // only their own code from it, so whichever write lands last silently
+          // restores the other "used" code. Re-reading inside the lock (rather than
+          // reusing `user` from above) means the second request in a queued pair sees
+          // the first request's write.
+          const redeemed = await withUserLock(user.id, async () => {
+            const [fresh] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+            const result = await redeemBackupCode(fresh?.twoFactorBackupCodes as string | null, input.code);
+            if (result.ok) {
+              // Spend it before the session is issued: a code that survives its own
+              // use is a permanent bypass of the second factor.
+              await db.update(users).set({ twoFactorBackupCodes: result.remaining }).where(eq(users.id, user.id));
+            }
+            return result;
+          });
           if (!redeemed.ok) throw new Error("That recovery code is not valid");
-          // Spend it before the session is issued: a code that survives its own use
-          // is a permanent bypass of the second factor.
-          await db
-            .update(users)
-            .set({ twoFactorBackupCodes: redeemed.remaining })
-            .where(eq(users.id, user.id));
           logSecurityEvent(
             "LOGIN_2FA_BACKUP_CODE_USED",
             { userId: user.id, remaining: countBackupCodes(redeemed.remaining) },
