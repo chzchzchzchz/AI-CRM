@@ -76,6 +76,32 @@ export function normalizeBackupCode(code: string): string {
 }
 
 /**
+ * Serializes async work per userId within this process.
+ *
+ * redeemBackupCode is a pure function over a snapshot: read the stored hashes, find a
+ * match, return what's left for the caller to write back. Redeeming is a read → compute
+ * → write sequence with no compare-and-swap, so two concurrent redemptions for the same
+ * account — someone who has obtained two different valid backup codes and fires both at
+ * once — can both read the same starting set, each remove only their own code from that
+ * shared snapshot, and whichever write lands last wins: the other "used" code is never
+ * actually removed from storage and stays redeemable. Queuing every login-time
+ * redemption for a user behind the previous one closes that: the second request's read
+ * always sees the first one's write. Same accepted single-instance scope as the
+ * challenge store above — a multi-instance deployment needs this in shared storage.
+ */
+const userLocks = new Map<number, Promise<unknown>>();
+export function withUserLock<T>(userId: number, fn: () => Promise<T>): Promise<T> {
+  // The stored tail is always the caught/never-rejecting form (see below), so it is
+  // safe to chain onto with a plain .then — there is no rejection branch to handle.
+  const prior = userLocks.get(userId) ?? Promise.resolve();
+  const run = prior.then(fn);
+  // Never leave a rejected promise as the queue's tail, or every later call for this
+  // user would immediately re-reject without ever running `fn`.
+  userLocks.set(userId, run.catch(() => undefined));
+  return run;
+}
+
+/**
  * Redeem a recovery code.
  *
  * Returns the remaining hashes when the code matches, so the caller can write them

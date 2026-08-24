@@ -94,9 +94,20 @@ export default function Outreach() {
   // Refinement mutation - uses dedicated refine endpoint
   const refineMutation = trpc.outreach.refineEmail.useMutation({
     onSuccess: (data) => {
+      // server/outreach.ts's refineEmail deliberately echoes the ORIGINAL draft back
+      // unchanged when no model is reachable, specifically so a failed refinement can't
+      // destroy the rep's draft — `available` is how the caller is supposed to notice
+      // nothing actually changed. This page ignored it and reported "Email refined!"
+      // over the identical, un-refined text, same bug the generate mutation above this
+      // one already guards against.
+      if (data.available === false) {
+        toast.error(data.content || "AI generation is unavailable right now — the draft is unchanged.");
+        return;
+      }
+
       const content = typeof data.content === 'string' ? data.content : '';
       const cleanEmail = stripXmlReasoning(content).trim();
-      
+
       setGeneratedEmail(cleanEmail);
       setConversationHistory(prev => [
         ...prev,

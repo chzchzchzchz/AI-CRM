@@ -50,6 +50,7 @@ import {
   verifyTotp,
   redeemBackupCode,
   countBackupCodes,
+  withUserLock,
 } from "./twofa";
 
 /**
@@ -341,44 +342,49 @@ Or go to the Admin Panel: /admin/approval`
         // just by sending a different value for it on the next request. getClientIP
         // only trusts that header when the operator has confirmed a real proxy sets it.
         const clientIP = getClientIP(ctx.req);
+        // Stored addresses are lowercased at signup (see signUp above) — normalize the
+        // login attempt the same way, both for the DB lookup and for the lockout key
+        // below, so a user who typed a different case than they signed up with isn't
+        // told it's wrong and isn't tracked as a separate lockout identity.
+        const normalizedEmail = input.email.trim().toLowerCase();
 
         // Enforce the brute-force lockout on the tRPC path (the express loginRateLimiter
         // doesn't cover /api/trpc). Without this the 5-attempt lockout was never applied.
-        const lockout = getLoginLockout(clientIP);
+        // Keyed by (IP, account): keying by IP alone meant any successful login from a
+        // shared IP (office NAT, VPN, CGNAT) wiped out an attacker's accumulated failed
+        // attempts against a DIFFERENT account on that same IP — see security.ts.
+        const lockout = getLoginLockout(clientIP, normalizedEmail);
         if (lockout.locked) {
           logSecurityEvent("LOGIN_LOCKED", { email: input.email, ip: clientIP }, "warn");
           throw new Error(`Too many login attempts. Try again in ${Math.ceil(lockout.retryAfterSeconds / 60)} minute(s).`);
         }
 
-        // Find user by email. Stored addresses are lowercased at signup (see signUp
-        // above) — normalize the login attempt the same way so a user who typed their
-        // email in a different case at signup than at login isn't told it's wrong.
-        const userResults = await db.select().from(users).where(eq(users.email, input.email.trim().toLowerCase())).limit(1);
+        const userResults = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
         const user = userResults[0];
-        
+
         if (!user || !user.passwordHash) {
           // Record failed attempt
-          recordFailedLogin(clientIP);
+          recordFailedLogin(clientIP, normalizedEmail);
           logSecurityEvent("LOGIN_FAILED", { email: input.email, reason: "user_not_found", ip: clientIP }, "warn");
           throw new Error("Invalid email or password");
         }
-        
+
         // Verify password
         const isValid = await bcrypt.compare(input.password, user.passwordHash);
         if (!isValid) {
           // Record failed attempt
-          recordFailedLogin(clientIP);
+          recordFailedLogin(clientIP, normalizedEmail);
           logSecurityEvent("LOGIN_FAILED", { email: input.email, reason: "invalid_password", ip: clientIP }, "warn");
           throw new Error("Invalid email or password");
         }
-        
+
         // Check if approved
         if (!user.isApproved) {
           throw new Error("Your account is pending approval");
         }
-        
+
         // Clear failed login attempts on successful login
-        clearLoginAttempts(clientIP);
+        clearLoginAttempts(clientIP, normalizedEmail);
 
         // The password was right. If this account has a second factor, that is not
         // enough on its own — issue a short-lived challenge instead of a session.
@@ -441,17 +447,25 @@ Or go to the Admin Panel: /admin/approval`
         }
 
         if (input.isBackupCode) {
-          const redeemed = await redeemBackupCode(
-            user.twoFactorBackupCodes as string | null,
-            input.code
-          );
+          // Queued per user: redeemBackupCode reads a snapshot, removes one code, and
+          // hands back what's left for this caller to write — with no lock, two
+          // concurrent redemptions (someone who has two different valid codes and
+          // fires both at once) can both read the same starting set and each remove
+          // only their own code from it, so whichever write lands last silently
+          // restores the other "used" code. Re-reading inside the lock (rather than
+          // reusing `user` from above) means the second request in a queued pair sees
+          // the first request's write.
+          const redeemed = await withUserLock(user.id, async () => {
+            const [fresh] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+            const result = await redeemBackupCode(fresh?.twoFactorBackupCodes as string | null, input.code);
+            if (result.ok) {
+              // Spend it before the session is issued: a code that survives its own
+              // use is a permanent bypass of the second factor.
+              await db.update(users).set({ twoFactorBackupCodes: result.remaining }).where(eq(users.id, user.id));
+            }
+            return result;
+          });
           if (!redeemed.ok) throw new Error("That recovery code is not valid");
-          // Spend it before the session is issued: a code that survives its own use
-          // is a permanent bypass of the second factor.
-          await db
-            .update(users)
-            .set({ twoFactorBackupCodes: redeemed.remaining })
-            .where(eq(users.id, user.id));
           logSecurityEvent(
             "LOGIN_2FA_BACKUP_CODE_USED",
             { userId: user.id, remaining: countBackupCodes(redeemed.remaining) },

@@ -60,11 +60,20 @@ export default function ContactDetail() {
     }
     setIsGenerating(true);
     try {
-      const summary = await summaryMutation.mutateAsync({
+      const result = await summaryMutation.mutateAsync({
         contactId: personId,
         includeLinkedIn: true
       });
-      setAiSummary(summary);
+      // Not every resolved call produced a real summary — no model reachable, no
+      // database, or a not-found contact all come back as `available: false` with
+      // `content` holding an explanation, not an analysis. Toasting success and
+      // filling the panel with that explanation regardless made a broken feature look
+      // like it worked.
+      if (!result.available) {
+        toast.error(result.content || "Could not generate a summary right now.");
+        return;
+      }
+      setAiSummary(result.content);
       toast.success("AI summary generated from LinkedIn!");
     } catch (error) {
       toast.error("Failed to generate summary");

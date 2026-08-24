@@ -182,6 +182,52 @@ describe("login with 2FA enabled", () => {
     expect(JSON.parse(wrote.twoFactorBackupCodes)).toHaveLength(BACKUP_CODES.length - 1);
   });
 
+  it("does not let two concurrently-redeemed codes leave one of them still valid", async () => {
+    // redeemBackupCode reads a snapshot, removes one match, and hands back what's
+    // left for the caller to write. Two different valid codes redeemed at once could
+    // both read the same starting set and each remove only their own code from it —
+    // whichever write lands last would silently restore the other "used" code.
+    const start: any = await appRouter
+      .createCaller(ctx().ctx)
+      .auth.login({ email: "rep@example.com", password: PASSWORD });
+
+    const codeA = BACKUP_CODES[4];
+    const codeB = BACKUP_CODES[5];
+
+    const [resA, resB] = await Promise.all([
+      appRouter.createCaller(ctx().ctx).auth.loginVerify({
+        challengeId: start.challengeId, code: codeA, isBackupCode: true,
+      }),
+      appRouter.createCaller(ctx().ctx).auth.loginVerify({
+        challengeId: start.challengeId, code: codeB, isBackupCode: true,
+      }),
+    ]);
+
+    expect((resA as any).success).toBe(true);
+    expect((resB as any).success).toBe(true);
+
+    // Both codes actually genuinely belonged to this account, so both redemptions are
+    // individually legitimate — the invariant that must hold is that NEITHER survives
+    // to be redeemed again, not that only one of the two concurrent calls succeeds.
+    const third: any = await appRouter
+      .createCaller(ctx().ctx)
+      .auth.login({ email: "rep@example.com", password: PASSWORD });
+    await expect(
+      appRouter.createCaller(ctx().ctx).auth.loginVerify({
+        challengeId: third.challengeId, code: codeA, isBackupCode: true,
+      })
+    ).rejects.toThrow(/not valid/i);
+
+    const fourth: any = await appRouter
+      .createCaller(ctx().ctx)
+      .auth.login({ email: "rep@example.com", password: PASSWORD });
+    await expect(
+      appRouter.createCaller(ctx().ctx).auth.loginVerify({
+        challengeId: fourth.challengeId, code: codeB, isBackupCode: true,
+      })
+    ).rejects.toThrow(/not valid/i);
+  });
+
   it("will not accept the same recovery code twice", async () => {
     const first: any = await appRouter
       .createCaller(ctx().ctx)

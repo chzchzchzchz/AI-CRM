@@ -175,7 +175,17 @@ export function FollowUpDialog({
   // generateEmail returns { content } and deliberately writes no subject line or
   // signature — the follow-up's own title is the subject when opening a mail client.
   const generate = trpc.outreach.generateEmail.useMutation({
-    onSuccess: res => setDraft(res.content),
+    onSuccess: res => {
+      // `available` is load-bearing (see server/outreach.ts): with no model reachable,
+      // `content` is an apology, not a draft. This dialog filled the textbox with it
+      // regardless, right below a live "Open in mail" button that pre-fills a real
+      // prospect's inbox with whatever is in that box.
+      if (res.available === false) {
+        toast.error(res.content || "AI generation is unavailable right now.");
+        return;
+      }
+      setDraft(res.content);
+    },
     onError: e => toast.error(e.message),
   });
 
