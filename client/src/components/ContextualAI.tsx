@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { Sparkles, Send, Loader2, X, ChevronDown, ChevronUp, Paperclip, FileText, File } from "lucide-react";
+import { Sparkles, Send, Loader2, X, ChevronDown, ChevronUp, Paperclip, FileText, File, AlertTriangle } from "lucide-react";
 import { SafeStreamdown } from "@/components/SafeStreamdown";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ interface AIResponse {
   reasoning?: string;
   cached?: boolean;
   cacheHitCount?: number;
+  unavailable?: boolean;
 }
 
 const contextSuggestions: Record<string, string[]> = {
@@ -128,11 +129,16 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
         debugMode: true // Always capture reasoning for optional viewing
       });
 
+      // `available === false` means `answer` is the "AI generation is unavailable"
+      // note, not a real answer — `result.answer || fallback` didn't catch this
+      // because that note is a non-empty, truthy string. It rendered straight into
+      // the chat as if a model had actually answered the question.
       setResponse({
         answer: result.answer || "I couldn't find relevant information.",
         reasoning: result.reasoning,
         cached: result.cached,
-        cacheHitCount: result.cacheHitCount
+        cacheHitCount: result.cacheHitCount,
+        unavailable: result.available === false,
       });
     } catch (error) {
       setResponse({
@@ -251,6 +257,12 @@ export function ContextualAI({ context, accountId, contactId, placeholder }: Con
                 {response.cacheHitCount && response.cacheHitCount > 1 && (
                   <span className="text-2xs text-ink-subtle">• Served {response.cacheHitCount} times</span>
                 )}
+              </div>
+            )}
+            {response.unavailable && (
+              <div className="flex items-center gap-1 mb-2 pb-2 border-b border-accent/30 text-2xs font-medium text-caution">
+                <AlertTriangle className="h-3 w-3" />
+                No model was reachable — this is not a real answer
               </div>
             )}
             <div className="flex flex-wrap items-start justify-between gap-2">

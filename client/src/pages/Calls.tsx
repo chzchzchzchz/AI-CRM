@@ -22,7 +22,16 @@ export default function Calls() {
   const [analyses, setAnalyses] = useState<Record<number, string>>({});
 
   const analyze = trpc.ai.analyzeCall.useMutation({
-    onSuccess: (res, vars) => {
+    onSuccess: (res: any, vars) => {
+      // `available === false` means summary is the "AI generation is unavailable"
+      // note, buried inside a JSON blob next to several genuinely-empty arrays —
+      // nothing marked the object itself as a failure, so this used to render under
+      // an "Analysis" heading exactly like a real one.
+      if (res?.available === false) {
+        toast.error("AI generation is unavailable right now — could not analyze this call.");
+        setAnalyzingId(null);
+        return;
+      }
       const text = typeof res === "string" ? res : JSON.stringify(res, null, 2);
       setAnalyses(a => ({ ...a, [vars.callId]: text }));
       // Open the row so the result is visible where it was asked for.
