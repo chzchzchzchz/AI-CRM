@@ -14,15 +14,22 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    // shared/ is in here because a test file outside the include glob is silently
-    // never run — it reports green by not existing. check-claims asserts that every
-    // *.test.ts in the repo is matched by one of these patterns.
+    // A test file outside the include glob is silently never run — it reports green
+    // by not existing. check-claims asserts every *.test.ts in the repo is matched
+    // by one of these patterns; client/src was missing the same way shared/ once was.
     include: [
       "server/**/*.test.ts",
       "server/**/*.spec.ts",
       "shared/**/*.test.ts",
       "shared/**/*.spec.ts",
+      "client/src/**/*.test.ts",
+      "client/src/**/*.test.tsx",
+      "client/src/**/*.spec.ts",
+      "client/src/**/*.spec.tsx",
     ],
+    // Only client/src tests need a DOM; server/shared stay on the lighter "node"
+    // environment via the default above, this override applies per matched file.
+    environmentMatchGlobs: [["client/src/**", "jsdom"]],
     // The demo/JSON database is a single shared file on disk (demo-db.json).
     // Running test files in parallel races on writes to it and causes flaky
     // failures (e.g. audit-log assertions). Force sequential file execution.
