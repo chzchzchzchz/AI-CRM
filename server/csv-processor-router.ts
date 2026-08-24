@@ -244,7 +244,7 @@ Return a JSON object with this structure:
       const headers = TARGET_FIELDS.map(f => f.name);
       const csvLines = [
         headers.join(","),
-        ...processedRows.map(row => 
+        ...processedRows.map(row =>
           headers.map(h => {
             const val = row[h] || "";
             // Escape commas and quotes
@@ -256,11 +256,29 @@ Return a JSON object with this structure:
         )
       ];
 
+      // TARGET_FIELDS marks Recent Event/Status/First+Last Name/Company/Email/Country
+      // as required, and the mapping screen shows a "Required" badge for each — but
+      // nothing ever checked whether a required field actually ended up with a value.
+      // A row with Email left unmapped (or mapped to a column that's blank for that
+      // row) produced processedCount > 0, "Processing Complete", and a downloadable
+      // CSV with a blank Email column throughout — indistinguishable from a real,
+      // complete export. Email specifically doesn't even appear in the preview table
+      // (which only renders the first 8 of 24 fields), so a rep had no way to notice
+      // short of opening the downloaded file and reading it column by column.
+      const requiredFields = TARGET_FIELDS.filter(f => f.required).map(f => f.name);
+      const missingRequiredFields = requiredFields
+        .map(field => ({
+          field,
+          missingCount: processedRows.filter(row => !row[field]?.trim()).length,
+        }))
+        .filter(f => f.missingCount > 0);
+
       return {
         success: true,
         processedCount: processedRows.length,
         csvContent: csvLines.join("\n"),
         preview: processedRows.slice(0, 5),
+        missingRequiredFields,
       };
     }),
 });

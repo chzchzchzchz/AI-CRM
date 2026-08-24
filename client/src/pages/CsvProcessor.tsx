@@ -43,6 +43,7 @@ export default function CsvProcessor() {
   const [processedCsv, setProcessedCsv] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<Record<string, string>[] | null>(null);
   const [processedCount, setProcessedCount] = useState<number | null>(null);
+  const [missingRequiredFields, setMissingRequiredFields] = useState<{ field: string; missingCount: number }[]>([]);
   const [step, setStep] = useState<"upload" |"configure" |"map" |"preview" |"export">("upload");
   const [warnings, setWarnings] = useState<string[]>([]);
   const [confidence, setConfidence] = useState<number>(0);
@@ -287,6 +288,7 @@ export default function CsvProcessor() {
         setProcessedCsv(result.csvContent);
         setPreviewData(result.preview);
         setProcessedCount(result.processedCount);
+        setMissingRequiredFields(result.missingRequiredFields ?? []);
         setStep("preview");
       }
     } catch (error) {
@@ -333,6 +335,7 @@ export default function CsvProcessor() {
     setProcessedCsv(null);
     setPreviewData(null);
     setProcessedCount(null);
+    setMissingRequiredFields([]);
     setStep("upload");
     setWarnings([]);
     setConfidence(0);
@@ -656,6 +659,33 @@ export default function CsvProcessor() {
                     </p>
                   </div>
                 </div>
+
+                {missingRequiredFields.length > 0 && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Some required fields are blank</AlertTitle>
+                    <AlertDescription>
+                      {/* TARGET_FIELDS marks these as required and the mapping screen
+                          badges them "Required", but nothing enforced it — a row
+                          could reach here with e.g. Email unmapped, produce a
+                          downloadable CSV with a blank Email column throughout, and
+                          look identical to a complete export. Email in particular
+                          never appears in the preview table below (only the first 8
+                          of 24 fields render), so this is the only place a rep would
+                          see it before downloading. */}
+                      <ul className="list-disc list-inside">
+                        {missingRequiredFields.map(({ field, missingCount }) => (
+                          <li key={field}>
+                            <span className="font-medium">{field}</span> is blank on{" "}
+                            <span className="tabular-nums">{missingCount}</span> of{" "}
+                            <span className="tabular-nums">{processedCount}</span> row{processedCount === 1 ? "" : "s"}
+                          </li>
+                        ))}
+                      </ul>
+                      Go back to Field Mappings and map a source column for each, or continue if that's expected for this data.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <div className="overflow-x-auto rounded-sm border border-border">
                   <table className="w-full text-sm">
