@@ -31,6 +31,17 @@ export async function queryDust(
     maxRetries = 3,
   } = options;
 
+  // Every other integration in this app checks its own config before firing and
+  // returns a clean "X not set" message (see integrations-router.ts). This one
+  // didn't — an unconfigured key hit dust.tt with an empty Bearer token and empty
+  // workspace id, got back a non-JSON error page, and `response.json()` below threw
+  // a raw "Unexpected non-whitespace character after JSON" SyntaxError that reached
+  // the user instead of an actionable message. Confirmed live via an automated sweep
+  // of every procedure in the app.
+  if (!DUST_API_KEY || !DUST_WORKSPACE_ID) {
+    throw new Error("Dust is not configured (set DUST_API_KEY and DUST_WORKSPACE_ID).");
+  }
+
   try {
     const response = await fetch(`${DUST_BASE_URL}/assistant/conversations`, {
       method: "POST",
