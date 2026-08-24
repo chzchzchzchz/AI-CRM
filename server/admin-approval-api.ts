@@ -8,6 +8,17 @@ import { getCompanyConfig } from "./config";
 // Store approval tokens (in production, use Redis or database)
 const approvalTokens = new Map<string, { userId: number; action: "approve" | "deny"; expiresAt: Date }>();
 
+// Every live token for a user, so approving or denying can retire the OTHER token for
+// the same signup too. The two are meant to be mutually exclusive outcomes of one
+// decision — before this, clicking one left the other sitting in the same email, still
+// valid for its full 7 days. An admin who approved a user and later re-opened that
+// email (cleanup, a "wait, who was this" scroll-back, a forwarded copy) and clicked
+// Deny — thinking it was for a different, newer request — deleted an already-approved,
+// possibly-active user. Both links also sit in the same email a corporate link-scanner
+// GETs to check for malware before a human ever opens it; nothing stopped a scanner
+// from resolving both, in either order, and silently deciding the outcome.
+const tokensByUser = new Map<number, Set<string>>();
+
 // Generate a secure token for one-click approval
 export function generateApprovalToken(userId: number, action: "approve" | "deny"): string {
   const token = crypto.randomBytes(32).toString("hex");
@@ -16,123 +27,143 @@ export function generateApprovalToken(userId: number, action: "approve" | "deny"
     action,
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
   });
+  const forUser = tokensByUser.get(userId) ?? new Set<string>();
+  forUser.add(token);
+  tokensByUser.set(userId, forUser);
   return token;
+}
+
+/** Invalidate every outstanding token for a user — both sides of one approve/deny pair. */
+function retireTokensFor(userId: number): void {
+  const forUser = tokensByUser.get(userId);
+  if (forUser) {
+    for (const t of forUser) approvalTokens.delete(t);
+    tokensByUser.delete(userId);
+  }
 }
 
 // Get approval links for a user
 export function getApprovalLinks(userId: number, baseUrl: string): { approveUrl: string; denyUrl: string } {
   const approveToken = generateApprovalToken(userId, "approve");
   const denyToken = generateApprovalToken(userId, "deny");
-  
+
   return {
     approveUrl: `${baseUrl}/api/admin/approve/${approveToken}`,
     denyUrl: `${baseUrl}/api/admin/deny/${denyToken}`,
   };
 }
 
+export type ApprovalResolution =
+  | { kind: "invalid" }
+  | { kind: "expired" }
+  | { kind: "wrong-action" }
+  | { kind: "db-unavailable" }
+  | { kind: "user-not-found" }
+  | { kind: "already-approved"; user: { name: string | null; email: string | null } }
+  | { kind: "approved"; user: { name: string | null; email: string | null } }
+  | { kind: "denied"; user: { name: string | null; email: string | null } };
+
+/**
+ * The actual decision logic, separated from Express so it's directly testable and so
+ * both routes below share one implementation of "resolve this token" rather than two
+ * copies that could individually forget to retire the sibling token.
+ */
+export async function resolveApprovalToken(
+  token: string,
+  expectedAction: "approve" | "deny"
+): Promise<ApprovalResolution> {
+  const tokenData = approvalTokens.get(token);
+  if (!tokenData) return { kind: "invalid" };
+
+  if (tokenData.expiresAt < new Date()) {
+    approvalTokens.delete(token);
+    return { kind: "expired" };
+  }
+
+  if (tokenData.action !== expectedAction) return { kind: "wrong-action" };
+
+  const db = await getDb();
+  if (!db) return { kind: "db-unavailable" };
+
+  const [user] = await db.select().from(users).where(eq(users.id, tokenData.userId));
+  if (!user) {
+    retireTokensFor(tokenData.userId);
+    return { kind: "user-not-found" };
+  }
+
+  if (expectedAction === "approve") {
+    if (user.isApproved) {
+      retireTokensFor(tokenData.userId);
+      return { kind: "already-approved", user: { name: user.name, email: user.email } };
+    }
+    await db.update(users).set({ isApproved: true }).where(eq(users.id, tokenData.userId));
+    retireTokensFor(tokenData.userId);
+    return { kind: "approved", user: { name: user.name, email: user.email } };
+  }
+
+  // Deny = remove from system.
+  await db.delete(users).where(eq(users.id, tokenData.userId));
+  retireTokensFor(tokenData.userId);
+  return { kind: "denied", user: { name: user.name, email: user.email } };
+}
+
+const LINK_LABEL = { approve: "approval", deny: "denial" } as const;
+
+async function handleApprovalLink(
+  action: "approve" | "deny",
+  req: Request,
+  res: Response
+): Promise<void> {
+  const label = LINK_LABEL[action];
+  try {
+    const resolution = await resolveApprovalToken(req.params.token, action);
+
+    switch (resolution.kind) {
+      case "invalid":
+        res.status(400).send(renderResultPage("Invalid or Expired Link", `This ${label} link is invalid or has already been used.`, false));
+        return;
+      case "expired":
+        res.status(400).send(renderResultPage("Link Expired", `This ${label} link has expired. Please use the admin panel to manage users.`, false));
+        return;
+      case "wrong-action":
+        res.status(400).send(renderResultPage("Invalid Action", `This link is not for ${label}.`, false));
+        return;
+      case "db-unavailable":
+        res.status(500).send(renderResultPage("Database Error", "Could not connect to database.", false));
+        return;
+      case "user-not-found":
+        res.status(404).send(renderResultPage("User Not Found", "The user no longer exists.", false));
+        return;
+      case "already-approved":
+        res.status(200).send(renderResultPage("Already Approved", `${resolution.user.name} (${resolution.user.email}) has already been approved.`, true));
+        return;
+      case "approved":
+        res.status(200).send(renderResultPage(
+          "User Approved ✓",
+          `${resolution.user.name} (${resolution.user.email}) has been approved and can now access the dashboard.`,
+          true
+        ));
+        return;
+      case "denied":
+        res.status(200).send(renderResultPage(
+          "User Denied",
+          `${resolution.user.name} (${resolution.user.email}) has been denied access and removed from the system.`,
+          true
+        ));
+        return;
+    }
+  } catch (error) {
+    console.error(`${action === "approve" ? "Approval" : "Denial"} error:`, error);
+    res.status(500).send(renderResultPage("Error", `An error occurred while processing the ${label}.`, false));
+  }
+}
+
 export function registerAdminApprovalRoutes(app: Express) {
   // One-click approve endpoint
-  app.get("/api/admin/approve/:token", async (req: Request, res: Response) => {
-    try {
-      const { token } = req.params;
-      const tokenData = approvalTokens.get(token);
-      
-      if (!tokenData) {
-        return res.status(400).send(renderResultPage("Invalid or Expired Link", "This approval link is invalid or has already been used.", false));
-      }
-      
-      if (tokenData.expiresAt < new Date()) {
-        approvalTokens.delete(token);
-        return res.status(400).send(renderResultPage("Link Expired", "This approval link has expired. Please use the admin panel to approve users.", false));
-      }
-      
-      if (tokenData.action !== "approve") {
-        return res.status(400).send(renderResultPage("Invalid Action", "This link is not for approval.", false));
-      }
-      
-      const db = await getDb();
-      if (!db) {
-        return res.status(500).send(renderResultPage("Database Error", "Could not connect to database.", false));
-      }
-      
-      // Get user info before approving
-      const [user] = await db.select().from(users).where(eq(users.id, tokenData.userId));
-      
-      if (!user) {
-        approvalTokens.delete(token);
-        return res.status(404).send(renderResultPage("User Not Found", "The user no longer exists.", false));
-      }
-      
-      if (user.isApproved) {
-        approvalTokens.delete(token);
-        return res.status(200).send(renderResultPage("Already Approved", `${user.name} (${user.email}) has already been approved.`, true));
-      }
-      
-      // Approve the user
-      await db.update(users).set({ isApproved: true }).where(eq(users.id, tokenData.userId));
-      
-      // Delete the token after use
-      approvalTokens.delete(token);
-      
-      return res.status(200).send(renderResultPage(
-        "User Approved ✓",
-        `${user.name} (${user.email}) has been approved and can now access the dashboard.`,
-        true
-      ));
-    } catch (error) {
-      console.error("Approval error:", error);
-      return res.status(500).send(renderResultPage("Error", "An error occurred while processing the approval.", false));
-    }
-  });
+  app.get("/api/admin/approve/:token", (req: Request, res: Response) => handleApprovalLink("approve", req, res));
 
   // One-click deny endpoint
-  app.get("/api/admin/deny/:token", async (req: Request, res: Response) => {
-    try {
-      const { token } = req.params;
-      const tokenData = approvalTokens.get(token);
-      
-      if (!tokenData) {
-        return res.status(400).send(renderResultPage("Invalid or Expired Link", "This denial link is invalid or has already been used.", false));
-      }
-      
-      if (tokenData.expiresAt < new Date()) {
-        approvalTokens.delete(token);
-        return res.status(400).send(renderResultPage("Link Expired", "This denial link has expired. Please use the admin panel to manage users.", false));
-      }
-      
-      if (tokenData.action !== "deny") {
-        return res.status(400).send(renderResultPage("Invalid Action", "This link is not for denial.", false));
-      }
-      
-      const db = await getDb();
-      if (!db) {
-        return res.status(500).send(renderResultPage("Database Error", "Could not connect to database.", false));
-      }
-      
-      // Get user info before denying
-      const [user] = await db.select().from(users).where(eq(users.id, tokenData.userId));
-      
-      if (!user) {
-        approvalTokens.delete(token);
-        return res.status(404).send(renderResultPage("User Not Found", "The user no longer exists.", false));
-      }
-      
-      // Delete the user (deny = remove from system)
-      await db.delete(users).where(eq(users.id, tokenData.userId));
-      
-      // Delete the token after use
-      approvalTokens.delete(token);
-      
-      return res.status(200).send(renderResultPage(
-        "User Denied",
-        `${user.name} (${user.email}) has been denied access and removed from the system.`,
-        true
-      ));
-    } catch (error) {
-      console.error("Denial error:", error);
-      return res.status(500).send(renderResultPage("Error", "An error occurred while processing the denial.", false));
-    }
-  });
+  app.get("/api/admin/deny/:token", (req: Request, res: Response) => handleApprovalLink("deny", req, res));
 }
 
 /**
