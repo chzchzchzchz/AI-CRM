@@ -261,7 +261,14 @@ export default function Home() {
                 ? `${Math.round((sixQAGap / hotLeads) * 100)}% of qualified accounts`
                 : sixQAGap !== undefined
                   ? "No qualified accounts"
-                  : "Loading"
+                  // "Loading" is only true for the brief window before the query
+                  // settles — confirmed live that it otherwise sits here forever
+                  // once repStats fails and react-query gives up retrying, reading
+                  // as a stuck spinner rather than the outage the banner above
+                  // already names.
+                  : repStatsError
+                    ? "Unavailable"
+                    : "Loading"
             }
             icon={Target}
             tone="accent"
