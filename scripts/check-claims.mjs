@@ -519,35 +519,55 @@ function walk(dir, exts, acc = []) {
  * the number it's labelled" out by name as the failure this project exists to
  * catch. Rule 3 checks the demo-dataset numbers the same way; this is the
  * codebase's own two headline stats.
+ *
+ * The identical "326 tests" figure was ALSO quoted in docs/DEVELOPMENT.md's
+ * `pnpm test` row — fixing the README's copy didn't touch it, because nothing
+ * connected the two. Checked here too, by the specific table-row text rather
+ * than a bare "number near the word tests" scan, since that file is otherwise
+ * full of intentionally-historical counts (defects a rule was written to catch)
+ * that must never be "corrected" to match the present.
  */
 {
   const readmePath = path.join(ROOT, "README.md");
-  if (!fs.existsSync(readmePath)) {
-    ok("README headline stats (skipped — file missing)");
-  } else {
-    const readme = fs.readFileSync(readmePath, "utf8");
-    const bad = [];
+  const devPath = path.join(ROOT, "docs", "DEVELOPMENT.md");
 
-    // Same block-split technique as rule 12, over the files rule 8 confirms are
-    // actually wired into the runner — a floor, not an exact count: it.each and
-    // friends expand to more cases at runtime than there are call sites in source.
-    const testFiles = walk(ROOT, [".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx"])
-      .map(f => path.relative(ROOT, f))
-      .filter(rel => !rel.startsWith("node_modules") && !rel.startsWith("dist"));
-    let testCount = 0;
-    for (const rel of testFiles) {
-      const src = stripComments(fs.readFileSync(path.join(ROOT, rel), "utf8"));
-      testCount += src.split(/\b(?:it|test)\s*(?:\.\w+)?\s*\(/).length - 1;
+  // Same block-split technique as rule 12, over the files rule 8 confirms are
+  // actually wired into the runner — a floor, not an exact count: it.each and
+  // friends expand to more cases at runtime than there are call sites in source.
+  const testFiles = walk(ROOT, [".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx"])
+    .map(f => path.relative(ROOT, f))
+    .filter(rel => !rel.startsWith("node_modules") && !rel.startsWith("dist"));
+  let testCount = 0;
+  for (const rel of testFiles) {
+    const src = stripComments(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+    testCount += src.split(/\b(?:it|test)\s*(?:\.\w+)?\s*\(/).length - 1;
+  }
+
+  const bad = [];
+  const checkTestClaim = (label, text, re) => {
+    const m = text.match(re);
+    if (!m) return;
+    const claimed = Number(m[1].replace(/,/g, ""));
+    if (claimed < testCount * 0.75 || claimed > testCount * 1.5) {
+      bad.push(
+        `${label} says ${claimed} tests, ${testCount} found in source (a floor — it.each expands at runtime, so the true count is normally somewhat higher)`
+      );
     }
-    const testMatch = readme.match(/([\d,]+)\s+tests\b/i);
-    if (testMatch) {
-      const claimedTests = Number(testMatch[1].replace(/,/g, ""));
-      if (claimedTests < testCount * 0.75 || claimedTests > testCount * 1.5) {
-        bad.push(
-          `README says ${claimedTests} tests, ${testCount} found in source (a floor — it.each expands at runtime, so the true count is normally somewhat higher)`
-        );
-      }
-    }
+  };
+
+  if (fs.existsSync(readmePath)) {
+    checkTestClaim("README.md", fs.readFileSync(readmePath, "utf8"), /([\d,]+)\s+tests\b/i);
+  }
+  if (fs.existsSync(devPath)) {
+    checkTestClaim(
+      "docs/DEVELOPMENT.md",
+      fs.readFileSync(devPath, "utf8"),
+      /`pnpm test`[^|\n]*\|[^|\n]*?([\d,]+)\s+tests/i
+    );
+  }
+
+  if (fs.existsSync(readmePath)) {
+    const readme = fs.readFileSync(readmePath, "utf8");
 
     // The three real source roots — same ones the rest of this file treats as "the
     // app" (e.g. rule 9's server-only LLM scan).
@@ -566,11 +586,11 @@ function walk(dir, exts, acc = []) {
         );
       }
     }
-
-    bad.length
-      ? fail("README headline stats", bad.join("\n    "))
-      : ok("README headline stats");
   }
+
+  bad.length
+    ? fail("README headline stats", bad.join("\n    "))
+    : ok("README headline stats");
 }
 
 /* --------------------------------------------------------------- 14. report */

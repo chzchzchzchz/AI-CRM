@@ -31,17 +31,20 @@ async function seedReports(count: number) {
   const { getDb } = await import("./db");
   const { transcriptReports } = await import("../drizzle/schema");
   const db: any = await getDb();
-  for (let i = 0; i < count; i++) {
-    await db.insert(transcriptReports).values({
-      userId: mockUser.id,
-      name: `Report ${i}`,
-      transcript: "…",
-      analysis: {},
-      shareId: `share-${i}`,
-      // Spread creation times so ORDER BY createdAt DESC has something to actually order.
-      createdAt: new Date(Date.now() - i * 1000),
-    });
-  }
+  // One bulk insert, not `count` sequential ones: the demo shim does a full
+  // synchronous read-modify-write of the JSON store per insert call, so 105
+  // one-at-a-time awaits was slow enough to flirt with (and, under full-suite
+  // load, occasionally exceed) vitest's default 5s test timeout.
+  const rows = Array.from({ length: count }, (_, i) => ({
+    userId: mockUser.id,
+    name: `Report ${i}`,
+    transcript: "…",
+    analysis: {},
+    shareId: `share-${i}`,
+    // Spread creation times so ORDER BY createdAt DESC has something to actually order.
+    createdAt: new Date(Date.now() - i * 1000),
+  }));
+  await db.insert(transcriptReports).values(rows);
 }
 
 describe("tools.getSavedTranscriptReports — truncation honesty", () => {
