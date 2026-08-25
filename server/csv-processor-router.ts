@@ -4,6 +4,7 @@ import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE, parseLlmJson } from "./_core/
 import { wrapUntrusted } from "./_core/untrusted";
 import { withRCP } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
+import { csvRow } from "@shared/csv";
 
 // Target template fields for SFDC/HubSpot webinar import
 const TARGET_FIELDS = [
@@ -240,20 +241,14 @@ Return a JSON object with this structure:
         return newRow;
       });
 
-      // Generate CSV output
+      // Generate CSV output. csvRow neutralizes a cell that starts with =, +, - or
+      // @ — Excel/Sheets read that as a formula, not text, the moment this file is
+      // opened, and this is webinar registrant data nobody here typed themselves.
+      // See shared/csv.ts.
       const headers = TARGET_FIELDS.map(f => f.name);
       const csvLines = [
         headers.join(","),
-        ...processedRows.map(row =>
-          headers.map(h => {
-            const val = row[h] || "";
-            // Escape commas and quotes
-            if (val.includes(",") || val.includes('"') || val.includes("\n")) {
-              return `"${val.replace(/"/g, '""')}"`;
-            }
-            return val;
-          }).join(",")
-        )
+        ...processedRows.map(row => csvRow(headers.map(h => row[h] || "")))
       ];
 
       // TARGET_FIELDS marks Recent Event/Status/First+Last Name/Company/Email/Country

