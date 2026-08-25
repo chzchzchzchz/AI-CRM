@@ -243,6 +243,14 @@ function CallAnalyzerTool({ sharedReportId }: { sharedReportId: string | null })
 
   const askFollowUpMutation = trpc.tools.askTranscriptQuestion.useMutation({
     onSuccess: (data) => {
+      // `available === false` means `answer` is the "AI generation is unavailable"
+      // note, not a real answer to the question asked — this used to be set as the
+      // follow-up answer regardless, reading as if the model had actually responded.
+      if (data.available === false) {
+        toast.error(data.answer || 'AI generation is unavailable right now.');
+        setAskingFollowUp(false);
+        return;
+      }
       setFollowUpAnswer(typeof data.answer === 'string' ? data.answer : String(data.answer));
       setAskingFollowUp(false);
     },
