@@ -50,17 +50,17 @@ export async function detectIntentSpikes(opts: {
   const db = await getDb();
   if (!db) return [];
 
-  let scoreRows: any[] = [];
-  let accountRows: any[] = [];
-  try {
-    [scoreRows, accountRows] = await Promise.all([
-      db.select().from(intentScoresTable).orderBy(desc(intentScoresTable.createdAt)),
-      db.select().from(accountsTable),
-    ]);
-  } catch (error) {
-    console.error("[spikes] could not read intent history:", error);
-    return [];
-  }
+  // Not caught into [] on a query failure — see server/intel/brain.ts's crawlSnapshot
+  // for the same fix and the reasoning: "no database configured" is already handled
+  // above, so a failure here is a real error, not evidence of a quiet week. The
+  // swallow used to make that indistinguishable — worse, one caller (aiContext.ts's
+  // chat-context builder) turned it into the explicit claim "No recent intent spikes
+  // detected" and fed that to the model as fact. Callers that need a softer fallback
+  // (aiContext.ts) catch this locally with an honest message instead.
+  const [scoreRows, accountRows] = await Promise.all([
+    db.select().from(intentScoresTable).orderBy(desc(intentScoresTable.createdAt)),
+    db.select().from(accountsTable),
+  ]);
 
   const nameById = new Map<number, string>(
     (accountRows || []).map((a: any) => [a.id, a.name])

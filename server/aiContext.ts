@@ -137,9 +137,23 @@ export async function conversationWithMemory(params: {
   let intentSpikeContext = '';
   const intentSpikeKeywords = ['intent spike', 'intent increase', 'intent jump', 'buying signal', 'score increase', '6sense spike', 'recent spikes'];
   if (intentSpikeKeywords.some(keyword => query.toLowerCase().includes(keyword))) {
-    const recentSpikes = await getRecentIntentSpikes(10);
-    
-    if (recentSpikes.length > 0) {
+    // detectIntentSpikes throws on a genuine query failure now, rather than returning []
+    // the same as "checked, found nothing" — this is the one caller that must not let
+    // that failure abort the whole chat reply, so it's caught locally. The two
+    // messages below must stay distinguishable: telling the model "no spikes" when the
+    // check never ran would have it confidently repeat that as fact to a rep.
+    let recentSpikes: any[] = [];
+    let spikesChecked = true;
+    try {
+      recentSpikes = await getRecentIntentSpikes(10);
+    } catch (err) {
+      spikesChecked = false;
+      console.error('[aiContext] could not check intent spikes:', err);
+    }
+
+    if (!spikesChecked) {
+      intentSpikeContext = `\n\nIntent spike data could not be checked right now — do not state whether any spikes occurred.`;
+    } else if (recentSpikes.length > 0) {
       intentSpikeContext = `\n\nRECENT 6SENSE INTENT SPIKES (20+ point increases in 24 hours):\n`;
       recentSpikes.forEach((spike: any, index: number) => {
         intentSpikeContext += `${index + 1}. ${spike.accountName}: ${spike.previousScore} → ${spike.currentScore} (+${spike.scoreDelta} points)\n`;
