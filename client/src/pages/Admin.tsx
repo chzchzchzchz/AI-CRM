@@ -13,7 +13,7 @@ export default function Admin() {
     message: string;
     results?: { total: number; synced: number; failed: number; skipped: number };
   } | null>(null);
-  const [lastSpikeResult, setLastSpikeResult] = useState<{ spikesDetected: number } | null>(null);
+  const [lastSpikeResult, setLastSpikeResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Real endpoints only. There is no background job queue anywhere in this codebase
   // (client or server) — the previous version of this page had "Queue All Jobs" and
@@ -39,7 +39,19 @@ export default function Admin() {
   });
 
   const detectSpikes = trpc.sixsense.detectIntentSpikes.useMutation({
-    onSuccess: (data) => setLastSpikeResult({ spikesDetected: data.spikesDetected }),
+    onSuccess: (data) =>
+      setLastSpikeResult({
+        success: true,
+        message:
+          data.spikesDetected > 0
+            ? `${data.spikesDetected} intent spike${data.spikesDetected === 1 ? "" : "s"} detected.`
+            : "No spikes — nothing moved enough to flag.",
+      }),
+    // detectIntentSpikes throws on a genuine query failure (see server/intel/spikes.ts)
+    // rather than swallowing it into an empty result — this had no onError at all, so a
+    // DB hiccup just made the button stop spinning with nothing said about why. The
+    // admin had no way to tell that outcome apart from "ran fine, found nothing."
+    onError: (error) => setLastSpikeResult({ success: false, message: error.message }),
   });
 
   // Admin access control
@@ -207,11 +219,15 @@ export default function Admin() {
               Detect intent spikes now
             </Button>
             {lastSpikeResult && (
-              <p className="text-sm text-ink-muted">
-                {lastSpikeResult.spikesDetected > 0
-                  ? `${lastSpikeResult.spikesDetected} intent spike${lastSpikeResult.spikesDetected === 1 ? "" : "s"} detected.`
-                  : "No spikes — nothing moved enough to flag."}
-              </p>
+              <div
+                className={
+                  lastSpikeResult.success
+                    ? "p-3 rounded-sm border border-positive/30 bg-positive-subtle text-sm"
+                    : "p-3 rounded-sm border border-critical/30 bg-critical-subtle text-sm text-critical"
+                }
+              >
+                {lastSpikeResult.message}
+              </div>
             )}
           </CardContent>
         </Card>
