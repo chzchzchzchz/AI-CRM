@@ -2,6 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DataErrorBanner } from "@/components/ui/data-error-banner";
 import {
   Target,
   Eye,
@@ -35,11 +36,11 @@ const stageBar: Record<string, string> = {
 };
 
 export default function SixsenseAnalytics() {
-  const { data: summary, isLoading: summaryLoading } = trpc.sixsenseAnalytics.getSummary.useQuery();
-  const { data: buyingStages } = trpc.sixsenseAnalytics.getBuyingStages.useQuery();
-  const { data: engagement } = trpc.sixsenseAnalytics.getEngagement.useQuery();
-  const { data: keywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 50 });
-  const { data: performance } = trpc.sixsenseAnalytics.get6QAPerformance.useQuery();
+  const { data: summary, isLoading: summaryLoading, error: summaryError } = trpc.sixsenseAnalytics.getSummary.useQuery();
+  const { data: buyingStages, error: buyingStagesError } = trpc.sixsenseAnalytics.getBuyingStages.useQuery();
+  const { data: engagement, error: engagementError } = trpc.sixsenseAnalytics.getEngagement.useQuery();
+  const { data: keywords, error: keywordsError } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 50 });
+  const { data: performance, error: performanceError } = trpc.sixsenseAnalytics.get6QAPerformance.useQuery();
 
   const stageIcons: Record<string, React.ReactNode> = {
     Target: <Target className="w-4 h-4 text-ink-muted" />,
@@ -72,6 +73,11 @@ export default function SixsenseAnalytics() {
             {summary?.dataAsOf && <span className="ml-1 text-ink-subtle">As of {formatDate(summary.dataAsOf)}.</span>}
           </p>
         </div>
+
+        <DataErrorBanner
+          errors={[summaryError, buyingStagesError, engagementError, keywordsError, performanceError]}
+          message="Some 6sense analytics couldn't be loaded — the figures below may be incomplete, not actually zero."
+        />
 
         {/* 6QA headline funnel row: total → worked → gap → ready-to-buy (tonal grid, no colored stripes) */}
         <div className="mb-8 grid grid-cols-2 md:grid-cols-4 gap-px bg-muted rounded-sm overflow-hidden border border-border">

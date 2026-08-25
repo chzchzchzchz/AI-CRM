@@ -11,6 +11,7 @@ import { useRep } from "@/contexts/RepContext";
 import { RepSwitcher } from "@/components/RepSwitcher";
 import { CompanyLogo } from "@/components/ui/company-logo";
 import { isDecisionMaker, DECISION_MAKER_HINT } from "@shared/taxonomy";
+import { DataErrorBanner } from "@/components/ui/data-error-banner";
 
 type FilterType = "intent" | "industry" | "region" | "buyingStage" | "keyword" | null;
 
@@ -91,10 +92,10 @@ export default function Insights() {
     if (!territoryAccountIds) return calls;
     return calls.filter((c: any) => territoryAccountIds.has(c.accountId));
   }, [calls, territoryAccountIds]);
-  const { data: keywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 50 });
-  const { data: engagement } = trpc.sixsenseAnalytics.getEngagement.useQuery();
-  const { data: buyingStages } = trpc.sixsenseAnalytics.getBuyingStages.useQuery();
-  const { data: sixQAPerformance } = trpc.sixsenseAnalytics.get6QAPerformance.useQuery();
+  const { data: keywords, error: keywordsError } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 50 });
+  const { data: engagement, error: engagementError } = trpc.sixsenseAnalytics.getEngagement.useQuery();
+  const { data: buyingStages, error: buyingStagesError } = trpc.sixsenseAnalytics.getBuyingStages.useQuery();
+  const { data: sixQAPerformance, error: sixQAPerformanceError } = trpc.sixsenseAnalytics.get6QAPerformance.useQuery();
   const { data: brain } = trpc.intel.brain.useQuery();
   // Totals over the whole dataset, not over whatever a capped list query returned.
   const { data: stats } = trpc.accounts.getStats.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
@@ -315,6 +316,11 @@ export default function Insights() {
             )}
           </div>
         </div>
+
+        <DataErrorBanner
+          errors={[keywordsError, engagementError, buyingStagesError, sixQAPerformanceError]}
+          message="Some 6sense analytics couldn't be loaded — the Keywords, Engagement and 6QA Performance tabs below may be incomplete, not actually empty."
+        />
 
         {/* AI Bar */}
         <ContextualAI
