@@ -434,6 +434,11 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
         const e = err as Error;
         if (e?.name === "TimeoutError" || e?.name === "AbortError") contactedAnyProvider = true;
         lastError = `${provider.url}: ${e?.message || "request failed"}`;
+        // Previously only the LAST attempt's error ever reached a log — diagnosing "why
+        // did this take 48s and fail" meant reproducing the request with curl by hand,
+        // one provider at a time, since nothing recorded which of the (up to 4) attempts
+        // actually consumed the time or why each one individually failed.
+        console.warn(`[llm] ${provider.url} (${model}) failed: ${e?.name || "Error"} – ${e?.message || "request failed"}`);
         continue;
       }
 
@@ -445,8 +450,10 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
       try {
         if (response.ok) return (await response.json()) as InvokeResult;
         lastError = `${provider.url} (${model}): ${response.status} ${response.statusText} – ${await response.text()}`;
+        console.warn(`[llm] ${provider.url} (${model}) failed: HTTP ${response.status} ${response.statusText}`);
       } catch (err) {
         lastError = `${provider.url} (${model}): response body read failed – ${(err as Error)?.message}`;
+        console.warn(`[llm] ${provider.url} (${model}) failed: response body read failed – ${(err as Error)?.message}`);
         continue;
       }
       // Auth/quota problems affect every model on this provider — stop trying its list.
