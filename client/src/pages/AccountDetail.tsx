@@ -55,7 +55,7 @@ export default function AccountDetailEnhanced() {
   //
   // Deterministic and LLM-free, so the facts render immediately; only the judgement
   // (in AccountJudgement) waits on a model.
-  const { data: signals } = trpc.intel.accountSignals.useQuery(
+  const { data: signals, error: signalsError } = trpc.intel.accountSignals.useQuery(
     { accountId },
     { enabled: accountId > 0, refetchOnWindowFocus: false }
   );
@@ -220,6 +220,20 @@ export default function AccountDetailEnhanced() {
             )}
           </div>
         </div>
+
+        {/* Every number below — intent, pipeline, stakeholders, triggers — comes from
+            this one query. gatherAccountSignals throws on a genuine failure rather than
+            swallowing it into an empty pack (see server/intel/signals.ts), but every
+            field it feeds here was already written as `signals?.foo ?? 0` /
+            `!!signals?.bar.length`, so a thrown error and a real zero-activity account
+            rendered identically: empty pipeline, no stakeholders, no triggers, nothing
+            said about why. Surfacing the query error is the only thing that tells them apart. */}
+        {signalsError && (
+          <div className="flex items-center gap-2 rounded-sm border border-caution/30 bg-caution-subtle px-4 py-2.5 text-sm text-caution">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            Account signals couldn't be loaded — pipeline, stakeholders and intent below may be incomplete, not actually empty.
+          </div>
+        )}
 
         {/* Signature Account Signal band — the one clear read, evidence a glance away */}
         <Card className="border-border bg-card shadow-none">
