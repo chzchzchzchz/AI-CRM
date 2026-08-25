@@ -16,6 +16,7 @@ import { RepSwitcher } from "@/components/RepSwitcher";
 import { useRep, REP_TERRITORIES } from "@/contexts/RepContext";
 import { CompanyLogo } from "@/components/ui/company-logo";
 import { PageHeader } from "@/components/app-shell/PageHeader";
+import { DataErrorBanner } from "@/components/ui/data-error-banner";
 import { MetricGrid } from "@/components/ui/metric";
 import { StatCard } from "@/components/StatCard";
 
@@ -34,10 +35,10 @@ export default function Home() {
   const userEmail = selectedRep || user?.email || '';
   
   // All hooks must be called before any early returns (React rules of hooks)
-  const { data: repStats } = trpc.priorityActions.getRepStats.useQuery({ userEmail }, { enabled: !!user });
+  const { data: repStats, error: repStatsError } = trpc.priorityActions.getRepStats.useQuery({ userEmail }, { enabled: !!user });
   const { data: accounts, isLoading: accountsLoading } = trpc.accounts.list.useQuery(undefined, { enabled: !!user });
   const { data: enrichedPriorityActions, isLoading: priorityLoading } = trpc.priorityActions.getEnriched.useQuery({ limit: 3, userEmail }, { enabled: !!user });
-  const { data: topKeywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 10 }, { enabled: !!user });
+  const { data: topKeywords, error: topKeywordsError } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 10 }, { enabled: !!user });
   const { data: opportunitiesData } = trpc.opportunities.list.useQuery(undefined, { enabled: !!user });
 
   // Show login screen if not authenticated (after all hooks)
@@ -205,6 +206,11 @@ export default function Home() {
               </Button>
             </>
           }
+        />
+
+        <DataErrorBanner
+          errors={[repStatsError, topKeywordsError]}
+          message="Some dashboard data couldn't be loaded — rep-specific counts below may show workspace-wide numbers instead, and trending keywords may be missing."
         />
 
         <ContextualAI context="home" placeholder="Ask about today's pipeline…" />

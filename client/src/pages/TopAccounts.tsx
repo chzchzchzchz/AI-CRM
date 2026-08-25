@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import { Target, MapPin, ArrowRight, UserCircle } from "lucide-react";
 import { useRep, REP_TERRITORIES } from "@/contexts/RepContext";
+import { DataErrorBanner } from "@/components/ui/data-error-banner";
 
 // AE definitions derived from the single rep roster in RepContext
 const AE_LIST = Object.entries(REP_TERRITORIES).map(([email, info]) => ({
@@ -51,7 +52,7 @@ export default function TopAccounts() {
   const [selectedAE, setSelectedAE] = useState("all");
 
   const { data: accounts, isLoading } = trpc.accounts.list.useQuery();
-  const { data: repStats } = trpc.priorityActions.getRepStats.useQuery({
+  const { data: repStats, error: repStatsError } = trpc.priorityActions.getRepStats.useQuery({
     userEmail: selectedAE !== "all" ? selectedAE : ""
   });
 
@@ -174,6 +175,11 @@ export default function TopAccounts() {
             <p className="mt-1 text-sm text-ink-muted">Prioritized by intent score, grouped by region and AE territory.</p>
           </div>
         </div>
+
+        <DataErrorBanner
+          errors={[repStatsError]}
+          message="Rep stats couldn't be loaded — hot/warm/cold counts below may be incomplete."
+        />
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
