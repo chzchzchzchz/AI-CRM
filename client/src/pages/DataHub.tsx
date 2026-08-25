@@ -8,6 +8,7 @@ import { trpc } from"@/lib/trpc";
 import { toast } from"sonner";
 import { KnowledgeBase } from"@/components/KnowledgeBase";
 import { LearningInsights } from"@/components/LearningInsights";
+import { csvRow } from"@shared/csv";
 import { 
   Upload, FileSpreadsheet, Sparkles, Loader2, Download, 
   CheckCircle2, XCircle, AlertTriangle, Database, 
@@ -166,12 +167,13 @@ export default function DataHub() {
       return;
     }
 
+    // csvRow neutralizes a cell that starts with =, +, - or @ — Excel/Sheets read
+    // that as a formula, not text, the moment this file is opened, and this data
+    // came from an uploaded file nobody here typed themselves. See shared/csv.ts.
     const headers = Object.keys(result.cleanedData[0] || {});
     const csv = [
       headers.join(','),
-      ...result.cleanedData.map(row => 
-        headers.map(h => `"${String(row[h] || '').replace(/"/g, '""')}"`).join(',')
-      )
+      ...result.cleanedData.map(row => csvRow(headers.map(h => row[h] || '')))
     ].join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });
