@@ -1,6 +1,7 @@
 import { router, publicProcedure } from "./_core/trpc";
 import { validatePasswordComplexity, logSecurityEvent, enforceSendCooldown } from "./_core/security";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./_core/email";
+import { withUserLock } from "./twofa";
 
 // The plaintext code is delivered by EMAIL. Only echo it back in the API response in demo
 // mode (so the demo works without a mailer). Returning it in production would let anyone
@@ -84,49 +85,61 @@ export const emailVerificationRouter = router({
       // verification code" without touching `attempts` — so the three-attempt limit
       // below could never fire and the six-digit code was open to brute force. The
       // counter only means something if a failed guess is what increments it.
-      const verification = await db
-        .select()
-        .from(emailVerificationCodes)
-        .where(eq(emailVerificationCodes.userId, input.userId))
-        .limit(1);
+      //
+      // The read-check-increment below is a read-modify-write with no compare-and-swap,
+      // same shape as the 2FA backup-code race withUserLock exists for (see twofa.ts):
+      // N concurrent guesses all read the same `attempts` value and each write back
+      // `that value + 1`, so firing guesses in parallel instead of sequentially lets
+      // more than 3 real attempts land before the cap engages — a six-digit code
+      // (1,000,000 possibilities) is exactly what an attempt cap needs to hold the
+      // line against. Queuing every verification attempt for this user behind the
+      // previous one closes it: each request's read always sees the prior request's
+      // write.
+      return await withUserLock(input.userId, async () => {
+        const verification = await db
+          .select()
+          .from(emailVerificationCodes)
+          .where(eq(emailVerificationCodes.userId, input.userId))
+          .limit(1);
 
-      if (!verification[0]) {
-        throw new Error("Invalid verification code");
-      }
+        if (!verification[0]) {
+          throw new Error("Invalid verification code");
+        }
 
-      const verCode = verification[0];
+        const verCode = verification[0];
 
-      // Checked before the comparison: an exhausted code must stop being an oracle.
-      if ((verCode.attempts || 0) >= 3) {
-        throw new Error("Too many attempts. Please request a new code.");
-      }
+        // Checked before the comparison: an exhausted code must stop being an oracle.
+        if ((verCode.attempts || 0) >= 3) {
+          throw new Error("Too many attempts. Please request a new code.");
+        }
 
-      if (verCode.expiresAt < new Date()) {
-        throw new Error("Verification code expired");
-      }
+        if (verCode.expiresAt < new Date()) {
+          throw new Error("Verification code expired");
+        }
 
-      if (!codesMatch(verCode.code, input.code)) {
+        if (!codesMatch(verCode.code, input.code)) {
+          await db
+            .update(emailVerificationCodes)
+            .set({ attempts: (verCode.attempts || 0) + 1 })
+            .where(eq(emailVerificationCodes.id, verCode.id));
+          logSecurityEvent(
+            "EMAIL_VERIFICATION_FAILED",
+            { userId: input.userId, attempts: (verCode.attempts || 0) + 1 },
+            "warn"
+          );
+          throw new Error("Invalid verification code");
+        }
+
         await db
           .update(emailVerificationCodes)
-          .set({ attempts: (verCode.attempts || 0) + 1 })
+          .set({ verified: true })
           .where(eq(emailVerificationCodes.id, verCode.id));
-        logSecurityEvent(
-          "EMAIL_VERIFICATION_FAILED",
-          { userId: input.userId, attempts: (verCode.attempts || 0) + 1 },
-          "warn"
-        );
-        throw new Error("Invalid verification code");
-      }
 
-      await db
-        .update(emailVerificationCodes)
-        .set({ verified: true })
-        .where(eq(emailVerificationCodes.id, verCode.id));
+        // Note: Email verification does NOT auto-approve users
+        // Admin must manually approve via the admin panel or email notification
 
-      // Note: Email verification does NOT auto-approve users
-      // Admin must manually approve via the admin panel or email notification
-
-      return { success: true, message: "Email verified. Your account is pending admin approval." };
+        return { success: true, message: "Email verified. Your account is pending admin approval." };
+      });
     }),
 
   resendVerificationCode: publicProcedure
