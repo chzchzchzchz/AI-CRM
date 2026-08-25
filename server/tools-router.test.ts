@@ -104,3 +104,59 @@ describe("tools.analyzeTranscript", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("tools.askTranscriptQuestion", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it("reports available:false rather than answering with the outage note", async () => {
+    // The response used to be { answer: available ? answer : LLM_UNAVAILABLE_NOTE } with
+    // no `available` field at all — AITools.tsx set the follow-up answer straight from
+    // it either way, so a rep asking a question during an outage got the internals note
+    // ("no API key is set...") displayed as if the model had actually answered.
+    vi.doMock("./_core/llm", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("./_core/llm")>();
+      return {
+        ...actual,
+        invokeLLM: vi.fn().mockResolvedValue({
+          choices: [{ message: { role: "assistant", content: actual.LLM_UNAVAILABLE_NOTE } }],
+        }),
+      };
+    });
+
+    const { toolsRouter } = await import("./tools-router");
+    const caller = toolsRouter.createCaller(mockAuthContext);
+    const result = await caller.askTranscriptQuestion({
+      transcript: "B".repeat(150),
+      question: "What was the budget discussed?",
+    });
+
+    expect(result.available).toBe(false);
+    expect(result.answer).toContain("AI generation is unavailable");
+    vi.doUnmock("./_core/llm");
+  });
+
+  it("reports available:true with the real answer when the model responds", async () => {
+    vi.doMock("./_core/llm", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("./_core/llm")>();
+      return {
+        ...actual,
+        invokeLLM: vi.fn().mockResolvedValue({
+          choices: [{ message: { role: "assistant", content: "They mentioned a $50k budget for Q3." } }],
+        }),
+      };
+    });
+
+    const { toolsRouter } = await import("./tools-router");
+    const caller = toolsRouter.createCaller(mockAuthContext);
+    const result = await caller.askTranscriptQuestion({
+      transcript: "B".repeat(150),
+      question: "What was the budget discussed?",
+    });
+
+    expect(result.available).toBe(true);
+    expect(result.answer).toBe("They mentioned a $50k budget for Q3.");
+    vi.doUnmock("./_core/llm");
+  });
+});
