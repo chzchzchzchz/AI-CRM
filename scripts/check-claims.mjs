@@ -510,7 +510,70 @@ function walk(dir, exts, acc = []) {
     : ok(`no test can pass without asserting (${testFiles.length} files)`);
 }
 
-/* --------------------------------------------------------------- 13. report */
+/* ------------------------------------------------- 13. headline stats drift */
+/**
+ * The README's own opening line quotes a test count and a line count — plain
+ * numbers with no automated check behind them, which is exactly how they went
+ * stale: "326 tests, ~45k lines" sat there through several PRs that added both
+ * tests and code, on the same page whose own table calls "a number that isn't
+ * the number it's labelled" out by name as the failure this project exists to
+ * catch. Rule 3 checks the demo-dataset numbers the same way; this is the
+ * codebase's own two headline stats.
+ */
+{
+  const readmePath = path.join(ROOT, "README.md");
+  if (!fs.existsSync(readmePath)) {
+    ok("README headline stats (skipped — file missing)");
+  } else {
+    const readme = fs.readFileSync(readmePath, "utf8");
+    const bad = [];
+
+    // Same block-split technique as rule 12, over the files rule 8 confirms are
+    // actually wired into the runner — a floor, not an exact count: it.each and
+    // friends expand to more cases at runtime than there are call sites in source.
+    const testFiles = walk(ROOT, [".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx"])
+      .map(f => path.relative(ROOT, f))
+      .filter(rel => !rel.startsWith("node_modules") && !rel.startsWith("dist"));
+    let testCount = 0;
+    for (const rel of testFiles) {
+      const src = stripComments(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+      testCount += src.split(/\b(?:it|test)\s*(?:\.\w+)?\s*\(/).length - 1;
+    }
+    const testMatch = readme.match(/([\d,]+)\s+tests\b/i);
+    if (testMatch) {
+      const claimedTests = Number(testMatch[1].replace(/,/g, ""));
+      if (claimedTests < testCount * 0.75 || claimedTests > testCount * 1.5) {
+        bad.push(
+          `README says ${claimedTests} tests, ${testCount} found in source (a floor — it.each expands at runtime, so the true count is normally somewhat higher)`
+        );
+      }
+    }
+
+    // The three real source roots — same ones the rest of this file treats as "the
+    // app" (e.g. rule 9's server-only LLM scan).
+    let totalLines = 0;
+    for (const root of ["server", "client/src", "shared"]) {
+      for (const f of walk(path.join(ROOT, root), [".ts", ".tsx"])) {
+        totalLines += fs.readFileSync(f, "utf8").split("\n").length;
+      }
+    }
+    const linesMatch = readme.match(/~([\d,]+)k lines/i);
+    if (linesMatch) {
+      const claimedLines = Number(linesMatch[1].replace(/,/g, "")) * 1000;
+      if (claimedLines < totalLines * 0.7 || claimedLines > totalLines * 1.3) {
+        bad.push(
+          `README says ~${linesMatch[1]}k lines, ${Math.round(totalLines / 1000)}k found under server/, client/src/, shared/`
+        );
+      }
+    }
+
+    bad.length
+      ? fail("README headline stats", bad.join("\n    "))
+      : ok("README headline stats");
+  }
+}
+
+/* --------------------------------------------------------------- 14. report */
 for (const c of checks) console.log(`  ✓ ${c}`);
 for (const f of failures) console.log(`  ✘ ${f.rule}\n    ${f.detail}`);
 
