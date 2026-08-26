@@ -457,7 +457,7 @@ Generate professional, actionable content.`;
       // Record feedback on interaction
       if (interactionId) {
         const { recordFeedback } = await import('./rag-service');
-        await recordFeedback(interactionId, feedback, details);
+        await recordFeedback(interactionId, feedback, details, ctx.user.id);
       }
       
       // Update generated content with user edits
@@ -465,10 +465,15 @@ Generate professional, actionable content.`;
         const db = await (await import('./db')).getDb();
         if (db) {
           const { generatedContent } = await import('../drizzle/schema');
-          const { eq } = await import('drizzle-orm');
+          const { and, eq } = await import('drizzle-orm');
+          // Scoped to the caller: a contentId alone must not be enough to overwrite
+          // another user's generated-content record. Found via an ownership audit of
+          // every update()/delete() in the server — this was the one write with no
+          // ownership check at all (follow-ups.ts's `snooze` had a weaker version of
+          // the same gap, guarded by a preceding select; this one had neither).
           await db.update(generatedContent)
             .set({ userEdits: editedContent, feedback })
-            .where(eq(generatedContent.id, contentId));
+            .where(and(eq(generatedContent.id, contentId), eq(generatedContent.userId, ctx.user.id)));
         }
       }
       

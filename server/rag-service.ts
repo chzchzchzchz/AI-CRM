@@ -1,7 +1,7 @@
 import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
 import { getDb } from "./db";
 import { knowledgeBase, documentChunks, userInteractions, generatedContent } from "../drizzle/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { and, eq, desc, sql } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { invokeLLM } from "./_core/llm";
 
@@ -259,14 +259,20 @@ export async function trackInteraction(
 export async function recordFeedback(
   interactionId: number,
   feedback: 'positive' | 'negative' | 'edited',
-  details?: string
+  details: string | undefined,
+  callerId: number
 ): Promise<void> {
   const db = await getDb();
   if (!db) return;
-  
+
+  // Scoped to the caller: an interactionId alone must not be enough to overwrite
+  // another user's feedback on an interaction that isn't theirs. Found via an
+  // ownership audit of every update()/delete() in the server alongside the same gap
+  // on generatedContent (tools-router.ts's submitFeedback, this function's only
+  // caller, updates both in one call).
   await db.update(userInteractions)
     .set({ feedback, feedbackDetails: details })
-    .where(eq(userInteractions.id, interactionId));
+    .where(and(eq(userInteractions.id, interactionId), eq(userInteractions.userId, callerId)));
 }
 
 // Save generated content

@@ -243,7 +243,17 @@ export const followUpsRouter = router({
       // weeks overdue by "7 days" should give a week, not a date still in the past.
       const next = snoozeTarget(input.days);
 
-      await db.update(followUps).set({ dueDate: next }).where(eq(followUps.id, input.id));
+      // The select above already confirmed this id belongs to the caller, so this isn't
+      // currently reachable with someone else's id — but every other mutation in this
+      // router (see `complete` above) scopes its actual write by userId directly rather
+      // than relying on a preceding check, per the router's own stated invariant: "an id
+      // alone must never be enough to close someone else's commitment." This was the one
+      // write that didn't, which would become exploitable the moment the select above is
+      // ever simplified away.
+      await db
+        .update(followUps)
+        .set({ dueDate: next })
+        .where(and(eq(followUps.id, input.id), eq(followUps.userId, ctx.user.id)));
       return { success: true, dueDate: next.toISOString() };
     }),
 
