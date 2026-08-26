@@ -46,10 +46,19 @@ export const salesforceRouter = router({
       
       // Bulk upsert to database
       const result = await bulkUpsertAccountsFromSalesforce(transformedAccounts);
-      
+
+      // bulkUpsertAccountsFromSalesforce tracks a per-row error count precisely so a
+      // handful of bad records don't abort the whole sync — but that count went
+      // nowhere: the message below never mentioned it, and the client (
+      // SalesforceSync.tsx) just displays this string verbatim. A sync where 5 of 50
+      // accounts failed to upsert read as "Synced 45 new accounts, updated 0 existing
+      // accounts" — indistinguishable from a completely clean run, with no signal
+      // that 5 accounts are now missing or stale.
       return {
         success: true,
-        message: `Synced ${result.inserted} new accounts, updated ${result.updated} existing accounts`,
+        message: result.errors > 0
+          ? `Synced ${result.inserted} new accounts, updated ${result.updated} existing (${result.errors} failed — see server logs)`
+          : `Synced ${result.inserted} new accounts, updated ${result.updated} existing accounts`,
         ...result,
         totalFromSalesforce: sfAccounts.length,
       };
@@ -78,10 +87,14 @@ export const salesforceRouter = router({
       
       // Bulk upsert to database
       const result = await bulkUpsertContactsFromSalesforce(transformedContacts);
-      
+
+      // Same gap as syncAccounts above: result.errors was tracked and then dropped
+      // before it reached the message the client actually shows.
       return {
         success: true,
-        message: `Synced ${result.inserted} new contacts, updated ${result.updated} existing, ${result.linked} linked to accounts`,
+        message: result.errors > 0
+          ? `Synced ${result.inserted} new contacts, updated ${result.updated} existing, ${result.linked} linked (${result.errors} failed — see server logs)`
+          : `Synced ${result.inserted} new contacts, updated ${result.updated} existing, ${result.linked} linked to accounts`,
         ...result,
         totalFromSalesforce: sfContacts.length,
       };
@@ -128,9 +141,16 @@ export const salesforceRouter = router({
         ...contactResult,
       };
 
+      // 'Full sync completed successfully' used to be unconditional — every account
+      // and every contact could individually fail to upsert (each is caught per-row
+      // in bulkUpsert*FromSalesforce, so none of that aborts the loop or throws here)
+      // and this message would say the same thing as a totally clean run.
+      const totalErrors = accountResult.errors + contactResult.errors;
       return {
         success: true,
-        message: 'Full sync completed successfully',
+        message: totalErrors > 0
+          ? `Full sync completed with ${totalErrors} error(s) — see server logs`
+          : 'Full sync completed successfully',
         results,
       };
     } catch (error) {
