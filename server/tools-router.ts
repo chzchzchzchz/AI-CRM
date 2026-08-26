@@ -15,6 +15,7 @@ import {
 import { getDb } from "./db";
 import { transcriptReports } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
+import crypto from "crypto";
 
 // Mirrors the json_schema passed to invokeLLM for analyzeTranscript. Free-tier fallback
 // models don't always honor response_format, so the parsed JSON is validated against this
@@ -863,8 +864,15 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error('Database not available');
-      // Generate a unique share ID for public access
-      const shareId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      // A share ID is a bearer capability — anyone who has it can read this report via
+      // the public getReportByShareId endpoint below, unauthenticated. Math.random()
+      // isn't cryptographically secure (V8's generator is reconstructible from a
+      // handful of observed outputs — a user who's created a few of their own shared
+      // reports could, in principle, recover enough state to predict others' share
+      // IDs); every other token like this in the app already uses crypto.randomBytes
+      // (see admin-router.ts's temp password, twofa.ts's challenge ids). This was the
+      // one holdout.
+      const shareId = crypto.randomBytes(16).toString("base64url");
       const result = await db.insert(transcriptReports).values({
         userId: ctx.user?.id || 0,
         name: input.name,
