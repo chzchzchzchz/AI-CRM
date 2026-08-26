@@ -120,7 +120,7 @@ export async function conversationWithMemory(params: {
   contactId?: number;
   userId?: number;
   conversationHistory?: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
-}): Promise<{ answer: string; insights: string[] }> {
+}): Promise<{ answer: string; insights: string[]; available: boolean }> {
   const { query, accountId, contactId, userId, conversationHistory = [] } = params;
 
   // Build context from storage
@@ -231,7 +231,10 @@ ${intentSpikeContext}`;
   // it reads like an answer, and everything below would then mine it for "insights"
   // and write those into the conversation memory.
   const { content: answer, available } = llmText(response);
-  if (!available) return { answer: LLM_UNAVAILABLE_NOTE, insights: [] };
+  // Both chat widgets (GlobalAIChat.tsx, AIAssistant.tsx) set the assistant's message
+  // straight from `answer` with no other check — without `available` here, the outage
+  // note was indistinguishable from a real reply and rendered in the same bubble style.
+  if (!available) return { answer: LLM_UNAVAILABLE_NOTE, insights: [], available: false };
   const answerStr = answer;
 
   // Extract insights and store for future use
@@ -281,7 +284,7 @@ Return a JSON array of insight strings.`;
       // Mining the degradation note for "insights" would write apologies into the
       // context store, where they resurface as prior learnings on every later answer.
       const { content: learningContent, available: learningAvailable } = llmText(learningResponse);
-      if (!learningAvailable) return { answer: answerStr, insights: [] };
+      if (!learningAvailable) return { answer: answerStr, insights: [], available: true };
       const parsed = JSON.parse(learningContent);
       
       for (const insight of parsed.insights) {
@@ -318,7 +321,7 @@ Return a JSON array of insight strings.`;
     }
   }
 
-  return { answer: answerStr, insights };
+  return { answer: answerStr, insights, available: true };
 }
 
 /**
