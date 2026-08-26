@@ -5,6 +5,7 @@ import { contacts, accounts } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { maybeNotifyHotLead } from "./integrations/connectors";
+import { timingSafeEqual } from "./_core/security";
 
 /**
  * Clay webhook router
@@ -62,7 +63,7 @@ function verifyWebhookSecret(providedSecret: string | undefined): void {
       message: 'Clay webhook is not configured (set CLAY_WEBHOOK_SECRET)'
     });
   }
-  if (providedSecret !== CLAY_WEBHOOK_SECRET) {
+  if (!timingSafeEqual(CLAY_WEBHOOK_SECRET, providedSecret)) {
     console.error('[Clay Webhook] Invalid webhook secret');
     throw new TRPCError({
       code: 'UNAUTHORIZED',

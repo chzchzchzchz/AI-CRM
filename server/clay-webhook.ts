@@ -4,6 +4,7 @@ import { getDb } from "./db";
 import { accounts } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { timingSafeEqual } from "./_core/security";
 
 // Webhook secret for Clay - should be set in environment variables
 const CLAY_WEBHOOK_SECRET = process.env.CLAY_WEBHOOK_SECRET || '';
@@ -38,7 +39,7 @@ export const clayWebhookRouter = router({
             message: 'Clay webhook is not configured (set CLAY_WEBHOOK_SECRET)'
           });
         }
-      } else if (input.webhook_secret !== CLAY_WEBHOOK_SECRET) {
+      } else if (!timingSafeEqual(CLAY_WEBHOOK_SECRET, input.webhook_secret)) {
         console.error('[Clay Webhook] Invalid webhook secret');
         throw new TRPCError({
           code: 'UNAUTHORIZED',

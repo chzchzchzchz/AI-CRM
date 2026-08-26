@@ -3,6 +3,7 @@ import {
   validatePasswordComplexity,
   sanitizeInput,
   getClientIP,
+  timingSafeEqual,
 } from "./_core/security";
 
 /** A minimal stand-in for the parts of Express's Request that getClientIP reads. */
@@ -109,6 +110,38 @@ describe("Security Module", () => {
     it("should handle normal text without changes", () => {
       const result = sanitizeInput("Normal text without special chars");
       expect(result).toBe("Normal text without special chars");
+    });
+  });
+
+  describe("timingSafeEqual", () => {
+    // clay-webhook.ts, clay.ts and integrations-router.ts (Zapier) authenticate a
+    // publicProcedure webhook receiver by comparing a secret in the request against
+    // the configured value with a plain !==, the same shape of leak
+    // email-verification-router.ts's codesMatch already exists to close for guessed
+    // verification codes — here, succeeding grants write access to account data with
+    // no other check.
+    it("accepts the exact secret", () => {
+      expect(timingSafeEqual("wh_sec_abc123", "wh_sec_abc123")).toBe(true);
+    });
+
+    it("rejects a wrong secret of the same length", () => {
+      expect(timingSafeEqual("wh_sec_abc123", "wh_sec_abc124")).toBe(false);
+    });
+
+    it("rejects a length mismatch rather than throwing", () => {
+      // crypto.timingSafeEqual throws on differing buffer lengths; letting that
+      // escape would turn a short guess into a 500 and a right-length wrong guess
+      // into a clean 401, which is itself a signal an attacker can use to learn the
+      // secret's length.
+      expect(() => timingSafeEqual("wh_sec_abc123", "short")).not.toThrow();
+      expect(timingSafeEqual("wh_sec_abc123", "short")).toBe(false);
+      expect(timingSafeEqual("wh_sec_abc123", "wh_sec_abc123_and_then_some")).toBe(false);
+    });
+
+    it("rejects a missing secret without throwing", () => {
+      expect(timingSafeEqual("wh_sec_abc123", undefined)).toBe(false);
+      expect(timingSafeEqual("wh_sec_abc123", null)).toBe(false);
+      expect(timingSafeEqual("wh_sec_abc123", "")).toBe(false);
     });
   });
 });
