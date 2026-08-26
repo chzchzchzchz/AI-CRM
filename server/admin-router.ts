@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { isSixsenseConfigured } from "./sixsense";
 import { toPublicUser } from "./_core/publicUser";
-import { sendAccessApprovalEmail } from "./_core/email";
+import { sendAccessApprovalEmail, sendAccessDenialEmail } from "./_core/email";
 import { logAccessRequestApproved, logAccessRequestDenied } from "./_core/audit";
 import { getClientIP } from "./_core/security";
 
@@ -131,7 +131,17 @@ export const adminRouter = router({
       const [request] = await db.select().from(accessRequests).where(eq(accessRequests.id, input.requestId)).limit(1);
       await logAccessRequestDenied(ctx.user!.id, input.requestId, request?.email ?? "unknown", input.reason, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
 
-      return { success: true };
+      // sendAccessDenialEmail existed, fully built, and nothing called it — the
+      // approve path notifies the applicant (sendAccessApprovalEmail below), but a
+      // denied applicant got no notification at all, just silence. Same class of gap
+      // as audit.ts: a complete function only ever exercised by a test calling it
+      // directly, never wired into the real request path.
+      let emailSent = false;
+      if (request) {
+        emailSent = await sendAccessDenialEmail(request.email, request.name, input.reason).catch(() => false);
+      }
+
+      return { success: true, emailSent };
     }),
 
   // Get all users for admin management

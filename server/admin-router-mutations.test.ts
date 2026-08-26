@@ -108,6 +108,15 @@ describe("denyAccessRequest persists the reason", () => {
     expect(row.denialReason).toBe("Not a company email");
     expect(row.status).toBe("denied");
   });
+
+  it("reports emailSent, mirroring the approve path — the applicant was previously never notified of a denial", async () => {
+    await freshDbWithOneUser();
+    const { adminRouter } = await import("./admin-router");
+    const caller = adminRouter.createCaller(adminCtx());
+
+    const result = await caller.denyAccessRequest({ requestId: 701, reason: "Not a company email" });
+    expect(result).toHaveProperty("emailSent");
+  });
 });
 
 describe("approveAccessRequest — credential delivery", () => {
