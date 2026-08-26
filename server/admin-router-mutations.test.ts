@@ -32,7 +32,10 @@ afterEach(() => {
 
 const adminCtx = () => ({
   user: { id: 1, role: "admin" as const, email: "admin@example.com" },
-  req: {} as any,
+  // getClientIP (server/_core/security.ts) reads req.socket.remoteAddress — a real
+  // Express request always has this. approveAccessRequest/denyAccessRequest now call
+  // it to persist an audit log entry, which this mock previously had nothing for.
+  req: { headers: {}, socket: { remoteAddress: "127.0.0.1" } } as any,
   res: {} as any,
 });
 

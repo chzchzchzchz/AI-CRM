@@ -30,6 +30,11 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
     req: {
       protocol: "https",
       headers: {},
+      // getClientIP (server/_core/security.ts) reads req.socket.remoteAddress — a
+      // real Express request always has this; only this mock didn't, which crashed
+      // once auth.logout started calling it (to persist a logout event to the
+      // auditLogs table — previously nothing did).
+      socket: { remoteAddress: "127.0.0.1" },
     } as TrpcContext["req"],
     res: {
       clearCookie: (name: string, options: Record<string, unknown>) => {

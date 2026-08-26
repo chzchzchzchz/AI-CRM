@@ -8,6 +8,8 @@ import crypto from "crypto";
 import { isSixsenseConfigured } from "./sixsense";
 import { toPublicUser } from "./_core/publicUser";
 import { sendAccessApprovalEmail } from "./_core/email";
+import { logAccessRequestApproved, logAccessRequestDenied } from "./_core/audit";
+import { getClientIP } from "./_core/security";
 
 /**
  * Real mysql2 resolves `db.update(...)`/`db.delete(...)` to a `[ResultSetHeader, ...]`
@@ -96,6 +98,8 @@ export const adminRouter = router({
       const emailSent = await sendAccessApprovalEmail(request[0].email, request[0].name, tempPassword)
         .catch(() => false);
 
+      await logAccessRequestApproved(ctx.user!.id, input.requestId, request[0].email, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
+
       return { success: true, tempPassword, emailSent, email: request[0].email };
     }),
 
@@ -123,6 +127,9 @@ export const adminRouter = router({
         })
         .where(eq(accessRequests.id, input.requestId));
       if (affectedRows(result) === 0) throw new Error(`Request ${input.requestId} not found`);
+
+      const [request] = await db.select().from(accessRequests).where(eq(accessRequests.id, input.requestId)).limit(1);
+      await logAccessRequestDenied(ctx.user!.id, input.requestId, request?.email ?? "unknown", input.reason, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
 
       return { success: true };
     }),

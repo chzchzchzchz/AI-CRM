@@ -1,6 +1,7 @@
 import { router, publicProcedure } from "./_core/trpc";
-import { validatePasswordComplexity, logSecurityEvent, enforceSendCooldown } from "./_core/security";
+import { validatePasswordComplexity, logSecurityEvent, enforceSendCooldown, getClientIP } from "./_core/security";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./_core/email";
+import { logEmailVerified, logPasswordReset } from "./_core/audit";
 
 // The plaintext code is delivered by EMAIL. Only echo it back in the API response in demo
 // mode (so the demo works without a mailer). Returning it in production would let anyone
@@ -14,7 +15,12 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
 function generateVerificationCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  // Six digits is inherently low-entropy by design (it has to be human-typeable) —
+  // the real defense against guessing is enforceSendCooldown plus the code's short
+  // TTL, not the RNG. crypto.randomInt over Math.random() here for consistency with
+  // every other token in this file (generateResetCode already uses crypto.randomBytes)
+  // rather than because it changes the threat model materially.
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 function generateResetCode(): string {
@@ -67,7 +73,7 @@ export const emailVerificationRouter = router({
       userId: z.number(),
       code: z.string(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -115,6 +121,8 @@ export const emailVerificationRouter = router({
         .update(emailVerificationCodes)
         .set({ verified: true })
         .where(eq(emailVerificationCodes.id, verCode.id));
+
+      await logEmailVerified(input.userId, verCode.email, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
 
       // Note: Email verification does NOT auto-approve users
       // Admin must manually approve via the admin panel or email notification
@@ -209,10 +217,10 @@ export const emailVerificationRouter = router({
       code: z.string(),
       newPassword: z.string().min(8),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      
+
       // Validate password complexity
       const passwordError = validatePasswordComplexity(input.newPassword);
       if (passwordError) {
@@ -252,6 +260,7 @@ export const emailVerificationRouter = router({
         .where(eq(passwordResetCodes.id, code.id));
       
       logSecurityEvent("PASSWORD_RESET", { userId: code.userId, email: code.email }, "info");
+      await logPasswordReset(code.userId, code.email, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
 
       return { success: true };
     }),

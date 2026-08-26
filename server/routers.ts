@@ -42,6 +42,16 @@ import { notifyOwner } from "./_core/notification";
 import { getApprovalLinks } from "./admin-approval-api";
 import { hotLeadsRouter } from "./hot-leads-router";
 import { recordFailedLogin, clearLoginAttempts, getLoginLockout, validatePasswordComplexity, logSecurityEvent, getClientIP } from "./_core/security";
+// logSecurityEvent (above) only writes to console — ephemeral, gone on restart, no
+// admin UI reads it. auditLogs is the persisted, queryable table this app already
+// has a schema and a full set of typed logging helpers for — audit.ts's
+// logUserSignup/logUserLogin/etc. — but none of them were ever called from a real
+// request path; only a test exercised them directly, in isolation. Wiring the
+// security-relevant ones in here alongside the existing console logging, not instead
+// of it. (logAccessRequestCreated is not wired: its signature requires a userId, but
+// requestAccess below runs before any account exists — a mismatch in the original,
+// unused module that a synthetic id would only paper over.)
+import { logUserSignup, logUserLogin, logUserLogout } from "./_core/audit";
 import { twoFARouter } from "./twofa-router";
 import {
   createChallenge,
@@ -229,9 +239,12 @@ export const appRouter = router({
     // recovery-code blob included. Shipping it verbatim to the client meant every
     // signed-in user's browser held their own hash and TOTP secret on every page load.
     me: publicProcedure.query(opts => toPublicUser(opts.ctx.user)),
-    logout: publicProcedure.mutation(({ ctx }) => {
+    logout: publicProcedure.mutation(async ({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      if (ctx.user) {
+        await logUserLogout(ctx.user.id, ctx.user.email ?? "unknown", getClientIP(ctx.req), ctx.req.headers["user-agent"]);
+      }
       return {
         success: true,
       } as const;
@@ -244,10 +257,10 @@ export const appRouter = router({
         password: z.string().min(8),
         name: z.string().min(1),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
-        
+
         // Validate password complexity
         const passwordError = validatePasswordComplexity(input.password);
         if (passwordError) {
@@ -316,6 +329,8 @@ Or go to the Admin Panel: /admin/approval`
           console.error("Failed to send admin notification:", notifyError);
           // Don't fail the signup if notification fails
         }
+
+        await logUserSignup(Number(newUserId), normalizedEmail, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
 
         // The id is what lets the client request a verification code for the account it
         // just created. Without it the whole emailVerification router was unreachable —
@@ -399,6 +414,7 @@ Or go to the Admin Panel: /admin/approval`
         }
 
         logSecurityEvent("LOGIN_SUCCESS", { email: input.email, userId: user.id, ip: clientIP }, "info");
+        await logUserLogin(user.id, user.email, clientIP, ctx.req.headers["user-agent"]);
         return issueSession(ctx, user);
       }),
 
@@ -463,6 +479,7 @@ Or go to the Admin Panel: /admin/approval`
 
         consumeChallenge(input.challengeId);
         logSecurityEvent("LOGIN_SUCCESS", { userId: user.id, method: "2fa" }, "info");
+        await logUserLogin(user.id, user.email, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
         return issueSession(ctx, user);
       }),
 
