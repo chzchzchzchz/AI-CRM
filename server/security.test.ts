@@ -3,6 +3,7 @@ import {
   validatePasswordComplexity,
   sanitizeInput,
   getClientIP,
+  timingSafeStringEqual,
 } from "./_core/security";
 
 /** A minimal stand-in for the parts of Express's Request that getClientIP reads. */
@@ -87,6 +88,30 @@ describe("Security Module", () => {
     it("should accept complex passwords with all requirements", () => {
       const result = validatePasswordComplexity("Xk9#mLp2$vNq");
       expect(result).toBeNull();
+    });
+  });
+
+  describe("timingSafeStringEqual", () => {
+    // clay-webhook.ts, clay.ts, and integrations-router.ts (Zapier) all compared a
+    // caller-supplied webhook secret with plain !==, unlike email-verification-router's
+    // codesMatch — found via a file-by-file audit. This is the shared primitive both
+    // now use.
+    it("returns true for identical secrets", () => {
+      expect(timingSafeStringEqual("super-secret-token", "super-secret-token")).toBe(true);
+    });
+
+    it("returns false for a wrong secret of the same length", () => {
+      expect(timingSafeStringEqual("super-secret-token", "super-secret-tokeX")).toBe(false);
+    });
+
+    it("returns false for a wrong secret of a different length, without throwing", () => {
+      expect(() => timingSafeStringEqual("super-secret-token", "short")).not.toThrow();
+      expect(timingSafeStringEqual("super-secret-token", "short")).toBe(false);
+      expect(timingSafeStringEqual("super-secret-token", "")).toBe(false);
+    });
+
+    it("is not fooled by a numeric-vs-string type coercion edge case", () => {
+      expect(timingSafeStringEqual("123456", "123456")).toBe(true);
     });
   });
 

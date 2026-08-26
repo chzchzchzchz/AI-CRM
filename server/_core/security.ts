@@ -1,5 +1,21 @@
 import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
+import crypto from "crypto";
+
+/**
+ * Constant-time comparison for a caller-supplied secret against the expected value
+ * (webhook secrets, API tokens — anything where a `!==` comparison would let response
+ * timing leak how many leading characters a guess got right). Length is compared
+ * first because timingSafeEqual throws on a length mismatch; that branch only reveals
+ * length, which is fixed and public. Mirrors email-verification-router.ts's
+ * codesMatch — same primitive, generalized for secrets that aren't verification codes.
+ */
+export function timingSafeStringEqual(expected: string, provided: string): boolean {
+  const a = Buffer.from(String(expected));
+  const b = Buffer.from(String(provided));
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
 
 /**
  * Security middleware for the TargetDash
