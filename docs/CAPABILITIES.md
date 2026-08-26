@@ -8,11 +8,11 @@ Every backend capability, and whether anything in the product actually reaches i
 
 | | Count |
 |---|---|
-| Procedures total | 165 |
-| Reachable from the UI | 118 |
-| External by design (webhooks, probes, connector actions) | 44 |
+| Procedures total | 166 |
+| Reachable from the UI | 120 |
+| External by design (webhooks, probes, connector actions) | 43 |
 | **Built but not routed anywhere** | **0** |
-| ↳ exempted from that zero (maps in `server/inventory.ts`, plus the `integrations.*` rule) | 47 |
+| ↳ exempted from that zero (maps in `server/inventory.ts`, plus the `integrations.*` rule) | 46 |
 | ↳ of those, called only by unreachable client code | 0 |
 | Superseded by a live capability (kept, not a to-do) | 3 |
 | App routes | 34 |
@@ -57,6 +57,7 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `accounts.getById` | `pages/AccountDetail.tsx`, `pages/ContactDetail.tsx` |
 | `accounts.getStats` | `pages/Contacts.tsx`, `pages/Insights.tsx` |
 | `accounts.getTimeline` | `pages/AccountDetail.tsx` |
+| `admin.getSystemStatus` | `pages/Admin.tsx` |
 | `admin.getPendingRequests` | `pages/AdminApproval.tsx` |
 | `admin.approveAccessRequest` | `pages/AdminApproval.tsx` |
 | `admin.denyAccessRequest` | `pages/AdminApproval.tsx` |
@@ -103,6 +104,7 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `hotLeads.getByBuyingStage` | `components/HotLeadsWidget.tsx` |
 | `integrations.preflight` | `pages/Integrations.tsx` |
 | `integrations.status` | `pages/Integrations.tsx` |
+| `integrations.googleChatNotify` | `pages/Integrations.tsx` |
 | `integrations.slackNotify` | `pages/Integrations.tsx` |
 | `integrations.discordNotify` | `pages/Integrations.tsx` |
 | `integrations.teamsNotify` | `pages/Integrations.tsx` |
@@ -134,15 +136,15 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `sequences.save` | `pages/Sequences.tsx` |
 | `sequences.duplicate` | `pages/Sequences.tsx` |
 | `sequences.delete` | `pages/Sequences.tsx` |
-| `sixsense.syncAllAccounts` | `pages/SixsenseSync.tsx` |
-| `sixsense.getSyncStatus` | `pages/SixsenseSync.tsx` |
-| `sixsense.detectIntentSpikes` | `pages/SixsenseSync.tsx` |
+| `sixsense.syncAllAccounts` | `pages/Admin.tsx`, `pages/SixsenseSync.tsx` |
+| `sixsense.getSyncStatus` | `pages/Admin.tsx`, `pages/SixsenseSync.tsx` |
+| `sixsense.detectIntentSpikes` | `pages/Admin.tsx`, `pages/SixsenseSync.tsx` |
 | `sixsense.getRecentSpikes` | `components/WhatChanged.tsx` |
 | `sixsenseAnalytics.getBuyingStages` | `pages/Insights.tsx`, `pages/SixsenseAnalytics.tsx` |
 | `sixsenseAnalytics.getEngagement` | `pages/Insights.tsx`, `pages/SixsenseAnalytics.tsx` |
 | `sixsenseAnalytics.getKeywords` | `pages/Home.tsx`, `pages/Insights.tsx`, `pages/SixsenseAnalytics.tsx` |
 | `sixsenseAnalytics.get6QAPerformance` | `pages/Insights.tsx`, `pages/SixsenseAnalytics.tsx` |
-| `sixsenseAnalytics.getSummary` | `pages/Home.tsx`, `pages/SixsenseAnalytics.tsx` |
+| `sixsenseAnalytics.getSummary` | `pages/SixsenseAnalytics.tsx` |
 | `tools.uploadDocument` | `components/KnowledgeBase.tsx` |
 | `tools.getDocuments` | `components/KnowledgeBase.tsx` |
 | `tools.deleteDocument` | `components/KnowledgeBase.tsx` |
@@ -201,7 +203,6 @@ Not called by our UI, and should not be — these are entry points for other sys
 | `integrations.clickupCreateTask` | connector action (callable from automation/API) |
 | `integrations.pagerdutyTrigger` | connector action (callable from automation/API) |
 | `integrations.notifyHotLead` | connector action (callable from automation/API) |
-| `integrations.googleChatNotify` | connector action (callable from automation/API) |
 | `integrations.twilioSendSms` | connector action (callable from automation/API) |
 | `integrations.segmentTrack` | connector action (callable from automation/API) |
 | `integrations.hubspotSyncContact` | connector action (callable from automation/API) |
