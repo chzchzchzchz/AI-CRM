@@ -5,9 +5,48 @@
  * reports { ok:false, skipped:true } instead of throwing, so the app runs without them.
  */
 
+import dns from "node:dns/promises";
+import net from "node:net";
+
 type Result = { ok: boolean; status?: number; skipped?: boolean; error?: string; id?: string };
 
+// slackNotify/discordNotify/teamsNotify/googleChatNotify/sendWebhook all accept a
+// caller-supplied URL — any authenticated (not necessarily admin) user's webhookUrl
+// override. Without this, that's a straightforward SSRF: a rep could point it at
+// http://169.254.169.254/... (cloud metadata) or an internal-only service and use the
+// ok/status response as an oracle for what's reachable on the server's network.
+// Resolving the hostname and checking the actual IP (not just the literal string in
+// the URL) also blocks the "hostname that DNS-resolves to a private address" bypass a
+// naive string check would miss. This is a point-in-time check, not a fully
+// rebinding-proof one — Node's fetch does its own resolution after this passes — but
+// it closes the straightforward case, which is what every URL here needs.
+const BLOCKED_V4 = [
+  /^127\./, /^10\./, /^169\.254\./, /^192\.168\./,
+  /^172\.(1[6-9]|2\d|3[0-1])\./, /^0\./,
+];
+function isBlockedAddress(ip: string): boolean {
+  if (net.isIPv4(ip)) return BLOCKED_V4.some((re) => re.test(ip));
+  if (net.isIPv6(ip)) {
+    const norm = ip.toLowerCase();
+    return norm === "::1" || norm.startsWith("fe80:") || norm.startsWith("fc") || norm.startsWith("fd")
+      || norm.startsWith("::ffff:127.") || norm.startsWith("::ffff:10.") || norm.startsWith("::ffff:169.254.")
+      || norm.startsWith("::ffff:192.168.");
+  }
+  return false;
+}
+async function assertPublicUrl(url: string): Promise<void> {
+  const { hostname, protocol } = new URL(url);
+  if (protocol !== "http:" && protocol !== "https:") throw new Error("Only http(s) webhook URLs are allowed");
+  if (hostname === "localhost") throw new Error("Refusing to send a webhook to a private/internal address");
+  const literal = net.isIP(hostname) ? hostname : null;
+  const addresses = literal ? [literal] : (await dns.lookup(hostname, { all: true })).map((a) => a.address);
+  if (addresses.some(isBlockedAddress)) {
+    throw new Error("Refusing to send a webhook to a private/internal address");
+  }
+}
+
 async function post(url: string, body: any, headers: Record<string, string> = {}): Promise<Response> {
+  await assertPublicUrl(url);
   return fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...headers },
