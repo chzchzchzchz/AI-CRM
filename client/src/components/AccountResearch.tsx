@@ -73,6 +73,15 @@ export function AccountResearch({ accountId }: { accountId: number }) {
           </div>
         ) : research.isError ? (
           <p className="text-xs text-ink-muted">{research.error.message}</p>
+        ) : (research.data as { available?: boolean } | null)?.available === false ? (
+          // A genuine query-level throw is handled above by research.isError. This is
+          // the other failure shape: the query succeeded, but nothing was actually
+          // generated — the outage note is real data at the tRPC layer, and would
+          // otherwise render through SafeStreamdown indistinguishable from real
+          // research (see server/routers.ts compileResearch).
+          <p className="text-xs text-caution">
+            {(research.data as { insights?: string }).insights || "AI generation is unavailable right now."}
+          </p>
         ) : (
           <>
             {research.data?.cached && (

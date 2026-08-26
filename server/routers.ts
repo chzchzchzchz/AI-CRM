@@ -1037,12 +1037,31 @@ Or go to the Admin Panel: /admin/approval`
         });
 
         const { content: insights, available } = llmText(response);
-        const insightsText = available ? insights : LLM_UNAVAILABLE_NOTE;
-        
+
+        if (!available) {
+          // Nothing was actually generated. Caching this note for 24h (the block
+          // below) would serve the outage message to every viewer of this account
+          // for the rest of the day, even after the model comes back — and
+          // AccountResearch.tsx renders `insights` through SafeStreamdown with no
+          // separate check, so the note would read as real research, not an error.
+          // Same reasoning as bulk-insights-router.ts: leave any prior cache
+          // untouched and let the next view retry against a live model instead of
+          // freezing a failure in place.
+          return {
+            insights: LLM_UNAVAILABLE_NOTE,
+            rawTriggers: triggers,
+            rawNews: newsData,
+            available: false,
+            cached: false,
+            cacheAge: 0,
+          };
+        }
+
         const result = {
-          insights: insightsText,
+          insights,
           rawTriggers: triggers,
-          rawNews: newsData
+          rawNews: newsData,
+          available: true,
         };
 
         // Store in cache
