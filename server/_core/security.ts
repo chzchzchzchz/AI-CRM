@@ -1,10 +1,29 @@
 import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
+import crypto from "crypto";
 
 /**
  * Security middleware for the TargetDash
  * Implements rate limiting, brute force protection, and security headers
  */
+
+/**
+ * Constant-time comparison for a secret received in a request (a webhook token, an
+ * API key) against the configured value. A plain !== short-circuits at the first
+ * mismatched character, which can leak — through response timing — how many leading
+ * characters a guess got right. Same reasoning email-verification-router.ts's
+ * codesMatch already applies to guessed verification codes; this is the equivalent
+ * for the three publicProcedure webhook receivers (Clay ×2, Zapier) whose only
+ * authentication is comparing a shared secret, where succeeding grants write access
+ * to account data with no other check.
+ */
+export function timingSafeEqual(expected: string, provided: string | undefined | null): boolean {
+  if (!provided) return false;
+  const a = Buffer.from(expected);
+  const b = Buffer.from(provided);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
 
 // In-memory store for rate limiting (use Redis in production for multi-instance)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
