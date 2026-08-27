@@ -1,6 +1,6 @@
 # TargetDash
 
-**An AI account-intelligence layer for B2B sales, built as a personal project.**
+**An AI account-intelligence layer for B2B sales.**
 
 A sales rep opens this in the morning and sees which accounts moved, why they moved, and what to
 do about it — with the evidence for every claim attached. It sits on top of a CRM rather than
@@ -20,15 +20,13 @@ Sign in with `demo@ai-crm.com` / `DemoPass123!`. No database, no keys, no signup
 
 ## What's real vs. what's demo
 
-I'd rather you know before you click than find out after.
-
 | | Status |
 |---|---|
 | The app, routing, data model, AI pipeline, MCP server | Real, running, tested |
 | Demo dataset | Synthetic — deterministically generated, no real entities |
-| 6sense, Gong, Salesforce, Clay, + 20 other connectors | Real HTTP clients against documented APIs, exercised by unit tests with mocked transports. I have not run them against live paid accounts |
+| 6sense, Gong, Salesforce, Clay, + 20 other connectors | Real HTTP clients against documented APIs, exercised by unit tests with mocked transports. Not verified against live paid accounts |
 | AI features with no key set | Fall back to a local Ollama model; with nothing reachable they say so plainly |
-| Auth, 2FA, audit logging, rate limiting | Implemented and tested. Not audited by anyone but me |
+| Auth, 2FA, audit logging, rate limiting | Implemented and tested. Not independently audited |
 | Multi-tenancy, billing, onboarding | Not built. Not pretending to be |
 
 `pnpm doctor` reads your `.env` and tells you which integrations are actually ready, which are
@@ -149,7 +147,8 @@ data. See [`SECURITY.md`](SECURITY.md).
 ## Known limitations
 
 - **Connectors are unproven against live paid accounts.** The clients are real and unit-tested
-  against mocked transports; I don't have enterprise 6sense/Gong tenants to integration-test with.
+  against mocked transports, but no enterprise 6sense/Gong tenant was available to
+  integration-test against.
 - **Single-tenant.** There's no org isolation, so it's one deployment per team.
 - **The AI quality depends entirely on the model you point it at.** The grounding work constrains
   what a model can claim; it can't make a weak local model insightful.
