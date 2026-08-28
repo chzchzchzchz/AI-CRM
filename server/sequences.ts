@@ -113,6 +113,11 @@ export const sequencesRouter = router({
           .limit(1);
         if (!existing[0]) throw new Error("Sequence not found");
 
+        // The select above already confirmed this id belongs to the caller, so this
+        // isn't currently reachable with someone else's id — but scope the write
+        // directly anyway, same as delete() below and the same reasoning as
+        // follow-ups.ts's snooze: relying solely on a preceding check becomes a real
+        // gap the moment that check is ever simplified away.
         await db
           .update(sequences)
           .set({
@@ -121,7 +126,7 @@ export const sequencesRouter = router({
             steps: stepsJson,
             updatedAt: new Date(),
           })
-          .where(eq(sequences.id, input.id));
+          .where(and(eq(sequences.id, input.id), eq(sequences.createdBy, ctx.user.id)));
 
         return { id: input.id, name: input.name };
       }
