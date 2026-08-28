@@ -320,6 +320,55 @@ function mergeExisting(existing: any, passed: any, duplicateUpdate: any): any {
   return merged;
 }
 
+/**
+ * Whether one row matches one parsed filter — the single place this store decides
+ * what eq/gt/lt/gte/lte/isNull/isNotNull/inArray mean, used by select, update, and
+ * delete alike. Previously each operation duplicated its own inline version; select's
+ * knew about is_null/in, update's and delete's didn't, and none of the three knew
+ * about gt/lt/gte/lte at all — every comparison operator silently became string
+ * equality. Confirmed live via db-dust.ts's cache-expiry filter, which could never
+ * match a row its own write path had just inserted. One shared function means this
+ * class of bug can't be fixed in one operation while still present in another.
+ */
+function matchesFilter(item: any, filter: { field: string; value: any; op?: string; values?: any[] }): boolean {
+  const raw = item[filter.field];
+  switch (filter.op) {
+    case 'is_not_null':
+      return raw !== null && raw !== undefined;
+    case 'is_null':
+      return raw === null || raw === undefined;
+    case 'in': {
+      const set = new Set((filter.values || []).map((v: any) => String(v)));
+      return set.has(String(raw));
+    }
+    case 'gt':
+    case 'lt':
+    case 'gte':
+    case 'lte': {
+      // Rows in the JSON store keep date columns as ISO strings until the
+      // post-select parse step converts them — compare as timestamps when either
+      // side looks like a date, otherwise as numbers.
+      if (raw === null || raw === undefined) return false;
+      const rawFilter = filter.value;
+      let a: number, b: number;
+      if (rawFilter instanceof Date || raw instanceof Date || /^\d{4}-\d{2}-\d{2}T/.test(String(raw))) {
+        a = new Date(raw).getTime();
+        b = new Date(rawFilter).getTime();
+      } else {
+        a = Number(raw);
+        b = Number(rawFilter);
+      }
+      if (Number.isNaN(a) || Number.isNaN(b)) return false;
+      if (filter.op === 'gt') return a > b;
+      if (filter.op === 'lt') return a < b;
+      if (filter.op === 'gte') return a >= b;
+      return a <= b; // lte
+    }
+    default:
+      return filter.value !== undefined ? String(raw) === String(filter.value) : true;
+  }
+}
+
 class MockDrizzleQueryBuilder {
   private operation: 'select' | 'insert' | 'update' | 'delete';
   private tableName: string = '';
@@ -375,7 +424,18 @@ class MockDrizzleQueryBuilder {
       const inValues = condition.queryChunks.find((chunk: any) => Array.isArray(chunk));
 
       if (column) {
-        const field = column.name;
+        // column.name is the SQL column name as declared (e.g. varchar('query_hash', ...)),
+        // not necessarily the JS property key used everywhere else in this file — insert()
+        // stores rows keyed by the JS property (queryHash), and every other table in this
+        // schema happens to declare its SQL name identical to its JS key, which is what hid
+        // this: dustCache is the one table that doesn't (query_hash vs queryHash), and every
+        // filter against it silently matched a field that was never in the stored row.
+        // Reference-match the column chunk back to its JS key in the table schema so this
+        // works regardless of whether a table's SQL and JS names happen to agree.
+        const jsKey = this.tableSchema
+          ? Object.keys(this.tableSchema).find(k => this.tableSchema[k] === column)
+          : undefined;
+        const field = jsKey ?? column.name;
         if (inValues) {
           this.filters.push({
             field,
@@ -384,7 +444,27 @@ class MockDrizzleQueryBuilder {
             values: inValues.map((p: any) => (p && typeof p === 'object' && 'value' in p ? p.value : p)),
           });
         } else if (scalarParam) {
-          this.filters.push({ field, value: scalarParam.value });
+          // The chunk between column and param carries the actual SQL operator as
+          // text (" = ", " > ", " < ", " >= ", " <= ") — eq/gt/lt/gte/lte all reach
+          // this branch identically (each has exactly one column and one scalar
+          // param), and this used to fall through to a bare {field, value}, which
+          // execute() below always evaluates as string equality regardless of what
+          // the original condition actually was. A gt()/lt()/gte()/lte() against the
+          // demo-mode JSON store silently became an equality check — confirmed live
+          // via db-dust.ts's cache-expiry filter, which could never match anything
+          // its own write path had just inserted. Read the operator text the same
+          // way the is-null / is-not-null branch below already does.
+          const opText = condition.queryChunks
+            .filter((c: any) => c && Array.isArray(c.value))
+            .map((c: any) => c.value.join(''))
+            .join('');
+          const op =
+            opText.includes('>=') ? 'gte' :
+            opText.includes('<=') ? 'lte' :
+            opText.includes('>') ? 'gt' :
+            opText.includes('<') ? 'lt' :
+            'eq';
+          this.filters.push({ field, value: scalarParam.value, op });
         } else {
           // No literal value chunk — either an isNotNull()/isNull() condition (a text
           // chunk carries "is not null" / "is null", no Param) or a column-to-column
@@ -446,9 +526,33 @@ class MockDrizzleQueryBuilder {
   }
 
   orderBy(orderExpr: any) {
-    if (orderExpr) {
-      this.orderByField = orderExpr.name || orderExpr.fieldName || '';
-      this.orderDirection = orderExpr.direction || 'asc';
+    if (!orderExpr) return this;
+
+    // A bare column (orderBy(accounts.name)) exposes .name/.table directly. desc()/
+    // asc() wrap it instead — d.name and d.fieldName are both undefined on the
+    // wrapper, which meant EVERY orderBy(desc(...))/orderBy(asc(...)) call against
+    // the demo-mode JSON store silently sorted nothing at all (orderByField stayed
+    // '', and the sort step below skips entirely when it's falsy). The column is
+    // still there, one level in via queryChunks; direction is the trailing " desc"/
+    // " asc" text chunk. Reference-map the column back to its JS key the same way
+    // parseCondition does, since a table's SQL column name isn't always its JS
+    // property name (dustCache: query_hash vs queryHash).
+    const column = orderExpr.table && orderExpr.name
+      ? orderExpr
+      : (orderExpr.queryChunks || []).find((c: any) => c && c.table && c.name);
+
+    if (column) {
+      const jsKey = this.tableSchema
+        ? Object.keys(this.tableSchema).find(k => this.tableSchema[k] === column)
+        : undefined;
+      this.orderByField = jsKey ?? column.name;
+
+      const dirText = (orderExpr.queryChunks || [])
+        .filter((c: any) => c && Array.isArray(c.value))
+        .map((c: any) => c.value.join(''))
+        .join('')
+        .toLowerCase();
+      this.orderDirection = dirText.includes('desc') ? 'desc' : 'asc';
     }
     return this;
   }
@@ -479,16 +583,7 @@ class MockDrizzleQueryBuilder {
 
       // Apply filters
       for (const filter of this.filters) {
-        if (filter.op === 'is_not_null') {
-          results = results.filter((item: any) => item[filter.field] !== null && item[filter.field] !== undefined);
-        } else if (filter.op === 'is_null') {
-          results = results.filter((item: any) => item[filter.field] === null || item[filter.field] === undefined);
-        } else if (filter.op === 'in') {
-          const set = new Set((filter.values || []).map((v: any) => String(v)));
-          results = results.filter((item: any) => set.has(String(item[filter.field])));
-        } else if (filter.value !== undefined) {
-          results = results.filter((item: any) => String(item[filter.field]) === String(filter.value));
-        }
+        results = results.filter((item: any) => matchesFilter(item, filter));
       }
 
       // Handle sorting
@@ -664,20 +759,7 @@ class MockDrizzleQueryBuilder {
 
       for (let i = 0; i < tableData.length; i++) {
         const item = tableData[i];
-        let matches = true;
-        for (const filter of this.filters) {
-          if (filter.op === 'is_not_null') {
-            if (item[filter.field] === null || item[filter.field] === undefined) {
-              matches = false;
-              break;
-            }
-          } else if (filter.value !== undefined) {
-            if (String(item[filter.field]) !== String(filter.value)) {
-              matches = false;
-              break;
-            }
-          }
-        }
+        const matches = this.filters.every(filter => matchesFilter(item, filter));
         if (matches) {
           tableData[i] = {
             ...item,
@@ -696,20 +778,7 @@ class MockDrizzleQueryBuilder {
     if (this.operation === 'delete') {
       const originalLength = tableData.length;
       const newTableData = tableData.filter((item: any) => {
-        let matches = true;
-        for (const filter of this.filters) {
-          if (filter.op === 'is_not_null') {
-            if (item[filter.field] === null || item[filter.field] === undefined) {
-              matches = false;
-              break;
-            }
-          } else if (filter.value !== undefined) {
-            if (String(item[filter.field]) !== String(filter.value)) {
-              matches = false;
-              break;
-            }
-          }
-        }
+        const matches = this.filters.every(filter => matchesFilter(item, filter));
         return !matches;
       });
       const deletedCount = originalLength - newTableData.length;

@@ -1,6 +1,6 @@
 import { getDb } from "./db";
 import { dustCache } from "../drizzle/schema";
-import { eq, and, isNull, gt } from "drizzle-orm";
+import { eq, and, gt, lt } from "drizzle-orm";
 import crypto from "crypto";
 
 /**
@@ -23,6 +23,11 @@ export async function getCachedDustResponse(
   if (!db) return null;
 
   try {
+    // cacheDustResponse (below) always writes a real expiresAt — never null — so
+    // filtering on isNull(expiresAt) here meant this could never match anything it
+    // wrote; every lookup was an unconditional cache miss. Confirmed live via the
+    // file-by-file sweep: the read and write paths disagreed about what "not
+    // expired" looks like. gt(expiresAt, now) is what "still valid" actually means.
     const cached = await db
       .select()
       .from(dustCache)
@@ -31,7 +36,7 @@ export async function getCachedDustResponse(
           eq(dustCache.queryHash, queryHash),
           accountId ? eq(dustCache.accountId, accountId) : undefined,
           contactId ? eq(dustCache.contactId, contactId) : undefined,
-          isNull(dustCache.expiresAt)
+          gt(dustCache.expiresAt, new Date())
         )
       )
       .limit(1);
@@ -86,9 +91,12 @@ export async function clearExpiredDustCache(): Promise<number> {
   if (!db) return 0;
 
   try {
+    // gt(expiresAt, now) matches rows that have NOT yet expired — this deleted the
+    // still-valid cache and left the actually-expired rows behind, the exact
+    // opposite of what "clear expired" means. lt is "expired before now".
     await db
       .delete(dustCache)
-      .where(gt(dustCache.expiresAt, new Date()));
+      .where(lt(dustCache.expiresAt, new Date()));
     return 0; // MySQL doesn't return rowsAffected directly
   } catch (error) {
     console.error("Error clearing expired Dust cache:", error);
