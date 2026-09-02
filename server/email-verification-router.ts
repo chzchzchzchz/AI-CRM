@@ -41,7 +41,7 @@ export const emailVerificationRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ input }) => {
-      enforceSendCooldown(`verify:${input.email}`);
+      await enforceSendCooldown(`verify:${input.email}`);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -148,7 +148,7 @@ export const emailVerificationRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ input }) => {
-      enforceSendCooldown(`verify:${input.email}`);
+      await enforceSendCooldown(`verify:${input.email}`);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -175,7 +175,7 @@ export const emailVerificationRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ input }) => {
-      enforceSendCooldown(`reset:${input.email}`);
+      await enforceSendCooldown(`reset:${input.email}`);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

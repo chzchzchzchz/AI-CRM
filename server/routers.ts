@@ -353,7 +353,7 @@ Or go to the Admin Panel: /admin/approval`
         // Keyed by (IP, account): keying by IP alone meant any successful login from a
         // shared IP (office NAT, VPN, CGNAT) wiped out an attacker's accumulated failed
         // attempts against a DIFFERENT account on that same IP — see security.ts.
-        const lockout = getLoginLockout(clientIP, normalizedEmail);
+        const lockout = await getLoginLockout(clientIP, normalizedEmail);
         if (lockout.locked) {
           logSecurityEvent("LOGIN_LOCKED", { email: input.email, ip: clientIP }, "warn");
           throw new Error(`Too many login attempts. Try again in ${Math.ceil(lockout.retryAfterSeconds / 60)} minute(s).`);
@@ -364,7 +364,7 @@ Or go to the Admin Panel: /admin/approval`
 
         if (!user || !user.passwordHash) {
           // Record failed attempt
-          recordFailedLogin(clientIP, normalizedEmail);
+          await recordFailedLogin(clientIP, normalizedEmail);
           logSecurityEvent("LOGIN_FAILED", { email: input.email, reason: "user_not_found", ip: clientIP }, "warn");
           throw new Error("Invalid email or password");
         }
@@ -373,7 +373,7 @@ Or go to the Admin Panel: /admin/approval`
         const isValid = await bcrypt.compare(input.password, user.passwordHash);
         if (!isValid) {
           // Record failed attempt
-          recordFailedLogin(clientIP, normalizedEmail);
+          await recordFailedLogin(clientIP, normalizedEmail);
           logSecurityEvent("LOGIN_FAILED", { email: input.email, reason: "invalid_password", ip: clientIP }, "warn");
           throw new Error("Invalid email or password");
         }
@@ -384,7 +384,7 @@ Or go to the Admin Panel: /admin/approval`
         }
 
         // Clear failed login attempts on successful login
-        clearLoginAttempts(clientIP, normalizedEmail);
+        await clearLoginAttempts(clientIP, normalizedEmail);
 
         // The password was right. If this account has a second factor, that is not
         // enough on its own — issue a short-lived challenge instead of a session.
@@ -400,7 +400,7 @@ Or go to the Admin Panel: /admin/approval`
           return {
             success: false as const,
             twoFactorRequired: true as const,
-            challengeId: createChallenge(user.id),
+            challengeId: await createChallenge(user.id),
           };
         }
 
@@ -432,7 +432,7 @@ Or go to the Admin Panel: /admin/approval`
         const db = await getDb();
         if (!db) throw new Error("Database not available");
 
-        const claim = claimChallengeAttempt(input.challengeId);
+        const claim = await claimChallengeAttempt(input.challengeId);
         if (!claim.ok) {
           throw new Error(
             claim.reason === "exhausted"
@@ -475,7 +475,7 @@ Or go to the Admin Panel: /admin/approval`
           throw new Error("That code is not valid");
         }
 
-        consumeChallenge(input.challengeId);
+        await consumeChallenge(input.challengeId);
         logSecurityEvent("LOGIN_SUCCESS", { userId: user.id, method: "2fa" }, "info");
         return issueSession(ctx, user);
       }),

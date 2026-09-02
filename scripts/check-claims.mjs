@@ -593,7 +593,69 @@ function walk(dir, exts, acc = []) {
     : ok("README headline stats");
 }
 
-/* --------------------------------------------------------------- 14. report */
+/* ------------------------------------------------------ 14. shared auth state */
+/**
+ * Auth throttling state must not live in a module-level Map.
+ *
+ * Rate limiting, login lockout, the send cooldown and 2FA challenges were four
+ * module-level Maps. Correct for exactly one process, and silently wrong for two: each
+ * instance keeps its own counters, so an attacker gets N instances x 5 login attempts,
+ * and a 2FA challenge minted by one instance cannot be redeemed by another. Nothing in
+ * the app surfaces either failure — it looks like it is throttling and isn't.
+ *
+ * They now go through server/_core/shared-store.ts, which is per-process by default and
+ * Redis-backed when REDIS_URL is set. The regression to catch is someone adding the
+ * fifth one: a `const x = new Map()` at module scope in an auth file is how all four of
+ * the originals got there, one reasonable-looking commit at a time.
+ */
+{
+  const AUTH_FILES = [
+    "server/_core/security.ts",
+    "server/twofa.ts",
+    "server/email-verification-router.ts",
+  ];
+
+  // In-process concurrency primitives are not throttling state and are exempt by name.
+  // Anything else holding auth state per process is the bug this rule exists for.
+  const ALLOWED = new Set(["userLocks"]);
+
+  const offenders = [];
+  for (const rel of AUTH_FILES) {
+    const abs = path.join(ROOT, rel);
+    if (!fs.existsSync(abs)) {
+      offenders.push(`${rel}: listed here but missing — update this rule or restore the file`);
+      continue;
+    }
+    const src = stripComments(fs.readFileSync(abs, "utf8"));
+
+    // Module scope only: an indented `new Map()` is a local inside some function.
+    for (const m of src.matchAll(/^(?:const|let|var)\s+(\w+)\s*(?::[^=]+)?=\s*new\s+Map\b/gm)) {
+      if (!ALLOWED.has(m[1])) {
+        offenders.push(
+          `${rel}: \`${m[1]}\` is a module-level Map — per-process state that a second ` +
+            `instance silently does not share. Use getStore() from _core/shared-store.`
+        );
+      }
+    }
+
+    // The store is the only sanctioned home for this state, so an auth file that
+    // throttles must reach it. Catches the other direction: state moved into a fresh
+    // module-level object/array literal to dodge the Map check above.
+    const throttles = /\b(lockout|cooldown|rateLimit|challenge)/i.test(src);
+    if (throttles && !/from\s+["'][^"']*shared-store["']/.test(src)) {
+      offenders.push(
+        `${rel}: holds throttling state but never imports shared-store — ` +
+          `per-instance counters are not enforcement across instances`
+      );
+    }
+  }
+
+  offenders.length
+    ? fail("Auth throttling state is shared", offenders.join("\n    "))
+    : ok("Auth throttling state is shared");
+}
+
+/* --------------------------------------------------------------- 15. report */
 for (const c of checks) console.log(`  ✓ ${c}`);
 for (const f of failures) console.log(`  ✘ ${f.rule}\n    ${f.detail}`);
 

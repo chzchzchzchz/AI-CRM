@@ -26,8 +26,8 @@ const MARK: Record<Severity, string> = {
   "not-configured": dim("·"),
 };
 
-function main() {
-  const report = buildReport();
+async function main() {
+  const report = await buildReport();
 
   console.log();
   console.log(bold("  Setup check"));

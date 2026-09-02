@@ -11,6 +11,7 @@
 
 import { CONNECTORS, COMMON_PLACEHOLDERS, type ConnectorSpec, type EnvSpec } from "./registry";
 import { isWeakSecret } from "@shared/weak-secret";
+import { probeStore } from "../_core/shared-store";
 
 export type Severity = "ready" | "incomplete" | "invalid" | "not-configured";
 
@@ -200,9 +201,25 @@ export type PreflightReport = {
   counts: Record<Severity, number> & { coreProblems: number };
 };
 
-export function buildReport(env: NodeJS.ProcessEnv = process.env): PreflightReport {
+export async function buildReport(env: NodeJS.ProcessEnv = process.env): Promise<PreflightReport> {
   const connectors = runPreflight(env);
   const core = checkCore(env);
+
+  // Asked of the live store rather than derived from `env`: whether state is actually
+  // shared depends on whether Redis answers, which no amount of reading a string tells
+  // you. An operator running two pods behind a REDIS_URL that silently never connected
+  // gets N × the login attempts they configured, and nothing else in the app says so.
+  const shared = await probeStore();
+  core.push({
+    name: "Auth state",
+    ok: shared.shared || !shared.configured,
+    message: shared.detail,
+    fix: shared.configured
+      ? shared.shared
+        ? undefined
+        : "Check REDIS_URL is reachable from this host, or unset it and run a single instance."
+      : "Only needed for more than one instance: REDIS_URL=redis://host:6379",
+  });
   const counts = {
     ready: 0,
     incomplete: 0,

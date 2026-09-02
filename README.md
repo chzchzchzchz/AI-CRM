@@ -6,7 +6,7 @@ A sales rep opens this in the morning and sees which accounts moved, why they mo
 do about it — with the evidence for every claim attached. It sits on top of a CRM rather than
 replacing one.
 
-`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 452 tests, ~54k lines,
+`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 498 tests, ~54k lines,
 runs with zero API keys.
 
 ```bash
@@ -137,6 +137,9 @@ Written down honestly, because a self-hosted app that reads your CRM deserves th
 - `SameSite` negotiated per request (`None; Secure` over HTTPS, `Lax` over plain HTTP)
 - A weak or missing `JWT_SECRET` refuses to sign in production
 - CORS hardened; rate limiting scoped to `/api` so static assets can't exhaust a real user's budget
+- Login lockout, rate limiting and 2FA challenges share one store — per-process by default,
+  Redis when `REDIS_URL` is set, so throttling holds across instances instead of being
+  N × looser per pod. `pnpm doctor` proves which mode is live with a real round trip
 - `pnpm audit` clean, and CI keeps it that way
 
 `DEMO_MODE=true` bypasses authentication by design. Never run it on a public deployment with real

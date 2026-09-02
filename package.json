@@ -66,6 +66,7 @@
     "drizzle-kit": "^0.31.1",
     "drizzle-orm": "^0.45.2",
     "express": "^4.21.2",
+    "ioredis": "^6.0.0",
     "jose": "^6.1.0",
     "lucide-react": "^0.453.0",
     "mysql2": "^3.16.2",

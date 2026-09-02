@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import crypto from "crypto";
+import { getStore } from "./shared-store";
 
 /**
  * Security middleware for the TargetDash
@@ -25,9 +26,9 @@ export function timingSafeEqual(expected: string, provided: string | undefined |
   return crypto.timingSafeEqual(a, b);
 }
 
-// In-memory store for rate limiting (use Redis in production for multi-instance)
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
-const loginAttemptStore = new Map<string, { count: number; lockUntil: number }>();
+// Rate limiting, lockout and cooldown state all live in the shared store (see
+// server/_core/shared-store.ts): in-memory by default, Redis when REDIS_URL is set, so
+// throttling holds across instances instead of being reset per pod.
 
 // Configuration
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
@@ -135,66 +136,43 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
  */
 export function rateLimiter(req: Request, res: Response, next: NextFunction) {
   const clientIP = getClientIP(req);
-  const now = Date.now();
-  
-  // Clean up expired entries periodically
-  if (Math.random() < 0.01) {
-    cleanupExpiredEntries(rateLimitStore, "resetTime");
-  }
-  
-  const record = rateLimitStore.get(clientIP);
-  
-  if (!record || now > record.resetTime) {
-    // New window
-    rateLimitStore.set(clientIP, {
-      count: 1,
-      resetTime: now + RATE_LIMIT_WINDOW_MS,
+
+  // Not awaited by Express: this is a middleware, so the promise is handled here and
+  // `next()` is called from inside it. A store failure must not wedge the request —
+  // it fails OPEN (serves the request) rather than locking everyone out of the app
+  // because Redis blipped. The login lockout below is the control that fails closed.
+  void getStore()
+    .increment(`ratelimit:${clientIP}`, RATE_LIMIT_WINDOW_MS)
+    .then(async (count) => {
+      if (count <= RATE_LIMIT_MAX_REQUESTS) return next();
+      const remaining = await getStore().ttl(`ratelimit:${clientIP}`);
+      res.status(429).json({
+        error: "Too many requests",
+        message: "Please try again later",
+        retryAfter: Math.max(1, Math.ceil(remaining / 1000)),
+      });
+    })
+    .catch((err) => {
+      console.error("[Security] rate limit store unavailable, allowing request:", err?.message);
+      next();
     });
-    next();
-    return;
-  }
-  
-  if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
-    res.status(429).json({
-      error: "Too many requests",
-      message: "Please try again later",
-      retryAfter: Math.ceil((record.resetTime - now) / 1000),
-    });
-    return;
-  }
-  
-  record.count++;
-  next();
 }
 
-/**
- * Login-specific rate limiting (brute force protection)
- * More aggressive limiting for authentication endpoints
+/*
+ * `loginRateLimiter` used to live here. It was removed rather than ported, because it
+ * was both unmounted and incapable of working:
+ *
+ *   - Nothing ever called `app.use(loginRateLimiter)`. The only surviving reference was
+ *     a comment in routers.ts explaining that it "only guards express routes" — but
+ *     there are no express auth routes, so it guarded nothing.
+ *   - It looked up `loginAttemptStore.get(clientIP)`, a bare-IP key. Since #40 moved the
+ *     lockout to per-(IP, account) keys (`ip::email`), no such key is ever written, so
+ *     the lookup could only ever miss and call next().
+ *
+ * The real control is `getLoginLockout`, enforced on the tRPC login path where the
+ * account being attacked is actually known. Porting a dead no-op to the shared store
+ * would have produced async dead code and a false impression of a second defence layer.
  */
-export function loginRateLimiter(req: Request, res: Response, next: NextFunction) {
-  const clientIP = getClientIP(req);
-  const now = Date.now();
-  
-  // Clean up expired entries periodically
-  if (Math.random() < 0.05) {
-    cleanupExpiredEntries(loginAttemptStore, "lockUntil");
-  }
-  
-  const record = loginAttemptStore.get(clientIP);
-  
-  // Check if currently locked out
-  if (record && record.lockUntil > now) {
-    const remainingSeconds = Math.ceil((record.lockUntil - now) / 1000);
-    res.status(429).json({
-      error: "Account temporarily locked",
-      message: `Too many login attempts. Please try again in ${Math.ceil(remainingSeconds / 60)} minutes.`,
-      retryAfter: remainingSeconds,
-    });
-    return;
-  }
-  
-  next();
-}
 
 /**
  * The lockout used to be keyed by IP alone, and clearLoginAttempts deleted the whole
@@ -216,87 +194,70 @@ function lockoutKey(clientIP: string, email: string): string {
  * Record a failed login attempt
  * Call this after a failed login
  */
-export function recordFailedLogin(clientIP: string, email: string): void {
-  const key = lockoutKey(clientIP, email);
-  const now = Date.now();
-  const record = loginAttemptStore.get(key);
+export async function recordFailedLogin(clientIP: string, email: string): Promise<void> {
+  const key = `lockout:${lockoutKey(clientIP, email)}`;
 
-  // Start fresh only when there is no record, or a PRIOR lockout has since expired.
-  // (The old check `record.lockUntil < now` was always true while lockUntil was 0, so the
-  // counter reset to 1 on every failure and the lockout never triggered.)
-  if (!record || (record.lockUntil > 0 && record.lockUntil <= now)) {
-    loginAttemptStore.set(key, { count: 1, lockUntil: 0 });
-    return;
-  }
+  // A TTL-bearing counter rather than a {count, lockUntil} record read-modify-written in
+  // place. Two reasons. It is atomic, so two simultaneous failures can't both read 4 and
+  // both write 5 — the same lost-update shape already fixed for the email-verification
+  // attempt cap. And it is expressible in one round trip, so it holds across instances.
+  //
+  // Behaviour is preserved exactly: the counter lives LOGIN_LOCKOUT_MS from the first
+  // failure, and every failure at or above the cap re-extends it — which is what the old
+  // `record.lockUntil = now + LOGIN_LOCKOUT_MS` on each such failure did.
+  const count = await getStore().increment(key, LOGIN_LOCKOUT_MS);
 
-  record.count++;
-
-  if (record.count >= LOGIN_MAX_ATTEMPTS) {
-    record.lockUntil = now + LOGIN_LOCKOUT_MS;
-    console.warn(`[Security] ${key} locked out after ${record.count} failed login attempts`);
+  if (count >= LOGIN_MAX_ATTEMPTS) {
+    await getStore().expire(key, LOGIN_LOCKOUT_MS);
+    console.warn(`[Security] ${lockoutKey(clientIP, email)} locked out after ${count} failed login attempts`);
   }
 }
 
 // Per-key send cooldown (e.g. verification / reset emails) to stop an attacker using a
-// configured mailer to bomb a victim's inbox. In-memory is fine for a single instance.
-const sendCooldownStore = new Map<string, number>();
+// configured mailer to bomb a victim's inbox.
 const SEND_COOLDOWN_MS = 60 * 1000;
 
 /**
  * Throws if `key` (e.g. "verify:<email>") was used within the cooldown window; otherwise
  * records "now" and returns. Call before dispatching a verification/reset email.
  */
-export function enforceSendCooldown(key: string, cooldownMs = SEND_COOLDOWN_MS): void {
-  const now = Date.now();
-  const last = sendCooldownStore.get(key);
-  if (last && now - last < cooldownMs) {
-    const wait = Math.ceil((cooldownMs - (now - last)) / 1000);
-    throw new Error(`Please wait ${wait}s before requesting another code.`);
+export async function enforceSendCooldown(key: string, cooldownMs = SEND_COOLDOWN_MS): Promise<void> {
+  const storeKey = `cooldown:${key}`;
+  const remaining = await getStore().ttl(storeKey);
+  if (remaining > 0) {
+    throw new Error(`Please wait ${Math.ceil(remaining / 1000)}s before requesting another code.`);
   }
-  sendCooldownStore.set(key, now);
-  if (sendCooldownStore.size > 5000) {
-    for (const [k, t] of sendCooldownStore) if (now - t > cooldownMs) sendCooldownStore.delete(k);
-  }
+  await getStore().set(storeKey, 1, cooldownMs);
 }
 
 /**
- * Whether an IP is currently locked out from logging in, with the remaining seconds.
- * The tRPC login path calls this to ENFORCE the lockout — the express loginRateLimiter
- * only guards express routes, not the tRPC endpoint.
+ * Whether an (IP, account) pair is currently locked out, with the remaining seconds.
+ * The tRPC login path calls this to ENFORCE the lockout; there is no express route to
+ * guard, so this is the only enforcement point.
+ *
+ * Deliberately fails CLOSED, unlike `rateLimiter` above: if the store is unreachable
+ * this throws and login is unavailable, rather than silently admitting unlimited
+ * password guesses. The opposite choice for volume-based `/api` throttling is what the
+ * two controls are for — losing coarse request limiting for a few seconds is an
+ * annoyance, losing brute-force protection on the password endpoint is the attack.
  */
-export function getLoginLockout(clientIP: string, email: string): { locked: boolean; retryAfterSeconds: number } {
-  const record = loginAttemptStore.get(lockoutKey(clientIP, email));
-  const now = Date.now();
-  if (record && record.lockUntil > now) {
-    return { locked: true, retryAfterSeconds: Math.ceil((record.lockUntil - now) / 1000) };
-  }
-  return { locked: false, retryAfterSeconds: 0 };
+export async function getLoginLockout(
+  clientIP: string,
+  email: string,
+): Promise<{ locked: boolean; retryAfterSeconds: number }> {
+  const key = `lockout:${lockoutKey(clientIP, email)}`;
+  const count = (await getStore().get<number>(key)) ?? 0;
+  if (count < LOGIN_MAX_ATTEMPTS) return { locked: false, retryAfterSeconds: 0 };
+  const remaining = await getStore().ttl(key);
+  return { locked: true, retryAfterSeconds: Math.max(1, Math.ceil(remaining / 1000)) };
 }
 
 /**
  * Clear login attempts after successful login — only for the (IP, account) pair that
  * just succeeded, never the whole IP.
  */
-export function clearLoginAttempts(clientIP: string, email: string): void {
-  loginAttemptStore.delete(lockoutKey(clientIP, email));
-}
-
-/**
- * Clean up expired entries from a store
- */
-function cleanupExpiredEntries(
-  store: Map<string, { count: number; resetTime?: number; lockUntil?: number }>,
-  timeField: "resetTime" | "lockUntil"
-): void {
-  const now = Date.now();
-  const keysToDelete: string[] = [];
-  store.forEach((value, key) => {
-    const expireTime = value[timeField];
-    if (expireTime && expireTime < now) {
-      keysToDelete.push(key);
-    }
-  });
-  keysToDelete.forEach(key => store.delete(key));
+export async function clearLoginAttempts(clientIP: string, email: string): Promise<void> {
+  await getStore().delete(`lockout:${lockoutKey(clientIP, email)}`);
 }
 
 /**
