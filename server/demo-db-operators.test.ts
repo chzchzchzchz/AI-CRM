@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { getDb } from "./db";
-import { accounts } from "../drizzle/schema";
-import { and, or, not, like, eq, gt, gte, lt, lte, ne, isNull, isNotNull, inArray, desc, asc } from "drizzle-orm";
+import { accounts, contacts, users } from "../drizzle/schema";
+import { and, or, not, like, eq, gt, gte, lt, lte, ne, isNull, isNotNull, inArray, desc, asc, sql } from "drizzle-orm";
 
 /**
  * Range comparisons in the demo store.
@@ -179,5 +179,63 @@ describe("demo store — ordering", () => {
     // null rule an account with no intent score leads a descending "top accounts" list.
     const top = await rows([desc(accounts.intentScore)], 10);
     expect(top.every((a: any) => a.intentScore !== null && a.intentScore !== undefined)).toBe(true);
+  });
+});
+
+describe("demo store — column projection", () => {
+  it("returns the columns asked for, and no others", async () => {
+    // `db.select({ id, name })` returned the WHOLE stored row. Real MySQL returns the
+    // named columns and nothing else, so a caller reading a field it never selected
+    // worked in demo mode and failed against a real database — the divergence that makes
+    // "it works locally" mean nothing.
+    const db = await getDb();
+    const [row] = await db
+      .select({ id: accounts.id, name: accounts.name })
+      .from(accounts)
+      .where(eq(accounts.orgId, 1))
+      .limit(1);
+    expect(Object.keys(row).sort()).toEqual(["id", "name"]);
+  });
+
+  it("keeps a narrowing projection over users actually narrowing", async () => {
+    // admin.getAllUsers declares this projection specifically to keep passwordHash and
+    // the TOTP secret out of the response, and got them anyway. That is separately closed
+    // in _core/publicUser.ts, which re-picks in JS so the guarantee holds whichever store
+    // ran the query — but the projection should also just work.
+    const db = await getDb();
+    const [row] = await db
+      .select({ id: users.id, email: users.email, role: users.role })
+      .from(users)
+      .limit(1);
+    expect(row).toBeDefined();
+    expect(row).not.toHaveProperty("passwordHash");
+    expect(row).not.toHaveProperty("twoFactorSecret");
+    expect(row).not.toHaveProperty("twoFactorBackupCodes");
+  });
+
+  it("projects aliased columns from a join", async () => {
+    const db = await getDb();
+    const [row] = await db
+      .select({ id: contacts.id, company: accounts.name })
+      .from(contacts)
+      .leftJoin(accounts, eq(contacts.accountId, accounts.id))
+      .where(eq(contacts.orgId, 1))
+      .limit(1);
+    expect(Object.keys(row).sort()).toEqual(["company", "id"]);
+    expect(typeof row.company).toBe("string");
+  });
+
+  it("leaves an unprojected select returning the whole row", async () => {
+    const db = await getDb();
+    const [row] = await db.select().from(accounts).where(eq(accounts.orgId, 1)).limit(1);
+    expect(Object.keys(row).length).toBeGreaterThan(10);
+  });
+
+  it("still answers a count query", async () => {
+    // count(*) is a projection the shim special-cases; the new column handling must not
+    // intercept it and return { count: undefined }.
+    const db = await getDb();
+    const [row] = await db.select({ count: sql<number>`count(*)` }).from(accounts).where(eq(accounts.orgId, 1));
+    expect(row.count).toBe(all.length);
   });
 });

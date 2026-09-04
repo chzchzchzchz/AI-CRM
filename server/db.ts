@@ -794,6 +794,35 @@ class MockDrizzleQueryBuilder {
         return [{ count: results.length }];
       }
 
+      // Apply the column projection.
+      //
+      // `db.select({ id, name })` used to return the WHOLE stored row. Real MySQL returns
+      // the named columns and nothing else, so a caller reading a field it never selected
+      // worked in demo mode and failed against a real database — the divergence that makes
+      // "it works locally" mean nothing.
+      //
+      // It also meant a narrowing projection was not a control. `admin.getAllUsers`
+      // declared `db.select({ id, name, email, role, ... })` over `users` specifically to
+      // keep passwordHash and the TOTP secret out of the response, and got them anyway.
+      // That one is separately (and correctly) closed in _core/publicUser.ts, which
+      // re-picks the safe fields in JS so the guarantee does not depend on the store —
+      // but the projection should also just work.
+      if (this.selectFields && typeof this.selectFields === 'object') {
+        const aliases = Object.entries(this.selectFields);
+        results = results.map((row: any) => {
+          const out: any = {};
+          for (const [alias, col] of aliases) {
+            // The alias may name a column on this table, a column decorated onto the row
+            // by the join handling above, or (for an SQL expression the shim cannot
+            // evaluate) nothing — in which case the alias is still present, as undefined,
+            // rather than silently absent.
+            const name = (col as any)?.name;
+            out[alias] = row[alias] !== undefined ? row[alias] : name ? row[name] : undefined;
+          }
+          return out;
+        });
+      }
+
       return results;
     }
 
