@@ -813,7 +813,81 @@ function walk(dir, exts, acc = []) {
   }
 }
 
-/* --------------------------------------------------------------- 17. report */
+/* ---------------------------------------------- 17. no documented-and-left bugs */
+/**
+ * A comment must not describe a live defect as somebody else's problem.
+ *
+ * This file's premise is that a defect found by hand belongs in a rule, so it can never
+ * be found by hand twice. That covers defects someone noticed. It did not cover the
+ * likelier case: a defect someone noticed, wrote down accurately, routed around, and
+ * left.
+ *
+ * server/bulk-insights-router.test.ts carried this for months:
+ *
+ *   "that store's MockDrizzle query builder (server/db.ts, not owned by this feature)
+ *    treats gte() as an equality filter, so 'intent score 70+' only ever matches
+ *    accounts scored exactly 70 in demo mode — a separate, pre-existing bug outside
+ *    this router's control."
+ *
+ * Every word of it was true. `gte(intentScore, 70)` returned 5 accounts of an actual
+ * 105, so this router was picking five arbitrary accounts and calling them the top hot
+ * leads — in the mode essentially everyone runs. The comment was the reason nobody
+ * looked again: it had already been assessed, named and filed under not-mine.
+ *
+ * Historical notes are the opposite of this and are everywhere in this repo by design
+ * ("this used to return X", "the original did Y"). What is banned is the present tense:
+ * a defect asserted to exist right now, with a reason it was not fixed.
+ */
+{
+  // Deliberately narrow. Each phrase asserts a CURRENT defect and a reason to leave it,
+  // which is the shape that legitimises one; "this used to" and "the original" do not
+  // match and must not.
+  const PHRASES = [
+    /\bpre-?existing bug\b/i,
+    /\bknown bug\b/i,
+    /\bseparate,?\s+(?:pre-?existing\s+)?bug\b/i,
+    // Deliberately NOT "bug elsewhere" or "bug in another file": those appear in
+    // ordinary historical notes ("worse than the same bug elsewhere in this session")
+    // that describe something already fixed. Only "outside", which asserts the defect
+    // is live and out of scope, is the shape this rule is for.
+    /\bbug outside\b/i,
+    /\bnot owned by this (?:feature|file|module)\b/i,
+    /\bsomeone else'?s bug\b/i,
+  ];
+
+  const offenders = [];
+  for (const root of ["server", "client/src", "shared", "scripts"]) {
+    for (const file of walk(path.join(ROOT, root), [".ts", ".tsx", ".mjs"])) {
+      const rel = path.relative(ROOT, file);
+      // This rule quotes the phrases it bans, so it would flag itself.
+      if (rel === path.join("scripts", "check-claims.mjs")) continue;
+
+      const src = fs.readFileSync(file, "utf8");
+      const lines = src.split("\n");
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!/^\s*(?:\/\/|\*|\/\*)/.test(line)) continue; // comments only
+        for (const rx of PHRASES) {
+          if (rx.test(line)) {
+            offenders.push(`${rel}:${i + 1}: ${line.trim().slice(0, 100)}`);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  offenders.length
+    ? fail(
+        "no documented-and-left bugs",
+        offenders.join("\n    ") +
+          "\n    A comment naming a live defect and a reason it is not yours is where a defect" +
+          "\n    lives longest. Fix it, or delete the excuse and leave the description."
+      )
+    : ok("no documented-and-left bugs");
+}
+
+/* --------------------------------------------------------------- 18. report */
 for (const c of checks) console.log(`  ✓ ${c}`);
 for (const f of failures) console.log(`  ✘ ${f.rule}\n    ${f.detail}`);
 
