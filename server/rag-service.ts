@@ -1,7 +1,7 @@
 import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
 import { getDb } from "./db";
 import { knowledgeBase, documentChunks, userInteractions, generatedContent } from "../drizzle/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { invokeLLM } from "./_core/llm";
 
@@ -79,6 +79,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
 
 // Upload and process a document for RAG
 export async function uploadDocument(
+  orgId: number,
   userId: number,
   fileName: string,
   content: string,
@@ -112,6 +113,7 @@ export async function uploadDocument(
     category: category || 'general',
     status: 'processing',
     chunkCount: 0,
+    orgId,
   });
   
   const documentId = docResult.insertId;
@@ -125,6 +127,7 @@ export async function uploadDocument(
     const embedding = await generateEmbedding(chunkContent);
     
     await db.insert(documentChunks).values({
+      orgId,
       documentId,
       chunkIndex: i,
       content: chunkContent,
@@ -143,6 +146,7 @@ export async function uploadDocument(
 
 // Search knowledge base for relevant context
 export async function searchKnowledgeBase(
+  orgId: number,
   query: string,
   userId?: number,
   topK: number = 5
@@ -163,7 +167,14 @@ export async function searchKnowledgeBase(
   const ownDocs = await db
     .select({ id: knowledgeBase.id, fileName: knowledgeBase.fileName })
     .from(knowledgeBase)
-    .where(userId ? eq(knowledgeBase.userId, userId) : sql`1=1`);
+    // The org filter is unconditional; the user filter is not. Without a userId this
+    // used to fall back to `1=1` — every document in the table, which across tenants is
+    // another customer's knowledge base fed verbatim into this one's AI answers.
+    .where(
+      userId
+        ? and(eq(knowledgeBase.orgId, orgId), eq(knowledgeBase.userId, userId))
+        : eq(knowledgeBase.orgId, orgId)
+    );
 
   if (!ownDocs.length) return [];
   const nameById = new Map<number, string>(ownDocs.map((d: any) => [d.id, d.fileName]));
@@ -205,12 +216,13 @@ export async function searchKnowledgeBase(
 
 // Get RAG context for AI calls
 export async function getRAGContext(
+  orgId: number,
   query: string,
   userId?: number,
   accountId?: number,
   contactId?: number
 ): Promise<string> {
-  const relevantDocs = await searchKnowledgeBase(query, userId, 3);
+  const relevantDocs = await searchKnowledgeBase(orgId, query, userId, 3);
   
   if (relevantDocs.length === 0) {
     return "";
@@ -225,6 +237,7 @@ export async function getRAGContext(
 
 // Track user interaction
 export async function trackInteraction(
+  orgId: number,
   actionType: string,
   inputData: any,
   outputData: any,
@@ -241,6 +254,7 @@ export async function trackInteraction(
   if (!db) return 0;
   
   const [result] = await db.insert(userInteractions).values({
+    orgId,
     userId: options?.userId,
     sessionId: options?.sessionId,
     actionType,
@@ -257,6 +271,7 @@ export async function trackInteraction(
 
 // Record feedback on an interaction
 export async function recordFeedback(
+  orgId: number,
   interactionId: number,
   feedback: 'positive' | 'negative' | 'edited',
   details?: string
@@ -266,11 +281,12 @@ export async function recordFeedback(
   
   await db.update(userInteractions)
     .set({ feedback, feedbackDetails: details })
-    .where(eq(userInteractions.id, interactionId));
+    .where(and(eq(userInteractions.orgId, orgId), eq(userInteractions.id, interactionId)));
 }
 
 // Save generated content
 export async function saveGeneratedContent(
+  orgId: number,
   userId: number,
   contentType: string,
   content: string,
@@ -286,6 +302,7 @@ export async function saveGeneratedContent(
   if (!db) return 0;
   
   const [result] = await db.insert(generatedContent).values({
+    orgId,
     userId,
     contentType,
     content,
@@ -300,28 +317,34 @@ export async function saveGeneratedContent(
 }
 
 // Get user's knowledge base documents
-export async function getUserDocuments(userId: number) {
+export async function getUserDocuments(orgId: number, userId: number) {
   const db = await getDb();
   if (!db) return [];
   
   return db
     .select()
     .from(knowledgeBase)
-    .where(eq(knowledgeBase.userId, userId))
+    .where(and(eq(knowledgeBase.orgId, orgId), eq(knowledgeBase.userId, userId)))
     .orderBy(desc(knowledgeBase.createdAt));
 }
 
 // Delete a document and its chunks
-export async function deleteDocument(documentId: number): Promise<void> {
+export async function deleteDocument(orgId: number, documentId: number): Promise<void> {
   const db = await getDb();
   if (!db) return;
-  
-  await db.delete(documentChunks).where(eq(documentChunks.documentId, documentId));
-  await db.delete(knowledgeBase).where(eq(knowledgeBase.id, documentId));
+
+  // This took a bare id and deleted whatever it named — no ownership check of any kind,
+  // so a document id was enough to destroy someone else's upload. The org filter is the
+  // check; a delete that matches nothing is the correct outcome for another org's id.
+  await db.delete(documentChunks)
+    .where(and(eq(documentChunks.orgId, orgId), eq(documentChunks.documentId, documentId)));
+  await db.delete(knowledgeBase)
+    .where(and(eq(knowledgeBase.orgId, orgId), eq(knowledgeBase.id, documentId)));
 }
 
 // Get learning insights from past interactions
 export async function getLearningInsights(
+  orgId: number,
   actionType: string,
   limit: number = 10
 ): Promise<{ patterns: string[]; improvements: string[] }> {
@@ -332,7 +355,7 @@ export async function getLearningInsights(
   const interactions = await db
     .select()
     .from(userInteractions)
-    .where(eq(userInteractions.actionType, actionType))
+    .where(and(eq(userInteractions.orgId, orgId), eq(userInteractions.actionType, actionType)))
     .orderBy(desc(userInteractions.createdAt))
     .limit(limit);
   

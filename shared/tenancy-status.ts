@@ -22,4 +22,4 @@
  * As a literal, TypeScript would narrow it to the current value and reject the comparison
  * as impossible — which would push someone to delete the check instead of the count.
  */
-export const UNSCOPED_QUERY_SITES: number = 89;
+export const UNSCOPED_QUERY_SITES: number = 66;

@@ -706,9 +706,9 @@ type Snapshot = {
   judgement?: Judgement;
 };
 
-async function loadSnapshots(accountId: number): Promise<Snapshot[]> {
+async function loadSnapshots(orgId: number, accountId: number): Promise<Snapshot[]> {
   try {
-    const rows = await getContext(BRIEF_CONTEXT_TYPE, `account_${accountId}`);
+    const rows = await getContext(orgId, BRIEF_CONTEXT_TYPE, `account_${accountId}`);
     return (rows || [])
       .map((r: any) => {
         const meta = r.metadata || {};
@@ -734,8 +734,8 @@ async function loadSnapshots(accountId: number): Promise<Snapshot[]> {
  * Brief history with per-generation deltas, so you can see how the account moved
  * (intent climbed, pipeline grew, contacts added) rather than just re-reading prose.
  */
-export async function getAccountBriefHistory(accountId: number, limit = 10) {
-  const snaps = (await loadSnapshots(accountId))
+export async function getAccountBriefHistory(orgId: number, accountId: number, limit = 10) {
+  const snaps = (await loadSnapshots(orgId, accountId))
     .sort((a, b) => (b.generatedAt || "").localeCompare(a.generatedAt || ""))
     .slice(0, limit);
 
@@ -781,7 +781,7 @@ export async function generateAccountBrief(
 
   // Reuse the last brief when the underlying signals are byte-identical and still fresh.
   if (!opts.forceRefresh) {
-    const snaps = await loadSnapshots(accountId);
+    const snaps = await loadSnapshots(orgId, accountId);
     const latest = snaps
       .filter((s) => s.signalHash === signalHash && s.version === BRIEF_VERSION && s.markdown)
       .sort((a, b) => (b.generatedAt || "").localeCompare(a.generatedAt || ""))[0];
@@ -889,6 +889,7 @@ export async function generateAccountBrief(
   if (!degraded) {
     try {
       await storeContext({
+        orgId,
         type: BRIEF_CONTEXT_TYPE,
         key: `account_${accountId}`,
         value: markdown,

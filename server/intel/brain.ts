@@ -191,9 +191,9 @@ export async function crawlSnapshot(orgId: number): Promise<BrainSnapshot> {
   };
 }
 
-async function loadPersisted(): Promise<{ lessons: BrainLesson[]; cycles: number; lastLearnedAt: string | null; lastHash: string | null }> {
+async function loadPersisted(orgId: number): Promise<{ lessons: BrainLesson[]; cycles: number; lastLearnedAt: string | null; lastHash: string | null }> {
   try {
-    const rows = await getContext(BRAIN_TYPE, BRAIN_KEY);
+    const rows = await getContext(orgId, BRAIN_TYPE, BRAIN_KEY);
     const latest = (rows || [])
       .map((r: any) => r.metadata)
       .filter((m: any) => m && Array.isArray(m.lessons))
@@ -208,7 +208,7 @@ async function loadPersisted(): Promise<{ lessons: BrainLesson[]; cycles: number
  * its own prior lessons → persist the merged, deduped lesson set. Grows across cycles.
  */
 export async function learnCycle(orgId: number, force = false): Promise<BrainDigest> {
-  const persisted = await loadPersisted();
+  const persisted = await loadPersisted(orgId);
   const snapshot = await crawlSnapshot(orgId);
 
   // Nothing changed and not forced → refresh the cache, skip the model entirely.
@@ -269,6 +269,7 @@ Return ONLY JSON: {"lessons":[{"lesson":"...","evidence":"..."}]} with at most $
   const lastLearnedAt = new Date().toISOString();
   try {
     await storeContext({
+      orgId,
       type: BRAIN_TYPE,
       key: BRAIN_KEY,
       value: `Brain cycle ${cycle}: ${lessons.length} lessons`,
@@ -303,7 +304,7 @@ export async function getBrainDigest(orgId: number): Promise<BrainDigest> {
   const learning = learningByOrg.has(orgId);
   const hit = cachedByOrg.get(orgId);
   if (hit) { scheduleLearning(orgId); return { ...hit, learning }; }
-  const persisted = await loadPersisted();
+  const persisted = await loadPersisted(orgId);
   const snapshot = await crawlSnapshot(orgId);
   const digest = { snapshot, lessons: persisted.lessons, cycles: persisted.cycles, lastLearnedAt: persisted.lastLearnedAt, learning };
   cachedByOrg.set(orgId, digest);

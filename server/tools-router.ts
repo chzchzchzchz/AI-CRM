@@ -206,6 +206,7 @@ export const toolsRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const result = await uploadDocument(
+        ctx.orgId,
         ctx.user.id,
         input.fileName,
         input.content,
@@ -213,7 +214,7 @@ export const toolsRouter = router({
         input.category
       );
       
-      await trackInteraction('document_upload', { fileName: input.fileName }, result, {
+      await trackInteraction(ctx.orgId, 'document_upload', { fileName: input.fileName }, result, {
         userId: ctx.user.id
       });
       
@@ -222,13 +223,13 @@ export const toolsRouter = router({
 
   getDocuments: protectedProcedure
     .query(async ({ ctx }) => {
-      return getUserDocuments(ctx.user.id);
+      return getUserDocuments(ctx.orgId, ctx.user.id);
     }),
 
   deleteDocument: protectedProcedure
     .input(z.object({ documentId: z.number() }))
-    .mutation(async ({ input }) => {
-      await deleteDocument(input.documentId);
+    .mutation(async ({ input, ctx }) => {
+      await deleteDocument(ctx.orgId, input.documentId);
       return { success: true };
     }),
 
@@ -238,7 +239,7 @@ export const toolsRouter = router({
       topK: z.number().default(5)
     }))
     .query(async ({ ctx, input }) => {
-      return searchKnowledgeBase(input.query, ctx.user.id, input.topK);
+      return searchKnowledgeBase(ctx.orgId, input.query, ctx.user.id, input.topK);
     }),
 
   // Unified content generation with RAG
@@ -258,6 +259,7 @@ export const toolsRouter = router({
       // Get RAG context from knowledge base (use undefined if not logged in)
       const userId = ctx.user?.id;
       const ragContext = await getRAGContext(
+        ctx.orgId,
         `${input.contentType} ${input.context} ${input.targetAccount || ''} ${input.targetContact || ''}`,
         userId,
         input.accountId,
@@ -370,6 +372,7 @@ Generate professional, actionable content.`;
         let contentId: number | null = null;
         if (ctx.user) {
           contentId = await saveGeneratedContent(
+            ctx.orgId,
             ctx.user.id,
             input.contentType,
             typeof content === 'string' ? content : JSON.stringify(content),
@@ -382,7 +385,7 @@ Generate professional, actionable content.`;
           );
           
           // Track interaction
-          await trackInteraction('content_generated', input, { contentId, content }, {
+          await trackInteraction(ctx.orgId, 'content_generated', input, { contentId, content }, {
             userId: ctx.user.id,
             accountId: input.accountId,
             contactId: input.contactId,
@@ -457,7 +460,7 @@ Generate professional, actionable content.`;
       // Record feedback on interaction
       if (interactionId) {
         const { recordFeedback } = await import('./rag-service');
-        await recordFeedback(interactionId, feedback, details);
+        await recordFeedback(ctx.orgId, interactionId, feedback, details);
       }
       
       // Update generated content with user edits
@@ -473,7 +476,7 @@ Generate professional, actionable content.`;
       }
       
       // Track the feedback interaction itself
-      await trackInteraction('feedback_submitted', input, { recorded: true }, {
+      await trackInteraction(ctx.orgId, 'feedback_submitted', input, { recorded: true }, {
         userId: ctx.user.id
       });
       
@@ -485,9 +488,9 @@ Generate professional, actionable content.`;
     .input(z.object({
       contentType: z.string()
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const { getLearningInsights } = await import('./rag-service');
-      return getLearningInsights(input.contentType);
+      return getLearningInsights(ctx.orgId, input.contentType);
     }),
 
   generateWebinarContent: protectedProcedure

@@ -963,8 +963,8 @@ Or go to the Admin Panel: /admin/approval`
 
     generateContactSummary: protectedProcedure
       .input(z.object({ contactId: z.number(), includeLinkedIn: z.boolean().optional() }))
-      .mutation(async ({ input }) => {
-        return await generateContactSummary(input.contactId, input.includeLinkedIn ?? false);
+      .mutation(async ({ input, ctx }) => {
+        return await generateContactSummary(ctx.orgId, input.contactId, input.includeLinkedIn ?? false);
       }),
 
     compileResearch: protectedProcedure
