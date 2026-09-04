@@ -1,5 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import { router, protectedProcedure } from "./_core/trpc";
+import { affectedRows } from "./_core/affected-rows";
 import { z } from "zod";
 import {
   validateAccount,
@@ -303,13 +304,33 @@ export const validationRouter = router({
       if (!db) return { success: false, message: "Database not available" };
 
       try {
+        // Both branches report what they actually touched. This used to return
+        // `{ success: true, message: "Updated ..." }` unconditionally — the account
+        // branch discarded updateAccount's result (it returned void), and the contact
+        // branch never looked at the UPDATE's. So an id that matched nothing produced a
+        // confident "Updated industry on account 4021" and the validation issue stayed
+        // exactly where it was, now marked resolved.
+        //
+        // Org scoping makes a miss MORE likely rather than less: another tenant's id is
+        // a legitimate zero-row write, and it is precisely the case that must not read
+        // as a successful edit.
+        let touched: number;
         if (input.entityType === 'account') {
-          await updateAccount(ctx.orgId, input.entityId, { [input.field]: value } as any);
+          touched = await updateAccount(ctx.orgId, input.entityId, { [input.field]: value } as any);
         } else {
           const { contacts } = await import("../drizzle/schema");
           const { eq } = await import("drizzle-orm");
-          await db.update(contacts).set({ [input.field]: value, updatedAt: new Date() } as any)
+          const result = await db.update(contacts)
+            .set({ [input.field]: value, updatedAt: new Date() } as any)
             .where(and(eq(contacts.orgId, ctx.orgId), eq(contacts.id, input.entityId)));
+          touched = affectedRows(result);
+        }
+
+        if (touched === 0) {
+          return {
+            success: false,
+            message: `No ${input.entityType} ${input.entityId} to update — it may have been deleted, or it belongs to another organization.`,
+          };
         }
         return { success: true, message: `Updated ${input.field} on ${input.entityType} ${input.entityId}` };
       } catch (error) {

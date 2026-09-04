@@ -32,7 +32,7 @@ takes a few minutes. The pieces, if you want to run one on its own:
 |---|---|
 | `pnpm check` | typechecks **both** TS projects (server and client are separate configs) |
 | `pnpm lint` | rules-of-hooks only — deliberately narrow, so it's never noise |
-| `pnpm test` | vitest, 561 tests |
+| `pnpm test` | vitest, 566 tests |
 | `pnpm inventory` | regenerates `docs/CAPABILITIES.md` |
 | `pnpm check:claims` | asserts the docs' factual claims against the code and the seed data |
 | `pnpm build` | client + server bundles |

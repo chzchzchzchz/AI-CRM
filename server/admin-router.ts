@@ -7,20 +7,10 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { isSixsenseConfigured } from "./sixsense";
 import { toPublicUser } from "./_core/publicUser";
+import { affectedRows } from "./_core/affected-rows";
 import { sendAccessApprovalEmail } from "./_core/email";
 
-/**
- * Real mysql2 resolves `db.update(...)`/`db.delete(...)` to a `[ResultSetHeader, ...]`
- * tuple; the demo-mode JSON shim (server/db.ts) resolves to a plain `{ affectedRows }`
- * object instead. Neither shape survives being read the other way — destructuring the
- * shim's result as a tuple throws, and reading `.affectedRows` off the real tuple reads
- * it off an array. This normalizes both so a caller can check the one thing that
- * actually matters here: did the row exist.
- */
-function affectedRows(result: unknown): number {
-  const row = Array.isArray(result) ? result[0] : result;
-  return (row as { affectedRows?: number } | undefined)?.affectedRows ?? 0;
-}
+
 
 export const adminRouter = router({
   // Real configuration/health check — the Admin page used to hardcode "6sense API:

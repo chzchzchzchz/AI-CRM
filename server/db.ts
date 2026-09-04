@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import { InsertUser, users, accounts, InsertAccount, contacts, /* people, InsertPerson, clayRequests, InsertClayRequest, gongCalls, InsertGongCall */ calls, opportunities, Opportunity, InsertOpportunity } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { affectedRows } from './_core/affected-rows';
 
 import fs from 'fs';
 import path from 'path';
@@ -1181,20 +1182,29 @@ export async function getAccountById(orgId: number, id: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function updateAccount(orgId: number, id: number, updates: Partial<InsertAccount>) {
+/**
+ * Returns how many rows were touched, so a caller can tell an edit from a no-op.
+ *
+ * It used to return void, which left every caller unable to distinguish "updated" from
+ * "matched nothing" — and validation.fixIssue reported `success: true` either way. Org
+ * scoping makes a miss MORE likely, not less: another tenant's id is now a legitimate
+ * zero-row write, and that must not be reported as a successful edit.
+ */
+export async function updateAccount(orgId: number, id: number, updates: Partial<InsertAccount>): Promise<number> {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot update account: database not available");
-    return;
+    return 0;
   }
 
   try {
     // orgId is deliberately not settable through `updates` — moving a row between
     // tenants is not an edit, and the caller's own org is the only one it may write to.
     const { orgId: _ignored, ...safe } = updates as Partial<InsertAccount> & { orgId?: number };
-    await db.update(accounts)
+    const result = await db.update(accounts)
       .set({ ...safe, updatedAt: new Date() })
       .where(and(eq(accounts.orgId, orgId), eq(accounts.id, id)));
+    return affectedRows(result);
   } catch (error) {
     console.error("[Database] Failed to update account:", error);
     throw error;
