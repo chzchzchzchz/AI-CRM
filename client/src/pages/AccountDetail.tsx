@@ -18,6 +18,7 @@ import { ActivityTimeline } from"@/components/ActivityTimeline";
 import { LogFollowUpDialog } from"@/components/LogFollowUpDialog";
 import { AccountTrajectory } from"@/components/AccountTrajectory";
 import { AccountResearch } from"@/components/AccountResearch";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
 
 // --- Signal helpers -------------------------------------------------------
 // Heat pairs a tinted color with a word + shape/glyph so it survives greyscale
@@ -46,7 +47,7 @@ export default function AccountDetailEnhanced() {
   const accountId = parseInt(id ||"0");
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const { data: account, isLoading } = trpc.accounts.getById.useQuery({ id: accountId });
+  const { data: account, isLoading, error: accountError, refetch: refetchAccount } = trpc.accounts.getById.useQuery({ id: accountId });
 
   // One signal pack drives every fact on this page: contacts, deals, intent history,
   // coverage. It is the same pack the brief is generated from, so the numbers at the
@@ -107,6 +108,24 @@ export default function AccountDetailEnhanced() {
               <div className="h-96 bg-muted rounded md:col-span-2" />
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Load-failure state, kept distinct from not-found below.
+  //
+  // The query's error used to be discarded, so a failed request fell through to
+  // "Account not found" — a backend outage rendered as a deleted account. That
+  // distinction matters more since org scoping landed: "not found" is now also the
+  // correct, deliberate answer for an id belonging to another organization, and it must
+  // not double as the answer for "we could not ask".
+  if (accountError) {
+    return (
+      <div className="container py-6 max-w-2xl">
+        <DataUnavailable what="this account" detail={accountError} onRetry={() => refetchAccount()} />
+        <div className="text-center mt-4">
+          <Button asChild variant="ghost"><Link href="/accounts"><ArrowLeft className="mr-2 h-4 w-4" />Back</Link></Button>
         </div>
       </div>
     );

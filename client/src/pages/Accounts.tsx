@@ -19,6 +19,8 @@ import {
 import { useRep } from"@/contexts/RepContext";
 import { RepSwitcher } from"@/components/RepSwitcher";
 import { CompanyLogo } from"@/components/ui/company-logo";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
+import { DataErrorBanner } from "@/components/ui/data-error-banner";
 
 type SortField ="name" |"intentScore" |"employees" |"industry";
 type SortOrder ="asc" |"desc";
@@ -38,7 +40,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   // Get rep context for territory filtering
   const { matchesTerritory, repInfo, isRepMode } = useRep();
 
-  const { data: accounts, isLoading } = trpc.accounts.list.useQuery(undefined, {
+  const { data: accounts, isLoading, error, refetch } = trpc.accounts.list.useQuery(undefined, {
     staleTime: 3 * 60 * 1000
   });
 
@@ -270,6 +272,16 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
         {/* AI Assistant Bar */}
         <ContextualAI context="accounts" placeholder="Ask AI: Which accounts have the highest intent?" />
 
+        {/* The counts below are computed from the account list. When that query fails the
+            list is empty, so every tile reads a confident zero — "Hot leads 0" is a claim
+            about the business, and it must not be made from a request that never came
+            back. The banner says so above them; the list body itself renders
+            DataUnavailable rather than "No accounts found". */}
+        <DataErrorBanner
+          errors={[error]}
+          message="Accounts couldn't be loaded, so the counts below are not your real numbers."
+        />
+
         {/* Quick Stats - segmented, clickable intent filters */}
         <div className="grid grid-cols-3 rounded-md border border-border/60 bg-card divide-x divide-border/50 overflow-hidden">
           {stats.map((s) => {
@@ -405,7 +417,9 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
         </div>
 
         {/* Accounts List */}
-        {filteredAccounts.length === 0 ? (
+        {error ? (
+          <DataUnavailable what="accounts" detail={error} onRetry={() => refetch()} />
+        ) : filteredAccounts.length === 0 ? (
           <Card>
             <CardContent className="py-16 text-center">
               <Building2 className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
