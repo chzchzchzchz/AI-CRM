@@ -122,19 +122,63 @@ function walk(dir, exts, acc = []) {
       return m ? Number(m[1].replace(/,/g, "")) : null;
     };
 
-    const pairs = [
-      ["accounts", n("accounts")],
-      ["contacts", n("contacts")],
-    ];
     const bad = [];
-    for (const [label, actual] of pairs) {
-      const said = claimed(label);
+    const check = (label, actual, said) => {
       if (said !== null && said !== actual)
         bad.push(`README says ${said.toLocaleString()} ${label}, seed has ${actual.toLocaleString()}`);
+    };
+
+    for (const [label, actual] of [
+      ["accounts", n("accounts")],
+      ["contacts", n("contacts")],
+      ["calls", n("calls")],
+      ["RFPs", n("rfps")],
+    ]) {
+      check(label, actual, claimed(label));
     }
+
+    // The rest of the block, each phrased its own way.
+    //
+    // Only accounts and contacts used to be checked, while the caption under the block
+    // says `pnpm check:claims` "fails the build if this block drifts from the data" —
+    // a claim about verification that was broader than the verification. Eight of the
+    // ten numbers could have gone stale in silence, on the one page whose whole argument
+    // is that its numbers are checked. They were all correct when this was widened; that
+    // is luck, not a control.
+    const accounts = seed.accounts || [];
+    const opps = seed.opportunities || [];
+    const scoreOf = a => a.intentScore || 0;
+    const openOpps = opps.filter(o => !String(o.stage || "").toLowerCase().startsWith("closed"));
+
+    const num = re => {
+      const m = readme.match(re);
+      return m ? Number(m[1].replace(/,/g, "")) : null;
+    };
+
+    check("accounts with intent data", accounts.filter(a => a.intentScore).length,
+      num(/([\d,]+)\s+with intent data/i));
+    check("accounts at intent 70+", accounts.filter(a => scoreOf(a) >= 70).length,
+      num(/([\d,]+)\s+accounts at intent 70\+/i));
+    check("accounts at intent 40–69", accounts.filter(a => scoreOf(a) >= 40 && scoreOf(a) <= 69).length,
+      num(/([\d,]+)\s+at 40[–-]69/i));
+    check("open opportunities", openOpps.length, num(/([\d,]+)\s+open opportunities/i));
+    check("intent-score history points", n("intentScores"),
+      num(/([\d,]+)\s+intent-score history points/i));
+
+    // Pipeline is quoted to one decimal in millions, so compare at that precision
+    // rather than demanding an exact match on a rounded figure.
+    const pipeline = openOpps.reduce((sum, o) => sum + Number(o.amount || 0), 0);
+    const saidPipeline = readme.match(/\$([\d.]+)M open pipeline/i);
+    if (saidPipeline) {
+      const claimedM = Number(saidPipeline[1]);
+      const actualM = Math.round((pipeline / 1_000_000) * 10) / 10;
+      if (claimedM !== actualM)
+        bad.push(`README says $${claimedM}M open pipeline, seed has $${actualM}M`);
+    }
+
     bad.length
       ? fail("README matches the seed", bad.join("\n    "))
-      : ok("README matches the seed");
+      : ok(`README matches the seed (10 figures)`);
   }
 }
 
