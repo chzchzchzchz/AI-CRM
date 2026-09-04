@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { getDb } from "./db";
 import { accounts } from "../drizzle/schema";
-import { and, or, not, like, eq, gt, gte, lt, lte, ne, isNull, isNotNull, inArray } from "drizzle-orm";
+import { and, or, not, like, eq, gt, gte, lt, lte, ne, isNull, isNotNull, inArray, desc, asc } from "drizzle-orm";
 
 /**
  * Range comparisons in the demo store.
@@ -131,5 +131,53 @@ describe("demo store — comparison operators", () => {
     const above = await q(gte(accounts.intentScore, 0));
     const below = await q(lt(accounts.intentScore, 0));
     expect(above + below).toBe(all.length - noScore);
+  });
+});
+
+describe("demo store — ordering", () => {
+  const rows = (o: any[], n = 5) =>
+    getDb().then(db =>
+      db.select().from(accounts).where(eq(accounts.orgId, 1)).orderBy(...o).limit(n)
+    );
+
+  it("sorts descending, rather than not sorting at all", async () => {
+    // orderBy read `expr.name`, which a bare column has and `desc(col)` does not —
+    // drizzle wraps it in an SQL object whose chunks are [column, " desc"]. So the field
+    // stayed empty and NO sorting happened: asc and desc returned byte-identical results
+    // in insertion order. With `.limit(n)` that turns "top n accounts by intent score"
+    // into "the first n accounts in the file", presented as the top n. Measured on this
+    // dataset before the fix: 92, 100, 95, 84, 90.
+    const got = (await rows([desc(accounts.intentScore)])).map((a: any) => a.intentScore);
+    const want = [...all].sort((a, b) => (b.intentScore ?? -1) - (a.intentScore ?? -1))
+      .slice(0, 5).map(a => a.intentScore);
+    expect(got).toEqual(want);
+  });
+
+  it("sorts ascending, and differently from descending", async () => {
+    const up = (await rows([asc(accounts.intentScore)])).map((a: any) => a.intentScore);
+    const down = (await rows([desc(accounts.intentScore)])).map((a: any) => a.intentScore);
+    expect(up[0]).toBeLessThan(down[0]);
+  });
+
+  it("honours a second sort term", async () => {
+    // `.orderBy(a, b)` is one call with two arguments and the second was dropped, so a
+    // tie-break never applied and equal-scoring rows came back in arbitrary order.
+    const got = await rows([desc(accounts.intentScore), asc(accounts.name)], 4);
+    const scores = got.map((a: any) => a.intentScore);
+    const names = got.map((a: any) => a.name);
+    expect(scores.every((s: number) => s === scores[0])).toBe(true);
+    expect(names).toEqual([...names].sort((x, y) => String(x).localeCompare(String(y))));
+  });
+
+  it("still sorts by a bare column", async () => {
+    const names = (await rows([accounts.name], 3)).map((a: any) => a.name);
+    expect(names).toEqual([...names].sort((x, y) => String(x).localeCompare(String(y))));
+  });
+
+  it("sorts nulls last, not first", async () => {
+    // `null < 5` is true in JavaScript, because null coerces to 0. Without an explicit
+    // null rule an account with no intent score leads a descending "top accounts" list.
+    const top = await rows([desc(accounts.intentScore)], 10);
+    expect(top.every((a: any) => a.intentScore !== null && a.intentScore !== undefined)).toBe(true);
   });
 });

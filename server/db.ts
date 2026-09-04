@@ -433,8 +433,7 @@ class MockDrizzleQueryBuilder {
   private insertValues: any = null;
   private duplicateUpdate: any = null;
   private updateValues: any = null;
-  private orderByField: string = '';
-  private orderDirection: 'asc' | 'desc' = 'asc';
+  private orderTerms: Array<{ field: string; direction: 'asc' | 'desc' }> = [];
   public selectFields: any = null;
 
   constructor(operation: 'select' | 'insert' | 'update' | 'delete') {
@@ -638,10 +637,40 @@ class MockDrizzleQueryBuilder {
     return this;
   }
 
-  orderBy(orderExpr: any) {
-    if (orderExpr) {
-      this.orderByField = orderExpr.name || orderExpr.fieldName || '';
-      this.orderDirection = orderExpr.direction || 'asc';
+  /**
+   * Record the sort, including the direction.
+   *
+   * This read `orderExpr.name` and `orderExpr.direction`, which a bare column has and
+   * `desc(col)` does not: drizzle wraps it in an SQL object whose queryChunks are
+   * [column, " desc"]. So `.name` was undefined, orderByField stayed empty, and NO
+   * SORTING HAPPENED AT ALL — asc and desc returned byte-identical results, in insertion
+   * order. Combined with `.limit(n)` that turns "top n accounts by intent score" into
+   * "the first n accounts in the file", presented as the top n. Measured on the shipped
+   * dataset, `orderBy(desc(intentScore)).limit(5)` returned scores 92, 100, 95, 84, 90.
+   *
+   * Also takes multiple terms, because `.orderBy(a, b)` is one call with two arguments
+   * and the second was silently dropped.
+   */
+  orderBy(...exprs: any[]) {
+    for (const expr of exprs) {
+      if (!expr) continue;
+
+      // A bare column.
+      if (expr.name) {
+        this.orderTerms.push({ field: expr.name, direction: expr.direction || 'asc' });
+        continue;
+      }
+
+      // desc(col) / asc(col): an SQL object carrying the column and a direction chunk.
+      const chunks = Array.isArray(expr.queryChunks) ? expr.queryChunks : [];
+      const col = chunks.find((c: any) => c && c.name && c.table);
+      if (!col) continue;
+      const text = chunks
+        .filter((c: any) => c && Array.isArray(c.value))
+        .map((c: any) => c.value.join(''))
+        .join(' ')
+        .toLowerCase();
+      this.orderTerms.push({ field: col.name, direction: text.includes('desc') ? 'desc' : 'asc' });
     }
     return this;
   }
@@ -685,12 +714,31 @@ class MockDrizzleQueryBuilder {
       }
 
       // Handle sorting
-      if (this.orderByField) {
+      if (this.orderTerms.length) {
         results.sort((a, b) => {
-          const valA = a[this.orderByField];
-          const valB = b[this.orderByField];
-          if (valA < valB) return this.orderDirection === 'asc' ? -1 : 1;
-          if (valA > valB) return this.orderDirection === 'asc' ? 1 : -1;
+          for (const { field, direction } of this.orderTerms) {
+            const av = a[field];
+            const bv = b[field];
+
+            // Nulls sort last in both directions. `null < 5` is true in JavaScript
+            // (null coerces to 0), so an account with no intent score would otherwise
+            // lead a descending "top accounts" list from the bottom.
+            const aNull = av === null || av === undefined;
+            const bNull = bv === null || bv === undefined;
+            if (aNull && bNull) continue;
+            if (aNull) return 1;
+            if (bNull) return -1;
+
+            // Numeric and date columns compare by value; anything else by string, so
+            // "10" does not sort before "9" and an ISO date does not sort lexically.
+            const an = comparable(av);
+            const bn = comparable(bv);
+            let cmp: number;
+            if (an !== null && bn !== null) cmp = an === bn ? 0 : an < bn ? -1 : 1;
+            else cmp = String(av).localeCompare(String(bv));
+
+            if (cmp !== 0) return direction === 'asc' ? cmp : -cmp;
+          }
           return 0;
         });
       }
