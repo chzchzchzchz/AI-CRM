@@ -109,7 +109,18 @@ const CONNECTORS = [
       const sf = await import("../server/salesforce.ts");
       const res = await sf.testConnection();
       if (!res.success) return { ok: false, detail: res.error || res.message };
-      return { ok: true, detail: `${res.accountCount ?? "?"} accounts, ${res.contactCount ?? "?"} contacts` };
+
+      // Counting rows proves the credentials work and nothing about the sync. The shape
+      // check below fetches one real account with the sync's own SOQL and runs it through
+      // the sync's own transform — the part that fails silently when an org's fields
+      // don't match, and writes a table full of names with nothing attached to them.
+      const shape = await sf.verifySyncShape();
+      if (!shape.ok) return { ok: false, detail: shape.detail };
+
+      return {
+        ok: true,
+        detail: `${res.accountCount ?? "?"} accounts, ${res.contactCount ?? "?"} contacts — ${shape.detail}`,
+      };
     },
   },
 ];

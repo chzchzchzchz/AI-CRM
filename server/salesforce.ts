@@ -344,3 +344,69 @@ export function transformContact(sfContact: SalesforceContact): {
     location,
   };
 }
+
+/**
+ * The check that would actually have caught a broken sync.
+ *
+ * `testConnection` runs `SELECT COUNT() FROM Account`. That proves the credentials work
+ * and that Accounts exist, and says nothing about the FIELDS. If an org renames a field,
+ * restricts one by field-level security, or the API version drops it, the query still
+ * succeeds, `transformAccount` reads `undefined` for every missing field, and the sync
+ * reports "312 accounts synced" having written 312 rows with a name and nothing else.
+ * That is a sync failure rendered as a success message, which is the failure this repo
+ * spends its effort removing everywhere else.
+ *
+ * So: fetch ONE real record with the exact SOQL the sync uses, run it through the exact
+ * transform the sync uses, and assert the result is populated. One row, so it is cheap
+ * enough to run on every build.
+ */
+export async function verifySyncShape(): Promise<{ ok: boolean; detail: string }> {
+  try {
+    // The same field list as fetchAccounts. If they drift apart this check stops
+    // speaking for the sync, so it is written to look obviously parallel.
+    const res = await query<SalesforceAccount>(`
+      SELECT Id, Name, Website, Industry, NumberOfEmployees,
+             BillingCity, BillingState, BillingCountry, Description, Type, Phone, OwnerId
+      FROM Account
+      WHERE IsDeleted = false
+      LIMIT 1
+    `);
+
+    const [record] = res.records ?? [];
+    if (!record) {
+      // Not a failure: an empty org is a legitimate state, and calling it broken would
+      // train people to ignore this output.
+      return { ok: true, detail: "connected; org has no accounts to check the shape against" };
+    }
+
+    const account = transformAccount(record);
+    if (!account.sfdcAccountId || !account.name) {
+      return {
+        ok: false,
+        detail: "an account came back but Id or Name did not survive the transform — the field mapping is wrong",
+      };
+    }
+
+    // Count how much of the record actually made it through. Every field below is
+    // optional in Salesforce, so any single one being null is normal; ALL of them being
+    // null on a real account is the signature of a field list the org does not honour.
+    const optional = [account.domain, account.industry, account.employeeCount, account.website,
+                      account.description, account.phone, account.type];
+    const populated = optional.filter(v => v !== null && v !== undefined).length;
+    if (populated === 0) {
+      return {
+        ok: false,
+        detail:
+          `"${account.name}" came back with every optional field empty — usually field-level ` +
+          `security hiding them from this integration user, or an API version that dropped them`,
+      };
+    }
+
+    return {
+      ok: true,
+      detail: `${account.name}: ${populated}/${optional.length} optional fields survived the transform`,
+    };
+  } catch (error) {
+    return { ok: false, detail: error instanceof Error ? error.message : String(error) };
+  }
+}
