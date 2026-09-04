@@ -1,4 +1,4 @@
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import { InsertUser, users, accounts, InsertAccount, contacts, /* people, InsertPerson, clayRequests, InsertClayRequest, gongCalls, InsertGongCall */ calls, opportunities, Opportunity, InsertOpportunity } from "../drizzle/schema";
@@ -491,7 +491,16 @@ class MockDrizzleQueryBuilder {
     const tableData = dbData[this.tableName];
 
     if (this.operation === 'select') {
-      let results = [...tableData];
+      // A row written before the orgId column existed belongs to the default org —
+      // the same thing MySQL's `DEFAULT 1` does for existing rows when the column is
+      // added. Applied before filtering, because a filter comparing String(undefined)
+      // against "1" matches nothing: the demo dataset would go blank the moment the
+      // first query started scoping, and "no accounts" reads as an empty book rather
+      // than a bug.
+      const hasOrgColumn = Boolean(this.tableSchema?.orgId);
+      let results: any[] = hasOrgColumn
+        ? tableData.map((r: any) => (r.orgId === undefined || r.orgId === null ? { ...r, orgId: 1 } : r))
+        : [...tableData];
 
       // Apply filters
       for (const filter of this.filters) {
@@ -891,7 +900,7 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // Account queries
-export async function upsertAccount(account: InsertAccount) {
+export async function upsertAccount(orgId: number, account: InsertAccount) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot upsert account: database not available");
@@ -899,8 +908,9 @@ export async function upsertAccount(account: InsertAccount) {
   }
 
   try {
-    await db.insert(accounts).values(account).onDuplicateKeyUpdate({
-      set: account,
+    const owned = { ...account, orgId };
+    await db.insert(accounts).values(owned).onDuplicateKeyUpdate({
+      set: owned,
     });
   } catch (error) {
     console.error("[Database] Failed to upsert account:", error);
@@ -908,14 +918,18 @@ export async function upsertAccount(account: InsertAccount) {
   }
 }
 
-export async function getAllAccounts(isDemoUser: boolean = false) {
+export async function getAllAccounts(orgId: number, isDemoUser: boolean = false) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get accounts: database not available");
     return [];
   }
 
-  const allAccounts = await db.select().from(accounts).orderBy(desc(accounts.createdAt));
+  const allAccounts = await db
+    .select()
+    .from(accounts)
+    .where(eq(accounts.orgId, orgId))
+    .orderBy(desc(accounts.createdAt));
 
   // If demo user, only show demo accounts (those with name starting with "Demo_")
   if (isDemoUser && allAccounts.some((a: any) => a.name?.startsWith('Demo_'))) {
@@ -926,18 +940,24 @@ export async function getAllAccounts(isDemoUser: boolean = false) {
   return allAccounts.filter((a: any) => !a.name?.startsWith('Demo_'));
 }
 
-export async function getAccountById(id: number) {
+export async function getAccountById(orgId: number, id: number) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get account: database not available");
     return undefined;
   }
 
-  const result = await db.select().from(accounts).where(eq(accounts.id, id)).limit(1);
+  // The org half is not decoration: an account id is a small integer a caller can
+  // simply guess, so without it "give me account 42" reaches whichever tenant owns 42.
+  const result = await db
+    .select()
+    .from(accounts)
+    .where(and(eq(accounts.orgId, orgId), eq(accounts.id, id)))
+    .limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function updateAccount(id: number, updates: Partial<InsertAccount>) {
+export async function updateAccount(orgId: number, id: number, updates: Partial<InsertAccount>) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot update account: database not available");
@@ -945,9 +965,12 @@ export async function updateAccount(id: number, updates: Partial<InsertAccount>)
   }
 
   try {
+    // orgId is deliberately not settable through `updates` — moving a row between
+    // tenants is not an edit, and the caller's own org is the only one it may write to.
+    const { orgId: _ignored, ...safe } = updates as Partial<InsertAccount> & { orgId?: number };
     await db.update(accounts)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(accounts.id, id));
+      .set({ ...safe, updatedAt: new Date() })
+      .where(and(eq(accounts.orgId, orgId), eq(accounts.id, id)));
   } catch (error) {
     console.error("[Database] Failed to update account:", error);
     throw error;
@@ -955,7 +978,7 @@ export async function updateAccount(id: number, updates: Partial<InsertAccount>)
 }
 
 // Contacts queries (renamed from people)
-export async function upsertPerson(person: any) {
+export async function upsertPerson(orgId: number, person: any) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot upsert person: database not available");
@@ -963,8 +986,9 @@ export async function upsertPerson(person: any) {
   }
 
   try {
-    await db.insert(contacts).values(person).onDuplicateKeyUpdate({
-      set: person,
+    const owned = { ...person, orgId };
+    await db.insert(contacts).values(owned).onDuplicateKeyUpdate({
+      set: owned,
     });
   } catch (error) {
     console.error("[Database] Failed to upsert person:", error);
@@ -972,7 +996,7 @@ export async function upsertPerson(person: any) {
   }
 }
 
-export async function getAllPeople() {
+export async function getAllPeople(orgId: number) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get people: database not available");
@@ -1012,13 +1036,14 @@ export async function getAllPeople() {
     })
     .from(contacts)
     .leftJoin(accounts, eq(contacts.accountId, accounts.id))
+    .where(eq(contacts.orgId, orgId))
     .orderBy(desc(contacts.createdAt));
-  
+
   return results;
 }
 
 // Paginated version for performance
-export async function getPeoplePaginated(limit: number = 100, offset: number = 0) {
+export async function getPeoplePaginated(orgId: number, limit: number = 100, offset: number = 0) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get people: database not available");
@@ -1041,10 +1066,14 @@ export async function getPeoplePaginated(limit: number = 100, offset: number = 0
       })
       .from(contacts)
       .leftJoin(accounts, eq(contacts.accountId, accounts.id))
+      .where(eq(contacts.orgId, orgId))
       .orderBy(desc(contacts.createdAt))
       .limit(limit)
       .offset(offset),
-    db.select({ count: sql<number>`count(*)` }).from(contacts)
+    // The count is scoped too. A page of this org's contacts under another org's total
+    // is a pager that promises pages which come back empty — and quietly discloses how
+    // many contacts the other tenant has.
+    db.select({ count: sql<number>`count(*)` }).from(contacts).where(eq(contacts.orgId, orgId))
   ]);
 
   return { 
@@ -1053,7 +1082,7 @@ export async function getPeoplePaginated(limit: number = 100, offset: number = 0
   };
 }
 
-export async function getPeopleByCompany(companyName: string) {
+export async function getPeopleByCompany(orgId: number, companyName: string) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get people: database not available");
@@ -1065,7 +1094,7 @@ export async function getPeopleByCompany(companyName: string) {
   return [];
 }
 
-export async function getPersonById(id: number) {
+export async function getPersonById(orgId: number, id: number) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get person: database not available");
@@ -1099,13 +1128,13 @@ export async function getPersonById(id: number) {
     })
     .from(contacts)
     .leftJoin(accounts, eq(contacts.accountId, accounts.id))
-    .where(eq(contacts.id, id))
+    .where(and(eq(contacts.orgId, orgId), eq(contacts.id, id)))
     .limit(1);
   
   return results[0] || null;
 }
 
-export async function getContactsByAccountId(accountId: number) {
+export async function getContactsByAccountId(orgId: number, accountId: number) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get contacts: database not available");
@@ -1134,7 +1163,7 @@ export async function getContactsByAccountId(accountId: number) {
     })
     .from(contacts)
     .leftJoin(accounts, eq(contacts.accountId, accounts.id))
-    .where(eq(contacts.accountId, accountId));
+    .where(and(eq(contacts.orgId, orgId), eq(contacts.accountId, accountId)));
   
   return results;
 }
@@ -1193,18 +1222,18 @@ export async function getContactsByAccountId(accountId: number) {
 // }
 
 // Calls queries (renamed from gongCalls)
-export async function getAllGongCalls() {
+export async function getAllGongCalls(orgId: number) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get calls: database not available");
     return [];
   }
 
-  return await db.select().from(calls).orderBy(desc(calls.callDate));
+  return await db.select().from(calls).where(eq(calls.orgId, orgId)).orderBy(desc(calls.callDate));
 }
 
 // Paginated version for performance
-export async function getGongCallsPaginated(limit: number = 50, offset: number = 0) {
+export async function getGongCallsPaginated(orgId: number, limit: number = 50, offset: number = 0) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get calls: database not available");
@@ -1212,8 +1241,8 @@ export async function getGongCallsPaginated(limit: number = 50, offset: number =
   }
 
   const [callsResult, countResult] = await Promise.all([
-    db.select().from(calls).orderBy(desc(calls.callDate)).limit(limit).offset(offset),
-    db.select({ count: sql<number>`count(*)` }).from(calls)
+    db.select().from(calls).where(eq(calls.orgId, orgId)).orderBy(desc(calls.callDate)).limit(limit).offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(calls).where(eq(calls.orgId, orgId))
   ]);
 
   return { 
@@ -1222,7 +1251,7 @@ export async function getGongCallsPaginated(limit: number = 50, offset: number =
   };
 }
 
-export async function getGongCallsByCompany(companyName: string) {
+export async function getGongCallsByCompany(orgId: number, companyName: string) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get calls: database not available");
@@ -1234,27 +1263,31 @@ export async function getGongCallsByCompany(companyName: string) {
   const matched = await db
     .select({ id: accounts.id })
     .from(accounts)
-    .where(eq(accounts.name, companyName));
+    .where(and(eq(accounts.orgId, orgId), eq(accounts.name, companyName)));
   const ids = (matched as any[]).map((a) => a.id);
   if (ids.length === 0) return [];
   const all: any[] = [];
   for (const id of ids) {
-    all.push(...(await getGongCallsByAccountId(id)));
+    all.push(...(await getGongCallsByAccountId(orgId, id)));
   }
   return all;
 }
 
-export async function getGongCallsByAccountId(accountId: number) {
+export async function getGongCallsByAccountId(orgId: number, accountId: number) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get calls: database not available");
     return [];
   }
 
-  return await db.select().from(calls).where(eq(calls.accountId, accountId)).orderBy(desc(calls.callDate));
+  return await db
+    .select()
+    .from(calls)
+    .where(and(eq(calls.orgId, orgId), eq(calls.accountId, accountId)))
+    .orderBy(desc(calls.callDate));
 }
 
-export async function getGongCallsByPersonId(personId: number) {
+export async function getGongCallsByPersonId(orgId: number, personId: number) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get calls: database not available");
@@ -1262,7 +1295,11 @@ export async function getGongCallsByPersonId(personId: number) {
   }
 
   // personId column is now contactId
-  return await db.select().from(calls).where(eq(calls.contactId, personId)).orderBy(desc(calls.callDate));
+  return await db
+    .select()
+    .from(calls)
+    .where(and(eq(calls.orgId, orgId), eq(calls.contactId, personId)))
+    .orderBy(desc(calls.callDate));
 }
 
 
@@ -1274,7 +1311,7 @@ export async function getGongCallsByPersonId(personId: number) {
  * Bulk upsert accounts from Salesforce
  * Uses sfdcAccountId as the unique key for matching
  */
-export async function bulkUpsertAccountsFromSalesforce(accountsData: Array<{
+export async function bulkUpsertAccountsFromSalesforce(orgId: number, accountsData: Array<{
   name: string;
   domain: string | null;
   industry: string | null;
@@ -1299,10 +1336,13 @@ export async function bulkUpsertAccountsFromSalesforce(accountsData: Array<{
   for (const account of accountsData) {
     try {
       // Check if account exists by sfdcAccountId
+      // Matching on sfdcAccountId ALONE would find another tenant's row for the same
+      // Salesforce account — two customers can legitimately both track it — and the
+      // update below would then rewrite their data with this sync's values.
       const existing = await db
         .select({ id: accounts.id })
         .from(accounts)
-        .where(eq(accounts.sfdcAccountId, account.sfdcAccountId))
+        .where(and(eq(accounts.orgId, orgId), eq(accounts.sfdcAccountId, account.sfdcAccountId)))
         .limit(1);
 
       if (existing.length > 0) {
@@ -1320,11 +1360,12 @@ export async function bulkUpsertAccountsFromSalesforce(accountsData: Array<{
             type: account.type,
             updatedAt: new Date(),
           })
-          .where(eq(accounts.sfdcAccountId, account.sfdcAccountId));
+          .where(and(eq(accounts.orgId, orgId), eq(accounts.sfdcAccountId, account.sfdcAccountId)));
         updated++;
       } else {
         // Insert new
         await db.insert(accounts).values({
+          orgId,
           name: account.name,
           domain: account.domain,
           industry: account.industry,
@@ -1352,7 +1393,7 @@ export async function bulkUpsertAccountsFromSalesforce(accountsData: Array<{
  * Uses sfdcContactId as the unique key for matching
  * Links to accounts via sfdcAccountId
  */
-export async function bulkUpsertContactsFromSalesforce(contactsData: Array<{
+export async function bulkUpsertContactsFromSalesforce(orgId: number, contactsData: Array<{
   name: string;
   email: string | null;
   title: string | null;
@@ -1375,7 +1416,10 @@ export async function bulkUpsertContactsFromSalesforce(contactsData: Array<{
 
   // Build a map of sfdcAccountId -> accountId for linking
   const accountMap = new Map<string, number>();
-  const allAccounts = await db.select({ id: accounts.id, sfdcAccountId: accounts.sfdcAccountId }).from(accounts);
+  const allAccounts = await db
+    .select({ id: accounts.id, sfdcAccountId: accounts.sfdcAccountId })
+    .from(accounts)
+    .where(eq(accounts.orgId, orgId));
   for (const acc of allAccounts) {
     if (acc.sfdcAccountId) {
       accountMap.set(acc.sfdcAccountId, acc.id);
@@ -1391,7 +1435,7 @@ export async function bulkUpsertContactsFromSalesforce(contactsData: Array<{
       const existing = await db
         .select({ id: contacts.id, linkedinUrl: contacts.linkedinUrl })
         .from(contacts)
-        .where(eq(contacts.sfdcContactId, contact.sfdcContactId))
+        .where(and(eq(contacts.orgId, orgId), eq(contacts.sfdcContactId, contact.sfdcContactId)))
         .limit(1);
 
       if (existing.length > 0) {
@@ -1409,12 +1453,13 @@ export async function bulkUpsertContactsFromSalesforce(contactsData: Array<{
             accountId: accountId || null,
             updatedAt: new Date(),
           })
-          .where(eq(contacts.sfdcContactId, contact.sfdcContactId));
+          .where(and(eq(contacts.orgId, orgId), eq(contacts.sfdcContactId, contact.sfdcContactId)));
         updated++;
         if (accountId) linked++;
       } else {
         // Insert new
         await db.insert(contacts).values({
+          orgId,
           name: contact.name,
           email: contact.email,
           title: contact.title,
@@ -1439,18 +1484,24 @@ export async function bulkUpsertContactsFromSalesforce(contactsData: Array<{
 /**
  * Get sync status - counts of accounts and contacts
  */
-export async function getSyncStatus() {
+export async function getSyncStatus(orgId: number) {
   const db = await getDb();
   if (!db) {
     return { accounts: 0, contacts: 0, linkedContacts: 0 };
   }
 
-  const [accountCount] = await db.select({ count: sql<number>`count(*)` }).from(accounts);
-  const [contactCount] = await db.select({ count: sql<number>`count(*)` }).from(contacts);
+  const [accountCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(accounts)
+    .where(eq(accounts.orgId, orgId));
+  const [contactCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(contacts)
+    .where(eq(contacts.orgId, orgId));
   const [linkedCount] = await db
     .select({ count: sql<number>`count(*)` })
     .from(contacts)
-    .where(sql`${contacts.accountId} IS NOT NULL`);
+    .where(and(eq(contacts.orgId, orgId), sql`${contacts.accountId} IS NOT NULL`));
 
   return {
     accounts: accountCount?.count || 0,
@@ -1463,7 +1514,7 @@ export async function getSyncStatus() {
 // OPPORTUNITIES FUNCTIONS
 // ============================================
 
-export async function getAllOpportunities() {
+export async function getAllOpportunities(orgId: number) {
   const db = await getDb();
   if (!db) {
     if (process.env.DEMO_MODE === 'true') {
@@ -1471,10 +1522,14 @@ export async function getAllOpportunities() {
     }
     return [];
   }
-  return await db.select().from(opportunities).orderBy(desc(opportunities.createdAt));
+  return await db
+    .select()
+    .from(opportunities)
+    .where(eq(opportunities.orgId, orgId))
+    .orderBy(desc(opportunities.createdAt));
 }
 
-export async function getOpportunityById(id: number) {
+export async function getOpportunityById(orgId: number, id: number) {
   const db = await getDb();
   if (!db) {
     if (process.env.DEMO_MODE === 'true') {
@@ -1482,11 +1537,15 @@ export async function getOpportunityById(id: number) {
     }
     return undefined;
   }
-  const result = await db.select().from(opportunities).where(eq(opportunities.id, id)).limit(1);
+  const result = await db
+    .select()
+    .from(opportunities)
+    .where(and(eq(opportunities.orgId, orgId), eq(opportunities.id, id)))
+    .limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getOpportunitiesByAccountId(accountId: number) {
+export async function getOpportunitiesByAccountId(orgId: number, accountId: number) {
   const db = await getDb();
   if (!db) {
     if (process.env.DEMO_MODE === 'true') {
@@ -1494,15 +1553,20 @@ export async function getOpportunitiesByAccountId(accountId: number) {
     }
     return [];
   }
-  return await db.select().from(opportunities).where(eq(opportunities.accountId, accountId)).orderBy(desc(opportunities.createdAt));
+  return await db
+    .select()
+    .from(opportunities)
+    .where(and(eq(opportunities.orgId, orgId), eq(opportunities.accountId, accountId)))
+    .orderBy(desc(opportunities.createdAt));
 }
 
-export async function upsertOpportunity(opportunity: InsertOpportunity) {
+export async function upsertOpportunity(orgId: number, opportunity: InsertOpportunity) {
   const db = await getDb();
   if (!db) return;
-  
-  await db.insert(opportunities).values(opportunity).onDuplicateKeyUpdate({
-    set: opportunity,
+
+  const owned = { ...opportunity, orgId };
+  await db.insert(opportunities).values(owned).onDuplicateKeyUpdate({
+    set: owned,
   });
 }
 

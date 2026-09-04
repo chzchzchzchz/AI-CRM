@@ -15,8 +15,8 @@ import { getBrainDigest, learnCycle } from "./brain";
 export const intelRouter = router({
   accountBrief: protectedProcedure
     .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
-    .query(async ({ input }) => {
-      const brief = await generateAccountBrief(input.accountId, {
+    .query(async ({ input, ctx }) => {
+      const brief = await generateAccountBrief(ctx.orgId, input.accountId, {
         forceRefresh: input.forceRefresh,
       });
       return {
@@ -37,7 +37,7 @@ export const intelRouter = router({
 
   accountSignals: protectedProcedure
     .input(z.object({ accountId: z.number() }))
-    .query(async ({ input }) => gatherAccountSignals(input.accountId)),
+    .query(async ({ input, ctx }) => gatherAccountSignals(ctx.orgId, input.accountId)),
 
   briefHistory: protectedProcedure
     .input(z.object({ accountId: z.number(), limit: z.number().min(1).max(50).optional() }))
@@ -48,8 +48,8 @@ export const intelRouter = router({
    * across learning cycles. Reads are instant (in-memory digest); a background learning
    * cycle is scheduled automatically when the underlying data has changed.
    */
-  brain: protectedProcedure.query(async () => getBrainDigest()),
+  brain: protectedProcedure.query(async ({ ctx }) => getBrainDigest(ctx.orgId)),
 
   /** Force a learning cycle now (admin/debug — normally runs in the background). */
-  brainLearn: protectedProcedure.mutation(async () => learnCycle(true)),
+  brainLearn: protectedProcedure.mutation(async ({ ctx }) => learnCycle(ctx.orgId, true)),
 });

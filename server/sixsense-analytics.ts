@@ -57,7 +57,7 @@ type RealData = {
   hasWonOpp: Set<number>;
 };
 
-async function loadReal(): Promise<RealData> {
+async function loadReal(orgId: number): Promise<RealData> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -77,10 +77,10 @@ async function loadReal(): Promise<RealData> {
   // exactly like a workspace that is genuinely empty. Every call site below sits behind
   // a protectedProcedure.query, so a throw here becomes a normal client-facing error.
   const [accounts, opportunities, contacts, calls, intent] = await Promise.all([
-    getAllAccounts(),
-    getAllOpportunities(),
-    getAllPeople(),
-    getAllGongCalls(),
+    getAllAccounts(orgId),
+    getAllOpportunities(orgId),
+    getAllPeople(orgId),
+    getAllGongCalls(orgId),
     fetchIntent(),
   ]);
 
@@ -284,18 +284,18 @@ function compute6QA(d: RealData) {
 }
 
 export const sixsenseAnalyticsRouter = router({
-  getBuyingStages: protectedProcedure.query(async () => {
-    return computeBuyingStages(await loadReal());
+  getBuyingStages: protectedProcedure.query(async ({ ctx }) => {
+    return computeBuyingStages(await loadReal(ctx.orgId));
   }),
 
-  getEngagement: protectedProcedure.query(async () => {
-    return computeEngagement(await loadReal());
+  getEngagement: protectedProcedure.query(async ({ ctx }) => {
+    return computeEngagement(await loadReal(ctx.orgId));
   }),
 
   getKeywords: protectedProcedure
     .input(z.object({ category: z.string().optional(), limit: z.number().default(20) }))
-    .query(async ({ input }) => {
-      const d = await loadReal();
+    .query(async ({ input, ctx }) => {
+      const d = await loadReal(ctx.orgId);
       const { keywords, dataAsOf } = computeKeywords(d);
       const limited = keywords.slice(0, input.limit);
       const filtered = input.category ? limited.filter((k) => k.category === input.category) : limited;
@@ -309,8 +309,8 @@ export const sixsenseAnalyticsRouter = router({
       return { dataAsOf, keywords: filtered, byCategory, categories: Object.keys(byCategory) };
     }),
 
-  get6QAPerformance: protectedProcedure.query(async () => {
-    const d = await loadReal();
+  get6QAPerformance: protectedProcedure.query(async ({ ctx }) => {
+    const d = await loadReal(ctx.orgId);
     const q = compute6QA(d);
     return {
       dataAsOf: d.now,
@@ -344,8 +344,8 @@ export const sixsenseAnalyticsRouter = router({
     };
   }),
 
-  getSummary: protectedProcedure.query(async () => {
-    const d = await loadReal();
+  getSummary: protectedProcedure.query(async ({ ctx }) => {
+    const d = await loadReal(ctx.orgId);
     const stages = computeBuyingStages(d);
     const engagement = computeEngagement(d);
     const q = compute6QA(d);

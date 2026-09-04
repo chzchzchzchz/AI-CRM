@@ -178,8 +178,8 @@ async function fetchIntentHistory(accountId: number) {
   }
 }
 
-export async function gatherAccountSignals(accountId: number): Promise<SignalPack> {
-  const account = await getAccountById(accountId);
+export async function gatherAccountSignals(orgId: number, accountId: number): Promise<SignalPack> {
+  const account = await getAccountById(orgId, accountId);
   if (!account) throw new Error(`Account ${accountId} not found`);
 
   // Not caught into [] on failure: a genuine query error here (as opposed to "this
@@ -189,9 +189,9 @@ export async function gatherAccountSignals(accountId: number): Promise<SignalPac
   // caller of gatherAccountSignals already either sits behind a tRPC procedure (which
   // turns a throw into a normal client-facing error) or its own try/catch.
   const [people, calls, opps, intentRows] = await Promise.all([
-    getContactsByAccountId(accountId),
-    getGongCallsByAccountId(accountId),
-    getOpportunitiesByAccountId(accountId),
+    getContactsByAccountId(orgId, accountId),
+    getGongCallsByAccountId(orgId, accountId),
+    getOpportunitiesByAccountId(orgId, accountId),
     fetchIntentHistory(accountId),
   ]);
 

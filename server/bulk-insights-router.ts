@@ -8,7 +8,7 @@ import { wrapUntrusted } from "./_core/untrusted";
 export const bulkInsightsRouter = router({
   generateForTopLeads: protectedProcedure
     .input(z.object({ limit: z.number().default(50) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { getDb } = await import("./db");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -31,8 +31,8 @@ export const bulkInsightsRouter = router({
       for (const account of topAccounts) {
         try {
           // Get contacts and calls for this account
-          const contacts = await getContactsByAccountId(account.id);
-          const calls = await getGongCallsByAccountId(account.id);
+          const contacts = await getContactsByAccountId(ctx.orgId, account.id);
+          const calls = await getGongCallsByAccountId(ctx.orgId, account.id);
 
           // Prepare contact list
           const contactList = contacts.slice(0, 10).map((c: any) => ({
@@ -148,7 +148,7 @@ CRITICAL RULES:
 
           // Store in cache
           const { updateAccount } = await import("./db");
-          await updateAccount(account.id, {
+          await updateAccount(ctx.orgId, account.id, {
             aiInsightsCache: cleanedRecommendations,
             aiCacheUpdatedAt: new Date()
           } as any);

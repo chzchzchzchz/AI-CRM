@@ -69,8 +69,19 @@ export type BrainDigest = {
 // ---------------------------------------------------------------------------
 // In-memory state: reads never touch the DB or the model.
 // ---------------------------------------------------------------------------
-let cached: BrainDigest | null = null;
-let learning = false;
+/**
+ * Keyed by org, not a single slot.
+ *
+ * This was one module-level digest for the whole process — correct while there was
+ * exactly one tenant and a cross-tenant read the moment there wasn't: whichever org
+ * called first would populate it, and every other org would be served that org's
+ * account totals, hot accounts and model-written lessons as their own workspace summary.
+ * A cache is the easiest place for a tenant boundary to go missing, because nothing
+ * about the read looks wrong.
+ */
+const cachedByOrg = new Map<number, BrainDigest>();
+const learningByOrg = new Set<number>();
+const lastLearnStartedByOrg = new Map<number, number>();
 let lastLearnStarted = 0;
 
 const num = (v: unknown): number => {
@@ -91,12 +102,12 @@ const num = (v: unknown): number => {
  * outside this file already treat a thrown error as "brain unavailable, proceed without
  * it," which is the honest degrade; this only needs to actually throw for that to work.
  */
-export async function crawlSnapshot(): Promise<BrainSnapshot> {
+export async function crawlSnapshot(orgId: number): Promise<BrainSnapshot> {
   const [accounts, people, calls, opps] = await Promise.all([
-    getAllAccounts(),
-    getAllPeople(),
-    getAllGongCalls(),
-    getAllOpportunities(),
+    getAllAccounts(orgId),
+    getAllPeople(orgId),
+    getAllGongCalls(orgId),
+    getAllOpportunities(orgId),
   ]);
 
   const contactsByAccount = new Map<number, number>();
@@ -196,14 +207,15 @@ async function loadPersisted(): Promise<{ lessons: BrainLesson[]; cycles: number
  * One learning cycle: crawl → diff vs prior hash → let the model study the snapshot WITH
  * its own prior lessons → persist the merged, deduped lesson set. Grows across cycles.
  */
-export async function learnCycle(force = false): Promise<BrainDigest> {
+export async function learnCycle(orgId: number, force = false): Promise<BrainDigest> {
   const persisted = await loadPersisted();
-  const snapshot = await crawlSnapshot();
+  const snapshot = await crawlSnapshot(orgId);
 
   // Nothing changed and not forced → refresh the cache, skip the model entirely.
   if (!force && persisted.lastHash === snapshot.hash && persisted.lessons.length) {
-    cached = { snapshot, lessons: persisted.lessons, cycles: persisted.cycles, lastLearnedAt: persisted.lastLearnedAt, learning: false };
-    return cached;
+    const fresh = { snapshot, lessons: persisted.lessons, cycles: persisted.cycles, lastLearnedAt: persisted.lastLearnedAt, learning: false };
+    cachedByOrg.set(orgId, fresh);
+    return fresh;
   }
 
   let lessons = persisted.lessons;
@@ -266,31 +278,37 @@ Return ONLY JSON: {"lessons":[{"lesson":"...","evidence":"..."}]} with at most $
     console.warn("[brain] could not persist lessons:", (err as Error)?.message);
   }
 
-  cached = { snapshot, lessons, cycles: cycle, lastLearnedAt, learning: false };
-  return cached;
+  const digest = { snapshot, lessons, cycles: cycle, lastLearnedAt, learning: false };
+  cachedByOrg.set(orgId, digest);
+  return digest;
 }
 
 /** Kick a background learning cycle if data changed and one isn't already running. */
-export function scheduleLearning(): void {
+export function scheduleLearning(orgId: number): void {
   const now = Date.now();
-  if (learning || now - lastLearnStarted < LEARN_MIN_INTERVAL_MS) return;
-  learning = true; lastLearnStarted = now;
-  learnCycle()
+  // Throttled per org: one busy tenant must not starve another's brain of cycles, and
+  // a shared flag would have done exactly that.
+  if (learningByOrg.has(orgId) || now - (lastLearnStartedByOrg.get(orgId) ?? 0) < LEARN_MIN_INTERVAL_MS) return;
+  learningByOrg.add(orgId); lastLearnStartedByOrg.set(orgId, now);
+  learnCycle(orgId)
     .catch((e) => console.warn("[brain] background learn failed:", e?.message))
-    .finally(() => { learning = false; });
+    .finally(() => { learningByOrg.delete(orgId); });
 }
 
 /**
  * The fast read every consumer uses. Serves the in-memory digest instantly; on first call
  * it builds the deterministic snapshot (no LLM) and schedules learning in the background.
  */
-export async function getBrainDigest(): Promise<BrainDigest> {
-  if (cached) { scheduleLearning(); return { ...cached, learning }; }
+export async function getBrainDigest(orgId: number): Promise<BrainDigest> {
+  const learning = learningByOrg.has(orgId);
+  const hit = cachedByOrg.get(orgId);
+  if (hit) { scheduleLearning(orgId); return { ...hit, learning }; }
   const persisted = await loadPersisted();
-  const snapshot = await crawlSnapshot();
-  cached = { snapshot, lessons: persisted.lessons, cycles: persisted.cycles, lastLearnedAt: persisted.lastLearnedAt, learning };
-  scheduleLearning();
-  return { ...cached, learning };
+  const snapshot = await crawlSnapshot(orgId);
+  const digest = { snapshot, lessons: persisted.lessons, cycles: persisted.cycles, lastLearnedAt: persisted.lastLearnedAt, learning };
+  cachedByOrg.set(orgId, digest);
+  scheduleLearning(orgId);
+  return { ...digest, learning };
 }
 
 /** Compact text block for injecting the brain into any LLM prompt. */

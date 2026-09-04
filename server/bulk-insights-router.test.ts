@@ -81,7 +81,7 @@ describe("bulkInsights.generateForTopLeads", () => {
         getDb: vi.fn().mockResolvedValue(mockDbChain([fakeAccount])),
         getContactsByAccountId: vi.fn().mockResolvedValue([]),
         getGongCallsByAccountId: vi.fn().mockResolvedValue([]),
-        updateAccount: vi.fn().mockImplementation(async (_id: number, patch: any) => {
+        updateAccount: vi.fn().mockImplementation(async (_orgId: number, _id: number, patch: any) => {
           cachedInsight = patch.aiInsightsCache;
         }),
       };

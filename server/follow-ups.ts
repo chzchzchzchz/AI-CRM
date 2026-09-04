@@ -85,8 +85,8 @@ async function loadContact(db: any, contactId: number | null) {
   }
 }
 
-async function toView(db: any, row: FollowUp): Promise<FollowUpView> {
-  const account = row.accountId ? await getAccountById(row.accountId).catch(() => null) : null;
+async function toView(db: any, orgId: number, row: FollowUp): Promise<FollowUpView> {
+  const account = row.accountId ? await getAccountById(orgId, row.accountId).catch(() => null) : null;
   const contact = await loadContact(db, row.contactId);
   const due = new Date(row.dueDate);
   const days = daysUntil(due);
@@ -157,7 +157,7 @@ export const followUpsRouter = router({
         (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
       );
 
-      const items = await Promise.all(sorted.slice(0, limit).map((r) => toView(db, r)));
+      const items = await Promise.all(sorted.slice(0, limit).map((r) => toView(db, ctx.orgId, r)));
 
       return {
         items,

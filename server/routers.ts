@@ -109,7 +109,7 @@ export const appRouter = router({
         additionalContext: z.string().optional(),
         debugMode: z.boolean().optional()
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         // The client (ContextualAI) passes only { id } for the account — never the actual
         // data — so the model was asked about an account it knew nothing about. Hydrate the
         // full, real signal pack from the id here so the answer is grounded.
@@ -118,7 +118,7 @@ export const appRouter = router({
         if (accountId && Object.keys(accountData).length <= 2) {
           try {
             const { gatherAccountSignals } = await import("./intel/signals");
-            accountData = await gatherAccountSignals(Number(accountId));
+            accountData = await gatherAccountSignals(ctx.orgId, Number(accountId));
           } catch (e) {
             console.error("[deepThink.sales] could not hydrate account signals:", e);
           }
@@ -128,7 +128,7 @@ export const appRouter = router({
         let additionalContext = input.additionalContext;
         try {
           const { getBrainDigest, brainContextBlock } = await import("./intel/brain");
-          const digest = await getBrainDigest();
+          const digest = await getBrainDigest(ctx.orgId);
           additionalContext = [brainContextBlock(digest), additionalContext].filter(Boolean).join("\n\n");
         } catch { /* brain unavailable → proceed without it */ }
         return await deepThinkSales({ ...input, accountData, additionalContext });
@@ -146,9 +146,9 @@ export const appRouter = router({
   analytics: router({
     overview: protectedProcedure.query(async ({ ctx }) => {
       const isDemoUser = ctx.user?.email?.includes('demo') || false;
-      const accounts = await getAllAccounts(isDemoUser);
-      const people = await getAllPeople();
-      const calls = await getAllGongCalls();
+      const accounts = await getAllAccounts(ctx.orgId, isDemoUser);
+      const people = await getAllPeople(ctx.orgId);
+      const calls = await getAllGongCalls(ctx.orgId);
 
       // Calculate intent score distribution
       const intentScores = accounts
@@ -513,18 +513,18 @@ Or go to the Admin Panel: /admin/approval`
   accounts: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       const isDemoUser = ctx.user?.email?.includes('demo') || false;
-      return await getAllAccounts(isDemoUser);
+      return await getAllAccounts(ctx.orgId, isDemoUser);
     }),
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        return await getAccountById(input.id);
+      .query(async ({ input, ctx }) => {
+        return await getAccountById(ctx.orgId, input.id);
       }),
     getStats: protectedProcedure.query(async ({ ctx }) => {
       const isDemoUser = ctx.user?.email?.includes('demo') || false;
-      const accounts = await getAllAccounts(isDemoUser);
-      const people = await getAllPeople();
-      const calls = await getAllGongCalls();
+      const accounts = await getAllAccounts(ctx.orgId, isDemoUser);
+      const people = await getAllPeople(ctx.orgId);
+      const calls = await getAllGongCalls(ctx.orgId);
       
       // Calculate hot leads (intent score >= 70)
       const hotLeads = accounts.filter((a: Account) => {
@@ -553,8 +553,8 @@ Or go to the Admin Panel: /admin/approval`
     }),
     enrichWith6sense: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
-        const account = await getAccountById(input.id);
+      .mutation(async ({ input, ctx }) => {
+        const account = await getAccountById(ctx.orgId, input.id);
         if (!account?.domain) {
           throw new Error('Account not found or missing domain');
         }
@@ -582,16 +582,16 @@ Or go to the Admin Panel: /admin/approval`
         if (data.profileFit) updates.sixsenseProfileFit = data.profileFit;
         if (data.sixsenseId) updates.sixsenseId = data.sixsenseId;
         if (data.segments?.length) updates.sixsenseSegments = JSON.stringify(data.segments);
-        await updateAccount(input.id, updates as any);
+        await updateAccount(ctx.orgId, input.id, updates as any);
 
         return { success: true, accountId: input.id, enrichment: data, message: "Account enriched from 6sense." };
       }),
     getTimeline: protectedProcedure
       .input(z.object({ accountId: z.number(), limit: z.number().default(50) }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
         const [account, calls] = await Promise.all([
-          getAccountById(input.accountId),
-          getGongCallsByAccountId(input.accountId)
+          getAccountById(ctx.orgId, input.accountId),
+          getGongCallsByAccountId(ctx.orgId, input.accountId)
         ]);
         
         if (!account) {
@@ -677,8 +677,8 @@ Or go to the Admin Panel: /admin/approval`
   }),
   
   opportunities: router({
-    list: protectedProcedure.query(async () => {
-      return await getAllOpportunities();
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return await getAllOpportunities(ctx.orgId);
     }),
     upsert: protectedProcedure
       .input(z.object({
@@ -694,18 +694,18 @@ Or go to the Admin Panel: /admin/approval`
         aiInsights: z.string().optional(),
         sfdcOpportunityId: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const payload: any = { ...input };
         if (typeof payload.amount === "string") payload.amount = payload.amount.replace(/[^0-9.-]/g, "");
         if (typeof payload.expectedCloseDate === "string" && payload.expectedCloseDate) {
           payload.expectedCloseDate = new Date(payload.expectedCloseDate);
         }
-        return await upsertOpportunity(payload);
+        return await upsertOpportunity(ctx.orgId, payload);
       }),
     aiScore: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
-        const opp = await getOpportunityById(input.id);
+      .mutation(async ({ input, ctx }) => {
+        const opp = await getOpportunityById(ctx.orgId, input.id);
         if (!opp) throw new Error("Opportunity not found");
 
         // Deterministic success score derived from real deal signals (stage
@@ -729,7 +729,7 @@ Or go to the Admin Panel: /admin/approval`
           (closeDate ? `, target close ${closeDate}` : "") +
           `. Score weights stated probability by stage progression.`;
 
-        await upsertOpportunity({
+        await upsertOpportunity(ctx.orgId, {
           ...opp,
           aiSuccessScore: score,
           aiInsights: insights,
@@ -740,8 +740,8 @@ Or go to the Admin Panel: /admin/approval`
   }),
 
   calls: router({
-    list: protectedProcedure.query(async () => {
-      return await getAllGongCalls();
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return await getAllGongCalls(ctx.orgId);
     }),
     create: protectedProcedure
       .input(z.object({
@@ -776,16 +776,16 @@ Or go to the Admin Panel: /admin/approval`
   people: router({
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        return await getPersonById(input.id);
+      .query(async ({ input, ctx }) => {
+        return await getPersonById(ctx.orgId, input.id);
       }),
     // Bounded by default so the Contacts page doesn't ship all 10k rows (~8MB) on load.
     // A search term filters server-side across the FULL set, so no contact is unreachable
     // even though only a page is returned. Rich client-side filters run over what's returned.
     list: protectedProcedure
       .input(z.object({ limit: z.number().optional(), search: z.string().optional() }).optional())
-      .query(async ({ input }) => {
-        const all = await getAllPeople();
+      .query(async ({ input, ctx }) => {
+        const all = await getAllPeople(ctx.orgId);
         const q = input?.search?.trim().toLowerCase();
         const cap = input?.limit ?? 1500;
         if (q) {
@@ -801,10 +801,10 @@ Or go to the Admin Panel: /admin/approval`
       }),
     prioritize: protectedProcedure
       .input(z.object({ accountId: z.number().optional() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
         let contacts = input.accountId
-          ? await getPeopleByCompany(String(input.accountId))
-          : await getAllPeople();
+          ? await getPeopleByCompany(ctx.orgId, String(input.accountId))
+          : await getAllPeople(ctx.orgId);
         // Never feed thousands of contacts into a single LLM prompt. Without an account,
         // rank the most senior contacts (a real signal) and cap the set the model scores.
         if (!input.accountId && contacts.length > 60) {
@@ -813,7 +813,7 @@ Or go to the Admin Panel: /admin/approval`
             .sort((a: any, b: any) => (rank[a.seniority] ?? 5) - (rank[b.seniority] ?? 5))
             .slice(0, 50);
         }
-        const account = input.accountId ? await getAccountById(input.accountId) : null;
+        const account = input.accountId ? await getAccountById(ctx.orgId, input.accountId) : null;
         return await prioritizeContacts(contacts, account || {});
       }),
   }),
@@ -853,7 +853,7 @@ Or go to the Admin Panel: /admin/approval`
   //     }),
   //   getStatus: publicProcedure
   //     .input(z.object({ requestId: z.string() }))
-  //     .query(async ({ input }) => {
+  //     .query(async ({ input, ctx }) => {
   //       return await getClayRequest(input.requestId);
   //     }),
   //   listRequests: publicProcedure.query(async () => {
@@ -862,13 +862,13 @@ Or go to the Admin Panel: /admin/approval`
   // }),
 
   gong: router({
-    list: protectedProcedure.query(async () => {
-      return await getAllGongCalls();
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return await getAllGongCalls(ctx.orgId);
     }),
     listPaginated: protectedProcedure
       .input(z.object({ limit: z.number().default(50), offset: z.number().default(0) }))
-      .query(async ({ input }) => {
-        return await getGongCallsPaginated(input.limit, input.offset);
+      .query(async ({ input, ctx }) => {
+        return await getGongCallsPaginated(ctx.orgId, input.limit, input.offset);
       }),
     testConnection: protectedProcedure.query(async () => {
       const { gongTestConnection, isGongConfigured } = await import("./integrations/gong");
@@ -927,8 +927,8 @@ Or go to the Admin Panel: /admin/approval`
   ai: router({
     analyzeCall: protectedProcedure
       .input(z.object({ callId: z.number() }))
-      .mutation(async ({ input }) => {
-        const calls = await getAllGongCalls();
+      .mutation(async ({ input, ctx }) => {
+        const calls = await getAllGongCalls(ctx.orgId);
         const call = calls.find((c: Call) => c.id === input.callId);
         if (!call) throw new Error('Call not found');
         return await analyzeGongCall(call);
@@ -936,8 +936,8 @@ Or go to the Admin Panel: /admin/approval`
 
     search: protectedProcedure
       .input(z.object({ query: z.string() }))
-      .mutation(async ({ input }) => {
-        return await intelligentSearch(input.query);
+      .mutation(async ({ input, ctx }) => {
+        return await intelligentSearch(ctx.orgId, input.query);
       }),
 
     chat: protectedProcedure
@@ -952,6 +952,7 @@ Or go to the Admin Panel: /admin/approval`
       }))
       .mutation(async ({ input, ctx }) => {
         return await conversationWithMemory({
+          orgId: ctx.orgId,
           query: input.query,
           accountId: input.accountId,
           contactId: input.contactId,
@@ -968,8 +969,8 @@ Or go to the Admin Panel: /admin/approval`
 
     compileResearch: protectedProcedure
       .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
-      .query(async ({ input }) => {
-        const account = await getAccountById(input.accountId);
+      .query(async ({ input, ctx }) => {
+        const account = await getAccountById(ctx.orgId, input.accountId);
         if (!account) throw new Error('Account not found');
 
         // Check cache first (valid for 24 hours)
@@ -989,7 +990,7 @@ Or go to the Admin Panel: /admin/approval`
         // If forceRefresh, clear the cache first
         if (input.forceRefresh) {
           console.log(`[AI Research] Force refresh requested for account ${input.accountId}, clearing cache...`);
-          await updateAccount(input.accountId, {
+          await updateAccount(ctx.orgId, input.accountId, {
             aiResearchCache: null,
             aiCacheUpdatedAt: null
           } as any);
@@ -1065,7 +1066,7 @@ Or go to the Admin Panel: /admin/approval`
         };
 
         // Store in cache
-        await updateAccount(input.accountId, {
+        await updateAccount(ctx.orgId, input.accountId, {
           aiResearchCache: JSON.stringify(result),
           aiCacheUpdatedAt: new Date()
         } as any);
@@ -1075,8 +1076,8 @@ Or go to the Admin Panel: /admin/approval`
 
     analyzeTechStack: protectedProcedure
       .input(z.object({ accountId: z.number() }))
-      .mutation(async ({ input }) => {
-        const account = await getAccountById(input.accountId);
+      .mutation(async ({ input, ctx }) => {
+        const account = await getAccountById(ctx.orgId, input.accountId);
         if (!account || !account.techStack) {
           return { categories: {}, raw: "No technology stack data available" };
         }

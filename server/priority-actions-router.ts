@@ -56,7 +56,7 @@ export const priorityActionsRouter = router({
       const limit = input?.limit || 3;
       const userEmail = input?.userEmail;
       const isDemoUser = ctx.user?.email?.includes('demo') || false;
-      let accounts = await getAllAccounts(isDemoUser);
+      let accounts = await getAllAccounts(ctx.orgId, isDemoUser);
       
       // Apply rep-specific filtering only for non-demo users
       // Filter for whichever rep is selected, demo or not: the dashboard labels these
@@ -75,8 +75,8 @@ export const priorityActionsRouter = router({
 
       const enrichedActions = await Promise.all(
         hotAccounts.map(async (account: Account) => {
-          const contacts = await getContactsByAccountId(account.id);
-          const calls = await getGongCallsByAccountId(account.id);
+          const contacts = await getContactsByAccountId(ctx.orgId, account.id);
+          const calls = await getGongCallsByAccountId(ctx.orgId, account.id);
           
           // Sort contacts: key titles first, then by name
           const sortedContacts = [...contacts].sort((a: Contact, b: Contact) => {
@@ -272,7 +272,7 @@ export const priorityActionsRouter = router({
     .input(z.object({ userEmail: z.string().optional() }))
     .query(async ({ ctx, input }) => {
       const isDemoUser = ctx.user?.email?.includes('demo') || false;
-      let accounts = await getAllAccounts(isDemoUser);
+      let accounts = await getAllAccounts(ctx.orgId, isDemoUser);
       
       // Apply rep-specific filtering if user email matches a known rep
       const territory = territoryFor(input?.userEmail);
@@ -299,7 +299,7 @@ export const priorityActionsRouter = router({
       // exist." Swallowing it inflated sixQAGap to every hot account, the maximum
       // possible value, with nothing to show a rep the number was manufactured rather
       // than measured. getAllAccounts above is not caught for the same reason.
-      const allOpps = await getAllOpportunities();
+      const allOpps = await getAllOpportunities(ctx.orgId);
       const accountsWithOpp = new Set(
         (allOpps as any[]).map((o) => o.accountId).filter((id) => id != null)
       );

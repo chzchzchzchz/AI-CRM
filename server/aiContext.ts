@@ -115,6 +115,9 @@ export async function buildAIContext(params: {
  * Intelligent conversation handler with persistent memory
  */
 export async function conversationWithMemory(params: {
+  /** The tenant asking. The workspace brain below is per-org; without this the chat
+   *  would answer one customer's question using another customer's portfolio. */
+  orgId: number;
   query: string;
   accountId?: number;
   contactId?: number;
@@ -130,7 +133,7 @@ export async function conversationWithMemory(params: {
   // lessons) so chat answers draw on the whole portfolio's knowledge.
   try {
     const { getBrainDigest, brainContextBlock } = await import("./intel/brain");
-    storedContext = `${brainContextBlock(await getBrainDigest())}\n${storedContext}`;
+    storedContext = `${brainContextBlock(await getBrainDigest(params.orgId))}\n${storedContext}`;
   } catch { /* brain unavailable → chat still works */ }
 
   // Check for intent spike queries

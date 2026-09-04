@@ -771,10 +771,11 @@ export async function getAccountBriefHistory(accountId: number, limit = 10) {
 // ---------------------------------------------------------------------------------
 
 export async function generateAccountBrief(
+  orgId: number,
   accountId: number,
   opts: { forceRefresh?: boolean } = {}
 ): Promise<AccountBrief> {
-  const pack = await gatherAccountSignals(accountId);
+  const pack = await gatherAccountSignals(orgId, accountId);
   const signalHash = hashSignals(pack);
   const metrics = metricsFrom(pack);
 

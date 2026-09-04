@@ -533,8 +533,8 @@ export async function validateContact(contact: any, account: any): Promise<Valid
 /**
  * Validate all accounts (batch processing with rate limiting)
  */
-export async function validateAllAccounts(limit: number = 20): Promise<ValidationIssue[]> {
-  const accounts = await getAllAccounts();
+export async function validateAllAccounts(orgId: number, limit: number = 20): Promise<ValidationIssue[]> {
+  const accounts = await getAllAccounts(orgId);
   const allIssues: ValidationIssue[] = [];
 
   // Process in small batches to avoid rate limiting
@@ -559,9 +559,9 @@ export async function validateAllAccounts(limit: number = 20): Promise<Validatio
 /**
  * Validate all contacts (batch processing with rate limiting)
  */
-export async function validateAllContacts(limit: number = 30): Promise<ValidationIssue[]> {
-  const contacts = await getAllPeople();
-  const accounts = await getAllAccounts();
+export async function validateAllContacts(orgId: number, limit: number = 30): Promise<ValidationIssue[]> {
+  const contacts = await getAllPeople(orgId);
+  const accounts = await getAllAccounts(orgId);
   const accountMap = new Map(accounts.map((a: any) => [a.id, a]));
   
   const allIssues: ValidationIssue[] = [];
@@ -590,9 +590,9 @@ export async function validateAllContacts(limit: number = 30): Promise<Validatio
 /**
  * Get validation summary statistics (quick, no web searches)
  */
-export async function getValidationSummary() {
-  const accounts = await getAllAccounts();
-  const contacts = await getAllPeople();
+export async function getValidationSummary(orgId: number) {
+  const accounts = await getAllAccounts(orgId);
+  const contacts = await getAllPeople(orgId);
 
   // Quick validation without web searches
   const accountIssues = {
