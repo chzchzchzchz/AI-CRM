@@ -66,6 +66,7 @@ async function issueSession(
 ) {
   const db = await getDb();
   if (db) {
+    // tenancy-exempt: writes the sign-in timestamp on the row the session just resolved; no org known yet
     await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
   }
 
@@ -262,6 +263,7 @@ export const appRouter = router({
         // pass this check and create a second account for an address that already had
         // one, confirmed live against demo@ai-crm.com.
         const normalizedEmail = input.email.trim().toLowerCase();
+        // tenancy-exempt: identity lookup by email, before any session exists; email is globally unique across orgs
         const existing = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
         if (existing.length > 0) {
           throw new Error("An account with this email already exists");
@@ -273,6 +275,7 @@ export const appRouter = router({
         // Create user with unique openId
         const openId = `email_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
+        // tenancy-exempt: signup creates the user row; the org column takes its default and the admin path sets it
         const result = await db.insert(users).values({
           openId,
           email: normalizedEmail,
@@ -359,6 +362,7 @@ Or go to the Admin Panel: /admin/approval`
           throw new Error(`Too many login attempts. Try again in ${Math.ceil(lockout.retryAfterSeconds / 60)} minute(s).`);
         }
 
+        // tenancy-exempt: identity lookup by email, before any session exists; email is globally unique across orgs
         const userResults = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
         const user = userResults[0];
 
@@ -441,6 +445,7 @@ Or go to the Admin Panel: /admin/approval`
           );
         }
 
+        // tenancy-exempt: resolved from the 2FA challenge's own userId, which the password step already established
         const [user] = await db.select().from(users).where(eq(users.id, claim.userId)).limit(1);
         if (!user?.twoFactorEnabled || !user.twoFactorSecret) {
           throw new Error("Two-factor authentication is not enabled for this account");
@@ -456,11 +461,13 @@ Or go to the Admin Panel: /admin/approval`
           // reusing `user` from above) means the second request in a queued pair sees
           // the first request's write.
           const redeemed = await withUserLock(user.id, async () => {
+            // tenancy-exempt: resolved from the 2FA challenge's own userId, which the password step already established
             const [fresh] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
             const result = await redeemBackupCode(fresh?.twoFactorBackupCodes as string | null, input.code);
             if (result.ok) {
               // Spend it before the session is issued: a code that survives its own
               // use is a permanent bypass of the second factor.
+              // tenancy-exempt: resolved from the 2FA challenge's own userId, which the password step already established
               await db.update(users).set({ twoFactorBackupCodes: result.remaining }).where(eq(users.id, user.id));
             }
             return result;
@@ -492,11 +499,13 @@ Or go to the Admin Panel: /admin/approval`
         const db = await getDb();
         if (!db) throw new Error("Database not available");
         // Check if request already exists
+        // tenancy-exempt: an access request is submitted before an account exists — there is no org to attribute it to yet
         const existing = await db.select().from(accessRequests).where(eq(accessRequests.email, input.email)).limit(1);
         if (existing.length > 0) {
           throw new Error("You have already submitted an access request");
         }
         
+        // tenancy-exempt: an access request is submitted before an account exists — there is no org to attribute it to yet
         await db.insert(accessRequests).values({
           email: input.email,
           name: input.name,

@@ -183,6 +183,7 @@ export const emailVerificationRouter = router({
       // normalize here too, or a user who types a different case than they signed up
       // with is told (indirectly, via the anti-enumeration success response) that a
       // code was sent when no account was actually found.
+      // tenancy-exempt: identity lookup by email, before any session exists; email is globally unique across orgs
       const userResults = await db
         .select()
         .from(users)
@@ -261,6 +262,7 @@ export const emailVerificationRouter = router({
 
       const passwordHash = await bcrypt.hash(input.newPassword, 10);
 
+      // tenancy-exempt: auth path — runs before a session exists, so there is no org to filter by
       await db
         .update(users)
         .set({ passwordHash })

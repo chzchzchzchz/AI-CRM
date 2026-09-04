@@ -23,6 +23,38 @@ export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = typeof organizations.$inferInsert;
 
 /**
+ * A credential that identifies an organization to an inbound webhook.
+ *
+ * Webhook receivers are publicProcedures: an HTTP POST with no session, so there is no
+ * `ctx.orgId` to read. With one shared secret in the environment there is also no way to
+ * tell whose data an inbound record is — every Clay row would land in the same org
+ * regardless of who sent it, which is why those receivers were the last thing standing
+ * between this codebase and multi-org.
+ *
+ * One secret per organization per provider fixes that: the org is resolved FROM the
+ * credential the caller presented, exactly as `ctx.orgId` is resolved from a session.
+ *
+ * Stored as a SHA-256 hash, not bcrypt: this is looked up BY the secret on every inbound
+ * webhook, so it has to be a deterministic index probe rather than a scan of every row
+ * doing a slow comparison. The secret is 256 bits from a CSPRNG, so it has no guessable
+ * structure for a fast hash to expose — the reasoning that makes bcrypt necessary for
+ * human-chosen passwords does not apply.
+ */
+export const webhookCredentials = mysqlTable("webhook_credentials", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
+  provider: varchar("provider", { length: 64 }).notNull(),
+  secretHash: varchar("secretHash", { length: 64 }).notNull().unique(),
+  label: varchar("label", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  // Set rather than deleting the row, so a revoked credential stays auditable.
+  revokedAt: timestamp("revokedAt"),
+});
+
+export type WebhookCredential = typeof webhookCredentials.$inferSelect;
+export type InsertWebhookCredential = typeof webhookCredentials.$inferInsert;
+
+/**
  * Core user table backing auth flow.
  */
 export const users = mysqlTable("users", {
@@ -59,6 +91,7 @@ export const users = mysqlTable("users", {
 // Access requests table for demo/conference access
 export const accessRequests = mysqlTable("access_requests", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   company: varchar("company", { length: 255 }),
@@ -734,6 +767,7 @@ export type InsertPasswordResetCode = typeof passwordResetCodes.$inferInsert;
 // Audit Logs - tracks all authentication and admin events
 export const auditLogs = mysqlTable("auditLogs", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   userId: int("userId").notNull(),
   eventType: varchar("eventType", { length: 100 }).notNull(),
   description: text("description").notNull(),

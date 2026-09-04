@@ -16,11 +16,25 @@ import fs from "node:fs";
 import path from "node:path";
 
 /**
- * Tables holding one customer's data. Reference tables (users, organizations,
- * accessRequests, auditLogs, the auth code tables) are deliberately absent: they are
- * either scoped through the user row itself or are not tenant data at all.
+ * Tables holding one customer's data.
+ *
+ * `users`, `accessRequests` and `auditLogs` are in the list even though most queries on
+ * them are auth-path queries that genuinely cannot carry an org filter — login runs
+ * before a session exists, so there is nothing to filter by. Those are marked exempt
+ * individually, with the reason next to the query.
+ *
+ * They are in the list because the admin user listing was NOT one of those: it read every
+ * user row in the table, so a second organization's admin would have seen the first
+ * organization's people, names and email addresses. Leaving the table out of the audit
+ * entirely is what let that sit unnoticed while every other table was being scoped —
+ * an audit's blind spot is indistinguishable from an audit's approval.
+ *
+ * `organizations` itself is absent: it IS the tenant list, not tenant data.
  */
 export const TENANT_TABLES = [
+  "users",
+  "accessRequests",
+  "auditLogs",
   "accounts",
   "contacts",
   "calls",
@@ -54,9 +68,18 @@ export const TENANT_TABLES = [
   "opportunities",
 ];
 
+/**
+ * Blank comments while preserving line structure exactly.
+ *
+ * check-claims' version replaces a block comment with spaces of the same total length,
+ * which is fine when you only match content — but it eats the newlines, so every line
+ * number after a `/* … *\/` block is wrong. This file reports file:line and matches an
+ * exemption marker by proximity, so both would silently point at the wrong statement.
+ * Newlines are kept; everything else in a comment becomes a space.
+ */
 function stripComments(src) {
   return src
-    .replace(/\/\*[\s\S]*?\*\//g, m => " ".repeat(m.length))
+    .replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, " "))
     .replace(/(^|[^:])\/\/[^\n]*/g, (m, lead) => lead + " ".repeat(m.length - lead.length));
 }
 
@@ -144,6 +167,14 @@ export function auditTenancyFull(root) {
       const hit = [...st.text.matchAll(touches)];
       if (!hit.length) continue;
       if (/\borgId\b/.test(st.text)) continue;
+
+      // A query bounded to the caller's OWN row cannot cross a tenant boundary: the user
+      // id came from the session, and a user belongs to exactly one org. Self-scoping is
+      // strictly narrower than org-scoping, so it counts as scoped rather than needing
+      // seven copies of the same exemption comment on twofa-router's settings queries.
+      // Deliberately requires `ctx.user`, not any `.id`: an id from `input` is a caller-
+      // supplied value, which is a parameter and not a boundary.
+      if (/\bctx\.user[!?]?\.id\b/.test(st.text)) continue;
 
       const line = lineOf(src, st.offset);
       const table = hit[0][1] ?? hit[0][2];

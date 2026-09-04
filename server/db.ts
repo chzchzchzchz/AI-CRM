@@ -878,6 +878,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
+    // tenancy-exempt: session resolution — this runs to FIND the user whose org everything else is filtered by
     await db.insert(users).values(values).onDuplicateKeyUpdate({
       set: updateSet,
     });
@@ -894,6 +895,7 @@ export async function getUserByOpenId(openId: string) {
     return undefined;
   }
 
+  // tenancy-exempt: session resolution — this runs to FIND the user whose org everything else is filtered by
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;

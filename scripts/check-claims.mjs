@@ -11,7 +11,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { auditTenancy } from "./tenancy-audit.mjs";
+import { auditTenancyFull } from "./tenancy-audit.mjs";
 
 const ROOT = process.cwd();
 const failures = [];
@@ -676,12 +676,14 @@ function walk(dir, exts, acc = []) {
   if (!fs.existsSync(statusPath)) {
     fail("tenancy scoping count is real", "shared/tenancy-status.ts missing");
   } else {
-    const actual = auditTenancy(ROOT).length;
-    const m = fs
-      .readFileSync(statusPath, "utf8")
+    const { sites, exemptions } = auditTenancyFull(ROOT);
+    const actual = sites.length;
+    const statusSrc = fs.readFileSync(statusPath, "utf8");
+    const m = statusSrc
       // Tolerates the `: number` annotation (there so `=== 0` stays a runtime question
       // rather than being narrowed away as impossible).
       .match(/UNSCOPED_QUERY_SITES\s*(?::\s*number\s*)?=\s*(\d+)/);
+    const em = statusSrc.match(/EXEMPT_QUERY_SITES\s*(?::\s*number\s*)?=\s*(\d+)/);
 
     if (!m) {
       fail("tenancy scoping count is real", "could not read UNSCOPED_QUERY_SITES");
@@ -694,10 +696,21 @@ function walk(dir, exts, acc = []) {
             ? ` — claiming fewer is what lets a second org in before it is safe. Run \`pnpm tenancy\` for the list.`
             : ` — scoping went further than the file admits; lower it to ${actual}.`)
       );
+    } else if (!em) {
+      fail("tenancy scoping count is real", "could not read EXEMPT_QUERY_SITES");
+    } else if (Number(em[1]) !== exemptions.length) {
+      // Without this, the escape hatch swallows the control: exempt a real leak, leave
+      // UNSCOPED_QUERY_SITES at zero, and the build still passes. Moving this number is
+      // what puts a new exemption in the diff next to the reason written for it.
+      fail(
+        "tenancy scoping count is real",
+        `shared/tenancy-status.ts says ${em[1]} exempt queries, ${exemptions.length} marked in source — ` +
+          `every \`tenancy-exempt:\` is a claim that a query needs no tenant boundary. Run \`pnpm tenancy\`.`
+      );
     } else {
       ok(
         actual === 0
-          ? "tenancy scoping count is real (0 — multi-org is enabled)"
+          ? `tenancy scoping count is real (0 unscoped, ${exemptions.length} exempt — multi-org is enabled)`
           : `tenancy scoping count is real (${actual} unscoped, second org refused)`
       );
     }

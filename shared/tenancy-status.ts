@@ -22,20 +22,20 @@
  * As a literal, TypeScript would narrow it to the current value and reject the comparison
  * as impossible — which would push someone to delete the check instead of the count.
  */
-export const UNSCOPED_QUERY_SITES: number = 14;
+export const UNSCOPED_QUERY_SITES: number = 0;
 
 /**
- * What the remaining 14 are, so the number is a plan rather than a shrug.
+ * Queries deliberately NOT org-scoped, each carrying a `tenancy-exempt:` reason in the
+ * source next to it.
  *
- * All of them are in the two Clay webhook receivers (server/clay.ts,
- * server/clay-webhook.ts). Those are publicProcedures — an inbound HTTP call with no
- * session, so there is no `ctx.orgId` to read. Scoping them to a constant would make the
- * count reach zero and lift the second-org refusal while every inbound Clay record still
- * landed in org 1, which is worse than leaving them counted: the number would say ready
- * and the system would not be.
+ * Pinned for the same reason as the number above. Without it, the escape hatch swallows
+ * the control: exempt a real leak, UNSCOPED_QUERY_SITES stays at zero, and the build
+ * still passes. Requiring this number to move puts every new exemption in the diff, next
+ * to the reason someone wrote for it.
  *
- * What they actually need is a per-org webhook credential — one secret per organization,
- * with the org resolved from the secret the caller presented, the same way ctx.orgId is
- * resolved from a session. That is real work with its own design, not a filter to add,
- * and it is the last thing standing between here and multi-org.
+ * All seventeen today are auth-path queries — login, signup, session resolution, the 2FA
+ * challenge, one-click approval links — plus one share-link lookup. They run before a
+ * session exists, or are authorized by an unguessable token rather than a session, so
+ * there is genuinely no org to filter by. `pnpm tenancy` lists them with their reasons.
  */
+export const EXEMPT_QUERY_SITES: number = 17;

@@ -173,8 +173,17 @@ describe("the audit behind the count", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  it("ignores tables that are not tenant data", async () => {
-    const { auditTenancy } = await import("../scripts/tenancy-audit.mjs");
+  it("counts the user table, because the admin listing was the blind spot", async () => {
+    // `users` was originally left out of the table list on the reasoning that it is
+    // "reference data, scoped through the user row itself". Most queries on it are
+    // indeed auth-path queries that cannot carry an org filter. But the admin user
+    // listing was not one of them: it read every row in the table, so a second
+    // organization's admin would have seen the first organization's people, names and
+    // email addresses — while every other table was being carefully scoped and the
+    // audit reported progress. An audit's blind spot is indistinguishable from an
+    // audit's approval, which is why the table is in the list and the genuine auth
+    // queries are exempted one by one instead.
+    const { auditTenancyFull } = await import("../scripts/tenancy-audit.mjs");
     const fs = await import("node:fs");
     const os = await import("node:os");
     const path = await import("node:path");
@@ -182,12 +191,78 @@ describe("the audit behind the count", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "tenancy-"));
     fs.mkdirSync(path.join(root, "server"));
     fs.writeFileSync(
-      path.join(root, "server", "auth.ts"),
-      "const u = await db.select().from(users).where(eq(users.email, email));\n" +
-        "const l = await db.insert(auditLogs).values({ action });\n"
+      path.join(root, "server", "admin.ts"),
+      [
+        "const all = await db.select().from(users).orderBy(users.createdAt);",
+        "const mine = await db.select().from(users).where(eq(users.orgId, ctx.orgId));",
+        "const orgs = await db.select().from(organizations);",
+      ].join("\n")
     );
 
-    expect(auditTenancy(root)).toHaveLength(0);
+    const { sites } = auditTenancyFull(root);
+    expect(sites).toHaveLength(1);
+    expect(sites[0].line).toBe(1);
+    // `organizations` is the tenant list, not tenant data — filtering it by org is
+    // meaningless, so it is correctly absent from the table list.
+    expect(sites.some(s => s.table === "organizations")).toBe(false);
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("treats a query bounded to the caller's own row as scoped", async () => {
+    // Self-scoping is strictly narrower than org-scoping: the id came from the session
+    // and a user belongs to exactly one org, so the query cannot cross a boundary. The
+    // rule deliberately requires ctx.user, not any `.id` — an id from `input` is a
+    // caller-supplied parameter, not a boundary, and must still be counted.
+    const { auditTenancyFull } = await import("../scripts/tenancy-audit.mjs");
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "tenancy-"));
+    fs.mkdirSync(path.join(root, "server"));
+    fs.writeFileSync(
+      path.join(root, "server", "self.ts"),
+      [
+        "const me = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);",
+        "const them = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);",
+      ].join("\n")
+    );
+
+    const { sites } = auditTenancyFull(root);
+    expect(sites).toHaveLength(1);
+    expect(sites[0].line).toBe(2);
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("reports the line the query is actually on, past a block comment", async () => {
+    // The first version blanked a block comment with spaces of the same total length,
+    // which ate the newlines: every line number after a /* … */ was wrong, so the
+    // reported location pointed at unrelated code AND the exemption marker was matched
+    // against the wrong statement's neighbourhood. Both failure modes are silent.
+    const { auditTenancyFull } = await import("../scripts/tenancy-audit.mjs");
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "tenancy-"));
+    fs.mkdirSync(path.join(root, "server"));
+    fs.writeFileSync(
+      path.join(root, "server", "commented.ts"),
+      [
+        "/**",
+        " * A doc comment",
+        " * spanning several lines.",
+        " */",
+        "const rows = await db.select().from(accounts).where(eq(accounts.id, id));",
+      ].join("\n")
+    );
+
+    const { sites } = auditTenancyFull(root);
+    expect(sites).toHaveLength(1);
+    expect(sites[0].line).toBe(5);
+
     fs.rmSync(root, { recursive: true, force: true });
   });
 });

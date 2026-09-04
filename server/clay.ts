@@ -2,10 +2,10 @@ import { z } from "zod";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { contacts, accounts } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { maybeNotifyHotLead } from "./integrations/connectors";
-import { timingSafeEqual } from "./_core/security";
+import { resolveWebhookOrg } from "./_core/webhook-auth";
 
 /**
  * Clay webhook router
@@ -51,25 +51,19 @@ const clayContactSchema = z.object({
   rawData: z.any().optional(), // Store full Clay payload
 });
 
-// Helper function to verify webhook secret.
-// Fails CLOSED: outside demo mode, an unset CLAY_WEBHOOK_SECRET rejects all requests
-// so a production deploy can never expose an unauthenticated write endpoint by omission.
-function verifyWebhookSecret(providedSecret: string | undefined): void {
-  if (!CLAY_WEBHOOK_SECRET) {
-    if (process.env.DEMO_MODE === 'true') return; // demo: open for local testing only
-    console.error('[Clay Webhook] CLAY_WEBHOOK_SECRET not configured — rejecting request');
-    throw new TRPCError({
-      code: 'UNAUTHORIZED',
-      message: 'Clay webhook is not configured (set CLAY_WEBHOOK_SECRET)'
-    });
-  }
-  if (!timingSafeEqual(CLAY_WEBHOOK_SECRET, providedSecret)) {
-    console.error('[Clay Webhook] Invalid webhook secret');
-    throw new TRPCError({
-      code: 'UNAUTHORIZED',
-      message: 'Invalid webhook secret'
-    });
-  }
+/**
+ * Authenticate the caller AND learn whose data this is, in one step.
+ *
+ * This used to be `verifyWebhookSecret`, returning void. Authenticating without
+ * identifying the tenant is what made these receivers the last unscoped queries in the
+ * codebase: the request was known to be legitimate and not known to belong to anyone, so
+ * every inbound record went to the same org regardless of who sent it.
+ *
+ * Still fails CLOSED — outside demo mode an unconfigured receiver rejects everything, so
+ * a production deploy cannot expose an unauthenticated write endpoint by omission.
+ */
+async function authenticate(providedSecret: string | undefined): Promise<number> {
+  return resolveWebhookOrg("clay", providedSecret, CLAY_WEBHOOK_SECRET);
 }
 
 export const clayRouter = router({
@@ -82,7 +76,7 @@ export const clayRouter = router({
     .input(clayAccountSchema)
     .mutation(async ({ input }) => {
       // SECURITY: Verify webhook secret
-      verifyWebhookSecret(input.webhook_secret);
+      const orgId = await authenticate(input.webhook_secret);
       
       const db = await getDb();
       if (!db) {
@@ -99,14 +93,14 @@ export const clayRouter = router({
           const result = await db
             .select()
             .from(accounts)
-            .where(eq(accounts.clayRecordId, input.clayId))
+            .where(and(eq(accounts.orgId, orgId), eq(accounts.clayRecordId, input.clayId)))
             .limit(1);
           existingAccount = result[0];
         } else if (input.domain) {
           const result = await db
             .select()
             .from(accounts)
-            .where(eq(accounts.domain, input.domain))
+            .where(and(eq(accounts.orgId, orgId), eq(accounts.domain, input.domain)))
             .limit(1);
           existingAccount = result[0];
         }
@@ -129,7 +123,7 @@ export const clayRouter = router({
               triggerEvents: input.trigger || existingAccount.triggerEvents,
               updatedAt: new Date(),
             })
-            .where(eq(accounts.id, existingAccount.id));
+            .where(and(eq(accounts.orgId, orgId), eq(accounts.id, existingAccount.id)));
 
           // Auto-notify if this update pushed the account across the hot-lead threshold.
           maybeNotifyHotLead(
@@ -146,6 +140,7 @@ export const clayRouter = router({
         } else {
           // Insert new account
           await db.insert(accounts).values({
+            orgId,
             clayRecordId: input.clayId || null,
             name: input.name,
             domain: input.domain || null,
@@ -183,7 +178,7 @@ export const clayRouter = router({
     .input(clayContactSchema)
     .mutation(async ({ input }) => {
       // SECURITY: Verify webhook secret
-      verifyWebhookSecret(input.webhook_secret);
+      const orgId = await authenticate(input.webhook_secret);
       
       const db = await getDb();
       if (!db) {
@@ -200,14 +195,14 @@ export const clayRouter = router({
           const result = await db
             .select()
             .from(contacts)
-            .where(eq(contacts.clayRecordId, input.clayId))
+            .where(and(eq(contacts.orgId, orgId), eq(contacts.clayRecordId, input.clayId)))
             .limit(1);
           existingContact = result[0];
         } else if (input.email) {
           const result = await db
             .select()
             .from(contacts)
-            .where(eq(contacts.email, input.email))
+            .where(and(eq(contacts.orgId, orgId), eq(contacts.email, input.email)))
             .limit(1);
           existingContact = result[0];
         }
@@ -224,7 +219,7 @@ export const clayRouter = router({
               location: input.location || existingContact.location,
               updatedAt: new Date(),
             })
-            .where(eq(contacts.id, existingContact.id));
+            .where(and(eq(contacts.orgId, orgId), eq(contacts.id, existingContact.id)));
 
           return {
             success: true,
@@ -240,13 +235,14 @@ export const clayRouter = router({
             const existingAccount = await db
               .select({ id: accounts.id })
               .from(accounts)
-              .where(eq(accounts.name, input.company))
+              .where(and(eq(accounts.orgId, orgId), eq(accounts.name, input.company)))
               .limit(1);
             if (existingAccount[0]) {
               accountId = existingAccount[0].id;
             } else {
               const domain = input.email?.includes("@") ? input.email.split("@")[1] : null;
               const inserted: any = await db.insert(accounts).values({
+                orgId,
                 name: input.company,
                 domain: domain || null,
               });
@@ -254,13 +250,14 @@ export const clayRouter = router({
               accountId = inserted?.insertId ?? inserted?.[0]?.insertId ?? null;
               if (accountId == null) {
                 const created = await db.select({ id: accounts.id }).from(accounts)
-                  .where(eq(accounts.name, input.company)).limit(1);
+                  .where(and(eq(accounts.orgId, orgId), eq(accounts.name, input.company))).limit(1);
                 accountId = created[0]?.id ?? null;
               }
             }
           }
 
           await db.insert(contacts).values({
+            orgId,
             clayRecordId: input.clayId || null,
             name: input.name,
             title: input.title || null,
