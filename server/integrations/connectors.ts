@@ -346,3 +346,165 @@ export function maybeNotifyHotLead(name: string, score?: number | null, prevScor
 }
 
 function msg(e: unknown): string { return e instanceof Error ? e.message : "request failed"; }
+
+/* ------------------------------------------------------------------ identity checks */
+
+/**
+ * "Is this credential real, and does the vendor still answer the way we parse?"
+ *
+ * Every connector above performs a WRITE — create an issue, upsert a contact, post a
+ * message. That is the right shape for the product and the wrong shape for a check that
+ * has to run on every CI build: a smoke test that files a Linear issue each time is a
+ * smoke test somebody turns off. So each vendor gets a read-only identity endpoint here,
+ * the request every vendor documents for exactly this purpose.
+ *
+ * What this proves and does not prove: the key is valid, the account is reachable, and
+ * the response still has the field we read. It does not prove the write path works —
+ * only a real write does that, which is what the connector's own procedure is for.
+ * `pnpm smoke` reports it as a credential check, not as a verified integration.
+ */
+export type IdentityCheck = { ok: boolean; detail: string };
+
+async function identity(
+  label: string,
+  url: string,
+  headers: Record<string, string>,
+  pick: (json: any) => string | undefined,
+): Promise<IdentityCheck> {
+  try {
+    const res = await fetch(url, { headers });
+    const json: any = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      // The status is the useful half — 401 means the key is wrong, 403 means it is
+      // right and lacks a scope, and those need different fixes.
+      return { ok: false, detail: `HTTP ${res.status} ${JSON.stringify(json).slice(0, 120)}` };
+    }
+    const who = pick(json);
+    if (!who) {
+      // Authenticated but the shape moved. This is the case a mocked test cannot catch
+      // and the whole reason to spend a live request.
+      return { ok: false, detail: `authenticated, but the response had no ${label} field — the API shape changed` };
+    }
+    return { ok: true, detail: who };
+  } catch (e) {
+    return { ok: false, detail: msg(e) };
+  }
+}
+
+const bearer = (t: string) => ({ Authorization: `Bearer ${t}` });
+
+export const identityChecks: Record<
+  string,
+  { env: string[]; configured: () => boolean; run: () => Promise<IdentityCheck> }
+> = {
+  hubspot: {
+    env: ["HUBSPOT_ACCESS_TOKEN"],
+    configured: () => Boolean(process.env.HUBSPOT_ACCESS_TOKEN),
+    run: () =>
+      identity("hub", "https://api.hubapi.com/account-info/v3/details",
+        bearer(process.env.HUBSPOT_ACCESS_TOKEN!), j => j?.portalId && `portal ${j.portalId}`),
+  },
+  notion: {
+    env: ["NOTION_TOKEN"],
+    configured: () => Boolean(process.env.NOTION_TOKEN),
+    run: () =>
+      identity("bot", "https://api.notion.com/v1/users/me",
+        { ...bearer(process.env.NOTION_TOKEN!), "Notion-Version": "2022-06-28" },
+        j => j?.name || j?.bot?.owner?.type),
+  },
+  linear: {
+    env: ["LINEAR_API_KEY"],
+    configured: () => Boolean(process.env.LINEAR_API_KEY),
+    run: async () => {
+      // Linear is GraphQL-only, so the identity read is a POST. Still a read.
+      try {
+        const res = await post("https://api.linear.app/graphql",
+          { query: "{ viewer { name email } }" },
+          { Authorization: process.env.LINEAR_API_KEY! });
+        const json: any = await res.json().catch(() => ({}));
+        if (!res.ok) return { ok: false, detail: `HTTP ${res.status}` };
+        const name = json?.data?.viewer?.name;
+        return name
+          ? { ok: true, detail: name }
+          : { ok: false, detail: "authenticated, but viewer.name was absent — the API shape changed" };
+      } catch (e) { return { ok: false, detail: msg(e) }; }
+    },
+  },
+  airtable: {
+    env: ["AIRTABLE_TOKEN"],
+    configured: () => Boolean(process.env.AIRTABLE_TOKEN),
+    run: () =>
+      identity("user id", "https://api.airtable.com/v0/meta/whoami",
+        bearer(process.env.AIRTABLE_TOKEN!), j => j?.id),
+  },
+  pipedrive: {
+    env: ["PIPEDRIVE_API_TOKEN"],
+    configured: () => Boolean(process.env.PIPEDRIVE_API_TOKEN),
+    run: () =>
+      identity("user", `https://api.pipedrive.com/v1/users/me?api_token=${process.env.PIPEDRIVE_API_TOKEN}`,
+        {}, j => j?.data?.name),
+  },
+  intercom: {
+    env: ["INTERCOM_ACCESS_TOKEN"],
+    configured: () => Boolean(process.env.INTERCOM_ACCESS_TOKEN),
+    run: () =>
+      identity("app", "https://api.intercom.io/me",
+        { ...bearer(process.env.INTERCOM_ACCESS_TOKEN!), Accept: "application/json" },
+        j => j?.app?.name || j?.name),
+  },
+  salesloft: {
+    env: ["SALESLOFT_API_KEY"],
+    configured: () => Boolean(process.env.SALESLOFT_API_KEY),
+    run: () =>
+      identity("user", "https://api.salesloft.com/v2/me",
+        bearer(process.env.SALESLOFT_API_KEY!), j => j?.data?.name || j?.data?.email),
+  },
+  calendly: {
+    env: ["CALENDLY_API_KEY"],
+    configured: () => Boolean(process.env.CALENDLY_API_KEY),
+    run: () =>
+      identity("user", "https://api.calendly.com/users/me",
+        bearer(process.env.CALENDLY_API_KEY!), j => j?.resource?.name || j?.resource?.email),
+  },
+  asana: {
+    env: ["ASANA_ACCESS_TOKEN"],
+    configured: () => Boolean(process.env.ASANA_ACCESS_TOKEN),
+    run: () =>
+      identity("user", "https://app.asana.com/api/1.0/users/me",
+        bearer(process.env.ASANA_ACCESS_TOKEN!), j => j?.data?.name || j?.data?.email),
+  },
+  clickup: {
+    env: ["CLICKUP_API_TOKEN"],
+    configured: () => Boolean(process.env.CLICKUP_API_TOKEN),
+    run: () =>
+      identity("user", "https://api.clickup.com/api/v2/user",
+        { Authorization: process.env.CLICKUP_API_TOKEN! }, j => j?.user?.username || j?.user?.email),
+  },
+  apollo: {
+    env: ["APOLLO_API_KEY"],
+    configured: () => Boolean(process.env.APOLLO_API_KEY),
+    run: () =>
+      // Deliberately the health endpoint, not an enrich: an enrich call spends a credit
+      // per CI run, and a check that costs money per build is a check that gets removed.
+      identity("auth", `https://api.apollo.io/v1/auth/health?api_key=${process.env.APOLLO_API_KEY}`,
+        {}, j => (j?.is_logged_in ? "key accepted" : undefined)),
+  },
+  twilio: {
+    env: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"],
+    configured: () => Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
+    run: () =>
+      identity("account",
+        `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}.json`,
+        {
+          Authorization:
+            "Basic " +
+            Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString("base64"),
+        },
+        j => j?.friendly_name || j?.status),
+  },
+  // PagerDuty is deliberately absent. An Events v2 routing key has no read endpoint at
+  // all: the only way to learn whether one works is to fire an event, which pages a human
+  // on call. Listing it here with `configured: () => false` would have reported it as "no
+  // credentials" — a different statement, and an untrue one for an operator who has set
+  // the key. It is counted in the uncheckable remainder instead.
+};

@@ -717,7 +717,59 @@ function walk(dir, exts, acc = []) {
   }
 }
 
-/* --------------------------------------------------------------- 16. report */
+/* ------------------------------------------------- 16. live-check coverage */
+/**
+ * A new connector must not silently arrive with no way to verify it.
+ *
+ * "The connectors have never touched a real tenant" is the biggest honest caveat in this
+ * repo, and `pnpm smoke` exists to shrink it: with a key present, a connector is exercised
+ * for real on every run. That only holds for connectors the harness knows about. Adding
+ * the twenty-fifth connector with no live check would leave the caveat wider than the
+ * README says while every number on the page stayed green.
+ *
+ * This pins how many of the registry's connectors are checkable, so growing the registry
+ * without growing the harness shows up in the diff as a number that has to move — and the
+ * person moving it has to decide whether the new connector genuinely cannot be checked
+ * (webhook-delivered, no read endpoint) or was just not wired up.
+ */
+{
+  const registryPath = path.join(ROOT, "server", "integrations", "registry.ts");
+  const smokePath = path.join(ROOT, "scripts", "connector-smoke.mjs");
+  const clientsPath = path.join(ROOT, "server", "integrations", "connectors.ts");
+
+  if (![registryPath, smokePath, clientsPath].every(p => fs.existsSync(p))) {
+    fail("connector live-check coverage", "registry, smoke harness or clients file missing");
+  } else {
+    const registry = fs.readFileSync(registryPath, "utf8");
+    const registered = (registry.match(/^\s+key:\s*"[a-z]/gim) || []).length;
+
+    // Deep checks are the four hand-written entries in the harness; credential checks are
+    // the identityChecks map. Counted from source so neither can drift from reality.
+    const smoke = stripComments(fs.readFileSync(smokePath, "utf8"));
+    const deep = (smoke.match(/^\s+name:\s*"/gm) || []).length;
+    const clients = stripComments(fs.readFileSync(clientsPath, "utf8"));
+    const identityBlock = clients.slice(clients.indexOf("export const identityChecks"));
+    const credential = (identityBlock.match(/^\s{2}[a-z][a-zA-Z]*:\s*\{/gm) || []).length;
+
+    const covered = deep + credential;
+    const EXPECTED_COVERED = 16;
+    const EXPECTED_REGISTERED = 24;
+
+    if (registered !== EXPECTED_REGISTERED || covered !== EXPECTED_COVERED) {
+      fail(
+        "connector live-check coverage",
+        `${covered} of ${registered} connectors have a live check; this rule expects ` +
+          `${EXPECTED_COVERED} of ${EXPECTED_REGISTERED}. If you added a connector, either give it a check in ` +
+          `scripts/connector-smoke.mjs (deep) or identityChecks in server/integrations/connectors.ts ` +
+          `(credential), or raise the expected numbers here and say in the commit why it cannot be checked.`
+      );
+    } else {
+      ok(`connector live-check coverage (${covered}/${registered} checkable)`);
+    }
+  }
+}
+
+/* --------------------------------------------------------------- 17. report */
 for (const c of checks) console.log(`  ✓ ${c}`);
 for (const f of failures) console.log(`  ✘ ${f.rule}\n    ${f.detail}`);
 

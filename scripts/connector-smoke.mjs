@@ -54,6 +54,12 @@ if (fs.existsSync(".env")) {
 const PLACEHOLDER = /^(your[_-]|xxx|changeme|change[_-]this|replace[_-]?me|todo|placeholder|<|\.\.\.)/i;
 const real = (v) => Boolean(v && v.trim() && !PLACEHOLDER.test(v.trim()));
 
+/** Read the registry's own connector count, so the coverage line cannot drift from it. */
+function registryCount() {
+  const src = fs.readFileSync("server/integrations/registry.ts", "utf8");
+  return (src.match(/^\s+key:\s*"[a-z]/gim) || []).length;
+}
+
 const CONNECTORS = [
   {
     name: "Gong",
@@ -108,31 +114,91 @@ const CONNECTORS = [
   },
 ];
 
+/**
+ * Credential checks: one read-only identity request per vendor.
+ *
+ * These prove less than the four above — a valid key and a response we can still parse,
+ * not a working sync — and they are reported as a separate, weaker class for exactly
+ * that reason. Folding them into "verified" would inflate the number that matters.
+ */
+const { identityChecks } = await import("../server/integrations/connectors.ts");
+for (const [key, c] of Object.entries(identityChecks)) {
+  CONNECTORS.push({
+    name: key.charAt(0).toUpperCase() + key.slice(1),
+    env: c.env,
+    credentialOnly: true,
+    configured: c.configured,
+    run: async () => {
+      const r = await c.run();
+      return { ok: r.ok, detail: r.detail };
+    },
+  });
+}
+
 const results = [];
 for (const c of CONNECTORS) {
   if (!c.configured()) {
-    results.push({ name: c.name, state: "unverified", detail: `no credentials (${c.env.join(", ")})` });
+    results.push({
+      name: c.name,
+      credentialOnly: c.credentialOnly,
+      state: "unverified",
+      detail: `no credentials (${c.env.join(", ")})`,
+    });
     continue;
   }
   try {
     const r = await c.run();
-    results.push({ name: c.name, state: r.ok ? "verified" : "failed", detail: r.detail });
+    results.push({
+      name: c.name,
+      credentialOnly: c.credentialOnly,
+      state: r.ok ? (c.credentialOnly ? "credential-ok" : "verified") : "failed",
+      detail: r.detail,
+    });
   } catch (e) {
-    results.push({ name: c.name, state: "failed", detail: (e?.message || String(e)).slice(0, 160) });
+    results.push({
+      name: c.name,
+      credentialOnly: c.credentialOnly,
+      state: "failed",
+      detail: (e?.message || String(e)).slice(0, 160),
+    });
   }
 }
 
-const mark = { verified: "✓", failed: "✘", unverified: "·" };
-for (const r of results) {
-  console.log(`  ${mark[r.state]} ${r.name.padEnd(12)} ${r.state.padEnd(11)} ${r.detail}`);
+const mark = { verified: "✓", "credential-ok": "◍", failed: "✘", unverified: "·" };
+const order = ["failed", "verified", "credential-ok", "unverified"];
+for (const state of order) {
+  for (const r of results.filter((x) => x.state === state)) {
+    console.log(`  ${mark[r.state]} ${r.name.padEnd(12)} ${r.state.padEnd(13)} ${r.detail}`);
+  }
 }
 
 const failed = results.filter((r) => r.state === "failed");
 const unverified = results.filter((r) => r.state === "unverified");
 const verified = results.filter((r) => r.state === "verified");
+const credentialOk = results.filter((r) => r.state === "credential-ok");
 
 console.log(
-  `\n${verified.length} verified against a live tenant, ${failed.length} failed, ${unverified.length} unverified (no key)`
+  `\n${verified.length} verified against a live tenant, ${credentialOk.length} credential-checked, ` +
+    `${failed.length} failed, ${unverified.length} unverified (no key)`
+);
+
+/**
+ * How much of the stack this command can speak for, at all.
+ *
+ * Without this line the output reads as if these connectors are the whole set — someone
+ * seeing "0 failed" would reasonably conclude the integrations are covered. They are not:
+ * webhook-delivered connectors (Slack, Discord, Teams, Google Chat, Clay) and PagerDuty's
+ * Events v2 routing key have no read endpoint to check against, so no key can ever prove
+ * them here. Saying which is which is the difference between a green check and an honest
+ * one, and this is a repo where that distinction is the whole point.
+ */
+const CONNECTORS_IN_REGISTRY = registryCount();
+const covered = CONNECTORS.length;
+console.log(
+  `\nCoverage: ${covered} of ${CONNECTORS_IN_REGISTRY} registered connectors can be checked live at all.` +
+    `\n  4 have a deep check (a real query whose result shape is asserted); the rest have a` +
+    `\n  read-only credential check. The other ${CONNECTORS_IN_REGISTRY - covered} are webhook-delivered, or have no read` +
+    `\n  endpoint at all — no key can verify those from here, today or ever.`
 );
 
 if (unverified.length && !STRICT) {
