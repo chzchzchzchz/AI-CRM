@@ -42,6 +42,28 @@ function getTableName(table: any): string {
   return '';
 }
 
+/**
+ * Coerce a stored value into something orderable, or null if it isn't.
+ *
+ * The JSON store keeps dates as ISO strings and numbers as numbers, while a query's
+ * operand arrives as a Date or a number. Comparing those with `<` directly gives
+ * string-lexicographic ordering for dates ("2024-10-01" < "2024-9-01" is true) and NaN
+ * for anything unparseable, which silently answers false for every row.
+ */
+function comparable(v: any): number | null {
+  if (v === null || v === undefined) return null;
+  if (v instanceof Date) return v.getTime();
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'boolean') return v ? 1 : 0;
+  if (typeof v === 'string') {
+    const n = Number(v);
+    if (v.trim() !== '' && Number.isFinite(n)) return n;
+    const t = Date.parse(v);
+    return Number.isNaN(t) ? null : t;
+  }
+  return null;
+}
+
 // Initial demo dataset
 function getInitialDemoData() {
   return {
@@ -384,7 +406,33 @@ class MockDrizzleQueryBuilder {
             values: inValues.map((p: any) => (p && typeof p === 'object' && 'value' in p ? p.value : p)),
           });
         } else if (scalarParam) {
-          this.filters.push({ field, value: scalarParam.value });
+          // Read the OPERATOR, not just the operand.
+          //
+          // This used to push a bare { field, value }, which the filter step applies as
+          // equality — so every range comparison in the app silently became "==" in demo
+          // mode. Measured against the shipped dataset: `gte(intentScore, 70)` returned 5
+          // accounts instead of 105 (only those scored exactly 70), and
+          // `lt(intentScore, 40)` returned 6 instead of 751 — the six scored exactly 40,
+          // which are not even in the range asked for. Hot leads, priority actions and
+          // bulk insights all select by score range, and demo mode is how essentially
+          // everyone runs this app: the home page said "HOT 105" (counted in JS over all
+          // accounts) while every server-side range query worked on five.
+          //
+          // Drizzle renders the operator as a StringChunk between the column and the
+          // param — the same chunks the isNull/isNotNull branch below already reads.
+          const opText = condition.queryChunks
+            .filter((c: any) => c && Array.isArray(c.value))
+            .map((c: any) => c.value.join(''))
+            .join(' ');
+          // Two-character operators first: '>' would otherwise match inside '>='.
+          const op =
+            opText.includes('>=') ? 'gte' :
+            opText.includes('<=') ? 'lte' :
+            opText.includes('<>') || opText.includes('!=') ? 'ne' :
+            opText.includes('>') ? 'gt' :
+            opText.includes('<') ? 'lt' :
+            undefined;
+          this.filters.push({ field, value: scalarParam.value, op });
         } else {
           // No literal value chunk — either an isNotNull()/isNull() condition (a text
           // chunk carries "is not null" / "is null", no Param) or a column-to-column
@@ -511,6 +559,21 @@ class MockDrizzleQueryBuilder {
         } else if (filter.op === 'in') {
           const set = new Set((filter.values || []).map((v: any) => String(v)));
           results = results.filter((item: any) => set.has(String(item[filter.field])));
+        } else if (filter.op && ['gte', 'lte', 'gt', 'lt'].includes(filter.op)) {
+          results = results.filter((item: any) => {
+            const a = comparable(item[filter.field]);
+            const b = comparable(filter.value);
+            // A null on either side satisfies no ordering comparison, the same as SQL —
+            // an account with no intent score is not "intent 70+", and must not be
+            // silently included by a NaN comparison landing wherever it lands.
+            if (a === null || b === null) return false;
+            if (filter.op === 'gte') return a >= b;
+            if (filter.op === 'lte') return a <= b;
+            if (filter.op === 'gt') return a > b;
+            return a < b;
+          });
+        } else if (filter.op === 'ne') {
+          results = results.filter((item: any) => String(item[filter.field]) !== String(filter.value));
         } else if (filter.value !== undefined) {
           results = results.filter((item: any) => String(item[filter.field]) === String(filter.value));
         }
