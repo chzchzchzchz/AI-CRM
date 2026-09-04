@@ -8,7 +8,7 @@
  * organization on; `pnpm check:claims` fails the build if the two disagree.
  */
 
-import { auditTenancy } from "./tenancy-audit.mjs";
+import { auditTenancyFull } from "./tenancy-audit.mjs";
 
 const useColor = process.stdout.isTTY && process.env.NO_COLOR === undefined;
 const paint = (code, s) => (useColor ? `\x1b[${code}m${s}\x1b[0m` : s);
@@ -17,13 +17,26 @@ const dim = s => paint("2", s);
 const green = s => paint("32", s);
 const yellow = s => paint("33", s);
 
-const sites = auditTenancy(process.cwd());
+const { sites, exemptions } = auditTenancyFull(process.cwd());
 
 console.log();
 console.log(bold("  Org scoping"));
 console.log();
 
+function printExemptions() {
+  if (!exemptions.length) return;
+  // Never folded into the "done" number silently. An exemption is a claim that a query
+  // does not need the boundary, and a claim should be readable.
+  console.log(`  ${bold("Exempt")} ${dim(`(${exemptions.length}) — not org-scoped, with a stated reason`)}`);
+  for (const e of exemptions) {
+    console.log(`     ${dim(`${e.file}:${e.line}`)}  ${e.table}`);
+    console.log(`       ${dim(e.reason)}`);
+  }
+  console.log();
+}
+
 if (sites.length === 0) {
+  printExemptions();
   console.log(`  ${green("Every query on a tenant table carries an org filter.")}`);
   console.log(`  ${dim("Multi-org is enabled: server/_core/tenancy.ts no longer refuses a second organization.")}`);
   console.log();
@@ -41,6 +54,8 @@ for (const [file, rows] of [...byFile].sort((a, b) => b[1].length - a[1].length)
   for (const r of rows) console.log(`     ${dim(`${file}:${r.line}`)}  ${r.table}`);
   console.log();
 }
+
+printExemptions();
 
 console.log(
   `  ${yellow(`${sites.length} unscoped`)} across ${byFile.size} files — ` +

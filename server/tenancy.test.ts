@@ -141,6 +141,38 @@ describe("the audit behind the count", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
+  it("only exempts a query when the marker carries a real reason", async () => {
+    // The exemption escape hatch is the one way this count could be made to lie. It is
+    // deliberately narrow: the marker must appear within a few lines of the statement AND
+    // carry a reason long enough to be an argument rather than a shrug. A bare marker
+    // leaves the query counted.
+    const { auditTenancyFull } = await import("../scripts/tenancy-audit.mjs");
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "tenancy-"));
+    fs.mkdirSync(path.join(root, "server"));
+    fs.writeFileSync(
+      path.join(root, "server", "exempt.ts"),
+      [
+        "// tenancy-exempt: ok",
+        "const a = await db.select().from(accounts).where(eq(accounts.id, id));",
+        "",
+        "// tenancy-exempt: a share link is a capability URL and carries its own authorization",
+        "const b = await db.select().from(accounts).where(eq(accounts.shareId, token));",
+      ].join("\n")
+    );
+
+    const { sites, exemptions } = auditTenancyFull(root);
+    expect(sites).toHaveLength(1); // the bare marker did not exempt anything
+    expect(sites[0].line).toBe(2);
+    expect(exemptions).toHaveLength(1);
+    expect(exemptions[0].reason).toMatch(/capability URL/);
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
   it("ignores tables that are not tenant data", async () => {
     const { auditTenancy } = await import("../scripts/tenancy-audit.mjs");
     const fs = await import("node:fs");

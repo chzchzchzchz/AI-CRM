@@ -6,7 +6,7 @@ A sales rep opens this in the morning and sees which accounts moved, why they mo
 do about it — with the evidence for every claim attached. It sits on top of a CRM rather than
 replacing one.
 
-`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 513 tests, ~54k lines,
+`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 514 tests, ~54k lines,
 runs with zero API keys.
 
 ```bash
@@ -153,12 +153,14 @@ data. See [`SECURITY.md`](SECURITY.md).
 - **Connectors are unproven against live paid accounts.** The clients are real and unit-tested
   against mocked transports, but no enterprise 6sense/Gong tenant was available to
   integration-test against.
-- **One organization per deployment, enforced.** The org boundary exists — every tenant
-  table carries an `orgId`, and `ctx.orgId` comes from the session and never from input —
-  but not every query filters on it yet. Rather than document that and hope, the app
-  refuses to serve a second organization until the count reaches zero: `pnpm tenancy`
-  lists what's left and `pnpm check:claims` recomputes the number from source, so it
-  can't be edited down to unlock something that isn't ready.
+- **One organization per deployment, enforced.** Every tenant table carries an `orgId`,
+  `ctx.orgId` comes from the session and never from input, and 102 of the 116 query sites
+  now filter on it. The remaining 14 are the two Clay webhook receivers, which have no
+  session to read an org from and need a per-org webhook credential first. Until that
+  count reaches zero the app **refuses** to serve a second organization, rather than
+  documenting the gap and hoping: `pnpm tenancy` lists what's left, and `pnpm check:claims`
+  recomputes the number from source so it can't be edited down to unlock something that
+  isn't ready.
 - **The AI quality depends entirely on the model you point it at.** The grounding work constrains
   what a model can claim; it can't make a weak local model insightful.
 - **No accessibility audit.** The design targets WCAG 2.1 AA and the gate checks contrast and

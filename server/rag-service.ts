@@ -139,7 +139,7 @@ export async function uploadDocument(
   // Update document status
   await db.update(knowledgeBase)
     .set({ status: 'ready', chunkCount: chunks.length })
-    .where(eq(knowledgeBase.id, documentId));
+    .where(and(eq(knowledgeBase.orgId, orgId), eq(knowledgeBase.id, documentId)));
   
   return { documentId, chunkCount: chunks.length };
 }
@@ -186,7 +186,8 @@ export async function searchKnowledgeBase(
       content: documentChunks.content,
       embedding: documentChunks.embedding,
     })
-    .from(documentChunks);
+    .from(documentChunks)
+    .where(eq(documentChunks.orgId, orgId));
 
   // Calculate similarities over this user's chunks only. Filtering here rather than in
   // SQL keeps the owner check explicit — a query that silently returned every user's

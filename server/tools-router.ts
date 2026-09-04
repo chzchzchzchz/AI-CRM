@@ -469,9 +469,12 @@ Generate professional, actionable content.`;
         if (db) {
           const { generatedContent } = await import('../drizzle/schema');
           const { eq } = await import('drizzle-orm');
+          const { and } = await import('drizzle-orm');
+          // A bare id here meant any signed-in user could overwrite anyone else's
+          // generated content by passing their contentId — no owner check of any kind.
           await db.update(generatedContent)
             .set({ userEdits: editedContent, feedback })
-            .where(eq(generatedContent.id, contentId));
+            .where(and(eq(generatedContent.orgId, ctx.orgId), eq(generatedContent.id, contentId)));
         }
       }
       
@@ -768,7 +771,7 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
             
             // Try exact match first
             let matchedAccounts = await db.select().from(accounts)
-              .where(like(accounts.name, `%${companyName}%`))
+              .where(and(eq(accounts.orgId, ctx.orgId), like(accounts.name, `%${companyName}%`)))
               .limit(5);
             
             // If no match, try partial matching
@@ -776,7 +779,7 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
               const words = companyName.split(' ').filter((w: string) => w.length > 3);
               if (words.length > 0) {
                 matchedAccounts = await db.select().from(accounts)
-                  .where(like(accounts.name, `%${words[0]}%`))
+                  .where(and(eq(accounts.orgId, ctx.orgId), like(accounts.name, `%${words[0]}%`)))
                   .limit(5);
               }
             }
@@ -829,6 +832,7 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
       // Generate a unique share ID for public access
       const shareId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       const result = await db.insert(transcriptReports).values({
+        orgId: ctx.orgId,
         userId: ctx.user?.id || 0,
         name: input.name,
         transcript: input.transcript,
@@ -849,7 +853,7 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
       // real total even past 100 saved reports, the same silent-truncation shape already
       // fixed for Salesforce's contact/account sync (server/salesforce.ts's queryAll).
       const rows = await db.select().from(transcriptReports)
-        .where(eq(transcriptReports.userId, ctx.user.id))
+        .where(and(eq(transcriptReports.orgId, ctx.orgId), eq(transcriptReports.userId, ctx.user.id)))
         .orderBy(desc(transcriptReports.createdAt))
         .limit(101);
       return { reports: rows.slice(0, 100), hasMore: rows.length > 100 };
@@ -860,6 +864,10 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error('Database not available');
+      // tenancy-exempt: the unguessable shareId in the URL is itself the authorization.
+      // This is a publicProcedure — there is no session, so there is no authenticated org
+      // to compare against. Adding an org filter here would break sharing without adding
+      // any check at all.
       const [report] = await db.select().from(transcriptReports)
         .where(eq(transcriptReports.shareId, input.shareId))
         .limit(1);
@@ -901,13 +909,13 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
       if (!db) throw new Error('Database not available');
       // Only allow deletion of reports owned by the current user
       const [report] = await db.select().from(transcriptReports)
-        .where(and(eq(transcriptReports.id, input.id), eq(transcriptReports.userId, ctx.user.id)))
+        .where(and(eq(transcriptReports.orgId, ctx.orgId), eq(transcriptReports.id, input.id), eq(transcriptReports.userId, ctx.user.id)))
         .limit(1);
       if (!report) {
         throw new Error('Report not found or you do not have permission to delete it');
       }
       await db.delete(transcriptReports)
-        .where(and(eq(transcriptReports.id, input.id), eq(transcriptReports.userId, ctx.user.id)));
+        .where(and(eq(transcriptReports.orgId, ctx.orgId), eq(transcriptReports.id, input.id), eq(transcriptReports.userId, ctx.user.id)));
       return { success: true };
     })
 });

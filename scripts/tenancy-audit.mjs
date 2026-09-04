@@ -108,7 +108,23 @@ const lineOf = (src, offset) => src.slice(0, offset).split("\n").length;
  * not drift, so a site cannot quietly stop being counted.
  */
 export function auditTenancy(root) {
+  const { sites } = auditTenancyFull(root);
+  return sites;
+}
+
+/**
+ * Sites plus the exemptions, so `pnpm tenancy` can show both.
+ *
+ * A handful of queries genuinely are not org-scoped — a public share link, where the
+ * unguessable token in the URL *is* the authorization and there is no session to read an
+ * org from. Those are marked in the source with `tenancy-exempt: <reason>` on the line
+ * above the statement. Deliberately not an allowlist in this file: an exemption has to
+ * appear in the diff, next to the query, with a reason someone can argue with. A list of
+ * file paths and line numbers in a script is how a real leak gets quietly reclassified.
+ */
+export function auditTenancyFull(root) {
   const sites = [];
+  const exemptions = [];
   const tables = TENANT_TABLES.join("|");
   const touches = new RegExp(
     `\\.(?:from|insert|update|delete)\\s*\\(\\s*(${tables})\\s*[,)]|` +
@@ -119,16 +135,41 @@ export function auditTenancy(root) {
   for (const file of walk(path.join(root, "server"), [".ts"])) {
     const rel = path.relative(root, file);
     if (rel.endsWith(".test.ts")) continue;
-    const src = stripComments(fs.readFileSync(file, "utf8"));
+    const raw = fs.readFileSync(file, "utf8");
+    const src = stripComments(raw);
+    // Comments are blanked (not removed) so offsets still line up with the original.
+    const rawLines = raw.split("\n");
 
     for (const st of statements(src)) {
       const hit = [...st.text.matchAll(touches)];
       if (!hit.length) continue;
       if (/\borgId\b/.test(st.text)) continue;
+
+      const line = lineOf(src, st.offset);
       const table = hit[0][1] ?? hit[0][2];
-      sites.push({ file: rel, line: lineOf(src, st.offset), table });
+
+      // An exemption must carry a reason, on one of the few lines above the statement.
+      // The NEAREST marker wins: taking the first match in the window would let an
+      // earlier, unrelated exemption several lines up silently cover this statement —
+      // and would equally let an earlier bare marker mask a later valid one.
+      const window = rawLines.slice(Math.max(0, line - 5), line);
+      let reason = null;
+      for (let i = window.length - 1; i >= 0; i--) {
+        const m = window[i].match(/tenancy-exempt:\s*(.+)/);
+        if (m) {
+          reason = m[1].trim();
+          break;
+        }
+      }
+      if (reason && reason.length > 10) {
+        exemptions.push({ file: rel, line, table, reason });
+        continue;
+      }
+      sites.push({ file: rel, line, table });
     }
   }
-  sites.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
-  return sites;
+  const byPlace = (a, b) => a.file.localeCompare(b.file) || a.line - b.line;
+  sites.sort(byPlace);
+  exemptions.sort(byPlace);
+  return { sites, exemptions };
 }

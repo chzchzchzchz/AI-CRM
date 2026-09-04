@@ -22,4 +22,20 @@
  * As a literal, TypeScript would narrow it to the current value and reject the comparison
  * as impossible — which would push someone to delete the check instead of the count.
  */
-export const UNSCOPED_QUERY_SITES: number = 44;
+export const UNSCOPED_QUERY_SITES: number = 14;
+
+/**
+ * What the remaining 14 are, so the number is a plan rather than a shrug.
+ *
+ * All of them are in the two Clay webhook receivers (server/clay.ts,
+ * server/clay-webhook.ts). Those are publicProcedures — an inbound HTTP call with no
+ * session, so there is no `ctx.orgId` to read. Scoping them to a constant would make the
+ * count reach zero and lift the second-org refusal while every inbound Clay record still
+ * landed in org 1, which is worse than leaving them counted: the number would say ready
+ * and the system would not be.
+ *
+ * What they actually need is a per-org webhook credential — one secret per organization,
+ * with the org resolved from the secret the caller presented, the same way ctx.orgId is
+ * resolved from a session. That is real work with its own design, not a filter to add,
+ * and it is the last thing standing between here and multi-org.
+ */
