@@ -64,6 +64,87 @@ function comparable(v: any): number | null {
   return null;
 }
 
+
+/**
+ * Does one row satisfy one parsed filter?
+ *
+ * Extracted because there were three copies: the select path handled every operator, and
+ * the update and delete paths each carried a reduced copy that understood only
+ * `is_not_null` and equality. So `delete(...).where(gt(expiresAt, now))` compared for
+ * EQUALITY and deleted almost nothing, while the equivalent select was correct — the
+ * same query meaning two different things depending on the verb in front of it. One
+ * matcher, three call sites.
+ */
+function matchesFilter(item: any, filter: any): boolean {
+  const v = item?.[filter.field];
+
+  switch (filter.op) {
+    case 'is_not_null':
+      return v !== null && v !== undefined;
+    case 'is_null':
+      return v === null || v === undefined;
+    case 'in': {
+      const set = new Set((filter.values || []).map((x: any) => String(x)));
+      return set.has(String(v));
+    }
+    case 'gte':
+    case 'lte':
+    case 'gt':
+    case 'lt': {
+      const a = comparable(v);
+      const b = comparable(filter.value);
+      // A null on either side satisfies no ordering comparison, the same as SQL — an
+      // account with no intent score is not "intent 70+", and must not be swept in by a
+      // NaN comparison landing wherever it lands.
+      if (a === null || b === null) return false;
+      if (filter.op === 'gte') return a >= b;
+      if (filter.op === 'lte') return a <= b;
+      if (filter.op === 'gt') return a > b;
+      return a < b;
+    }
+    case 'like':
+      return likeMatches(String(v ?? ''), String(filter.value ?? ''));
+    case 'ne':
+      return String(v) !== String(filter.value);
+    case 'or':
+      // Any branch matching is enough. Each branch is its own AND-list.
+      return (filter.branches || []).some((branch: any[]) => branch.every(f => matchesFilter(item, f)));
+    case 'not':
+      return !(filter.branches?.[0] || []).every((f: any) => matchesFilter(item, f));
+    default:
+      return filter.value === undefined ? true : String(v) === String(filter.value);
+  }
+}
+
+/**
+ * SQL LIKE, including the `%` and `_` wildcards, case-insensitively.
+ *
+ * Callers build patterns like `%${companyName}%` and expect substring matching. Treating
+ * the pattern as a literal — which is what an equality filter does with it — matches only
+ * a row whose value is the string "%Acme%", i.e. nothing, ever.
+ */
+function likeMatches(value: string, pattern: string): boolean {
+  const rx = pattern
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')  // escape regex metacharacters in the literal parts
+    .replace(/%/g, '.*')
+    .replace(/_/g, '.');
+  return new RegExp(`^${rx}$`, 'i').test(value);
+}
+
+
+/**
+ * Parse one condition into a standalone AND-list of filters.
+ *
+ * Used for the branches of an OR and the body of a NOT, which need their own lists
+ * rather than being flattened into the query's top-level one. Runs the same parser as
+ * the main path — a second implementation is how the two would drift.
+ */
+function collectFilters(condition: any): any[] {
+  const collector = new MockDrizzleQueryBuilder('select');
+  collector.where(condition);
+  return collector.currentFilters();
+}
+
 // Initial demo dataset
 function getInitialDemoData() {
   return {
@@ -346,7 +427,7 @@ class MockDrizzleQueryBuilder {
   private operation: 'select' | 'insert' | 'update' | 'delete';
   private tableName: string = '';
   private tableSchema: any = null;
-  private filters: Array<{ field: string; value: any; op?: string; values?: any[] }> = [];
+  private filters: Array<{ field: string; value: any; op?: string; values?: any[]; branches?: any[][] }> = [];
   private limitCount: number = 0;
   private offsetCount: number = 0;
   private insertValues: any = null;
@@ -358,6 +439,11 @@ class MockDrizzleQueryBuilder {
 
   constructor(operation: 'select' | 'insert' | 'update' | 'delete') {
     this.operation = operation;
+  }
+
+  /** Seam for collectFilters, which parses an OR branch into its own AND-list. */
+  currentFilters() {
+    return this.filters;
   }
 
   from(table: any) {
@@ -378,6 +464,38 @@ class MockDrizzleQueryBuilder {
       // Check for nested SQL / logical compound conditions
       const sqlChunks = condition.queryChunks.filter((chunk: any) => chunk && chunk.queryChunks);
       if (sqlChunks.length > 0) {
+        // The joining word, read from the StringChunks between the branches. Every
+        // sub-condition used to be pushed onto one flat AND list regardless — so
+        // `or(eq(id,1), eq(id,2))` became `id = 1 AND id = 2` and matched nothing. Not a
+        // wrong row count: zero rows, from a query the caller wrote to widen a search.
+        const joiner = condition.queryChunks
+          .filter((c: any) => c && Array.isArray(c.value))
+          .map((c: any) => c.value.join(''))
+          .join(' ')
+          .toLowerCase();
+
+        if (/\bor\b/.test(joiner)) {
+          this.filters.push({
+            field: '',
+            value: null,
+            op: 'or',
+            branches: sqlChunks.map((sub: any) => collectFilters(sub)),
+          });
+          return;
+        }
+
+        if (/\bnot\b/.test(joiner)) {
+          // `not(x)` used to be parsed as plain `x`, so it returned exactly the rows it
+          // was written to exclude — the most confidently wrong answer available.
+          this.filters.push({
+            field: '',
+            value: null,
+            op: 'not',
+            branches: [collectFilters(sqlChunks[0])],
+          });
+          return;
+        }
+
         for (const subCond of sqlChunks) {
           this.parseCondition(subCond);
         }
@@ -389,7 +507,17 @@ class MockDrizzleQueryBuilder {
       // A scalar param is a Param object (has `.value`) that is NOT itself an array and is
       // NOT a StringChunk (whose `.value` is an array like [""] / [" in "]).
       const scalarParam = condition.queryChunks.find(
-        (chunk: any) => chunk && !Array.isArray(chunk) && 'value' in chunk && !Array.isArray(chunk.value)
+        // `typeof chunk === 'object'` is load-bearing: drizzle's like()/ilike() put the
+        // pattern in as a bare string, and `'value' in "%acme%"` throws
+        // "Cannot use 'in' operator to search for 'value' in %acme%" — so every like()
+        // query in demo mode was a 500, not a wrong answer.
+        (chunk: any) =>
+          chunk && typeof chunk === 'object' && !Array.isArray(chunk) &&
+          'value' in chunk && !Array.isArray(chunk.value)
+      );
+      // A bare string operand, which is how like()/ilike() render their pattern.
+      const stringOperand = condition.queryChunks.find(
+        (chunk: any) => typeof chunk === 'string'
       );
       // inArray(col, [...]) renders as: col, " in ", [Param, Param, ...]. The values live in a
       // nested Array of Param objects. Support it so multi-id fetches (e.g.
@@ -405,7 +533,7 @@ class MockDrizzleQueryBuilder {
             op: 'in',
             values: inValues.map((p: any) => (p && typeof p === 'object' && 'value' in p ? p.value : p)),
           });
-        } else if (scalarParam) {
+        } else if (scalarParam || stringOperand !== undefined) {
           // Read the OPERATOR, not just the operand.
           //
           // This used to push a bare { field, value }, which the filter step applies as
@@ -426,13 +554,14 @@ class MockDrizzleQueryBuilder {
             .join(' ');
           // Two-character operators first: '>' would otherwise match inside '>='.
           const op =
+            /\blike\b/i.test(opText) ? 'like' :
             opText.includes('>=') ? 'gte' :
             opText.includes('<=') ? 'lte' :
             opText.includes('<>') || opText.includes('!=') ? 'ne' :
             opText.includes('>') ? 'gt' :
             opText.includes('<') ? 'lt' :
             undefined;
-          this.filters.push({ field, value: scalarParam.value, op });
+          this.filters.push({ field, value: scalarParam ? scalarParam.value : stringOperand, op });
         } else {
           // No literal value chunk — either an isNotNull()/isNull() condition (a text
           // chunk carries "is not null" / "is null", no Param) or a column-to-column
@@ -552,31 +681,7 @@ class MockDrizzleQueryBuilder {
 
       // Apply filters
       for (const filter of this.filters) {
-        if (filter.op === 'is_not_null') {
-          results = results.filter((item: any) => item[filter.field] !== null && item[filter.field] !== undefined);
-        } else if (filter.op === 'is_null') {
-          results = results.filter((item: any) => item[filter.field] === null || item[filter.field] === undefined);
-        } else if (filter.op === 'in') {
-          const set = new Set((filter.values || []).map((v: any) => String(v)));
-          results = results.filter((item: any) => set.has(String(item[filter.field])));
-        } else if (filter.op && ['gte', 'lte', 'gt', 'lt'].includes(filter.op)) {
-          results = results.filter((item: any) => {
-            const a = comparable(item[filter.field]);
-            const b = comparable(filter.value);
-            // A null on either side satisfies no ordering comparison, the same as SQL —
-            // an account with no intent score is not "intent 70+", and must not be
-            // silently included by a NaN comparison landing wherever it lands.
-            if (a === null || b === null) return false;
-            if (filter.op === 'gte') return a >= b;
-            if (filter.op === 'lte') return a <= b;
-            if (filter.op === 'gt') return a > b;
-            return a < b;
-          });
-        } else if (filter.op === 'ne') {
-          results = results.filter((item: any) => String(item[filter.field]) !== String(filter.value));
-        } else if (filter.value !== undefined) {
-          results = results.filter((item: any) => String(item[filter.field]) === String(filter.value));
-        }
+        results = results.filter((item: any) => matchesFilter(item, filter));
       }
 
       // Handle sorting
@@ -752,20 +857,7 @@ class MockDrizzleQueryBuilder {
 
       for (let i = 0; i < tableData.length; i++) {
         const item = tableData[i];
-        let matches = true;
-        for (const filter of this.filters) {
-          if (filter.op === 'is_not_null') {
-            if (item[filter.field] === null || item[filter.field] === undefined) {
-              matches = false;
-              break;
-            }
-          } else if (filter.value !== undefined) {
-            if (String(item[filter.field]) !== String(filter.value)) {
-              matches = false;
-              break;
-            }
-          }
-        }
+        const matches = this.filters.every((filter: any) => matchesFilter(item, filter));
         if (matches) {
           tableData[i] = {
             ...item,
@@ -784,20 +876,7 @@ class MockDrizzleQueryBuilder {
     if (this.operation === 'delete') {
       const originalLength = tableData.length;
       const newTableData = tableData.filter((item: any) => {
-        let matches = true;
-        for (const filter of this.filters) {
-          if (filter.op === 'is_not_null') {
-            if (item[filter.field] === null || item[filter.field] === undefined) {
-              matches = false;
-              break;
-            }
-          } else if (filter.value !== undefined) {
-            if (String(item[filter.field]) !== String(filter.value)) {
-              matches = false;
-              break;
-            }
-          }
-        }
+        const matches = this.filters.every((filter: any) => matchesFilter(item, filter));
         return !matches;
       });
       const deletedCount = originalLength - newTableData.length;

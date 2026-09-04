@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { getDb } from "./db";
 import { accounts } from "../drizzle/schema";
-import { and, eq, gt, gte, lt, lte, ne, isNull, isNotNull, inArray } from "drizzle-orm";
+import { and, or, not, like, eq, gt, gte, lt, lte, ne, isNull, isNotNull, inArray } from "drizzle-orm";
 
 /**
  * Range comparisons in the demo store.
@@ -83,6 +83,43 @@ describe("demo store — comparison operators", () => {
     expect(await q(isNotNull(accounts.name))).toBe(countWhere(a => a.name !== null && a.name !== undefined));
     expect(await q(isNull(accounts.sixsenseId))).toBe(
       countWhere(a => a.sixsenseId === null || a.sixsenseId === undefined)
+    );
+  });
+
+  it("or widens the match instead of narrowing it to nothing", async () => {
+    // Every sub-condition was pushed onto one flat AND list regardless of the joining
+    // word, so `or(a, b)` became `a AND b`. For two different values of the same column
+    // that is unsatisfiable: a query written to widen a search returned zero rows.
+    const [a, b] = all;
+    expect(await q(or(eq(accounts.id, a.id), eq(accounts.id, b.id)))).toBe(2);
+  });
+
+  it("or composes with range comparisons", async () => {
+    // The branches of an OR are their own AND-lists, so an operator inside one has to
+    // survive the nesting — not silently collapse back to equality.
+    expect(await q(or(gte(accounts.intentScore, 90), lt(accounts.intentScore, 5)))).toBe(
+      countWhere(a => (a.intentScore ?? 0) >= 90 || (a.intentScore ?? 0) < 5)
+    );
+  });
+
+  it("not excludes, rather than returning exactly what it was told to exclude", async () => {
+    // `not(x)` was parsed as plain `x` — the most confidently wrong answer available,
+    // since the result looks like a perfectly ordinary row set.
+    const [a] = all;
+    expect(await q(not(eq(accounts.id, a.id)))).toBe(all.length - 1);
+  });
+
+  it("like does substring matching and does not throw", async () => {
+    // Two bugs in one call. The pattern arrives as a bare string, and the parser did
+    // `'value' in chunk` on it — "Cannot use 'in' operator to search for 'value' in
+    // %Acme%" — so every like() query in demo mode was a 500, not a wrong answer. Once
+    // that was guarded, the pattern was applied as an equality filter, matching only a
+    // row whose name is literally "%Acme%".
+    const [a] = all;
+    const word = String(a.name || "").split(" ")[0];
+    expect(word.length).toBeGreaterThan(2);
+    expect(await q(like(accounts.name, `%${word}%`))).toBe(
+      countWhere(x => String(x.name || "").toLowerCase().includes(word.toLowerCase()))
     );
   });
 
