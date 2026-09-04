@@ -3,6 +3,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
+import { assertOrgAllowed, orgIdFor } from "./tenancy";
 
 /**
  * Extracted as a standalone function (rather than inlined in `.create()`) so it can
@@ -46,15 +47,38 @@ const requireUser = t.middleware(async opts => {
     throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
   }
 
+  // Narrowed to a number here, not left `number | null`, so a resolver cannot
+  // accidentally build a query with a nullish org and have it read as "no filter".
+  // Every signed-in user has an org: the column defaults to 1 and is not nullable.
+  const orgId = orgIdFor(ctx.user);
+
+  // The load-bearing guard. There is no UI for creating a second organization, so the
+  // only way a user row carries one today is an operator putting it there by hand —
+  // exactly the person about to onboard a second customer onto one deployment. While
+  // any query still runs unscoped, that user's requests would read the first customer's
+  // accounts. Refuse the request and say why, rather than serving the wrong tenant's
+  // data and being right about the login.
+  assertOrgAllowed(orgId);
+
   return next({
     ctx: {
       ...ctx,
       user: ctx.user,
+      orgId,
     },
   });
 });
 
+/**
+ * A signed-in user, with `ctx.orgId` narrowed to a number.
+ *
+ * The name is the point: `protectedProcedure` reads as "this is protected", and what it
+ * actually guaranteed was only "somebody is signed in" — it said nothing about whose data
+ * the resolver then went and read. Both names now resolve the tenant; the query still has
+ * to use it, which is what `pnpm tenancy` counts and `pnpm check:claims` pins.
+ */
 export const protectedProcedure = t.procedure.use(requireUser);
+export const orgProcedure = protectedProcedure;
 
 export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {

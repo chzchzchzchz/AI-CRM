@@ -404,6 +404,22 @@ class MockDrizzleQueryBuilder {
           } else if (text.includes('is null')) {
             this.filters.push({ field, value: null, op: 'is_null' });
           }
+          else if (field === 'orgId') {
+            // The one filter where "too many rows" is not the safe direction.
+            //
+            // Everywhere else in this mock, a condition it cannot evaluate is dropped:
+            // returning extra rows surfaces as a wrong count, which someone notices,
+            // rather than a confidently empty result, which reads as "no data". An org
+            // filter inverts that. Dropping it returns EVERY tenant's rows to whichever
+            // tenant asked — a silent cross-customer read that looks exactly like a
+            // correct answer. Fail closed instead, and loudly: a demo-mode query whose
+            // org filter could not be parsed must match nothing.
+            console.error(
+              '[MockDrizzle] could not evaluate an orgId filter; matching no rows rather ' +
+                'than returning every org\'s data. This is a bug in the mock, not in the caller.'
+            );
+            this.filters.push({ field, value: '__unevaluable_org_filter__' });
+          }
           // Otherwise: a comparison the mock cannot evaluate. Adding no filter returns
           // too many rows rather than too few — the safer failure direction for a
           // count/status query, and it surfaces as a wrong number instead of a

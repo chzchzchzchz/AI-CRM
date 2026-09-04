@@ -11,6 +11,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { auditTenancy } from "./tenancy-audit.mjs";
 
 const ROOT = process.cwd();
 const failures = [];
@@ -655,7 +656,55 @@ function walk(dir, exts, acc = []) {
     : ok("Auth throttling state is shared");
 }
 
-/* --------------------------------------------------------------- 15. report */
+/* --------------------------------------------------- 15. tenancy scoping count */
+/**
+ * The org-scoping burn-down number must be the real one.
+ *
+ * `protectedProcedure` means "any signed-in user" and said nothing about whose data,
+ * because no query carried an owner. Scoping all of them is a large mechanical migration,
+ * and a HALF-done one is worse than none: an operator reads "multi-tenant", onboards a
+ * second customer, and the unconverted queries hand them the first customer's accounts.
+ *
+ * So server/_core/tenancy.ts refuses to admit a second organization while any query is
+ * still unscoped, and shared/tenancy-status.ts carries the count that refusal reads. A
+ * number that could be edited down to zero would remove the protection silently — a claim
+ * the code never checked, which is the failure this whole file exists to prevent. It is
+ * therefore recomputed here from source and never trusted from the file.
+ */
+{
+  const statusPath = path.join(ROOT, "shared", "tenancy-status.ts");
+  if (!fs.existsSync(statusPath)) {
+    fail("tenancy scoping count is real", "shared/tenancy-status.ts missing");
+  } else {
+    const actual = auditTenancy(ROOT).length;
+    const m = fs
+      .readFileSync(statusPath, "utf8")
+      // Tolerates the `: number` annotation (there so `=== 0` stays a runtime question
+      // rather than being narrowed away as impossible).
+      .match(/UNSCOPED_QUERY_SITES\s*(?::\s*number\s*)?=\s*(\d+)/);
+
+    if (!m) {
+      fail("tenancy scoping count is real", "could not read UNSCOPED_QUERY_SITES");
+    } else if (Number(m[1]) !== actual) {
+      const claimed = Number(m[1]);
+      fail(
+        "tenancy scoping count is real",
+        `shared/tenancy-status.ts says ${claimed} unscoped queries, ${actual} found in source` +
+          (claimed < actual
+            ? ` — claiming fewer is what lets a second org in before it is safe. Run \`pnpm tenancy\` for the list.`
+            : ` — scoping went further than the file admits; lower it to ${actual}.`)
+      );
+    } else {
+      ok(
+        actual === 0
+          ? "tenancy scoping count is real (0 — multi-org is enabled)"
+          : `tenancy scoping count is real (${actual} unscoped, second org refused)`
+      );
+    }
+  }
+}
+
+/* --------------------------------------------------------------- 16. report */
 for (const c of checks) console.log(`  ✓ ${c}`);
 for (const f of failures) console.log(`  ✘ ${f.rule}\n    ${f.detail}`);
 

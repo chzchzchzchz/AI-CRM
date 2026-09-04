@@ -23,7 +23,8 @@
     "check:claims": "node scripts/check-claims.mjs",
     "verify": "pnpm check && pnpm lint && pnpm test && pnpm inventory && pnpm check:claims && pnpm build && pnpm gate && pnpm flows && pnpm smoke",
     "lint": "eslint client/src",
-    "smoke": "node --experimental-strip-types scripts/connector-smoke.mjs"
+    "smoke": "node --experimental-strip-types scripts/connector-smoke.mjs",
+    "tenancy": "node scripts/tenancy.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.918.0",
