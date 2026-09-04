@@ -1,3 +1,4 @@
+import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getAccountById, getContactsByAccountId, getGongCallsByAccountId } from "./db";
@@ -20,7 +21,7 @@ export const bulkInsightsRouter = router({
       const topAccounts = await db
         .select()
         .from(accounts)
-        .where(gte(accounts.intentScore, 70))
+        .where(and(eq(accounts.orgId, ctx.orgId), gte(accounts.intentScore, 70)))
         .orderBy(desc(accounts.intentScore))
         .limit(input.limit);
 

@@ -908,9 +908,12 @@ export async function upsertAccount(orgId: number, account: InsertAccount) {
   }
 
   try {
-    const owned = { ...account, orgId };
-    await db.insert(accounts).values(owned).onDuplicateKeyUpdate({
-      set: owned,
+    // orgId spelled out in the statement rather than hidden behind a variable: it is
+    // the tenant boundary, and `pnpm tenancy` reads the query to decide whether one is
+    // present. A boundary a reader (or the audit) cannot see in the query is a boundary
+    // nobody can check.
+    await db.insert(accounts).values({ ...account, orgId }).onDuplicateKeyUpdate({
+      set: { ...account, orgId },
     });
   } catch (error) {
     console.error("[Database] Failed to upsert account:", error);
@@ -986,9 +989,8 @@ export async function upsertPerson(orgId: number, person: any) {
   }
 
   try {
-    const owned = { ...person, orgId };
-    await db.insert(contacts).values(owned).onDuplicateKeyUpdate({
-      set: owned,
+    await db.insert(contacts).values({ ...person, orgId }).onDuplicateKeyUpdate({
+      set: { ...person, orgId },
     });
   } catch (error) {
     console.error("[Database] Failed to upsert person:", error);
@@ -1564,9 +1566,8 @@ export async function upsertOpportunity(orgId: number, opportunity: InsertOpport
   const db = await getDb();
   if (!db) return;
 
-  const owned = { ...opportunity, orgId };
-  await db.insert(opportunities).values(owned).onDuplicateKeyUpdate({
-    set: owned,
+  await db.insert(opportunities).values({ ...opportunity, orgId }).onDuplicateKeyUpdate({
+    set: { ...opportunity, orgId },
   });
 }
 

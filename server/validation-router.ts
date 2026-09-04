@@ -1,3 +1,4 @@
+import { eq, and } from "drizzle-orm";
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import {
@@ -308,7 +309,7 @@ export const validationRouter = router({
           const { contacts } = await import("../drizzle/schema");
           const { eq } = await import("drizzle-orm");
           await db.update(contacts).set({ [input.field]: value, updatedAt: new Date() } as any)
-            .where(eq(contacts.id, input.entityId));
+            .where(and(eq(contacts.orgId, ctx.orgId), eq(contacts.id, input.entityId)));
         }
         return { success: true, message: `Updated ${input.field} on ${input.entityType} ${input.entityId}` };
       } catch (error) {

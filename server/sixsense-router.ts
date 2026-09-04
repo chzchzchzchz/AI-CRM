@@ -11,7 +11,7 @@ const detectAndNotifyIntentSpikes = () => detectIntentSpikes();
 const getRecentIntentSpikes = (limit: number = 10) => detectIntentSpikes({ limit });
 import { getDb } from "./db";
 import { accounts } from "../drizzle/schema";
-import { eq, isNotNull, sql } from "drizzle-orm";
+import { eq, isNotNull, sql, and } from "drizzle-orm";
 
 export const sixsenseRouter = router({
   /**
@@ -24,7 +24,7 @@ export const sixsenseRouter = router({
         domain: z.string(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { accountId, domain } = input;
 
       try {
@@ -76,7 +76,7 @@ export const sixsenseRouter = router({
               : null,
             lastSixsenseSync: new Date(),
           })
-          .where(eq(accounts.id, accountId));
+          .where(and(eq(accounts.orgId, ctx.orgId), eq(accounts.id, accountId)));
 
         return {
           success: true,
@@ -101,7 +101,7 @@ export const sixsenseRouter = router({
         limit: z.number().optional().default(50),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         // Say so up front rather than looping every account, failing each lookup, and
         // reporting "Synced 0 accounts, 0 failed" as though the run had succeeded.
@@ -129,6 +129,7 @@ export const sixsenseRouter = router({
             lastSixsenseSync: accounts.lastSixsenseSync,
           })
           .from(accounts)
+          .where(eq(accounts.orgId, ctx.orgId))
           .limit(input.limit);
 
         const results = {
@@ -180,7 +181,7 @@ export const sixsenseRouter = router({
                   : null,
                 lastSixsenseSync: new Date(),
               })
-              .where(eq(accounts.id, account.id));
+              .where(and(eq(accounts.orgId, ctx.orgId), eq(accounts.id, account.id)));
 
             results.synced++;
           } catch (error) {
@@ -242,7 +243,7 @@ export const sixsenseRouter = router({
   /**
    * Get 6sense sync status for all accounts
    */
-  getSyncStatus: protectedProcedure.query(async () => {
+  getSyncStatus: protectedProcedure.query(async ({ ctx }) => {
     try {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -262,12 +263,13 @@ export const sixsenseRouter = router({
       // isNotNull, not self-equality.
       const [totalRow] = await db
         .select({ count: sql<number>`count(*)` })
-        .from(accounts);
+        .from(accounts)
+        .where(eq(accounts.orgId, ctx.orgId));
 
       const [syncedRow] = await db
         .select({ count: sql<number>`count(*)` })
         .from(accounts)
-        .where(isNotNull(accounts.lastSixsenseSync));
+        .where(and(eq(accounts.orgId, ctx.orgId), isNotNull(accounts.lastSixsenseSync)));
 
       const total = totalRow?.count ?? 0;
       const synced = syncedRow?.count ?? 0;

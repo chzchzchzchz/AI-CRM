@@ -8,7 +8,7 @@ import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
 import { getDb } from "./db";
 import { intentScores } from "../drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { timingSafeEqual } from "./_core/security";
 import {
@@ -157,10 +157,11 @@ export const intentScoresRouter = router({
       keywords: z.array(z.string()).optional(),
       source: z.string().default("6sense"),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       await db.insert(intentScores).values({
+        orgId: ctx.orgId,
         accountId: input.accountId,
         score: input.score,
         category: input.category ?? null,
@@ -171,11 +172,11 @@ export const intentScoresRouter = router({
     }),
   list: protectedProcedure
     .input(z.object({ accountId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) return [];
       return await db.select().from(intentScores)
-        .where(eq(intentScores.accountId, input.accountId))
+        .where(and(eq(intentScores.orgId, ctx.orgId), eq(intentScores.accountId, input.accountId)))
         .orderBy(desc(intentScores.createdAt));
     }),
 });

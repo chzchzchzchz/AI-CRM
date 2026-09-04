@@ -14,6 +14,7 @@ function hashQuery(query: string): string {
  * Get cached Dust response
  */
 export async function getCachedDustResponse(
+  orgId: number,
   query: string,
   accountId?: number,
   contactId?: number
@@ -28,6 +29,10 @@ export async function getCachedDustResponse(
       .from(dustCache)
       .where(
         and(
+          // Same shape as the aiResponseCache leak: the hash is of the query text, so
+          // two tenants asking the same thing collide, and the second one reads the
+          // first one's answer.
+          eq(dustCache.orgId, orgId),
           eq(dustCache.queryHash, queryHash),
           accountId ? eq(dustCache.accountId, accountId) : undefined,
           contactId ? eq(dustCache.contactId, contactId) : undefined,
@@ -50,6 +55,7 @@ export async function getCachedDustResponse(
  * Cache Dust response
  */
 export async function cacheDustResponse(
+  orgId: number,
   query: string,
   result: string,
   accountId?: number,
@@ -63,6 +69,7 @@ export async function cacheDustResponse(
 
   try {
     await db.insert(dustCache).values({
+      orgId,
       queryHash,
       query,
       result,
@@ -81,14 +88,14 @@ export async function cacheDustResponse(
 /**
  * Clear expired cache entries
  */
-export async function clearExpiredDustCache(): Promise<number> {
+export async function clearExpiredDustCache(orgId: number): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
 
   try {
     await db
       .delete(dustCache)
-      .where(gt(dustCache.expiresAt, new Date()));
+      .where(and(eq(dustCache.orgId, orgId), gt(dustCache.expiresAt, new Date())));
     return 0; // MySQL doesn't return rowsAffected directly
   } catch (error) {
     console.error("Error clearing expired Dust cache:", error);
@@ -99,12 +106,12 @@ export async function clearExpiredDustCache(): Promise<number> {
 /**
  * Clear cache for specific account
  */
-export async function clearAccountDustCache(accountId: number): Promise<void> {
+export async function clearAccountDustCache(orgId: number, accountId: number): Promise<void> {
   const db = await getDb();
   if (!db) return;
 
   try {
-    await db.delete(dustCache).where(eq(dustCache.accountId, accountId));
+    await db.delete(dustCache).where(and(eq(dustCache.orgId, orgId), eq(dustCache.accountId, accountId)));
   } catch (error) {
     console.error("Error clearing account Dust cache:", error);
   }
@@ -113,12 +120,12 @@ export async function clearAccountDustCache(accountId: number): Promise<void> {
 /**
  * Clear cache for specific contact
  */
-export async function clearContactDustCache(contactId: number): Promise<void> {
+export async function clearContactDustCache(orgId: number, contactId: number): Promise<void> {
   const db = await getDb();
   if (!db) return;
 
   try {
-    await db.delete(dustCache).where(eq(dustCache.contactId, contactId));
+    await db.delete(dustCache).where(and(eq(dustCache.orgId, orgId), eq(dustCache.contactId, contactId)));
   } catch (error) {
     console.error("Error clearing contact Dust cache:", error);
   }

@@ -131,15 +131,15 @@ export const appRouter = router({
           const digest = await getBrainDigest(ctx.orgId);
           additionalContext = [brainContextBlock(digest), additionalContext].filter(Boolean).join("\n\n");
         } catch { /* brain unavailable → proceed without it */ }
-        return await deepThinkSales({ ...input, accountData, additionalContext });
+        return await deepThinkSales({ orgId: ctx.orgId, ...input, accountData, additionalContext });
       }),
     help: protectedProcedure
       .input(z.object({
         query: z.string(),
         debugMode: z.boolean().optional()
       }))
-      .mutation(async ({ input }) => {
-        return await deepThinkHelp(input);
+      .mutation(async ({ input, ctx }) => {
+        return await deepThinkHelp({ orgId: ctx.orgId, ...input });
       }),
   }),
   sixsenseAnalytics: sixsenseAnalyticsRouter,
