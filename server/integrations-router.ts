@@ -5,10 +5,15 @@
  *  - clay.triggerEnrichment       (outbound push to a Clay table via CLAY_WEBHOOK_URL)
  */
 import { z } from "zod";
-import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
+import {
+  router,
+  protectedProcedure,
+  publicProcedure,
+  deploymentConnectorProcedure,
+} from "./_core/trpc";
 import { getDb } from "./db";
 import { intentScores } from "../drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { timingSafeEqual } from "./_core/security";
 import {
@@ -19,13 +24,29 @@ import {
   salesloftCreatePerson, outreachCreateProspect, calendlyGetAccount,
   asanaCreateTask, clickupCreateTask, pagerdutyTrigger,
 } from "./integrations/connectors";
-import { buildReport } from "./integrations/preflight";
+import { buildReport, type PreflightReport } from "./integrations/preflight";
+import { DEFAULT_ORG_ID } from "./_core/tenancy";
 import {
   isZoomInfoConfigured,
   zoominfoEnrichCompany,
   zoominfoSearchContacts,
   zoominfoEnrichContact,
 } from "./integrations/zoominfo";
+
+/** Nothing to diagnose, for a workspace that owns none of this deployment's connectors. */
+const EMPTY_PREFLIGHT: PreflightReport = {
+  core: [],
+  connectors: [],
+  counts: { ready: 0, incomplete: 0, invalid: 0, "not-configured": 0, coreProblems: 0 },
+};
+
+/** Every connector key, all false — what a workspace that owns none of them actually has. */
+const NO_CONNECTORS = {
+  slack: false, discord: false, teams: false, hubspot: false, notion: false,
+  linear: false, intercom: false, airtable: false, pipedrive: false, apollo: false,
+  zoominfo: false, googleChat: false, twilio: false, segment: false, salesloft: false,
+  outreach: false, calendly: false, asana: false, clickup: false, pagerduty: false,
+} as const;
 
 // ---- Native SaaS connectors (Slack, Discord, Teams, HubSpot, Notion, Linear, Intercom, webhooks) ----
 export const integrationsRouter = router({
@@ -34,10 +55,24 @@ export const integrationsRouter = router({
    * `status` below stays for the simple configured/not badge; this is what the
    * Integrations page uses to tell someone *why* a key isn't working.
    */
-  preflight: protectedProcedure.query(() => buildReport()),
+  preflight: protectedProcedure.query(({ ctx }) => {
+    // The report is a diagnosis of the DEPLOYMENT — which env vars are set, which are
+    // malformed, which signup mode is live, whether Redis answers. That is the
+    // operator's business, and this query was readable by every tenant on the instance.
+    // Nothing here is theirs to see, and nothing here is theirs to act on, so there is
+    // nothing to report rather than a report they must be told to ignore.
+    if (ctx.orgId !== DEFAULT_ORG_ID) return EMPTY_PREFLIGHT;
+    return buildReport();
+  }),
 
   // Which connectors are configured (by env) — shown in the app's Integrations settings.
-  status: protectedProcedure.query(() => ({
+  status: protectedProcedure.query(({ ctx }) => {
+    // Not a lie by omission: from a workspace that does not own this deployment's
+    // credentials, no connector IS configured — every action below refuses. Reporting
+    // the operator's setup here would both describe their instance to a stranger and
+    // offer a row of buttons that cannot work.
+    if (ctx.orgId !== DEFAULT_ORG_ID) return NO_CONNECTORS;
+    return ({
     slack: !!process.env.SLACK_WEBHOOK_URL,
     discord: !!process.env.DISCORD_WEBHOOK_URL,
     teams: !!process.env.TEAMS_WEBHOOK_URL,
@@ -58,72 +93,73 @@ export const integrationsRouter = router({
     asana: !!(process.env.ASANA_ACCESS_TOKEN && process.env.ASANA_WORKSPACE_ID),
     clickup: !!(process.env.CLICKUP_API_TOKEN && process.env.CLICKUP_LIST_ID),
     pagerduty: !!process.env.PAGERDUTY_ROUTING_KEY,
-  })),
-  salesloftCreatePerson: protectedProcedure
+    });
+  }),
+  salesloftCreatePerson: deploymentConnectorProcedure
     .input(z.object({ email_address: z.string().email(), first_name: z.string().optional(), last_name: z.string().optional(), title: z.string().optional() }))
     .mutation(({ input }) => salesloftCreatePerson(input)),
-  outreachCreateProspect: protectedProcedure
+  outreachCreateProspect: deploymentConnectorProcedure
     .input(z.object({ emails: z.array(z.string()), firstName: z.string().optional(), lastName: z.string().optional(), title: z.string().optional() }))
     .mutation(({ input }) => outreachCreateProspect(input)),
-  calendlyGetAccount: protectedProcedure.mutation(() => calendlyGetAccount()),
-  asanaCreateTask: protectedProcedure
+  calendlyGetAccount: deploymentConnectorProcedure.mutation(() => calendlyGetAccount()),
+  asanaCreateTask: deploymentConnectorProcedure
     .input(z.object({ name: z.string(), notes: z.string().optional() }))
     .mutation(({ input }) => asanaCreateTask(input.name, input.notes)),
-  clickupCreateTask: protectedProcedure
+  clickupCreateTask: deploymentConnectorProcedure
     .input(z.object({ name: z.string(), description: z.string().optional() }))
     .mutation(({ input }) => clickupCreateTask(input.name, input.description)),
-  pagerdutyTrigger: protectedProcedure
+  pagerdutyTrigger: deploymentConnectorProcedure
     .input(z.object({ summary: z.string() }))
     .mutation(({ input }) => pagerdutyTrigger(input.summary)),
   // One event → every configured chat tool (+ optional webhook). The native automation.
-  notifyHotLead: protectedProcedure
+  notifyHotLead: deploymentConnectorProcedure
     .input(z.object({ text: z.string(), webhookUrl: z.string().url().optional() }))
     .mutation(({ input }) => notifyAll(input.text, input.webhookUrl)),
-  googleChatNotify: protectedProcedure
+  googleChatNotify: deploymentConnectorProcedure
     .input(z.object({ text: z.string(), webhookUrl: z.string().url().optional() }))
     .mutation(({ input }) => googleChatNotify(input.text, input.webhookUrl)),
-  twilioSendSms: protectedProcedure
+  twilioSendSms: deploymentConnectorProcedure
     .input(z.object({ to: z.string(), body: z.string() }))
     .mutation(({ input }) => twilioSendSms(input.to, input.body)),
-  segmentTrack: protectedProcedure
+  segmentTrack: deploymentConnectorProcedure
     .input(z.object({ event: z.string(), userId: z.string(), properties: z.record(z.string(), z.any()).optional() }))
     .mutation(({ input }) => segmentTrack(input.event, input.userId, input.properties)),
-  slackNotify: protectedProcedure
+  slackNotify: deploymentConnectorProcedure
     .input(z.object({ text: z.string(), webhookUrl: z.string().url().optional() }))
     .mutation(({ input }) => slackNotify(input.text, input.webhookUrl)),
-  discordNotify: protectedProcedure
+  discordNotify: deploymentConnectorProcedure
     .input(z.object({ content: z.string(), webhookUrl: z.string().url().optional() }))
     .mutation(({ input }) => discordNotify(input.content, input.webhookUrl)),
-  teamsNotify: protectedProcedure
+  teamsNotify: deploymentConnectorProcedure
     .input(z.object({ text: z.string(), webhookUrl: z.string().url().optional() }))
     .mutation(({ input }) => teamsNotify(input.text, input.webhookUrl)),
-  hubspotSyncContact: protectedProcedure
+  hubspotSyncContact: deploymentConnectorProcedure
     .input(z.object({ email: z.string().email(), firstname: z.string().optional(), lastname: z.string().optional(), company: z.string().optional(), jobtitle: z.string().optional() }))
     .mutation(({ input }) => hubspotUpsertContact(input)),
-  notionExportAccount: protectedProcedure
+  notionExportAccount: deploymentConnectorProcedure
     .input(z.object({ name: z.string(), domain: z.string().optional(), industry: z.string().optional(), intentScore: z.number().optional() }))
     .mutation(({ input }) => notionCreatePage(input)),
-  linearCreateTask: protectedProcedure
+  linearCreateTask: deploymentConnectorProcedure
     .input(z.object({ title: z.string(), description: z.string().optional() }))
     .mutation(({ input }) => linearCreateIssue(input.title, input.description)),
-  intercomSyncContact: protectedProcedure
+  intercomSyncContact: deploymentConnectorProcedure
     .input(z.object({ email: z.string().email(), name: z.string().optional() }))
     .mutation(({ input }) => intercomUpsertContact(input)),
-  airtableCreateRecord: protectedProcedure
+  airtableCreateRecord: deploymentConnectorProcedure
     .input(z.object({ fields: z.record(z.string(), z.any()) }))
     .mutation(({ input }) => airtableCreateRecord(input.fields)),
-  pipedriveCreateDeal: protectedProcedure
+  pipedriveCreateDeal: deploymentConnectorProcedure
     .input(z.object({ title: z.string(), value: z.number().optional() }))
     .mutation(({ input }) => pipedriveCreateDeal(input.title, input.value)),
-  apolloEnrichPerson: protectedProcedure
+  apolloEnrichPerson: deploymentConnectorProcedure
     .input(z.object({ email: z.string().email() }))
     .mutation(({ input }) => apolloEnrichPerson(input.email)),
-  sendWebhook: protectedProcedure
+  sendWebhook: deploymentConnectorProcedure
     .input(z.object({ url: z.string().url(), payload: z.record(z.string(), z.any()) }))
     .mutation(({ input }) => sendWebhook(input.url, input.payload)),
 
   // ---- ZoomInfo (Enterprise API; JWT lifecycle handled in the connector) ----
-  zoominfoEnrichCompany: protectedProcedure
+  zoominfoEnrichCompany: deploymentConnectorProcedure
     .input(
       z
         .object({ domain: z.string().min(1).optional(), name: z.string().min(1).optional() })
@@ -131,7 +167,7 @@ export const integrationsRouter = router({
     )
     .mutation(({ input }) => zoominfoEnrichCompany(input)),
 
-  zoominfoSearchContacts: protectedProcedure
+  zoominfoSearchContacts: deploymentConnectorProcedure
     .input(
       z.object({
         companyDomain: z.string().min(1),
@@ -142,7 +178,7 @@ export const integrationsRouter = router({
     )
     .mutation(({ input }) => zoominfoSearchContacts(input)),
 
-  zoominfoEnrichContact: protectedProcedure
+  zoominfoEnrichContact: deploymentConnectorProcedure
     .input(z.object({ email: z.string().email() }))
     .mutation(({ input }) => zoominfoEnrichContact(input.email)),
 });
@@ -157,10 +193,11 @@ export const intentScoresRouter = router({
       keywords: z.array(z.string()).optional(),
       source: z.string().default("6sense"),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       await db.insert(intentScores).values({
+        orgId: ctx.orgId,
         accountId: input.accountId,
         score: input.score,
         category: input.category ?? null,
@@ -171,11 +208,11 @@ export const intentScoresRouter = router({
     }),
   list: protectedProcedure
     .input(z.object({ accountId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) return [];
       return await db.select().from(intentScores)
-        .where(eq(intentScores.accountId, input.accountId))
+        .where(and(eq(intentScores.orgId, ctx.orgId), eq(intentScores.accountId, input.accountId)))
         .orderBy(desc(intentScores.createdAt));
     }),
 });
@@ -198,14 +235,32 @@ export const zapierRouter = router({
       } else if (process.env.DEMO_MODE !== "true") {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Zapier webhook not configured (set ZAPIER_WEBHOOK_SECRET)" });
       }
-      console.log(`[Zapier] event=${input.event}`, input.data ?? {});
-      return { received: true, event: input.event };
+      // Acknowledged and dropped, which is all this has ever done. Nothing reads these
+      // events — no store, no queue, no handler — so the log line and the response both
+      // say so. `{ received: true }` alone was the problem: Zapier shows any 2xx as a
+      // successful run, so someone wiring a Zap to POST enrichment here (which
+      // INTEGRATIONS.md told them to do) would watch it go green on every call, forever,
+      // while nothing ever appeared in the app and nothing anywhere said why.
+      //
+      // Not turned into an error: the request WAS well-formed and authenticated, and
+      // failing it would be a different untruth — plus retries. Clay's receiver is the
+      // one that actually ingests; the doc now points there instead.
+      console.log(
+        `[Zapier] event=${input.event} — acknowledged, not stored (no consumer)`,
+        input.data ?? {},
+      );
+      return {
+        received: true,
+        stored: false,
+        event: input.event,
+        note: "Acknowledged. Nothing consumes these events yet — to load data, POST to the Clay receiver or use /import.",
+      };
     }),
 });
 
 // ---- Clay outbound: trigger enrichment by pushing a row to a Clay table ----
 export const clayPullRouter = router({
-  triggerEnrichment: protectedProcedure
+  triggerEnrichment: deploymentConnectorProcedure
     .input(z.object({ domain: z.string(), name: z.string().optional() }))
     .mutation(async ({ input }) => {
       const url = process.env.CLAY_WEBHOOK_URL;

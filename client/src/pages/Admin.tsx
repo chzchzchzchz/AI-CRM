@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Loader2, RefreshCw, Database, Zap, CheckCircle2, XCircle, TrendingUp, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { TeamInvites } from "@/components/TeamInvites";
 
 export default function Admin() {
   const { user, loading } = useAuth();
@@ -88,8 +89,12 @@ export default function Admin() {
       <div className="container py-1 space-y-5 max-w-6xl mx-auto">
         <div>
           <h1 className="text-xl font-semibold text-foreground mb-2">Admin Panel</h1>
-          <p className="text-ink-muted">Manage data enrichment and system health</p>
+          <p className="text-ink-muted">Manage your team, data enrichment and system health</p>
         </div>
+
+        {/* First, because adding a colleague is the thing a new customer needs on day
+            one — and until this existed there was no way to do it at all. */}
+        <TeamInvites />
 
         {/* 6sense Enrichment */}
         <Card className="border-accent/30 shadow-lg">

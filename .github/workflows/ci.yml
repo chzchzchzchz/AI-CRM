@@ -76,6 +76,14 @@ jobs:
       - name: Flow gate
         run: pnpm flows
 
+      # The flows above run as one signed-in user in one workspace, which is the shape
+      # every test in this repo had. This one signs two customers up, has one invite a
+      # colleague, and asserts each can only read their own workspace — the thing being
+      # sold, walked the way a customer walks it. It runs with SIGNUP_MODE=self-serve
+      # against its own database file, so it touches nothing else here.
+      - name: Tenancy end to end
+        run: pnpm tenancy:e2e
+
       # Live connector check. With no credentials every connector reports UNVERIFIED
       # and this passes — the app is meant to run without any of them. Add a vendor
       # key as a repository secret below and that connector is exercised against the
@@ -113,15 +121,30 @@ jobs:
       - name: Boot it exactly as the README says
         run: docker run -d --name targetdash -p 3333:3333 targetdash:ci
 
+      # The path is READ OUT OF render.yaml, not copied here. Render gates every deploy
+      # on healthCheckPath, so a typo in it is a disabled deploy gate — and until the
+      # /api 404 handler existed, a mistyped path answered 200 with the app's HTML, so
+      # the typo would never have been noticed. Polling whatever render.yaml actually
+      # says makes the two agree or fails the build.
+      #
+      # It points at /api/ready, which probes the database and the auth-state store and
+      # returns 503 when either is unreachable. Polling liveness only proved the process
+      # was listening — an image that boots and cannot serve a request passed.
       - name: Wait for the health check Render relies on
         run: |
+          path=$(sed -n 's/^ *healthCheckPath: *//p' render.yaml | head -1)
+          if [ -z "$path" ]; then
+            echo "::error::render.yaml has no healthCheckPath — the deploy has no health gate"
+            exit 1
+          fi
+          echo "render.yaml gates deploys on ${path}"
           for i in $(seq 1 60); do
-            if curl -fsS http://localhost:3333/api/health > /dev/null; then
-              echo "healthy after ${i}s"; exit 0
+            if curl -fsS "http://localhost:3333${path}" > /dev/null; then
+              echo "ready after ${i}s"; exit 0
             fi
             sleep 1
           done
-          echo "::error::/api/health never came up — the Render one-click deploy would never go live"
+          echo "::error::${path} never came up — the Render one-click deploy would never go live"
           docker logs targetdash
           exit 1
 

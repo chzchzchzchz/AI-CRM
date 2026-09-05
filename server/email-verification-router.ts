@@ -1,5 +1,6 @@
 import { router, publicProcedure } from "./_core/trpc";
 import { validatePasswordComplexity, logSecurityEvent, enforceSendCooldown } from "./_core/security";
+import { affectedRows } from "./_core/affected-rows";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./_core/email";
 import { withUserLock } from "./twofa";
 
@@ -41,7 +42,7 @@ export const emailVerificationRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ input }) => {
-      enforceSendCooldown(`verify:${input.email}`);
+      await enforceSendCooldown(`verify:${input.email}`);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -148,13 +149,16 @@ export const emailVerificationRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ input }) => {
-      enforceSendCooldown(`verify:${input.email}`);
+      await enforceSendCooldown(`verify:${input.email}`);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
       const code = generateVerificationCode();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
+      // write-unchecked: clearing any previous code before issuing a new one. Deleting
+      // zero rows is the normal first-send case, and the `success: true` below is about
+      // the code that was just created and sent, not about this housekeeping.
       await db
         .delete(emailVerificationCodes)
         .where(eq(emailVerificationCodes.userId, input.userId));
@@ -175,7 +179,7 @@ export const emailVerificationRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ input }) => {
-      enforceSendCooldown(`reset:${input.email}`);
+      await enforceSendCooldown(`reset:${input.email}`);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -183,6 +187,7 @@ export const emailVerificationRouter = router({
       // normalize here too, or a user who types a different case than they signed up
       // with is told (indirectly, via the anti-enumeration success response) that a
       // code was sent when no account was actually found.
+      // tenancy-exempt: identity lookup by email, before any session exists; email is globally unique across orgs
       const userResults = await db
         .select()
         .from(users)
@@ -261,10 +266,29 @@ export const emailVerificationRouter = router({
 
       const passwordHash = await bcrypt.hash(input.newPassword, 10);
 
-      await db
+      // The reset code was validated, but the USER it points at is a separate row and can
+      // be gone by now — deleted or deactivated between issuing the code and redeeming
+      // it. This returned `{ success: true }` regardless, so the person was told their
+      // password had been changed, the code was burned, and the new password did not
+      // work. On a password-reset path that is the worst possible place to be vague:
+      // they cannot log in and have no reason to suspect the reset itself.
+      //
+      // tenancy-exempt: auth path — runs before a session exists, so there is no org to filter by
+      const reset = await db
         .update(users)
         .set({ passwordHash })
         .where(eq(users.id, code.userId));
+
+      if (affectedRows(reset) === 0) {
+        logSecurityEvent(
+          "PASSWORD_RESET_FAILED",
+          { userId: code.userId, email: code.email, reason: "user_row_missing" },
+          "warn"
+        );
+        // The code is deliberately left unused: nothing was changed, so nothing was
+        // spent, and the person can try again if the account comes back.
+        throw new Error("That account is no longer available. Your password was not changed.");
+      }
 
       await db
         .update(passwordResetCodes)

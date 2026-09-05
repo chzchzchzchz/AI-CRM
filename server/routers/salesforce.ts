@@ -8,19 +8,33 @@ import { router, protectedProcedure } from "../_core/trpc";
 import * as salesforce from "../salesforce";
 import { bulkUpsertAccountsFromSalesforce, bulkUpsertContactsFromSalesforce, getSyncStatus } from "../db";
 import { ENV } from "../_core/env";
+import { assertDeploymentConnectorAllowed } from "../_core/tenancy";
+
+/**
+ * Every procedure below spends the deployment's single SALESFORCE_* credential set. The
+ * sync ones pull `SELECT … FROM Account` with no limit — the whole connected Salesforce
+ * org — and write it into the CALLER's workspace, so on a self-serve deployment any
+ * customer could copy the operator's book of business into their own. See
+ * assertDeploymentConnectorAllowed. `getSyncStatus` is exempt on purpose: it reads the
+ * caller's own rows, and it is what the page can still show when it cannot sync.
+ */
+const CONNECTOR = "Salesforce";
 
 export const salesforceRouter = router({
   /**
    * Get configured Salesforce instance URL
    */
-  getInstanceUrl: protectedProcedure.query(async () => {
+  getInstanceUrl: protectedProcedure.query(async ({ ctx }) => {
+    // The operator's Salesforce hostname names their company. Small, but it is theirs.
+    assertDeploymentConnectorAllowed(ctx.orgId, CONNECTOR);
     return ENV.salesforceInstanceUrl;
   }),
 
   /**
    * Test Salesforce connection
    */
-  testConnection: protectedProcedure.query(async () => {
+  testConnection: protectedProcedure.query(async ({ ctx }) => {
+    assertDeploymentConnectorAllowed(ctx.orgId, CONNECTOR);
     const result = await salesforce.testConnection();
     return result;
   }),
@@ -28,15 +42,19 @@ export const salesforceRouter = router({
   /**
    * Get current sync status
    */
-  getSyncStatus: protectedProcedure.query(async () => {
-    const status = await getSyncStatus();
+  getSyncStatus: protectedProcedure.query(async ({ ctx }) => {
+    const status = await getSyncStatus(ctx.orgId);
     return status;
   }),
 
   /**
    * Sync accounts from Salesforce
    */
-  syncAccounts: protectedProcedure.mutation(async () => {
+  syncAccounts: protectedProcedure.mutation(async ({ ctx }) => {
+    // Before the try: a refusal must reach the caller as a refusal. The catch below
+    // turns everything into { success: false, message }, which the page renders as a
+    // failed sync rather than as "this is not yours to sync".
+    assertDeploymentConnectorAllowed(ctx.orgId, CONNECTOR);
     try {
       // Fetch accounts from Salesforce
       const sfAccounts = await salesforce.fetchAccounts();
@@ -45,7 +63,7 @@ export const salesforceRouter = router({
       const transformedAccounts = sfAccounts.map(salesforce.transformAccount);
       
       // Bulk upsert to database
-      const result = await bulkUpsertAccountsFromSalesforce(transformedAccounts);
+      const result = await bulkUpsertAccountsFromSalesforce(ctx.orgId, transformedAccounts);
 
       // bulkUpsertAccountsFromSalesforce tracks a per-row error count precisely so a
       // handful of bad records don't abort the whole sync — but that count went
@@ -77,7 +95,11 @@ export const salesforceRouter = router({
   /**
    * Sync contacts from Salesforce
    */
-  syncContacts: protectedProcedure.mutation(async () => {
+  syncContacts: protectedProcedure.mutation(async ({ ctx }) => {
+    // Before the try: a refusal must reach the caller as a refusal. The catch below
+    // turns everything into { success: false, message }, which the page renders as a
+    // failed sync rather than as "this is not yours to sync".
+    assertDeploymentConnectorAllowed(ctx.orgId, CONNECTOR);
     try {
       // Fetch contacts from Salesforce
       const sfContacts = await salesforce.fetchContacts();
@@ -86,7 +108,7 @@ export const salesforceRouter = router({
       const transformedContacts = sfContacts.map(salesforce.transformContact);
       
       // Bulk upsert to database
-      const result = await bulkUpsertContactsFromSalesforce(transformedContacts);
+      const result = await bulkUpsertContactsFromSalesforce(ctx.orgId, transformedContacts);
 
       // Same gap as syncAccounts above: result.errors was tracked and then dropped
       // before it reached the message the client actually shows.
@@ -114,7 +136,12 @@ export const salesforceRouter = router({
   /**
    * Full sync - accounts then contacts
    */
-  fullSync: protectedProcedure.mutation(async () => {
+  fullSync: protectedProcedure.mutation(async ({ ctx }) => {
+    // Before anything else: a refusal must reach the caller as a refusal. The catch
+    // below turns everything into { success: false, message }, which the page renders
+    // as a failed sync rather than as "this is not yours to sync".
+    assertDeploymentConnectorAllowed(ctx.orgId, CONNECTOR);
+
     const results = {
       accounts: { success: false, message: '', inserted: 0, updated: 0, errors: 0 },
       contacts: { success: false, message: '', inserted: 0, updated: 0, linked: 0, errors: 0 },
@@ -124,7 +151,7 @@ export const salesforceRouter = router({
       // Step 1: Sync accounts first
       const sfAccounts = await salesforce.fetchAccounts();
       const transformedAccounts = sfAccounts.map(salesforce.transformAccount);
-      const accountResult = await bulkUpsertAccountsFromSalesforce(transformedAccounts);
+      const accountResult = await bulkUpsertAccountsFromSalesforce(ctx.orgId, transformedAccounts);
       results.accounts = {
         success: true,
         message: `Synced ${accountResult.inserted} new, ${accountResult.updated} updated`,
@@ -134,7 +161,7 @@ export const salesforceRouter = router({
       // Step 2: Sync contacts (after accounts so linking works)
       const sfContacts = await salesforce.fetchContacts();
       const transformedContacts = sfContacts.map(salesforce.transformContact);
-      const contactResult = await bulkUpsertContactsFromSalesforce(transformedContacts);
+      const contactResult = await bulkUpsertContactsFromSalesforce(ctx.orgId, transformedContacts);
       results.contacts = {
         success: true,
         message: `Synced ${contactResult.inserted} new, ${contactResult.updated} updated, ${contactResult.linked} linked`,

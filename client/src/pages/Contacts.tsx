@@ -19,6 +19,8 @@ import {
 import { useRep } from"@/contexts/RepContext";
 import { RepSwitcher } from"@/components/RepSwitcher";
 import { isDecisionMaker, DECISION_MAKER_HINT, TITLE_TOKENS } from "@shared/taxonomy";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
+import { EmptyWorkspace } from "@/components/ui/empty-workspace";
 
 type SortField ="priority" |"name" |"title" |"company";
 type SortOrder ="asc" |"desc";
@@ -50,7 +52,7 @@ export default function ContactsEnhanced() {
   // The true totals, so the header can say how much it is NOT showing.
   const { data: totals } = trpc.accounts.getStats.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
 
-  const { data: contacts, isLoading } = trpc.people.list.useQuery(
+  const { data: contacts, isLoading, error: contactsError, refetch: refetchContacts } = trpc.people.list.useQuery(
     { search: debouncedSearch || undefined },
     { staleTime: 3 * 60 * 1000 }
   );
@@ -473,7 +475,13 @@ export default function ContactsEnhanced() {
         </div>
 
         {/* Contacts List */}
-        {filteredContacts.length === 0 ? (
+        {contactsError ? (
+          <DataUnavailable what="contacts" detail={contactsError} onRetry={() => refetchContacts()} />
+        ) : !isLoading && (contacts?.length ?? 0) === 0 ? (
+          /* Nothing has ever been imported into this workspace. Checked against the
+             UNFILTERED list, so narrowing a search can never reach this. */
+          <EmptyWorkspace what="contacts" icon={Users} />
+        ) : filteredContacts.length === 0 ? (
           <Card>
             <CardContent className="py-16 text-center">
               <Users className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />

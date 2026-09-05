@@ -16,12 +16,12 @@ export const dustRouter = router({
         forceRefresh: z.boolean().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { accountId, accountName, accountDetails, forceRefresh } = input;
 
       // Check cache first
       if (!forceRefresh) {
-        const cached = await getCachedDustResponse(
+        const cached = await getCachedDustResponse(ctx.orgId, 
           `account-intelligence:${accountName}`,
           accountId
         );
@@ -37,7 +37,7 @@ export const dustRouter = router({
         );
 
         // Cache the result
-        await cacheDustResponse(
+        await cacheDustResponse(ctx.orgId, 
           `account-intelligence:${accountName}`,
           intelligence,
           accountId,
@@ -73,7 +73,7 @@ export const dustRouter = router({
         forceRefresh: z.boolean().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const {
         contactId,
         contactName,
@@ -84,7 +84,7 @@ export const dustRouter = router({
 
       // Check cache first
       if (!forceRefresh) {
-        const cached = await getCachedDustResponse(
+        const cached = await getCachedDustResponse(ctx.orgId, 
           `contact-intelligence:${contactEmail}`,
           undefined,
           contactId
@@ -102,7 +102,7 @@ export const dustRouter = router({
         );
 
         // Cache the result
-        await cacheDustResponse(
+        await cacheDustResponse(ctx.orgId, 
           `contact-intelligence:${contactEmail}`,
           intelligence,
           undefined,
@@ -136,14 +136,14 @@ export const dustRouter = router({
         forceRefresh: z.boolean().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { accountName, contactName, forceRefresh } = input;
 
       const queryKey = `gong-calls:${accountName}:${contactName || "all"}`;
 
       // Check cache first
       if (!forceRefresh) {
-        const cached = await getCachedDustResponse(queryKey);
+        const cached = await getCachedDustResponse(ctx.orgId, queryKey);
         if (cached) {
           return { success: true, calls: cached, fromCache: true };
         }
@@ -153,7 +153,7 @@ export const dustRouter = router({
         const calls = await searchGongCalls(accountName, contactName);
 
         // Cache the result
-        await cacheDustResponse(queryKey, calls, undefined, undefined, 48); // 48 hour TTL
+        await cacheDustResponse(ctx.orgId, queryKey, calls, undefined, undefined, 48); // 48 hour TTL
 
         return { success: true, calls, fromCache: false };
       } catch (error) {

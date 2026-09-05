@@ -2,9 +2,9 @@ import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb } from "./db";
 import { accounts } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { timingSafeEqual } from "./_core/security";
+import { resolveWebhookOrg } from "./_core/webhook-auth";
 
 // Webhook secret for Clay - should be set in environment variables
 const CLAY_WEBHOOK_SECRET = process.env.CLAY_WEBHOOK_SECRET || '';
@@ -29,23 +29,10 @@ export const clayWebhookRouter = router({
       // Accept any additional payload structure from Clay
     }).passthrough())
     .mutation(async ({ input }) => {
-      // SECURITY: fail CLOSED — outside demo mode an unset secret rejects all requests,
-      // so this write endpoint can never be left unauthenticated by omission.
-      if (!CLAY_WEBHOOK_SECRET) {
-        if (process.env.DEMO_MODE !== 'true') {
-          console.error('[Clay Webhook] CLAY_WEBHOOK_SECRET not configured — rejecting request');
-          throw new TRPCError({
-            code: 'UNAUTHORIZED',
-            message: 'Clay webhook is not configured (set CLAY_WEBHOOK_SECRET)'
-          });
-        }
-      } else if (!timingSafeEqual(CLAY_WEBHOOK_SECRET, input.webhook_secret)) {
-        console.error('[Clay Webhook] Invalid webhook secret');
-        throw new TRPCError({
-          code: 'UNAUTHORIZED',
-          message: 'Invalid webhook secret'
-        });
-      }
+      // Authenticates AND identifies the tenant. Still fails CLOSED: outside demo mode
+      // an unconfigured receiver rejects every request, so this write endpoint cannot be
+      // left unauthenticated by omission.
+      const orgId = await resolveWebhookOrg("clay", input.webhook_secret, CLAY_WEBHOOK_SECRET);
 
       // Remove webhook_secret from payload before processing
       const { webhook_secret, ...payload } = input;
@@ -132,7 +119,7 @@ export const clayWebhookRouter = router({
           const results = await db
             .select()
             .from(accounts)
-            .where(eq(accounts.domain, cleanDomain))
+            .where(and(eq(accounts.orgId, orgId), eq(accounts.domain, cleanDomain)))
             .limit(1);
           existing = results.length > 0 ? results[0] : null;
         }
@@ -159,7 +146,7 @@ export const clayWebhookRouter = router({
           await db
             .update(accounts)
             .set(accountData)
-            .where(eq(accounts.id, existing.id));
+            .where(and(eq(accounts.orgId, orgId), eq(accounts.id, existing.id)));
           
           console.log(`[Clay Webhook] Updated account: ${accountData.domain}`);
           
@@ -171,7 +158,7 @@ export const clayWebhookRouter = router({
           };
         } else {
           // Insert new account
-          await db.insert(accounts).values(accountData);
+          await db.insert(accounts).values({ ...accountData, orgId });
           
           console.log(`[Clay Webhook] Created account: ${accountData.domain}`);
           

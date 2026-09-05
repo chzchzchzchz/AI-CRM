@@ -1,10 +1,100 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, tinyint, decimal, index } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, tinyint, decimal, index, unique } from "drizzle-orm/mysql-core";
+
+/**
+ * The tenant boundary.
+ *
+ * Everything a customer owns hangs off an org id. Until this existed, `protectedProcedure`
+ * meant "any signed-in user" and no query carried an owner, so two customers on one
+ * deployment would have read each other's accounts and pipeline — the reason the README
+ * said one deployment per team.
+ *
+ * Existing rows all belong to org 1: a single-tenant install is a multi-tenant install
+ * with one tenant, so nothing about the demo or an existing deployment changes shape.
+ */
+export const organizations = mysqlTable("organizations", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Organization = typeof organizations.$inferSelect;
+export type InsertOrganization = typeof organizations.$inferInsert;
+
+/**
+ * A credential that identifies an organization to an inbound webhook.
+ *
+ * Webhook receivers are publicProcedures: an HTTP POST with no session, so there is no
+ * `ctx.orgId` to read. With one shared secret in the environment there is also no way to
+ * tell whose data an inbound record is — every Clay row would land in the same org
+ * regardless of who sent it, which is why those receivers were the last thing standing
+ * between this codebase and multi-org.
+ *
+ * One secret per organization per provider fixes that: the org is resolved FROM the
+ * credential the caller presented, exactly as `ctx.orgId` is resolved from a session.
+ *
+ * Stored as a SHA-256 hash, not bcrypt: this is looked up BY the secret on every inbound
+ * webhook, so it has to be a deterministic index probe rather than a scan of every row
+ * doing a slow comparison. The secret is 256 bits from a CSPRNG, so it has no guessable
+ * structure for a fast hash to expose — the reasoning that makes bcrypt necessary for
+ * human-chosen passwords does not apply.
+ */
+export const webhookCredentials = mysqlTable("webhook_credentials", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
+  provider: varchar("provider", { length: 64 }).notNull(),
+  secretHash: varchar("secretHash", { length: 64 }).notNull().unique(),
+  label: varchar("label", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  // Set rather than deleting the row, so a revoked credential stays auditable.
+  revokedAt: timestamp("revokedAt"),
+});
+
+export type WebhookCredential = typeof webhookCredentials.$inferSelect;
+export type InsertWebhookCredential = typeof webhookCredentials.$inferInsert;
+
+/**
+ * An invitation to join an existing organization.
+ *
+ * Without this a customer cannot add a colleague. Self-serve signup gives every new
+ * person their OWN organization, and the public access-request form has no org to attach
+ * to, so it lands in the default one — invisible to the admin of the org that actually
+ * wanted the teammate. A sales-team product where a team cannot be a team.
+ *
+ * The token is stored as a SHA-256 hash, never in the clear: this row is a bearer
+ * credential that creates an approved account inside a customer's workspace, so a leaked
+ * database dump must not be a set of working invitations. Hashed rather than bcrypted
+ * because it is looked up BY the token on every acceptance, and 256 bits from a CSPRNG
+ * has no structure a fast hash exposes — the same reasoning as webhook_credentials.
+ */
+export const organizationInvites = mysqlTable("organization_invites", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  tokenHash: varchar("tokenHash", { length: 64 }).notNull().unique(),
+  invitedBy: int("invitedBy"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  // Set rather than deleted, so a spent invitation stays auditable — and so "already
+  // used" can be told apart from "never existed", which are different answers to give
+  // someone standing at a broken link.
+  acceptedAt: timestamp("acceptedAt"),
+  revokedAt: timestamp("revokedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OrganizationInvite = typeof organizationInvites.$inferSelect;
+export type InsertOrganizationInvite = typeof organizationInvites.$inferInsert;
 
 /**
  * Core user table backing auth flow.
  */
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
+  // Which tenant this user belongs to. Defaulted rather than nullable: a user with no
+  // org is a user no query can scope, which is the state this column exists to end.
+  orgId: int("orgId").default(1).notNull(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   // App-level checks (server/routers.ts signUp) already reject a duplicate before
@@ -34,6 +124,7 @@ export const users = mysqlTable("users", {
 // Access requests table for demo/conference access
 export const accessRequests = mysqlTable("access_requests", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   company: varchar("company", { length: 255 }),
@@ -58,7 +149,8 @@ export type InsertUser = typeof users.$inferInsert;
 // Accounts table
 export const accounts = mysqlTable("accounts", {
   id: int("id").autoincrement().primaryKey(),
-  clayRecordId: varchar("clayRecordId", { length: 255 }).unique(),
+  orgId: int("orgId").default(1).notNull(),
+  clayRecordId: varchar("clayRecordId", { length: 255 }),
   clayTableId: varchar("clayTableId", { length: 255 }),
   name: varchar("name", { length: 255 }).notNull(),
   domain: varchar("domain", { length: 255 }),
@@ -93,7 +185,24 @@ export const accounts = mysqlTable("accounts", {
   type: varchar("type", { length: 100 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  // Unique per org, not globally: two tenants can legitimately hold the same
+  // external identifier, and a global unique would make the second one's import
+  // collide with — or silently read — the first one's row.
+  clayRecordIdIdx: unique('accounts_org_clayRecordId').on(table.orgId, table.clayRecordId),
+  // Domain is how an import decides whether it is creating an account or updating one,
+  // so /import and clayImport both run `WHERE orgId = ? AND domain = ?` once PER ROW.
+  // With no index that is a full table scan per row — instant against the demo store,
+  // which is an in-memory array, and unusable against MySQL: 20,000 rows imported into a
+  // workspace holding 100,000 accounts is 20,000 table scans. Nothing in this repo runs
+  // against a real database, so nothing would ever have shown it.
+  //
+  // Not unique. A customer's Salesforce can legitimately hold two accounts on one domain
+  // (a subsidiary, a duplicate nobody has merged), and a unique constraint would fail
+  // their `db:push` rather than their import. Leftmost-prefix also serves the plain
+  // `WHERE orgId = ?` that every tenant-scoped query in the app runs.
+  orgDomainIdx: index('accounts_org_domain').on(table.orgId, table.domain),
+}));
 
 export type Account = typeof accounts.$inferSelect;
 export type InsertAccount = typeof accounts.$inferInsert;
@@ -101,8 +210,9 @@ export type InsertAccount = typeof accounts.$inferInsert;
 // Contacts table
 export const contacts = mysqlTable("contacts", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   accountId: int("accountId"),  // Nullable to allow contacts without accounts during sync
-  clayRecordId: varchar("clayRecordId", { length: 255 }).unique(),
+  clayRecordId: varchar("clayRecordId", { length: 255 }),
   firstName: varchar("firstName", { length: 255 }),
   lastName: varchar("lastName", { length: 255 }),
   name: varchar("name", { length: 255 }),
@@ -118,7 +228,19 @@ export const contacts = mysqlTable("contacts", {
   directPhone: varchar("directPhone", { length: 50 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  // Unique per org, not globally: two tenants can legitimately hold the same
+  // external identifier, and a global unique would make the second one's import
+  // collide with — or silently read — the first one's row.
+  clayRecordIdIdx: unique('contacts_org_clayRecordId').on(table.orgId, table.clayRecordId),
+  // Same shape as accounts_org_domain above: /import matches a person on
+  // `WHERE orgId = ? AND email = ?`, once per row.
+  //
+  // Emphatically not unique — the shipped demo seed alone holds 23 duplicate
+  // (orgId, email) pairs and 1,746 contacts with no email at all, so a unique constraint
+  // would fail on this repo's own data before it ever reached a customer's.
+  orgEmailIdx: index('contacts_org_email').on(table.orgId, table.email),
+}));
 
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = typeof contacts.$inferInsert;
@@ -126,20 +248,26 @@ export type InsertContact = typeof contacts.$inferInsert;
 // Calls table
 export const calls = mysqlTable("calls", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   accountId: int("accountId"),
   contactId: int("contactId"),
   title: varchar("title", { length: 255 }),
   duration: int("duration"), // in seconds
   recordingUrl: varchar("recordingUrl", { length: 500 }),
   transcriptUrl: varchar("transcriptUrl", { length: 500 }),
-  gongCallId: varchar("gongCallId", { length: 255 }).unique(),
+  gongCallId: varchar("gongCallId", { length: 255 }),
   sentiment: varchar("sentiment", { length: 50 }),
   keyTopics: text("keyTopics"), // JSON string
   actionItems: text("actionItems"), // JSON string
   callDate: timestamp("callDate").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  // Unique per org, not globally: two tenants can legitimately hold the same
+  // external identifier, and a global unique would make the second one's import
+  // collide with — or silently read — the first one's row.
+  gongCallIdIdx: unique('calls_org_gongCallId').on(table.orgId, table.gongCallId),
+}));
 
 export type Call = typeof calls.$inferSelect;
 export type InsertCall = typeof calls.$inferInsert;
@@ -147,20 +275,27 @@ export type InsertCall = typeof calls.$inferInsert;
 // RFPs table
 export const rfps = mysqlTable("rfps", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   accountId: int("accountId"),
   title: varchar("title", { length: 500 }).notNull(),
   description: text("description"),
   agency: varchar("agency", { length: 255 }),
-  solicitationNumber: varchar("solicitationNumber", { length: 255 }).unique(),
+  solicitationNumber: varchar("solicitationNumber", { length: 255 }),
   postedDate: timestamp("postedDate"),
   responseDeadline: timestamp("responseDeadline"),
   awardAmount: varchar("awardAmount", { length: 100 }),
-  samGovId: varchar("samGovId", { length: 255 }).unique(),
+  samGovId: varchar("samGovId", { length: 255 }),
   url: varchar("url", { length: 500 }),
   status: varchar("status", { length: 50 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  // Unique per org, not globally: two tenants can legitimately hold the same
+  // external identifier, and a global unique would make the second one's import
+  // collide with — or silently read — the first one's row.
+  solicitationNumberIdx: unique('rfps_org_solicitationNumber').on(table.orgId, table.solicitationNumber),
+  samGovIdIdx: unique('rfps_org_samGovId').on(table.orgId, table.samGovId),
+}));
 
 export type RFP = typeof rfps.$inferSelect;
 export type InsertRFP = typeof rfps.$inferInsert;
@@ -168,6 +303,7 @@ export type InsertRFP = typeof rfps.$inferInsert;
 // Intent Scores table
 export const intentScores = mysqlTable("intentScores", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   accountId: int("accountId").notNull(),
   score: int("score").notNull(),
   category: varchar("category", { length: 100 }),
@@ -183,6 +319,7 @@ export type InsertIntentScore = typeof intentScores.$inferInsert;
 // AI Context table
 export const aiContext = mysqlTable("aiContext", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   accountId: int("accountId"),
   contactId: int("contactId"),
   contextType: varchar("contextType", { length: 50 }).notNull(), // 'research', 'outreach', 'analysis'
@@ -199,6 +336,7 @@ export type InsertAIContext = typeof aiContext.$inferInsert;
 // Documents table
 export const documents = mysqlTable("documents", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   accountId: int("accountId"),
   contactId: int("contactId"),
   callId: int("callId"),
@@ -217,6 +355,7 @@ export type InsertDocument = typeof documents.$inferInsert;
 // Enrichment Logs table
 export const enrichmentLogs = mysqlTable("enrichmentLogs", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   entityType: varchar("entityType", { length: 50 }).notNull(), // 'account', 'contact'
   entityId: int("entityId").notNull(),
   source: varchar("source", { length: 50 }).notNull(), // 'clay', '6sense', 'gong'
@@ -232,6 +371,7 @@ export type InsertEnrichmentLog = typeof enrichmentLogs.$inferInsert;
 // Validation Cache table - stores web search validation results
 export const validationCache = mysqlTable("validationCache", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   entityType: varchar("entityType", { length: 50 }).notNull(), // 'account', 'contact'
   entityId: int("entityId").notNull(),
   field: varchar("field", { length: 100 }).notNull(), // 'domain', 'employeeCount', 'email', etc.
@@ -251,6 +391,7 @@ export type InsertValidationCache = typeof validationCache.$inferInsert;
 // Context Store for AI learning
 export const contextStore = mysqlTable("contextStore", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   type: varchar("type", { length: 64 }).notNull(), // 'company_knowledge', 'user_preference', 'search_pattern', 'interaction'
   key: varchar("key", { length: 255 }).notNull(),
   value: text("value").notNull(),
@@ -266,6 +407,7 @@ export type InsertContextStore = typeof contextStore.$inferInsert;
 // AI Insights cache
 export const aiInsights = mysqlTable("aiInsights", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   accountId: int("accountId"),
   insightType: varchar("insightType", { length: 50 }).notNull(), // 'tech_stack', 'intent', 'trigger', 'research'
   title: varchar("title", { length: 255 }),
@@ -283,6 +425,7 @@ export type InsertAIInsight = typeof aiInsights.$inferInsert;
 // Email Sequences
 export const emailSequences = mysqlTable("emailSequences", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   steps: json("steps").notNull(), // Array of email steps
@@ -306,6 +449,7 @@ export type InsertEmailSequence = typeof emailSequences.$inferInsert;
  */
 export const followUps = mysqlTable("followUps", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   userId: int("userId").notNull(),
   accountId: int("accountId"),
   contactId: int("contactId"),
@@ -328,6 +472,7 @@ export type InsertFollowUp = typeof followUps.$inferInsert;
 // Outreach Campaigns
 export const outreachCampaigns = mysqlTable("outreachCampaigns", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   sequenceId: int("sequenceId"),
   accountIds: json("accountIds"), // Array of account IDs
@@ -347,6 +492,7 @@ export type InsertOutreachCampaign = typeof outreachCampaigns.$inferInsert;
 // News Monitoring
 export const newsItems = mysqlTable("newsItems", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   accountId: int("accountId"),
   title: varchar("title", { length: 500 }).notNull(),
   url: varchar("url", { length: 500 }),
@@ -365,6 +511,7 @@ export type InsertNewsItem = typeof newsItems.$inferInsert;
 // 6sense 6QA (Qualified Accounts) tracking
 export const sixsense6QA = mysqlTable("sixsense6QA", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   accountName: varchar("accountName", { length: 255 }).notNull(),
   sixsenseId: varchar("sixsenseId", { length: 64 }),
   crmAccountId: varchar("crmAccountId", { length: 64 }),
@@ -388,6 +535,7 @@ export type InsertSixsense6QA = typeof sixsense6QA.$inferInsert;
 // 6sense Keyword Performance
 export const sixsenseKeywords = mysqlTable("sixsenseKeywords", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   keyword: varchar("keyword", { length: 255 }).notNull(),
   totalAccounts: int("totalAccounts").default(0),
   accountsWithWebVisits: int("accountsWithWebVisits").default(0),
@@ -405,6 +553,7 @@ export type InsertSixsenseKeyword = typeof sixsenseKeywords.$inferInsert;
 // 6sense Buying Stage Metrics (time series)
 export const sixsenseBuyingStageMetrics = mysqlTable("sixsenseBuyingStageMetrics", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   timeframe: varchar("timeframe", { length: 100 }).notNull(), // "Nov 30 - Dec 6, 2025"
   buyingStage: varchar("buyingStage", { length: 50 }).notNull(), // Target, Awareness, Consideration, Decision, Purchase
   numberOfAccounts: int("numberOfAccounts").default(0),
@@ -420,6 +569,7 @@ export type InsertSixsenseBuyingStageMetric = typeof sixsenseBuyingStageMetrics.
 // 6sense Engagement Metrics (time series)
 export const sixsenseEngagementMetrics = mysqlTable("sixsenseEngagementMetrics", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   timeWindow: varchar("timeWindow", { length: 100 }).notNull(),
   engagementState: varchar("engagementState", { length: 100 }).notNull(), // No Engagement, Intent, Anonymous Website Visit, Known Engagement, Opps Created, Opps Won
   accounts: int("accounts").default(0),
@@ -434,6 +584,7 @@ export type InsertSixsenseEngagementMetric = typeof sixsenseEngagementMetrics.$i
 // 6sense 6QA Performance (daily metrics)
 export const sixsense6QAPerformance = mysqlTable("sixsense6QAPerformance", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   day: timestamp("day").notNull(),
   total6QAs: int("total6QAs").default(0),
   new6QAs: int("new6QAs").default(0),
@@ -453,6 +604,7 @@ export type InsertSixsense6QAPerformance = typeof sixsense6QAPerformance.$inferI
 // Email History (generated outreach emails)
 export const emailHistory = mysqlTable("emailHistory", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   userId: int("userId").notNull(),
   accountId: int("accountId"),
   contactId: int("contactId"),
@@ -471,6 +623,7 @@ export type InsertEmailHistory = typeof emailHistory.$inferInsert;
 // AI Chat History
 export const aiChatHistory = mysqlTable("aiChatHistory", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   userId: int("userId").notNull(),
   sessionId: varchar("sessionId", { length: 64 }).notNull(),
   role: varchar("role", { length: 20 }).notNull(), // 'user' or 'assistant'
@@ -486,7 +639,8 @@ export type InsertAIChatHistory = typeof aiChatHistory.$inferInsert;
 // AI Response Cache - stores cached AI responses to avoid re-generating identical queries
 export const aiResponseCache = mysqlTable("aiResponseCache", {
   id: int("id").autoincrement().primaryKey(),
-  queryHash: varchar("queryHash", { length: 64 }).notNull().unique(), // SHA-256 hash of query + context
+  orgId: int("orgId").default(1).notNull(),
+  queryHash: varchar("queryHash", { length: 64 }).notNull(), // SHA-256 hash of query + context
   query: text("query").notNull(),
   contextHash: varchar("contextHash", { length: 64 }), // Hash of additional context (accountId, etc.)
   answer: text("answer").notNull(),
@@ -496,7 +650,12 @@ export const aiResponseCache = mysqlTable("aiResponseCache", {
   lastHitAt: timestamp("lastHitAt").defaultNow().notNull(),
   expiresAt: timestamp("expiresAt").notNull(), // TTL for cache entry
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => ({
+  // Unique per org, not globally: two tenants can legitimately hold the same
+  // external identifier, and a global unique would make the second one's import
+  // collide with — or silently read — the first one's row.
+  queryHashIdx: unique('aiResponseCache_org_query').on(table.orgId, table.queryHash),
+}));
 
 export type AIResponseCacheRecord = typeof aiResponseCache.$inferSelect;
 export type InsertAIResponseCache = typeof aiResponseCache.$inferInsert;
@@ -505,6 +664,7 @@ export type InsertAIResponseCache = typeof aiResponseCache.$inferInsert;
 // Knowledge Base - uploaded documents for RAG
 export const knowledgeBase = mysqlTable("knowledgeBase", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   userId: int("userId").notNull(),
   fileName: varchar("fileName", { length: 500 }).notNull(),
   fileKey: varchar("fileKey", { length: 500 }).notNull(), // S3 key
@@ -525,6 +685,7 @@ export type InsertKnowledgeBaseDoc = typeof knowledgeBase.$inferInsert;
 // Document Chunks - semantic chunks for RAG retrieval
 export const documentChunks = mysqlTable("documentChunks", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   documentId: int("documentId").notNull(),
   chunkIndex: int("chunkIndex").notNull(), // Order within document
   content: text("content").notNull(),
@@ -540,6 +701,7 @@ export type InsertDocumentChunk = typeof documentChunks.$inferInsert;
 // User Interactions - track all AI interactions for learning
 export const userInteractions = mysqlTable("userInteractions", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   userId: int("userId"),
   sessionId: varchar("sessionId", { length: 64 }),
   actionType: varchar("actionType", { length: 100 }).notNull(), // 'ai_chat', 'email_generated', 'data_processed', 'content_created'
@@ -560,6 +722,7 @@ export type InsertUserInteraction = typeof userInteractions.$inferInsert;
 // Data Processing Jobs - track data imports and transformations
 export const dataProcessingJobs = mysqlTable("dataProcessingJobs", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   userId: int("userId").notNull(),
   jobType: varchar("jobType", { length: 100 }).notNull(), // 'lead_import', 'account_enrichment', 'contact_merge', 'csv_transform'
   status: varchar("status", { length: 50 }).default("pending"), // 'pending', 'processing', 'completed', 'failed'
@@ -586,6 +749,7 @@ export type InsertDataProcessingJob = typeof dataProcessingJobs.$inferInsert;
 // Generated Content - all AI-generated content with feedback
 export const generatedContent = mysqlTable("generatedContent", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   userId: int("userId").notNull(),
   contentType: varchar("contentType", { length: 100 }).notNull(), // 'email', 'webinar_promo', 'battle_card', 'call_script', 'linkedin_message'
   title: varchar("title", { length: 500 }),
@@ -608,6 +772,7 @@ export type InsertGeneratedContent = typeof generatedContent.$inferInsert;
 // Transcript Analysis Reports
 export const transcriptReports = mysqlTable("transcriptReports", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   userId: int("userId").default(0).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   transcript: text("transcript").notNull(),
@@ -654,6 +819,7 @@ export type InsertPasswordResetCode = typeof passwordResetCodes.$inferInsert;
 // Audit Logs - tracks all authentication and admin events
 export const auditLogs = mysqlTable("auditLogs", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   userId: int("userId").notNull(),
   eventType: varchar("eventType", { length: 100 }).notNull(),
   description: text("description").notNull(),
@@ -669,7 +835,12 @@ export type InsertAuditLog = typeof auditLogs.$inferInsert;
 // Dust API cache for storing query results
 export const dustCache = mysqlTable('dust_cache', {
   id: int().primaryKey().autoincrement(),
-  queryHash: varchar('query_hash', { length: 64 }).notNull().unique(),
+  orgId: int('orgId').default(1).notNull(),
+  // Unique per org, not globally: the hash is of the query text, so two tenants asking
+  // the same question produce the same hash. A global unique would mean the second
+  // tenant's lookup HITS the first tenant's cached answer — a cross-tenant read of
+  // whatever account data went into producing it.
+  queryHash: varchar('query_hash', { length: 64 }).notNull(),
   query: text('query').notNull(),
   result: text('result').notNull(),
   accountId: int('account_id'),
@@ -682,6 +853,7 @@ export const dustCache = mysqlTable('dust_cache', {
   accountIdx: index('dust_cache_account_id').on(table.accountId),
   contactIdx: index('dust_cache_contact_id').on(table.contactId),
   expiryIdx: index('dust_cache_expires_at').on(table.expiresAt),
+  orgQueryIdx: unique('dust_cache_org_query').on(table.orgId, table.queryHash),
 }));
 
 export type DustCache = typeof dustCache.$inferSelect;
@@ -690,6 +862,7 @@ export type DustCacheInsert = typeof dustCache.$inferInsert;
 // Opportunities table
 export const opportunities = mysqlTable("opportunities", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
   accountId: int("accountId").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   amount: decimal("amount", { precision: 15, scale: 2 }),
@@ -697,12 +870,17 @@ export const opportunities = mysqlTable("opportunities", {
   probability: int("probability").default(10),
   status: varchar("status", { length: 20 }).notNull().default("Open"), // Open, Won, Lost
   expectedCloseDate: timestamp("expectedCloseDate"),
-  sfdcOpportunityId: varchar("sfdcOpportunityId", { length: 18 }).unique(),
+  sfdcOpportunityId: varchar("sfdcOpportunityId", { length: 18 }),
   aiSuccessScore: int("aiSuccessScore"), // 0-100
   aiInsights: text("aiInsights"), // AI reasoning for success score
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  // Unique per org, not globally: two tenants can legitimately hold the same
+  // external identifier, and a global unique would make the second one's import
+  // collide with — or silently read — the first one's row.
+  sfdcOpportunityIdIdx: unique('opportunities_org_sfdcOpportunityId').on(table.orgId, table.sfdcOpportunityId),
+}));
 
 export type Opportunity = typeof opportunities.$inferSelect;
 export type InsertOpportunity = typeof opportunities.$inferInsert;

@@ -14,11 +14,17 @@ import { mockAuthContext } from "./test-utils";
  *    structure to use.
  *
  * These tests stub `getDb`/`getContactsByAccountId`/`getGongCallsByAccountId`/`updateAccount`
- * directly rather than relying on the DEMO_MODE JSON store: that store's MockDrizzle query
- * builder (server/db.ts, not owned by this feature) treats `gte()` as an equality filter, so
- * "intent score 70+" only ever matches accounts scored exactly 70 in demo mode — a separate,
- * pre-existing bug outside this router's control. Stubbing the data layer isolates the
- * behavior this router is actually responsible for.
+ * directly, so the assertions are about this router's own behaviour — a fixed account in,
+ * a known model response out — rather than about whichever accounts the demo dataset
+ * happens to contain.
+ *
+ * This note used to say something else: that the stubbing was necessary because the
+ * demo store treated `gte()` as an equality filter, so "intent score 70+" only ever
+ * matched accounts scored exactly 70. That was true and it was a real bug — this router
+ * was selecting five arbitrary accounts and calling them the top hot leads. It is fixed
+ * (server/demo-db-operators.test.ts), and the note is kept as a marker: a comment that
+ * documents a bug in someone else's file and routes around it is a bug that has found a
+ * place to live.
  */
 const fakeAccount = { id: 1, name: "Acme Corp", domain: "acme.com", intentScore: 92 };
 
@@ -81,7 +87,7 @@ describe("bulkInsights.generateForTopLeads", () => {
         getDb: vi.fn().mockResolvedValue(mockDbChain([fakeAccount])),
         getContactsByAccountId: vi.fn().mockResolvedValue([]),
         getGongCallsByAccountId: vi.fn().mockResolvedValue([]),
-        updateAccount: vi.fn().mockImplementation(async (_id: number, patch: any) => {
+        updateAccount: vi.fn().mockImplementation(async (_orgId: number, _id: number, patch: any) => {
           cachedInsight = patch.aiInsightsCache;
         }),
       };

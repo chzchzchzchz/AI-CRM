@@ -11,6 +11,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { auditTenancyFull } from "./tenancy-audit.mjs";
 
 const ROOT = process.cwd();
 const failures = [];
@@ -28,7 +29,13 @@ const ok = rule => checks.push(rule);
  */
 function stripComments(src) {
   return src
-    .replace(/\/\*[\s\S]*?\*\//g, m => " ".repeat(m.length))
+    // Newlines are preserved, so a line number computed from the stripped text still
+    // points at the same line of the original. The first version replaced a block
+    // comment with spaces of the same TOTAL length, which ate its newlines — every line
+    // number after a `/* … */` was wrong, silently. Rule 18 reports file:line and reads
+    // the raw file for an exemption marker near that line, so both would have pointed at
+    // unrelated code; the same defect was found and fixed in scripts/tenancy-audit.mjs.
+    .replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, " "))
     .replace(/(^|[^:])\/\/[^\n]*/g, (m, lead) => lead + " ".repeat(m.length - lead.length));
 }
 
@@ -121,19 +128,63 @@ function walk(dir, exts, acc = []) {
       return m ? Number(m[1].replace(/,/g, "")) : null;
     };
 
-    const pairs = [
-      ["accounts", n("accounts")],
-      ["contacts", n("contacts")],
-    ];
     const bad = [];
-    for (const [label, actual] of pairs) {
-      const said = claimed(label);
+    const check = (label, actual, said) => {
       if (said !== null && said !== actual)
         bad.push(`README says ${said.toLocaleString()} ${label}, seed has ${actual.toLocaleString()}`);
+    };
+
+    for (const [label, actual] of [
+      ["accounts", n("accounts")],
+      ["contacts", n("contacts")],
+      ["calls", n("calls")],
+      ["RFPs", n("rfps")],
+    ]) {
+      check(label, actual, claimed(label));
     }
+
+    // The rest of the block, each phrased its own way.
+    //
+    // Only accounts and contacts used to be checked, while the caption under the block
+    // says `pnpm check:claims` "fails the build if this block drifts from the data" —
+    // a claim about verification that was broader than the verification. Eight of the
+    // ten numbers could have gone stale in silence, on the one page whose whole argument
+    // is that its numbers are checked. They were all correct when this was widened; that
+    // is luck, not a control.
+    const accounts = seed.accounts || [];
+    const opps = seed.opportunities || [];
+    const scoreOf = a => a.intentScore || 0;
+    const openOpps = opps.filter(o => !String(o.stage || "").toLowerCase().startsWith("closed"));
+
+    const num = re => {
+      const m = readme.match(re);
+      return m ? Number(m[1].replace(/,/g, "")) : null;
+    };
+
+    check("accounts with intent data", accounts.filter(a => a.intentScore).length,
+      num(/([\d,]+)\s+with intent data/i));
+    check("accounts at intent 70+", accounts.filter(a => scoreOf(a) >= 70).length,
+      num(/([\d,]+)\s+accounts at intent 70\+/i));
+    check("accounts at intent 40–69", accounts.filter(a => scoreOf(a) >= 40 && scoreOf(a) <= 69).length,
+      num(/([\d,]+)\s+at 40[–-]69/i));
+    check("open opportunities", openOpps.length, num(/([\d,]+)\s+open opportunities/i));
+    check("intent-score history points", n("intentScores"),
+      num(/([\d,]+)\s+intent-score history points/i));
+
+    // Pipeline is quoted to one decimal in millions, so compare at that precision
+    // rather than demanding an exact match on a rounded figure.
+    const pipeline = openOpps.reduce((sum, o) => sum + Number(o.amount || 0), 0);
+    const saidPipeline = readme.match(/\$([\d.]+)M open pipeline/i);
+    if (saidPipeline) {
+      const claimedM = Number(saidPipeline[1]);
+      const actualM = Math.round((pipeline / 1_000_000) * 10) / 10;
+      if (claimedM !== actualM)
+        bad.push(`README says $${claimedM}M open pipeline, seed has $${actualM}M`);
+    }
+
     bad.length
       ? fail("README matches the seed", bad.join("\n    "))
-      : ok("README matches the seed");
+      : ok(`README matches the seed (10 figures)`);
   }
 }
 
@@ -343,6 +394,14 @@ function walk(dir, exts, acc = []) {
  * opened the obviously-named file, edited it, and fixed nothing. A dead file with
  * the right name is worse than no file, because it answers the question you were
  * about to ask.
+ *
+ * .cjs and .mjs are walked too, which they were not. server/mcp-server.cjs was the
+ * PRE-FIX copy of the MCP server, sitting beside the fixed one: it still pointed at
+ * http://localhost:3000/trpc — the wrong port and the wrong path, named in the .ts
+ * file's own header as the thing that was fixed — and still called account.list,
+ * account.getById, account.search and insights.getSummary, none of which exist. Its
+ * own docstring said "Run: node server/mcp-server.cjs". Scanning only .ts made a
+ * whole second entry point invisible to the rule written to find exactly this.
  */
 {
   const entry = new Set();
@@ -366,7 +425,7 @@ function walk(dir, exts, acc = []) {
       if (target) queue.push(path.relative(ROOT, target));
     }
   }
-  const orphans = walk(path.join(ROOT, "server"), [".ts"])
+  const orphans = walk(path.join(ROOT, "server"), [".ts", ".cjs", ".mjs"])
     .map(f => path.relative(ROOT, f))
     .filter(rel => !rel.endsWith(".test.ts") && !rel.includes("_core") && !entry.has(rel))
     // Entry points, tooling and test helpers are run directly or imported by tests,
@@ -593,7 +652,465 @@ function walk(dir, exts, acc = []) {
     : ok("README headline stats");
 }
 
-/* --------------------------------------------------------------- 14. report */
+/* ------------------------------------------------------ 14. shared auth state */
+/**
+ * Auth throttling state must not live in a module-level Map.
+ *
+ * Rate limiting, login lockout, the send cooldown and 2FA challenges were four
+ * module-level Maps. Correct for exactly one process, and silently wrong for two: each
+ * instance keeps its own counters, so an attacker gets N instances x 5 login attempts,
+ * and a 2FA challenge minted by one instance cannot be redeemed by another. Nothing in
+ * the app surfaces either failure — it looks like it is throttling and isn't.
+ *
+ * They now go through server/_core/shared-store.ts, which is per-process by default and
+ * Redis-backed when REDIS_URL is set. The regression to catch is someone adding the
+ * fifth one: a `const x = new Map()` at module scope in an auth file is how all four of
+ * the originals got there, one reasonable-looking commit at a time.
+ */
+{
+  const AUTH_FILES = [
+    "server/_core/security.ts",
+    "server/twofa.ts",
+    "server/email-verification-router.ts",
+  ];
+
+  // In-process concurrency primitives are not throttling state and are exempt by name.
+  // Anything else holding auth state per process is the bug this rule exists for.
+  const ALLOWED = new Set(["userLocks"]);
+
+  const offenders = [];
+  for (const rel of AUTH_FILES) {
+    const abs = path.join(ROOT, rel);
+    if (!fs.existsSync(abs)) {
+      offenders.push(`${rel}: listed here but missing — update this rule or restore the file`);
+      continue;
+    }
+    const src = stripComments(fs.readFileSync(abs, "utf8"));
+
+    // Module scope only: an indented `new Map()` is a local inside some function.
+    for (const m of src.matchAll(/^(?:const|let|var)\s+(\w+)\s*(?::[^=]+)?=\s*new\s+Map\b/gm)) {
+      if (!ALLOWED.has(m[1])) {
+        offenders.push(
+          `${rel}: \`${m[1]}\` is a module-level Map — per-process state that a second ` +
+            `instance silently does not share. Use getStore() from _core/shared-store.`
+        );
+      }
+    }
+
+    // The store is the only sanctioned home for this state, so an auth file that
+    // throttles must reach it. Catches the other direction: state moved into a fresh
+    // module-level object/array literal to dodge the Map check above.
+    const throttles = /\b(lockout|cooldown|rateLimit|challenge)/i.test(src);
+    if (throttles && !/from\s+["'][^"']*shared-store["']/.test(src)) {
+      offenders.push(
+        `${rel}: holds throttling state but never imports shared-store — ` +
+          `per-instance counters are not enforcement across instances`
+      );
+    }
+  }
+
+  offenders.length
+    ? fail("Auth throttling state is shared", offenders.join("\n    "))
+    : ok("Auth throttling state is shared");
+}
+
+/* --------------------------------------------------- 15. tenancy scoping count */
+/**
+ * The org-scoping burn-down number must be the real one.
+ *
+ * `protectedProcedure` means "any signed-in user" and said nothing about whose data,
+ * because no query carried an owner. Scoping all of them is a large mechanical migration,
+ * and a HALF-done one is worse than none: an operator reads "multi-tenant", onboards a
+ * second customer, and the unconverted queries hand them the first customer's accounts.
+ *
+ * So server/_core/tenancy.ts refuses to admit a second organization while any query is
+ * still unscoped, and shared/tenancy-status.ts carries the count that refusal reads. A
+ * number that could be edited down to zero would remove the protection silently — a claim
+ * the code never checked, which is the failure this whole file exists to prevent. It is
+ * therefore recomputed here from source and never trusted from the file.
+ */
+{
+  const statusPath = path.join(ROOT, "shared", "tenancy-status.ts");
+  if (!fs.existsSync(statusPath)) {
+    fail("tenancy scoping count is real", "shared/tenancy-status.ts missing");
+  } else {
+    const { sites, exemptions, blind } = auditTenancyFull(ROOT);
+    const actual = sites.length;
+    const statusSrc = fs.readFileSync(statusPath, "utf8");
+    const m = statusSrc
+      // Tolerates the `: number` annotation (there so `=== 0` stays a runtime question
+      // rather than being narrowed away as impossible).
+      .match(/UNSCOPED_QUERY_SITES\s*(?::\s*number\s*)?=\s*(\d+)/);
+    const em = statusSrc.match(/EXEMPT_QUERY_SITES\s*(?::\s*number\s*)?=\s*(\d+)/);
+
+    if (blind.length) {
+      // An audit that cannot read a file must not certify it. A namespace import puts
+      // the table behind a property access this scan cannot follow.
+      fail(
+        "tenancy scoping count is real",
+        `cannot see through a namespace import of the schema in: ${blind.join(", ")} — ` +
+          `import the tables by name so the org filter on each query is checkable`
+      );
+    } else if (!m) {
+      fail("tenancy scoping count is real", "could not read UNSCOPED_QUERY_SITES");
+    } else if (Number(m[1]) !== actual) {
+      const claimed = Number(m[1]);
+      fail(
+        "tenancy scoping count is real",
+        `shared/tenancy-status.ts says ${claimed} unscoped queries, ${actual} found in source` +
+          (claimed < actual
+            ? ` — claiming fewer is what lets a second org in before it is safe. Run \`pnpm tenancy\` for the list.`
+            : ` — scoping went further than the file admits; lower it to ${actual}.`)
+      );
+    } else if (!em) {
+      fail("tenancy scoping count is real", "could not read EXEMPT_QUERY_SITES");
+    } else if (Number(em[1]) !== exemptions.length) {
+      // Without this, the escape hatch swallows the control: exempt a real leak, leave
+      // UNSCOPED_QUERY_SITES at zero, and the build still passes. Moving this number is
+      // what puts a new exemption in the diff next to the reason written for it.
+      fail(
+        "tenancy scoping count is real",
+        `shared/tenancy-status.ts says ${em[1]} exempt queries, ${exemptions.length} marked in source — ` +
+          `every \`tenancy-exempt:\` is a claim that a query needs no tenant boundary. Run \`pnpm tenancy\`.`
+      );
+    } else {
+      ok(
+        actual === 0
+          ? `tenancy scoping count is real (0 unscoped, ${exemptions.length} exempt — multi-org is enabled)`
+          : `tenancy scoping count is real (${actual} unscoped, second org refused)`
+      );
+    }
+  }
+}
+
+/* ------------------------------------------------- 16. live-check coverage */
+/**
+ * A new connector must not silently arrive with no way to verify it.
+ *
+ * "The connectors have never touched a real tenant" is the biggest honest caveat in this
+ * repo, and `pnpm smoke` exists to shrink it: with a key present, a connector is exercised
+ * for real on every run. That only holds for connectors the harness knows about. Adding
+ * the twenty-fifth connector with no live check would leave the caveat wider than the
+ * README says while every number on the page stayed green.
+ *
+ * This pins how many of the registry's connectors are checkable, so growing the registry
+ * without growing the harness shows up in the diff as a number that has to move — and the
+ * person moving it has to decide whether the new connector genuinely cannot be checked
+ * (webhook-delivered, no read endpoint) or was just not wired up.
+ */
+{
+  const registryPath = path.join(ROOT, "server", "integrations", "registry.ts");
+  const smokePath = path.join(ROOT, "scripts", "connector-smoke.mjs");
+  const clientsPath = path.join(ROOT, "server", "integrations", "connectors.ts");
+
+  if (![registryPath, smokePath, clientsPath].every(p => fs.existsSync(p))) {
+    fail("connector live-check coverage", "registry, smoke harness or clients file missing");
+  } else {
+    const registry = fs.readFileSync(registryPath, "utf8");
+    const registered = (registry.match(/^\s+key:\s*"[a-z]/gim) || []).length;
+
+    // Deep checks are the four hand-written entries in the harness; credential checks are
+    // the identityChecks map. Counted from source so neither can drift from reality.
+    const smoke = stripComments(fs.readFileSync(smokePath, "utf8"));
+    const deep = (smoke.match(/^\s+name:\s*"/gm) || []).length;
+    const clients = stripComments(fs.readFileSync(clientsPath, "utf8"));
+    const identityBlock = clients.slice(clients.indexOf("export const identityChecks"));
+    const credential = (identityBlock.match(/^\s{2}[a-z][a-zA-Z]*:\s*\{/gm) || []).length;
+
+    const covered = deep + credential;
+    const EXPECTED_COVERED = 16;
+    const EXPECTED_REGISTERED = 24;
+
+    if (registered !== EXPECTED_REGISTERED || covered !== EXPECTED_COVERED) {
+      fail(
+        "connector live-check coverage",
+        `${covered} of ${registered} connectors have a live check; this rule expects ` +
+          `${EXPECTED_COVERED} of ${EXPECTED_REGISTERED}. If you added a connector, either give it a check in ` +
+          `scripts/connector-smoke.mjs (deep) or identityChecks in server/integrations/connectors.ts ` +
+          `(credential), or raise the expected numbers here and say in the commit why it cannot be checked.`
+      );
+    } else {
+      ok(`connector live-check coverage (${covered}/${registered} checkable)`);
+    }
+  }
+}
+
+/* ---------------------------------------------- 17. no documented-and-left bugs */
+/**
+ * A comment must not describe a live defect as somebody else's problem.
+ *
+ * This file's premise is that a defect found by hand belongs in a rule, so it can never
+ * be found by hand twice. That covers defects someone noticed. It did not cover the
+ * likelier case: a defect someone noticed, wrote down accurately, routed around, and
+ * left.
+ *
+ * server/bulk-insights-router.test.ts carried this for months:
+ *
+ *   "that store's MockDrizzle query builder (server/db.ts, not owned by this feature)
+ *    treats gte() as an equality filter, so 'intent score 70+' only ever matches
+ *    accounts scored exactly 70 in demo mode — a separate, pre-existing bug outside
+ *    this router's control."
+ *
+ * Every word of it was true. `gte(intentScore, 70)` returned 5 accounts of an actual
+ * 105, so this router was picking five arbitrary accounts and calling them the top hot
+ * leads — in the mode essentially everyone runs. The comment was the reason nobody
+ * looked again: it had already been assessed, named and filed under not-mine.
+ *
+ * Historical notes are the opposite of this and are everywhere in this repo by design
+ * ("this used to return X", "the original did Y"). What is banned is the present tense:
+ * a defect asserted to exist right now, with a reason it was not fixed.
+ */
+{
+  // Deliberately narrow. Each phrase asserts a CURRENT defect and a reason to leave it,
+  // which is the shape that legitimises one; "this used to" and "the original" do not
+  // match and must not.
+  const PHRASES = [
+    /\bpre-?existing bug\b/i,
+    /\bknown bug\b/i,
+    /\bseparate,?\s+(?:pre-?existing\s+)?bug\b/i,
+    // Deliberately NOT "bug elsewhere" or "bug in another file": those appear in
+    // ordinary historical notes ("worse than the same bug elsewhere in this session")
+    // that describe something already fixed. Only "outside", which asserts the defect
+    // is live and out of scope, is the shape this rule is for.
+    /\bbug outside\b/i,
+    /\bnot owned by this (?:feature|file|module)\b/i,
+    /\bsomeone else'?s bug\b/i,
+  ];
+
+  const offenders = [];
+  for (const root of ["server", "client/src", "shared", "scripts"]) {
+    for (const file of walk(path.join(ROOT, root), [".ts", ".tsx", ".mjs"])) {
+      const rel = path.relative(ROOT, file);
+      // This rule quotes the phrases it bans, so it would flag itself.
+      if (rel === path.join("scripts", "check-claims.mjs")) continue;
+
+      const src = fs.readFileSync(file, "utf8");
+      const lines = src.split("\n");
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!/^\s*(?:\/\/|\*|\/\*)/.test(line)) continue; // comments only
+        for (const rx of PHRASES) {
+          if (rx.test(line)) {
+            offenders.push(`${rel}:${i + 1}: ${line.trim().slice(0, 100)}`);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  offenders.length
+    ? fail(
+        "no documented-and-left bugs",
+        offenders.join("\n    ") +
+          "\n    A comment naming a live defect and a reason it is not yours is where a defect" +
+          "\n    lives longest. Fix it, or delete the excuse and leave the description."
+      )
+    : ok("no documented-and-left bugs");
+}
+
+/* ------------------------------------------- 18. writes that report what they did */
+/**
+ * A write that reports success must have checked that it wrote something.
+ *
+ * Found three times in this codebase, each time by hand:
+ *
+ *   1. admin-router's approveUser / deleteUser / setRole — "a bare UPDATE with no
+ *      affectedRows check reported success for a userId that matched nothing —
+ *      confirmed live, id 999999999 and id -1 both returned {success:true}".
+ *   2. validation.fixIssue — "Updated industry on account 4021" for an account that does
+ *      not exist, after which the Data Validation page struck the issue off as resolved.
+ *   3. follow-ups' complete / reopen / remove — an attempt on a colleague's follow-up
+ *      came back done and the UI removed it from their list.
+ *
+ * The third one is the reason this is a rule and not three fixes. Its own comment read
+ * "an id alone must never be enough to close someone else's commitment": the WHERE was
+ * right, and the return value did not reflect it. That is a shape, not an oversight, and
+ * org scoping made it likelier rather than rarer — another tenant's id is now a routine
+ * zero-row write, and it must never read back as a completed action.
+ *
+ * A write passes if it does either honest thing: capture its result (so the caller can
+ * check affectedRows), or sit behind a lookup that already threw when the row was absent.
+ *
+ * A third case exists and is narrow: a fire-and-forget side effect whose enclosing
+ * `success: true` is a claim about something else entirely. Those carry
+ * `write-unchecked: <reason>` on the line above, and the count of them is pinned below,
+ * so adding one is a number someone has to move in the diff — the same discipline the
+ * tenancy exemptions use, for the same reason.
+ */
+{
+  const offenders = [];
+  const exempted = [];
+  for (const file of walk(path.join(ROOT, "server"), [".ts"])) {
+    const rel = path.relative(ROOT, file);
+    if (rel.endsWith(".test.ts")) continue;
+    const src = stripComments(fs.readFileSync(file, "utf8"));
+    const lines = src.split("\n");
+
+    // Scanned over the whole source rather than line by line, because the shape this rule
+    // exists for is written across lines:
+    //
+    //     await db
+    //       .delete(followUps)
+    //       .where(...);
+    //     return { success: true };
+    //
+    // A per-line regex cannot match `await db` and `.delete(` together, so the first
+    // version of this rule missed all three follow-up mutations — the very instances that
+    // motivated writing it. Caught by replaying each historical bug against the rule
+    // instead of trusting that it would have.
+    for (const m of src.matchAll(/await\s+db\s*\.\s*(update|delete)\s*\(/g)) {
+      const i = src.slice(0, m.index).split("\n").length - 1;
+
+      // Captured (`const x = await db.update(...)`) or returned — the caller can see it.
+      const lineStart = src.lastIndexOf("\n", m.index) + 1;
+      const before = src.slice(lineStart, m.index).trimEnd();
+      if (before.endsWith("=") || before.endsWith("return")) continue;
+
+      // Does a success claim follow closely enough to be about this write?
+      const after = lines.slice(i, i + 15).join("\n");
+      if (!/success:\s*true/.test(after)) continue;
+
+      // Guarded by a lookup that already threw for a missing row — a perfectly good way
+      // to be honest, and how snooze, the transcript delete and the verification-code
+      // writes all do it.
+      //
+      // Scoped to the ENCLOSING HANDLER rather than a fixed number of lines back: a
+      // 25-line window flagged five writes whose guard sat just outside it, which would
+      // have taught everyone to reach for the exemption marker instead of reading the
+      // code. The handler starts at the nearest `.mutation(`/`.query(` above.
+      const handlerStart = Math.max(
+        src.lastIndexOf(".mutation(", m.index),
+        src.lastIndexOf(".query(", m.index)
+      );
+      const window = src.slice(handlerStart < 0 ? 0 : handlerStart, m.index);
+      const guarded = /\.select\s*\(/.test(window) && /\bthrow\b/.test(window);
+      if (guarded) continue;
+
+      // An explicit, reasoned exemption on one of the two lines above. Comments are
+      // blanked by stripComments, so read the raw file for this.
+      const raw = fs.readFileSync(file, "utf8").split("\n");
+      const near = raw.slice(Math.max(0, i - 3), i).join("\n");
+      const reason = near.match(/write-unchecked:\s*(.+)/);
+      if (reason && reason[1].trim().length > 15) {
+        exempted.push(`${rel}:${i + 1} — ${reason[1].trim()}`);
+        continue;
+      }
+
+      offenders.push(`${rel}:${i + 1}: ${lines[i].trim().slice(0, 80)}`);
+    }
+  }
+
+  // Pinned, so an exemption cannot be added silently. Raise it deliberately, in a commit
+  // that says why the enclosing success claim is about something other than this write.
+  const EXPECTED_EXEMPT = 2;
+
+  if (offenders.length) {
+    fail(
+      "writes report what they did",
+      offenders.join("\n    ") +
+        "\n    This write returns success without checking it matched a row. Capture the" +
+        "\n    result and check affectedRows(), or guard it with a lookup that throws first." +
+        "\n    A refused or missed write must not read back as a completed action."
+    );
+  } else if (exempted.length !== EXPECTED_EXEMPT) {
+    fail(
+      "writes report what they did",
+      `${exempted.length} write-unchecked exemptions, expected ${EXPECTED_EXEMPT}:\n    ` +
+        exempted.join("\n    ") +
+        "\n    Each is a claim that a nearby `success: true` is about something other than" +
+        "\n    that write. Raise the expected count here and say why in the commit."
+    );
+  } else {
+    ok(`writes report what they did (${exempted.length} reasoned exemptions)`);
+  }
+}
+
+/* ------------------------------------- 19. the two-customer walk is actually run */
+/**
+ * The README says two customers signing up, inviting colleagues and staying isolated
+ * "is verified in a browser, not just in tests".
+ *
+ * That sentence was in the README before anything walked it. Every other tenancy check
+ * reads source: `pnpm tenancy` counts unscoped queries, rule 15 pins the count. None of
+ * them can tell you whether a person can actually complete the journey, and walking it
+ * by hand immediately found two things source-reading cannot see — signup's last screen
+ * telling a self-serve customer to wait for an approval the server had already granted,
+ * and that signup mailing the incumbent operator a one-click DENY link for the new
+ * customer's own admin account.
+ *
+ * So the claim needs the walk to exist AND to run. A script nobody invokes is the same
+ * as no script, and it is the easier of the two to end up with.
+ */
+{
+  const script = path.join(ROOT, "scripts/tenancy-e2e.mjs");
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
+  const verify = pkg.scripts?.verify ?? "";
+  const claimed = /verified in a browser/i.test(fs.readFileSync(path.join(ROOT, "README.md"), "utf8"));
+
+  const problems = [];
+  if (!fs.existsSync(script)) problems.push("scripts/tenancy-e2e.mjs does not exist");
+  if (!pkg.scripts?.["tenancy:e2e"]) problems.push("package.json has no tenancy:e2e script");
+  if (!verify.includes("tenancy:e2e")) problems.push("pnpm verify does not run tenancy:e2e");
+
+  if (!claimed) {
+    // The README stopped making the claim. Nothing to enforce — but say so, rather than
+    // passing silently and leaving a rule that guards nothing.
+    ok("two-customer walk (README no longer claims it)");
+  } else if (problems.length) {
+    fail(
+      "two-customer walk is actually run",
+      problems.join("\n    ") +
+        "\n    The README claims this journey is verified in a browser. Either it runs on" +
+        "\n    every build or the README must stop saying so."
+    );
+  } else {
+    ok("two-customer walk is actually run");
+  }
+}
+
+/* ------------------------------------------------- 20. the flow count is real */
+/**
+ * docs/QUALITY-GATE.md names how many flow checks there are. It said "Four flows" over
+ * a table of five, and by the time anyone counted there were seven.
+ *
+ * A number in prose that nobody recomputes is a number that drifts, and the drift is
+ * invisible precisely because the sentence still reads fine. This is the same shape as
+ * rule 13 (README headline stats) and rule 15 (the tenancy count): if a document states
+ * a figure about the code, the code decides what it is.
+ */
+{
+  const WORDS = {
+    one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8,
+    nine: 9, ten: 10, eleven: 11, twelve: 12,
+  };
+
+  const script = fs.readFileSync(path.join(ROOT, "scripts/flow-gate.mjs"), "utf8");
+  // Comments are blanked first: this file's own prose about the rule would otherwise
+  // count as a flow, which is the bug rule 1 of this script was written to avoid.
+  const actual = (stripComments(script).match(/await flow\(/g) || []).length;
+
+  const doc = fs.readFileSync(path.join(ROOT, "docs/QUALITY-GATE.md"), "utf8");
+  const claim = doc.match(/^(\w+) flows,/im);
+
+  if (!claim) {
+    fail("the flow count is real", "docs/QUALITY-GATE.md no longer states a flow count");
+  } else {
+    const stated = WORDS[claim[1].toLowerCase()] ?? Number(claim[1]);
+    if (stated !== actual) {
+      fail(
+        "the flow count is real",
+        `docs/QUALITY-GATE.md says "${claim[1]} flows"; flow-gate.mjs has ${actual}.` +
+          "\n    Update the sentence and the table under it — a flow with no row is a" +
+          "\n    check nobody knows runs."
+      );
+    } else {
+      ok(`the flow count is real (${actual})`);
+    }
+  }
+}
+
+/* --------------------------------------------------------------- 21. report */
 for (const c of checks) console.log(`  ✓ ${c}`);
 for (const f of failures) console.log(`  ✘ ${f.rule}\n    ${f.detail}`);
 

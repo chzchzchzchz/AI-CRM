@@ -12,6 +12,7 @@ import {
 import { Link, useParams } from"wouter";
 import { SafeStreamdown } from"@/components/SafeStreamdown";
 import { toast } from"sonner";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
 
 // Heat pairs a tinted colour with a word + shape so it never relies on colour alone.
 function heatMeta(score: number): { label: string; cls: string; hot: boolean } {
@@ -36,10 +37,8 @@ export default function ContactDetail() {
   const personId = parseInt(id ||"0");
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const { data: contact, isLoading } = trpc.people.getById.useQuery(
-    { id: personId },
-    { enabled: personId > 0 }
-  );
+  const { data: contact, isLoading, error: contactError, refetch: refetchContact } =
+    trpc.people.getById.useQuery({ id: personId }, { enabled: personId > 0 });
 
   const { data: account } = trpc.accounts.getById.useQuery(
     { id: contact?.accountId || 0 },
@@ -119,6 +118,21 @@ export default function ContactDetail() {
             </div>
             <div className="h-56 bg-muted rounded" />
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Load-failure state, kept distinct from not-found below. Same reasoning as
+  // AccountDetail: a discarded query error rendered a backend outage as a deleted
+  // contact, and since org scoping landed "not found" is also the deliberate answer for
+  // another organization's id.
+  if (contactError) {
+    return (
+      <div className="container py-6 max-w-2xl">
+        <DataUnavailable what="this contact" detail={contactError} onRetry={() => refetchContact()} />
+        <div className="text-center mt-4">
+          <Button asChild variant="ghost"><Link href="/contacts"><ArrowLeft className="mr-2 h-4 w-4" />Back</Link></Button>
         </div>
       </div>
     );

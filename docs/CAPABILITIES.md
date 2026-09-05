@@ -8,14 +8,14 @@ Every backend capability, and whether anything in the product actually reaches i
 
 | | Count |
 |---|---|
-| Procedures total | 166 |
-| Reachable from the UI | 120 |
-| External by design (webhooks, probes, connector actions) | 43 |
+| Procedures total | 147 |
+| Reachable from the UI | 122 |
+| External by design (webhooks, probes, connector actions) | 22 |
 | **Built but not routed anywhere** | **0** |
-| ↳ exempted from that zero (maps in `server/inventory.ts`, plus the `integrations.*` rule) | 46 |
+| ↳ exempted from that zero (maps in `server/inventory.ts`, plus the `integrations.*` rule) | 25 |
 | ↳ of those, called only by unreachable client code | 0 |
 | Superseded by a live capability (kept, not a to-do) | 3 |
-| App routes | 34 |
+| App routes | 36 |
 | Client modules unreachable from `main.tsx` | 9 |
 | Integration connectors | 24 |
 
@@ -82,6 +82,7 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `csvProcessor.getTemplateInfo` | `pages/CsvProcessor.tsx` |
 | `csvProcessor.analyzeAndMap` | `pages/CsvProcessor.tsx` |
 | `csvProcessor.processData` | `pages/CsvProcessor.tsx` |
+| `dataImport.importRows` | `pages/ImportAccounts.tsx` |
 | `deepThink.sales` | `components/ContextualAI.tsx` |
 | `deepThink.help` | `components/SupportBot.tsx` |
 | `emailVerification.sendVerificationCode` | `pages/SignUp.tsx` |
@@ -104,14 +105,15 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `hotLeads.getByBuyingStage` | `components/HotLeadsWidget.tsx` |
 | `integrations.preflight` | `pages/Integrations.tsx` |
 | `integrations.status` | `pages/Integrations.tsx` |
-| `integrations.googleChatNotify` | `pages/Integrations.tsx` |
-| `integrations.slackNotify` | `pages/Integrations.tsx` |
-| `integrations.discordNotify` | `pages/Integrations.tsx` |
-| `integrations.teamsNotify` | `pages/Integrations.tsx` |
 | `intel.accountBrief` | `components/AccountJudgement.tsx` |
 | `intel.accountSignals` | `pages/AccountDetail.tsx` |
 | `intel.briefHistory` | `components/AccountTrajectory.tsx` |
 | `intel.brain` | `pages/Insights.tsx` |
+| `invites.create` | `components/TeamInvites.tsx` |
+| `invites.list` | `components/TeamInvites.tsx` |
+| `invites.revoke` | `components/TeamInvites.tsx` |
+| `invites.preview` | `pages/AcceptInvite.tsx` |
+| `invites.accept` | `pages/AcceptInvite.tsx` |
 | `opportunities.list` | `pages/Home.tsx`, `pages/Opportunities.tsx` |
 | `opportunities.upsert` | `pages/Opportunities.tsx` |
 | `opportunities.aiScore` | `pages/Opportunities.tsx` |
@@ -188,7 +190,6 @@ Not called by our UI, and should not be — these are entry points for other sys
 | `clayImport.importRawData` | bulk import — driven by a Clay export or automation |
 | `clayImport.importAccounts` | bulk import — driven by a Clay export or automation |
 | `clayImport.getImportStats` | import telemetry for the automation that ran it |
-| `clayPull.triggerEnrichment` | connector action — Clay enrichment run |
 | `clayWebhook.receive` | inbound webhook |
 | `clayWebhook.test` | connectivity probe |
 | `dust.getAccountIntelligence` | Dust connector action |
@@ -196,33 +197,13 @@ Not called by our UI, and should not be — these are entry points for other sys
 | `dust.searchGongCalls` | Dust connector action |
 | `dust.query` | Dust connector action |
 | `gemini.researchAccount` | **cannot succeed in this deployment** — needs browser automation that isn't installed; it throws by design. Use the configured LLM provider instead |
-| `integrations.salesloftCreatePerson` | connector action (callable from automation/API) |
-| `integrations.outreachCreateProspect` | connector action (callable from automation/API) |
-| `integrations.calendlyGetAccount` | connector action (callable from automation/API) |
-| `integrations.asanaCreateTask` | connector action (callable from automation/API) |
-| `integrations.clickupCreateTask` | connector action (callable from automation/API) |
-| `integrations.pagerdutyTrigger` | connector action (callable from automation/API) |
-| `integrations.notifyHotLead` | connector action (callable from automation/API) |
-| `integrations.twilioSendSms` | connector action (callable from automation/API) |
-| `integrations.segmentTrack` | connector action (callable from automation/API) |
-| `integrations.hubspotSyncContact` | connector action (callable from automation/API) |
-| `integrations.notionExportAccount` | connector action (callable from automation/API) |
-| `integrations.linearCreateTask` | connector action (callable from automation/API) |
-| `integrations.intercomSyncContact` | connector action (callable from automation/API) |
-| `integrations.airtableCreateRecord` | connector action (callable from automation/API) |
-| `integrations.pipedriveCreateDeal` | connector action (callable from automation/API) |
-| `integrations.apolloEnrichPerson` | connector action (callable from automation/API) |
-| `integrations.sendWebhook` | connector action (callable from automation/API) |
-| `integrations.zoominfoEnrichCompany` | connector action (callable from automation/API) |
-| `integrations.zoominfoSearchContacts` | connector action (callable from automation/API) |
-| `integrations.zoominfoEnrichContact` | connector action (callable from automation/API) |
 | `intel.brainLearn` | forces a learning cycle that otherwise runs on a schedule |
 | `intentScores.create` | write path — connectors push scores in through it |
 | `sixsense.syncAccountByDomain` | connector action — sync one account from 6sense |
 | `sixsense.identifyByIP` | connector action — de-anonymise a visiting IP |
-| `system.health` | uptime probe |
+| `system.health` | uptime probe — queries the database and probes the auth-state store |
 | `system.notifyOwner` | outbound notification, called by other server code |
-| `zapier.webhook` | inbound webhook (Zapier/Make/n8n) |
+| `zapier.webhook` | inbound webhook (Zapier/Make/n8n) — acknowledges events; nothing consumes them yet |
 
 ## App routes
 
@@ -230,6 +211,7 @@ Not called by our UI, and should not be — these are entry points for other sys
 |---|---|
 | `/login` | `Login` |
 | `/signup` | `SignUp` |
+| `/accept-invite` | `AcceptInvite` |
 | `/request-access` | `RequestAccess` |
 | `/forgot-password` | `ForgotPassword` |
 | `/` | `Home` |
@@ -253,6 +235,7 @@ Not called by our UI, and should not be — these are entry points for other sys
 | `/salesforce-sync` | `SalesforceSync` |
 | `/sixsense-analytics` | `SixsenseAnalytics` |
 | `/csv-processor` | `CsvProcessor` |
+| `/import` | `ImportAccounts` |
 | `/data-hub` | `DataHub` |
 | `/content-studio` | `ContentStudio` |
 | `/transcript-analyzer` | `TranscriptAnalyzer` |

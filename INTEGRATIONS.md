@@ -73,5 +73,8 @@ HubSpot/Notion/Linear/Intercom you paste a private-app token / API key. Set them
 
 Typical flow: TargetDash detects a hot lead → `integrations.slackNotify` pings your
 `#sales` channel and `integrations.sendWebhook` fires a Zap that creates a task in your
-PM tool. Inbound: Clay/Zapier POST enrichment back to `clay.receiveAccount` /
-`zapier.webhook` (both secret-verified, fail-closed in production).
+PM tool. Inbound: Clay POSTs enrichment back to `clay.receiveAccount`, which writes it
+into the posting organization's accounts. `zapier.webhook` is secret-verified and
+fail-closed like Clay's, but it only **acknowledges** an event — nothing consumes them
+yet, and its response says so rather than reporting a store that did not happen. To load
+data from a Zap, POST to the Clay receiver or use `/import`.

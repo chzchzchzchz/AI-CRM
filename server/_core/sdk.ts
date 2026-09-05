@@ -7,6 +7,7 @@ import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
+import { DEFAULT_ORG_ID } from "./tenancy";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -347,6 +348,7 @@ class SDKServer {
           console.warn("[Auth] Database not available, using in-memory mock admin user:", dbError);
           return {
             id: 1,
+            orgId: DEFAULT_ORG_ID,
             openId: demoOpenId,
             name: "Demo Admin",
             email: "admin@ai-crm.com",

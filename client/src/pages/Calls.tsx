@@ -10,6 +10,7 @@ import {
   Phone, Calendar, Clock, Building2, Search,
   PlayCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Sparkles, Loader2
 } from "lucide-react";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
 
 
 const CALLS_PER_PAGE = 50;
@@ -45,7 +46,7 @@ export default function Calls() {
   });
 
   // Use paginated query for performance
-  const { data, isLoading } = trpc.gong.listPaginated.useQuery(
+  const { data, isLoading, error, refetch } = trpc.gong.listPaginated.useQuery(
     { limit: CALLS_PER_PAGE, offset: (currentPage - 1) * CALLS_PER_PAGE },
     { staleTime: 3 * 60 * 1000 }
   );
@@ -169,7 +170,9 @@ export default function Calls() {
         </div>
 
         {/* Calls List */}
-        {filteredCalls.length === 0 ? (
+        {error ? (
+          <DataUnavailable what="calls" detail={error} onRetry={() => refetch()} />
+        ) : filteredCalls.length === 0 ? (
           <Card className="bg-card border-border shadow-none">
             <CardContent className="py-12 text-center">
               <Phone className="h-12 w-12 mx-auto text-ink-subtle mb-3" />

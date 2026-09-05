@@ -23,7 +23,9 @@ pnpm verify
   ├── pnpm check:claims  static truth checks
   ├── pnpm build
   ├── pnpm gate          browser checks, every route × 2 viewports
-  └── pnpm flows         uses the app: filter, open, search, walk the nav
+  ├── pnpm flows         uses the app: filter, open, search, walk the nav
+  ├── pnpm tenancy:e2e   two customers sign up, invite, and stay isolated
+  └── pnpm smoke         connectors, against a live tenant when a key is set
 ```
 
 Run any one on its own. `pnpm gate` boots its own server on port 3399; point it at
@@ -121,16 +123,21 @@ anything.** So the whole class of "I tried it and nothing happened" was invisibl
 a search box that filters nothing, a row that doesn't navigate, a dialog that
 opens empty. Every one of those renders perfectly.
 
-Four flows, each a thing a rep does in the first two minutes, each asserting an
+Seven flows, each a thing a rep does in the first two minutes, each asserting an
 observable change rather than that a handler exists:
 
 | Flow | What it asserts |
 |---|---|
 | Contacts search narrows the list | a nonsense query matches 0, `director` matches some but not all |
+| The unfiltered view doesn't claim a filter is active | the default accounts page offers no reset and marks nothing active; selecting Hot leads does both |
 | Clicking an account opens it | the URL moves to the row's own href, and the page isn't a 404 or a stub |
 | Global search returns results | Ctrl+K opens, a real query finds something, a nonsense one says so |
 | Every nav link goes somewhere real | every sidebar link is followed and none lands on the 404 page |
 | An AI action ends in readable output | Generate produces content, or says why it can't — and never claims success for neither |
+| 2FA enrolment produces a real secret | the page is routed, reports honest status, and returns a real QR code and base32 key |
+
+The count above is checked against the script: this line read "Four flows" over a table
+of five for as long as anyone had looked, which is how a document stops being read.
 
 Deliberately small. A flaky flow check is worse than none, because it teaches
 people to re-run CI until it goes green. Anything that couldn't be made
