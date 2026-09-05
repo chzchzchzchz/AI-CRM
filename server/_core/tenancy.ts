@@ -79,3 +79,36 @@ export function assertOrgAllowedOrThrow(orgId: number): void {
       `without an org filter. One deployment per customer until that count is zero.`,
   );
 }
+
+/**
+ * A connector configured from the deployment's environment belongs to the deployment's
+ * own workspace, and to no other.
+ *
+ * The org work made every WRITE land in the caller's tenant. It never asked whether the
+ * SOURCE was the caller's to read, and for one connector that is the whole problem.
+ * `salesforce.syncAccounts` is a plain protectedProcedure, so any signed-in user of any
+ * organization can call it; it authenticates with the single SALESFORCE_* credentials in
+ * the deployment's environment and runs `SELECT … FROM Account` with no limit. On a
+ * self-serve deployment that means a customer who signed up two minutes ago can press a
+ * button and copy the operator's entire Salesforce org — very plausibly another
+ * customer's book of business — into their own workspace. Writing someone else's data
+ * correctly into your own tenant is still a leak; it is just a tidily scoped one.
+ *
+ * The real fix is per-organization credentials, which is a feature and not a guard. Until
+ * it exists this refuses, which is the honest half: the credentials belong to whoever
+ * configured the deployment, so only their workspace may spend them.
+ *
+ * Nothing changes for a single-tenant install. Every user is in the default org, so this
+ * never fires — which is every existing deployment.
+ */
+export function assertDeploymentConnectorAllowed(orgId: number, connector: string): void {
+  if (orgId === DEFAULT_ORG_ID) return;
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    message:
+      `${connector} is connected with credentials configured for this whole deployment, ` +
+      `not for your workspace — syncing would copy someone else's records into yours. ` +
+      `Per-workspace connections aren't available yet. Import your own data instead, or ` +
+      `ask your administrator to run a deployment for your organization.`,
+  });
+}

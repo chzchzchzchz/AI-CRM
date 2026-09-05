@@ -45,7 +45,7 @@ import { getApprovalLinks } from "./admin-approval-api";
 import { hotLeadsRouter } from "./hot-leads-router";
 import { recordFailedLogin, clearLoginAttempts, getLoginLockout, validatePasswordComplexity, logSecurityEvent, getClientIP } from "./_core/security";
 import { signupMode, createOrganization } from "./_core/onboarding";
-import { DEFAULT_ORG_ID } from "./_core/tenancy";
+import { DEFAULT_ORG_ID, assertDeploymentConnectorAllowed } from "./_core/tenancy";
 import { twoFARouter } from "./twofa-router";
 import {
   createChallenge,
@@ -936,7 +936,8 @@ Or go to the Admin Panel: /admin/approval`
       .query(async ({ input, ctx }) => {
         return await getGongCallsPaginated(ctx.orgId, input.limit, input.offset);
       }),
-    testConnection: protectedProcedure.query(async () => {
+    testConnection: protectedProcedure.query(async ({ ctx }) => {
+      assertDeploymentConnectorAllowed(ctx.orgId, "Gong");
       const { gongTestConnection, isGongConfigured } = await import("./integrations/gong");
       if (!isGongConfigured()) {
         return { configured: false, ok: false, message: "No Gong credentials set" };
@@ -958,7 +959,14 @@ Or go to the Admin Panel: /admin/approval`
           withTranscripts: z.boolean().default(false),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        // This one hands the records straight back rather than storing them, so the org
+        // scoping everywhere else in this file never applied to it — the handler did not
+        // even take ctx. The Gong workspace it reads belongs to whoever configured the
+        // deployment, and calls and transcripts are the most sensitive thing in this
+        // product: on a self-serve install any customer could read the operator's sales
+        // conversations, verbatim, by pressing a button.
+        assertDeploymentConnectorAllowed(ctx.orgId, "Gong");
         const { gongListCalls, gongGetTranscripts, isGongConfigured } = await import(
           "./integrations/gong"
         );

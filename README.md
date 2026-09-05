@@ -6,7 +6,7 @@ A sales rep opens this in the morning and sees which accounts moved, why they mo
 do about it — with the evidence for every claim attached. It sits on top of a CRM rather than
 replacing one.
 
-`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 651 tests, ~54k lines,
+`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 661 tests, ~54k lines,
 runs with zero API keys.
 
 ```bash
@@ -28,7 +28,8 @@ Sign in with `demo@ai-crm.com` / `DemoPass123!`. No database, no keys, no signup
 | AI features with no key set | Fall back to a local Ollama model; with nothing reachable they say so plainly |
 | Auth, 2FA, audit logging, rate limiting | Implemented and tested. Not independently audited |
 | Multi-tenancy | Org boundary on every tenant table, enforced by a build check. `SIGNUP_MODE=self-serve` gives each new customer their own workspace, and admins invite colleagues into it from `/admin`. Not yet run with two paying customers |
-| Getting your own data in | `/import` takes pasted rows or a CSV/TSV/JSON file straight into your workspace — accounts and contacts from the same paste, no connector needed. The Salesforce and 6sense syncs need credentials in the deployment's environment; the CSV Processor builds a file for import into *Salesforce*, not into this app |
+| Getting your own data in | `/import` takes pasted rows or a CSV/TSV/JSON file straight into your workspace — accounts and contacts from the same paste, no connector needed. The CSV Processor builds a file for import into *Salesforce*, not into this app |
+| Connectors under multi-tenancy | Every connector is configured from the deployment's environment, so only the workspace that owns those credentials can use one. Other workspaces are refused and told why, and import instead. Per-organization credentials are not built |
 | Billing, metering, plan enforcement | Not built. Nothing counts seats, limits usage or takes money |
 
 `pnpm doctor` reads your `.env` and tells you which integrations are actually ready, which are
@@ -170,6 +171,12 @@ data. See [`SECURITY.md`](SECURITY.md).
   customers — tested and enforced, not battle-worn.
 - **No billing, metering or plan enforcement.** Nothing counts seats, limits usage or
   takes money. Selling means bolting that on, or invoicing out of band.
+- **Connectors are per deployment, not per workspace.** There is one `SALESFORCE_*`, one
+  `GONG_*`, one `TWILIO_*` for the whole instance. Until per-organization credentials
+  exist, every connector action is refused to any workspace but the one that owns them —
+  which is the honest half of the fix, not the whole of it. Running self-serve with
+  connectors configured means one customer (the operator's own workspace) gets them and
+  the rest import their own data.
 - **The AI quality depends entirely on the model you point it at.** The grounding work constrains
   what a model can claim; it can't make a weak local model insightful.
 - **No accessibility audit.** The design targets WCAG 2.1 AA and the gate checks contrast and

@@ -3,7 +3,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
-import { assertOrgAllowed, orgIdFor } from "./tenancy";
+import { assertDeploymentConnectorAllowed, assertOrgAllowed, orgIdFor } from "./tenancy";
 
 /**
  * Extracted as a standalone function (rather than inlined in `.create()`) so it can
@@ -79,6 +79,36 @@ const requireUser = t.middleware(async opts => {
  */
 export const protectedProcedure = t.procedure.use(requireUser);
 export const orgProcedure = protectedProcedure;
+
+/**
+ * A signed-in user of the organization that owns this deployment's connector credentials.
+ *
+ * Every connector in this app is configured from the deployment's environment — one
+ * SALESFORCE_*, one GONG_*, one TWILIO_*, shared by every tenant on the instance. The org
+ * work made every WRITE land in the caller's own tenant and stopped there; it never asked
+ * whether the vendor account being spent or read was the caller's. So on a self-serve
+ * deployment a customer who signed up two minutes ago could pull the operator's entire
+ * Salesforce org into their workspace, read their Gong call transcripts verbatim, or send
+ * SMS on their Twilio account — with every resulting row correctly scoped to themselves,
+ * which is exactly what made it invisible.
+ *
+ * Per-organization credentials are the real answer and are a feature, not a guard. Until
+ * they exist this refuses, which is the honest half.
+ *
+ * A no-op on every single-tenant install: everyone is in the default org.
+ */
+export const deploymentConnectorProcedure = protectedProcedure.use(
+  t.middleware(async ({ ctx, next }) => {
+    // requireUser has already run and narrowed this to a number; the type here is the
+    // base context's. A null org means no session at all, which is not the deployment's
+    // organization either — refusing is the same answer.
+    // No vendor name: a procedure name like `salesloftCreatePerson` reads as jargon in a
+    // sentence aimed at whoever pressed the button. Call sites that know the vendor —
+    // Salesforce, Gong — call the guard directly and name it.
+    assertDeploymentConnectorAllowed(ctx.orgId ?? -1, "This connector");
+    return next({ ctx });
+  })
+);
 
 export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {
