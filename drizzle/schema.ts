@@ -190,6 +190,18 @@ export const accounts = mysqlTable("accounts", {
   // external identifier, and a global unique would make the second one's import
   // collide with — or silently read — the first one's row.
   clayRecordIdIdx: unique('accounts_org_clayRecordId').on(table.orgId, table.clayRecordId),
+  // Domain is how an import decides whether it is creating an account or updating one,
+  // so /import and clayImport both run `WHERE orgId = ? AND domain = ?` once PER ROW.
+  // With no index that is a full table scan per row — instant against the demo store,
+  // which is an in-memory array, and unusable against MySQL: 20,000 rows imported into a
+  // workspace holding 100,000 accounts is 20,000 table scans. Nothing in this repo runs
+  // against a real database, so nothing would ever have shown it.
+  //
+  // Not unique. A customer's Salesforce can legitimately hold two accounts on one domain
+  // (a subsidiary, a duplicate nobody has merged), and a unique constraint would fail
+  // their `db:push` rather than their import. Leftmost-prefix also serves the plain
+  // `WHERE orgId = ?` that every tenant-scoped query in the app runs.
+  orgDomainIdx: index('accounts_org_domain').on(table.orgId, table.domain),
 }));
 
 export type Account = typeof accounts.$inferSelect;
@@ -221,6 +233,13 @@ export const contacts = mysqlTable("contacts", {
   // external identifier, and a global unique would make the second one's import
   // collide with — or silently read — the first one's row.
   clayRecordIdIdx: unique('contacts_org_clayRecordId').on(table.orgId, table.clayRecordId),
+  // Same shape as accounts_org_domain above: /import matches a person on
+  // `WHERE orgId = ? AND email = ?`, once per row.
+  //
+  // Emphatically not unique — the shipped demo seed alone holds 23 duplicate
+  // (orgId, email) pairs and 1,746 contacts with no email at all, so a unique constraint
+  // would fail on this repo's own data before it ever reached a customer's.
+  orgEmailIdx: index('contacts_org_email').on(table.orgId, table.email),
 }));
 
 export type Contact = typeof contacts.$inferSelect;
