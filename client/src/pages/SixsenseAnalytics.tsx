@@ -61,6 +61,12 @@ export default function SixsenseAnalytics() {
   }
 
   const workedPct = summary?.sixQA?.workedPercent || 0;
+  // With no qualified accounts there is no percentage — 0 of 0 is not 0%, and its
+  // complement is not 100%. The server already guards the division and returns 0,
+  // which this page rendered as "0% of 6QAs" beside "100% opportunity gap": a new
+  // workspace was told it was missing every opportunity it had, of which there were
+  // none. Neither figure is a fact until there is something to divide.
+  const hasSixQA = (summary?.sixQA?.total || 0) > 0;
 
   return (
     <div>
@@ -93,14 +99,18 @@ export default function SixsenseAnalytics() {
               <span aria-hidden className="text-positive">▲</span> Worked
             </div>
             <div className="mt-2 tabular-nums text-2xl text-positive">{summary?.sixQA?.worked || 0}</div>
-            <div className="mt-1 text-xs text-ink-muted">{workedPct}% of 6QAs</div>
+            <div className="mt-1 text-xs text-ink-muted">
+              {hasSixQA ? `${workedPct}% of 6QAs` : "no qualified accounts yet"}
+            </div>
           </div>
           <div className="bg-card p-4">
             <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
               <span aria-hidden className="text-caution">●</span> Unworked gap
             </div>
             <div className="mt-2 tabular-nums text-2xl text-caution">{summary?.sixQA?.unworked || 0}</div>
-            <div className="mt-1 text-xs text-ink-muted">{100 - workedPct}% opportunity gap</div>
+            <div className="mt-1 text-xs text-ink-muted">
+              {hasSixQA ? `${100 - workedPct}% opportunity gap` : "nothing to work yet"}
+            </div>
           </div>
           <div className="bg-card p-4">
             <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">

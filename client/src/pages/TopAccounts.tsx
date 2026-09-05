@@ -56,18 +56,36 @@ export default function TopAccounts() {
     userEmail: selectedAE !== "all" ? selectedAE : ""
   });
 
-  // Derive regions from the data (plus configured territories) so every account's region is
-  // represented. The old hardcoded ["West","Central","East"] dropped accounts in any other
-  // region — e.g. the demo's "Northeast" accounts vanished, and "East" matched nothing.
+  /**
+   * Accounts with no region at all.
+   *
+   * Deriving regions from the data fixed accounts whose region was an unexpected VALUE.
+   * It did nothing for accounts with no value: `filter(Boolean)` drops them, so they
+   * match no group and disappear from this page entirely, with nothing saying they
+   * exist. That is every account a customer imports — the import cannot know a region,
+   * and asking for one before showing someone their own data would be worse.
+   *
+   * A page that silently omits records is worse than one that admits it cannot group
+   * them: the customer had just watched the import say "2 accounts in your workspace"
+   * and then found five empty regions.
+   */
+  const UNASSIGNED = "No region set";
+
   const REGIONS = useMemo(() => {
     const fromData = (accounts || []).map((a: any) => a.region).filter(Boolean);
-    return Array.from(new Set([...CONFIGURED_REGIONS, ...fromData]));
+    const named = Array.from(new Set([...CONFIGURED_REGIONS, ...fromData]));
+    const anyUnassigned = (accounts || []).some((a: any) => !a.region);
+    return anyUnassigned ? [...named, UNASSIGNED] : named;
   }, [accounts]);
+
+  /** One place deciding which group an account is in, so counts and rows cannot disagree. */
+  const inRegion = (a: any, region: string) =>
+    region === UNASSIGNED ? !a.region : a.region === region;
 
   // Process accounts by region
   const accountsByRegion = REGIONS.reduce((acc: Record<string, any[]>, region: string) => {
     acc[region] = (accounts || [])
-      .filter((a: any) => a.region === region)
+      .filter((a: any) => inRegion(a, region))
       .map((a: any) => ({
         ...a,
         intentScoreNum: parseInt(String(a.intentScore || 0), 10)
@@ -84,7 +102,7 @@ export default function TopAccounts() {
   // Every region/AE with more than 15 accounts (nearly all of them) showed a
   // number that looked like a total but was actually just the display cap.
   const regionCounts: Record<string, number> = REGIONS.reduce((acc: Record<string, number>, region: string) => {
-    acc[region] = (accounts || []).filter((a: any) => a.region === region).length;
+    acc[region] = (accounts || []).filter((a: any) => inRegion(a, region)).length;
     return acc;
   }, {});
 
@@ -233,8 +251,17 @@ export default function TopAccounts() {
                         <p className="px-2 py-4 text-xs text-ink-muted">No accounts in this region</p>
                       )}
                       <Button asChild variant="ghost" size="sm" className="w-full mt-2 text-accent hover:text-accent hover:bg-muted">
-                        <Link href={`/accounts?region=${region}`}>
-                          View all {region} accounts
+                        {/* The unassigned group is the absence of a region, so there is
+                            no region filter that selects it — link to the full list
+                            rather than to a filter that would come back empty. */}
+                        <Link
+                          href={
+                            region === UNASSIGNED
+                              ? "/accounts"
+                              : `/accounts?region=${encodeURIComponent(region)}`
+                          }
+                        >
+                          {region === UNASSIGNED ? "View all accounts" : `View all ${region} accounts`}
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
                       </Button>

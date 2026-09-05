@@ -294,6 +294,30 @@ await step("the empty state's import link fills the workspace it came from", asy
   );
 });
 
+// ── 2d. and the rest of the app can see what they imported ──────────────────
+await step("imported accounts are not silently dropped by the pages that group them", async () => {
+  // Top Accounts groups by region, and an import cannot know one. `filter(Boolean)`
+  // dropped accounts with no region from every group, so a customer who had just been
+  // told "2 accounts in your workspace" found five empty regions and no sign of them.
+  await A.page.goto(`${BASE}/top-accounts`, { waitUntil: "domcontentloaded" });
+  await A.page.waitForTimeout(3500);
+  const grouped = (await A.page.locator("body").innerText()).replace(/\s+/g, " ");
+  assert(
+    grouped.includes(IMPORTED_A),
+    `an imported account is missing from /top-accounts entirely: ${grouped.slice(0, 200)}`
+  );
+
+  // 0 of 0 is not 0%, and its complement is not 100%. This page told a brand-new
+  // workspace it had a "100% opportunity gap" over zero qualified accounts.
+  await A.page.goto(`${BASE}/sixsense-analytics`, { waitUntil: "domcontentloaded" });
+  await A.page.waitForTimeout(3500);
+  const signals = (await A.page.locator("body").innerText()).replace(/\s+/g, " ");
+  assert(
+    !/100% opportunity gap/i.test(signals),
+    "a workspace with no qualified accounts was told it had a 100% opportunity gap"
+  );
+});
+
 // ── 3. they write something private ─────────────────────────────────────────
 await step("what they write is theirs", async () => {
   await trpc(A.page, "calls.create", { title: PRIVATE });
