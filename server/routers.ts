@@ -315,12 +315,20 @@ export const appRouter = router({
         // Get the new user ID
         const newUserId = result[0].insertId;
         
+        // Only an invite-only signup is awaiting anything.
+        //
+        // A self-serve signup is already approved, is already an admin, and is already
+        // alone in a brand-new organization — so mailing the incumbent operator a
+        // one-click DENY link for it hands them a button that revokes a different
+        // customer's account, on a queue with nothing in it. They are told a new
+        // workspace exists, which is the part they actually want to know.
+        if (!selfServe) {
         // Send notification to admin for approval with one-click links
         try {
           // Generate one-click approval links
           const baseUrl = process.env.VITE_APP_URL || `http://localhost:${process.env.PORT || 3333}`;
           const { approveUrl, denyUrl } = getApprovalLinks(newUserId, baseUrl);
-          
+
           await notifyOwner({
             title: `🔔 New User Registration: ${input.name}`,
             content: `A new user has registered and is awaiting approval.
@@ -346,6 +354,21 @@ Or go to the Admin Panel: /admin/approval`
           console.error("Failed to send admin notification:", notifyError);
           // Don't fail the signup if notification fails
         }
+        } else {
+          try {
+            await notifyOwner({
+              title: `🎉 New workspace: ${input.name}`,
+              content: `A new organization signed up and is active — no approval needed.
+
+**Name:** ${input.name}
+**Email:** ${input.email}
+**Organization:** ${orgId}
+**Registered:** ${new Date().toISOString()}`,
+            });
+          } catch (notifyError) {
+            console.error("Failed to send new-workspace notification:", notifyError);
+          }
+        }
 
         // The id is what lets the client request a verification code for the account it
         // just created. Without it the whole emailVerification router was unreachable —
@@ -353,7 +376,13 @@ Or go to the Admin Panel: /admin/approval`
         //
         // Safe to return: it identifies an account that is not approved and cannot log
         // in, and possessing it proves nothing without the emailed code.
-        return { success: true, userId: Number(newUserId) };
+        //
+        // `needsApproval` is what stops the last screen of signup from lying. The server
+        // decides the mode; the client had no way to know it, so a self-serve customer —
+        // approved, admin, alone in their own workspace — was shown "Account Pending
+        // Approval. You'll receive an email once your account is approved." They would
+        // wait for an approval that had already happened and an email no one would send.
+        return { success: true, userId: Number(newUserId), needsApproval: !selfServe };
       }),
     
     // Email/Password Login

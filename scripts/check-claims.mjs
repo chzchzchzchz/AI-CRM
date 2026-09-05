@@ -1018,7 +1018,50 @@ function walk(dir, exts, acc = []) {
   }
 }
 
-/* --------------------------------------------------------------- 19. report */
+/* ------------------------------------- 19. the two-customer walk is actually run */
+/**
+ * The README says two customers signing up, inviting colleagues and staying isolated
+ * "is verified in a browser, not just in tests".
+ *
+ * That sentence was in the README before anything walked it. Every other tenancy check
+ * reads source: `pnpm tenancy` counts unscoped queries, rule 15 pins the count. None of
+ * them can tell you whether a person can actually complete the journey, and walking it
+ * by hand immediately found two things source-reading cannot see — signup's last screen
+ * telling a self-serve customer to wait for an approval the server had already granted,
+ * and that signup mailing the incumbent operator a one-click DENY link for the new
+ * customer's own admin account.
+ *
+ * So the claim needs the walk to exist AND to run. A script nobody invokes is the same
+ * as no script, and it is the easier of the two to end up with.
+ */
+{
+  const script = path.join(ROOT, "scripts/tenancy-e2e.mjs");
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
+  const verify = pkg.scripts?.verify ?? "";
+  const claimed = /verified in a browser/i.test(fs.readFileSync(path.join(ROOT, "README.md"), "utf8"));
+
+  const problems = [];
+  if (!fs.existsSync(script)) problems.push("scripts/tenancy-e2e.mjs does not exist");
+  if (!pkg.scripts?.["tenancy:e2e"]) problems.push("package.json has no tenancy:e2e script");
+  if (!verify.includes("tenancy:e2e")) problems.push("pnpm verify does not run tenancy:e2e");
+
+  if (!claimed) {
+    // The README stopped making the claim. Nothing to enforce — but say so, rather than
+    // passing silently and leaving a rule that guards nothing.
+    ok("two-customer walk (README no longer claims it)");
+  } else if (problems.length) {
+    fail(
+      "two-customer walk is actually run",
+      problems.join("\n    ") +
+        "\n    The README claims this journey is verified in a browser. Either it runs on" +
+        "\n    every build or the README must stop saying so."
+    );
+  } else {
+    ok("two-customer walk is actually run");
+  }
+}
+
+/* --------------------------------------------------------------- 20. report */
 for (const c of checks) console.log(`  ✓ ${c}`);
 for (const f of failures) console.log(`  ✘ ${f.rule}\n    ${f.detail}`);
 

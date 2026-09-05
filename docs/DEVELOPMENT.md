@@ -32,12 +32,13 @@ takes a few minutes. The pieces, if you want to run one on its own:
 |---|---|
 | `pnpm check` | typechecks **both** TS projects (server and client are separate configs) |
 | `pnpm lint` | rules-of-hooks only — deliberately narrow, so it's never noise |
-| `pnpm test` | vitest, 618 tests |
+| `pnpm test` | vitest, 622 tests |
 | `pnpm inventory` | regenerates `docs/CAPABILITIES.md` |
 | `pnpm check:claims` | asserts the docs' factual claims against the code and the seed data |
 | `pnpm build` | client + server bundles |
 | `pnpm gate` | walks every route in a real browser at desktop and mobile |
 | `pnpm flows` | uses the app: filters a list, opens a record, searches, walks the nav |
+| `pnpm tenancy:e2e` | signs two customers up, invites a colleague, asserts neither can read the other's workspace |
 | `pnpm audit` | must report zero advisories |
 
 [`QUALITY-GATE.md`](QUALITY-GATE.md) explains what each rule catches and names the defect that

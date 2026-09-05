@@ -17,6 +17,20 @@ import path from "node:path";
  * approval nobody is watching.
  */
 
+/** Everything notifyOwner was asked to send, so the approve/deny links can be inspected. */
+const notified: { title: string; content: string }[] = [];
+
+vi.mock("./_core/notification", async importOriginal => {
+  const actual = await importOriginal<typeof import("./_core/notification")>();
+  return {
+    ...actual,
+    notifyOwner: async (msg: { title: string; content: string }) => {
+      notified.push(msg);
+      return true;
+    },
+  };
+});
+
 const DB_PATH = path.join(process.cwd(), "onboarding-test-db.json");
 
 function freshStore() {
@@ -34,6 +48,7 @@ beforeEach(() => {
   process.env.DEMO_DB_PATH = DB_PATH;
   process.env.DEMO_MODE = "true";
   freshStore();
+  notified.length = 0;
   vi.resetModules();
 });
 
@@ -67,6 +82,19 @@ describe("signup — invite-only (the default, and what every existing install d
     await signUp("Dana", "dana@example.com");
     expect(store().organizations).toHaveLength(0);
   });
+
+  it("tells the client an approval really is pending", async () => {
+    const res = await signUp("Dana", "dana@example.com");
+    expect(res.needsApproval).toBe(true);
+  });
+
+  it("mails the operator the one-click approve and deny links", async () => {
+    await signUp("Dana", "dana@example.com");
+    // In this mode there genuinely is a decision to make, and the links are how it
+    // gets made. The next test is about the mode where there is not.
+    expect(notified.some(n => /APPROVE USER/.test(n.content))).toBe(true);
+    expect(notified.some(n => /DENY USER/.test(n.content))).toBe(true);
+  });
 });
 
 describe("signup — self-serve (what selling to more than one customer means)", () => {
@@ -86,6 +114,27 @@ describe("signup — self-serve (what selling to more than one customer means)",
     // customer. Waiting for an admin would mean waiting for themselves.
     expect(user.isApproved).toBe(true);
     expect(user.role).toBe("admin");
+  });
+
+  it("never mails anyone a DENY link for a customer's own admin account", async () => {
+    // A self-serve signup is approved, is an admin, and is alone in a brand-new
+    // organization. Sending the incumbent operator a one-click DENY link for it hands
+    // them a button that revokes a different customer's account — on an approval queue
+    // that has nothing in it. They are told the workspace exists; there is nothing to
+    // decide.
+    await signUp("Dana", "dana@example.com");
+    expect(notified.some(n => /DENY USER/.test(n.content))).toBe(false);
+    expect(notified.some(n => /APPROVE USER/.test(n.content))).toBe(false);
+    expect(notified.some(n => /New workspace/i.test(n.title))).toBe(true);
+  });
+
+  it("tells the client there is nothing to wait for", async () => {
+    // The last screen of signup said "Account Pending Approval. You'll receive an email
+    // once your account is approved" to this person — approved, admin, alone in a
+    // workspace that was already theirs. The client had no way to know the mode, so it
+    // guessed the wrong one every time. This flag is how it stops guessing.
+    const res = await signUp("Dana", "dana@example.com");
+    expect(res.needsApproval).toBe(false);
   });
 
   it("puts a SECOND customer in a DIFFERENT organization", async () => {

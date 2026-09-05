@@ -76,6 +76,14 @@ jobs:
       - name: Flow gate
         run: pnpm flows
 
+      # The flows above run as one signed-in user in one workspace, which is the shape
+      # every test in this repo had. This one signs two customers up, has one invite a
+      # colleague, and asserts each can only read their own workspace — the thing being
+      # sold, walked the way a customer walks it. It runs with SIGNUP_MODE=self-serve
+      # against its own database file, so it touches nothing else here.
+      - name: Tenancy end to end
+        run: pnpm tenancy:e2e
+
       # Live connector check. With no credentials every connector reports UNVERIFIED
       # and this passes — the app is meant to run without any of them. Add a vendor
       # key as a repository secret below and that connector is exercised against the
