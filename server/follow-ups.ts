@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { router, protectedProcedure } from "./_core/trpc";
+import { affectedRows } from "./_core/affected-rows";
 import { followUps, type FollowUp } from "../drizzle/schema";
 import { getDb, getAccountById } from "./db";
 
@@ -207,10 +208,16 @@ export const followUpsRouter = router({
       if (!db) throw new Error("Database not available");
       // Scoped to the caller: an id alone must never be enough to close someone
       // else's commitment.
-      await db
+      //
+      // The filter was right and the ANSWER was not: this returned { success: true }
+      // whether or not it matched, so an attempt on someone else's follow-up — the exact
+      // case the filter exists to stop — came back as done, and the UI struck it off.
+      // A refused write has to read as refused.
+      const done = await db
         .update(followUps)
         .set({ status: "done", completedAt: new Date() })
         .where(and(eq(followUps.orgId, ctx.orgId), eq(followUps.id, input.id), eq(followUps.userId, ctx.user.id)));
+      if (affectedRows(done) === 0) throw new Error("That follow-up is not yours to complete.");
       return { success: true };
     }),
 
@@ -219,10 +226,11 @@ export const followUpsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      await db
+      const reopened = await db
         .update(followUps)
         .set({ status: "open", completedAt: null })
         .where(and(eq(followUps.orgId, ctx.orgId), eq(followUps.id, input.id), eq(followUps.userId, ctx.user.id)));
+      if (affectedRows(reopened) === 0) throw new Error("That follow-up is not yours to reopen.");
       return { success: true };
     }),
 
@@ -245,8 +253,9 @@ export const followUpsRouter = router({
       // weeks overdue by "7 days" should give a week, not a date still in the past.
       const next = snoozeTarget(input.days);
 
-      await db.update(followUps).set({ dueDate: next })
+      const snoozed = await db.update(followUps).set({ dueDate: next })
         .where(and(eq(followUps.orgId, ctx.orgId), eq(followUps.id, input.id)));
+      if (affectedRows(snoozed) === 0) throw new Error("That follow-up is not yours to snooze.");
       return { success: true, dueDate: next.toISOString() };
     }),
 
@@ -255,9 +264,10 @@ export const followUpsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      await db
+      const removed = await db
         .delete(followUps)
         .where(and(eq(followUps.orgId, ctx.orgId), eq(followUps.id, input.id), eq(followUps.userId, ctx.user.id)));
+      if (affectedRows(removed) === 0) throw new Error("That follow-up is not yours to delete.");
       return { success: true };
     }),
 });
