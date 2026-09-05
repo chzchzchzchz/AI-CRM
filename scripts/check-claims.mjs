@@ -1061,7 +1061,48 @@ function walk(dir, exts, acc = []) {
   }
 }
 
-/* --------------------------------------------------------------- 20. report */
+/* ------------------------------------------------- 20. the flow count is real */
+/**
+ * docs/QUALITY-GATE.md names how many flow checks there are. It said "Four flows" over
+ * a table of five, and by the time anyone counted there were seven.
+ *
+ * A number in prose that nobody recomputes is a number that drifts, and the drift is
+ * invisible precisely because the sentence still reads fine. This is the same shape as
+ * rule 13 (README headline stats) and rule 15 (the tenancy count): if a document states
+ * a figure about the code, the code decides what it is.
+ */
+{
+  const WORDS = {
+    one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8,
+    nine: 9, ten: 10, eleven: 11, twelve: 12,
+  };
+
+  const script = fs.readFileSync(path.join(ROOT, "scripts/flow-gate.mjs"), "utf8");
+  // Comments are blanked first: this file's own prose about the rule would otherwise
+  // count as a flow, which is the bug rule 1 of this script was written to avoid.
+  const actual = (stripComments(script).match(/await flow\(/g) || []).length;
+
+  const doc = fs.readFileSync(path.join(ROOT, "docs/QUALITY-GATE.md"), "utf8");
+  const claim = doc.match(/^(\w+) flows,/im);
+
+  if (!claim) {
+    fail("the flow count is real", "docs/QUALITY-GATE.md no longer states a flow count");
+  } else {
+    const stated = WORDS[claim[1].toLowerCase()] ?? Number(claim[1]);
+    if (stated !== actual) {
+      fail(
+        "the flow count is real",
+        `docs/QUALITY-GATE.md says "${claim[1]} flows"; flow-gate.mjs has ${actual}.` +
+          "\n    Update the sentence and the table under it — a flow with no row is a" +
+          "\n    check nobody knows runs."
+      );
+    } else {
+      ok(`the flow count is real (${actual})`);
+    }
+  }
+}
+
+/* --------------------------------------------------------------- 21. report */
 for (const c of checks) console.log(`  ✓ ${c}`);
 for (const f of failures) console.log(`  ✘ ${f.rule}\n    ${f.detail}`);
 

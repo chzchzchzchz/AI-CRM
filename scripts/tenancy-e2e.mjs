@@ -211,6 +211,32 @@ await step("their workspace starts empty rather than holding someone else's data
   assert(calls.length === 0, `a new workspace already had ${calls.length} calls in it`);
 });
 
+// ── 2b. and the empty workspace says what it is ─────────────────────────────
+await step("an empty workspace says so, instead of blaming the filters", async () => {
+  // What a paying customer actually met on their first screen: "No accounts found ·
+  // Try adjusting your filters", and the same sentence again on contacts. Every word
+  // true about a filtered search, said to someone who has never imported a row — it
+  // sends them to fix a filter that is not the problem, and no screen reachable from
+  // there says what is.
+  for (const route of ["/accounts", "/contacts"]) {
+    await A.page.goto(`${BASE}${route}`, { waitUntil: "domcontentloaded" });
+    await A.page
+      .waitForSelector("[data-route-loading]", { state: "detached", timeout: 15_000 })
+      .catch(() => {});
+    await A.page.waitForTimeout(3000);
+    const screen = (await A.page.locator("body").innerText()).replace(/\s+/g, " ");
+    assert(
+      !/Try adjusting your filters/i.test(screen),
+      `${route} told a brand-new workspace to adjust its filters`
+    );
+    // And it must offer a way out, not just a nicer dead end.
+    assert(
+      /Connect a tool/i.test(screen) && /Import a CSV/i.test(screen),
+      `${route} said the workspace was empty but offered no way to fill it`
+    );
+  }
+});
+
 // ── 3. they write something private ─────────────────────────────────────────
 await step("what they write is theirs", async () => {
   await trpc(A.page, "calls.create", { title: PRIVATE });

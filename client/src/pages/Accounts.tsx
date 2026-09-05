@@ -20,6 +20,7 @@ import { useRep } from"@/contexts/RepContext";
 import { RepSwitcher } from"@/components/RepSwitcher";
 import { CompanyLogo } from"@/components/ui/company-logo";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
+import { EmptyWorkspace } from "@/components/ui/empty-workspace";
 import { DataErrorBanner } from "@/components/ui/data-error-banner";
 
 type SortField ="name" |"intentScore" |"employees" |"industry";
@@ -239,10 +240,27 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     return score >= 40 && score < 70;
   }).length;
 
+  // "all" is the absence of an intent filter, not one of them. Treating it as a filter
+  // made the DEFAULT view report "Reset intent filter · active" under a count nothing was
+  // filtering — on a workspace with no data that reads as the reason there are no rows,
+  // so a rep clicks reset, nothing changes, and the app looks broken. The tile stays
+  // selected (it is a segmented control, one segment is always chosen); what it says
+  // about the state of the filter has to be true.
+  const intentFiltering = intentFilter !== "all";
+
   const stats: { key: string; label: string; value: number; Icon: any; text: string; hint: string; filter: string }[] = [
     { key:"hot", label:"Hot leads", value: hotCount, Icon: Flame, text:"text-critical", hint:"Intent 70+", filter:"hot" },
     { key:"warm", label:"Warm leads", value: warmCount, Icon: TrendingUp, text:"text-caution", hint:"Intent 40–69", filter:"warm" },
-    { key:"all", label:"Total accounts", value: filteredAccounts.length, Icon: Building2, text:"text-foreground", hint:"Reset intent filter", filter:"all" },
+    {
+      key:"all",
+      label:"Total accounts",
+      value: filteredAccounts.length,
+      Icon: Building2,
+      text:"text-foreground",
+      // Only offer the reset when there is something to reset.
+      hint: intentFiltering ? "Reset intent filter" : "No intent filter",
+      filter:"all",
+    },
   ];
 
   return (
@@ -299,7 +317,11 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                   {s.label}
                 </div>
                 <div className={`mt-1.5 text-2xl font-semibold tabular-nums ${s.text}`}>{s.value}</div>
-                <div className="mt-0.5 text-2xs text-ink-subtle">{s.hint}{active ?" · active" :""}</div>
+                {/* "active" describes a filter that is narrowing the list. The "all"
+                    segment narrows nothing, so it never earns the badge. */}
+                <div className="mt-0.5 text-2xs text-ink-subtle">
+                  {s.hint}{active && s.filter !== "all" ? " · active" : ""}
+                </div>
               </button>
             );
           })}
@@ -419,6 +441,11 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
         {/* Accounts List */}
         {error ? (
           <DataUnavailable what="accounts" detail={error} onRetry={() => refetch()} />
+        ) : !isLoading && (accounts?.length ?? 0) === 0 ? (
+          /* Nothing has ever been imported into this workspace, which is a different
+             answer from "your filters excluded everything" and needs a different one.
+             Checked against the UNFILTERED list, so it cannot be reached by narrowing. */
+          <EmptyWorkspace what="accounts" icon={Building2} />
         ) : filteredAccounts.length === 0 ? (
           <Card>
             <CardContent className="py-16 text-center">
