@@ -28,7 +28,8 @@ Sign in with `demo@ai-crm.com` / `DemoPass123!`. No database, no keys, no signup
 | AI features with no key set | Fall back to a local Ollama model; with nothing reachable they say so plainly |
 | Auth, 2FA, audit logging, rate limiting | Implemented and tested. Not independently audited |
 | Multi-tenancy | Org boundary on every tenant table, enforced by a build check. `SIGNUP_MODE=self-serve` gives each new customer their own workspace, and admins invite colleagues into it from `/admin`. Not yet run with two paying customers |
-| Billing, onboarding | Not built. Not pretending to be |
+| Getting your own data in | `/import` takes pasted rows or a CSV/TSV/JSON file straight into your workspace, no connector needed. The Salesforce and 6sense syncs need credentials in the deployment's environment; the CSV Processor builds a file for import into *Salesforce*, not into this app |
+| Billing, metering, plan enforcement | Not built. Nothing counts seats, limits usage or takes money |
 
 `pnpm doctor` reads your `.env` and tells you which integrations are actually ready, which are
 half-configured, and which are set but wrong — a placeholder value, a quoted string, a webhook

@@ -9,13 +9,13 @@ Every backend capability, and whether anything in the product actually reaches i
 | | Count |
 |---|---|
 | Procedures total | 171 |
-| Reachable from the UI | 125 |
-| External by design (webhooks, probes, connector actions) | 43 |
+| Reachable from the UI | 126 |
+| External by design (webhooks, probes, connector actions) | 42 |
 | **Built but not routed anywhere** | **0** |
-| ↳ exempted from that zero (maps in `server/inventory.ts`, plus the `integrations.*` rule) | 46 |
+| ↳ exempted from that zero (maps in `server/inventory.ts`, plus the `integrations.*` rule) | 45 |
 | ↳ of those, called only by unreachable client code | 0 |
 | Superseded by a live capability (kept, not a to-do) | 3 |
-| App routes | 35 |
+| App routes | 36 |
 | Client modules unreachable from `main.tsx` | 9 |
 | Integration connectors | 24 |
 
@@ -79,6 +79,7 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `auth.loginVerify` | `pages/Login.tsx` |
 | `auth.requestAccess` | `pages/RequestAccess.tsx` |
 | `bulkInsights.generateForTopLeads` | `pages/BulkInsights.tsx` |
+| `clayImport.importRawData` | `pages/ImportAccounts.tsx` |
 | `csvProcessor.getTemplateInfo` | `pages/CsvProcessor.tsx` |
 | `csvProcessor.analyzeAndMap` | `pages/CsvProcessor.tsx` |
 | `csvProcessor.processData` | `pages/CsvProcessor.tsx` |
@@ -190,7 +191,6 @@ Not called by our UI, and should not be — these are entry points for other sys
 | `clay.receiveAccount` | inbound webhook (Clay pushes to us) |
 | `clay.receiveContact` | inbound webhook (Clay pushes to us) |
 | `clay.ping` | connectivity probe for Clay setup |
-| `clayImport.importRawData` | bulk import — driven by a Clay export or automation |
 | `clayImport.importAccounts` | bulk import — driven by a Clay export or automation |
 | `clayImport.getImportStats` | import telemetry for the automation that ran it |
 | `clayPull.triggerEnrichment` | connector action — Clay enrichment run |
@@ -259,6 +259,7 @@ Not called by our UI, and should not be — these are entry points for other sys
 | `/salesforce-sync` | `SalesforceSync` |
 | `/sixsense-analytics` | `SixsenseAnalytics` |
 | `/csv-processor` | `CsvProcessor` |
+| `/import` | `ImportAccounts` |
 | `/data-hub` | `DataHub` |
 | `/content-studio` | `ContentStudio` |
 | `/transcript-analyzer` | `TranscriptAnalyzer` |

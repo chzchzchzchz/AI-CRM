@@ -45,24 +45,24 @@ export function EmptyWorkspace({
           expected on a new workspace, and it isn't a filter you need to change.
         </p>
 
-        <div className="mx-auto mt-6 grid max-w-2xl gap-2 sm:grid-cols-3">
+        {/* Only routes that actually put accounts in THIS workspace.
+            /csv-processor was the obvious-looking third option and belongs nowhere near
+            here: it builds a file to import into Salesforce or HubSpot and writes nothing
+            back, so a customer would have mapped every column, downloaded a file, and
+            returned to the same empty page — this component's own defect, reintroduced by
+            the component meant to fix it. */}
+        <div className="mx-auto mt-6 grid max-w-lg gap-2 sm:grid-cols-2">
+          <Route
+            to="/import"
+            icon={<Upload className="h-4 w-4" />}
+            title="Import your accounts"
+            detail="Paste rows or drop a CSV — nothing to set up"
+          />
           <Route
             to="/integrations"
             icon={<Plug className="h-4 w-4" />}
             title="Connect a tool"
             detail="Salesforce, 6sense, Gong and the rest"
-          />
-          <Route
-            to="/csv-processor"
-            icon={<Upload className="h-4 w-4" />}
-            title="Import a CSV"
-            detail="Map your columns, no setup needed"
-          />
-          <Route
-            to="/data-hub"
-            icon={<Database className="h-4 w-4" />}
-            title="Data Hub"
-            detail="Documents and everything else"
           />
         </div>
       </CardContent>

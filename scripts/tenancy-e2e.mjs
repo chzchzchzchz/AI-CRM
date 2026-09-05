@@ -177,6 +177,7 @@ const acme = `acme-${NONCE}@example.com`;
 const globex = `globex-${NONCE}@example.com`;
 const teammate = `teammate-${NONCE}@example.com`;
 const PRIVATE = `ACME-PRIVATE-${NONCE}`;
+const IMPORTED_A = `AcmeImported${NONCE}`;
 
 const A = await person();
 const B = await person();
@@ -229,12 +230,49 @@ await step("an empty workspace says so, instead of blaming the filters", async (
       !/Try adjusting your filters/i.test(screen),
       `${route} told a brand-new workspace to adjust its filters`
     );
-    // And it must offer a way out, not just a nicer dead end.
+    // And it must offer a way out, not just a nicer dead end. The import route is
+    // walked for real in the next step — a link that goes nowhere useful would be this
+    // component's own defect wearing its fix.
     assert(
-      /Connect a tool/i.test(screen) && /Import a CSV/i.test(screen),
+      /Connect a tool/i.test(screen) && /Import your accounts/i.test(screen),
       `${route} said the workspace was empty but offered no way to fill it`
     );
   }
+});
+
+// ── 2c. and the way out of it actually works ────────────────────────────────
+await step("the empty state's import link fills the workspace it came from", async () => {
+  // The link is the promise. /csv-processor looked like the obvious place to send
+  // someone and builds a file for Salesforce or HubSpot while writing nothing back —
+  // they would have mapped every column and returned to the same empty page. So the
+  // route this offers is walked: paste rows, import, and see them in the list.
+  await A.page.goto(`${BASE}/accounts`, { waitUntil: "domcontentloaded" });
+  await A.page.waitForTimeout(2500);
+  await A.page.getByRole("link", { name: /Import your accounts/i }).first().click();
+  await A.page.waitForTimeout(2500);
+  assert(A.page.url().includes("/import"), `the import link went to ${A.page.url()}`);
+
+  await A.page.locator("textarea").first().fill(
+    `name,domain\n${IMPORTED_A},acme-${NONCE}.example\nSecond Co,second-${NONCE}.example`
+  );
+  await A.page.getByRole("button", { name: /^Import/i }).first().click();
+  await A.page.waitForTimeout(3500);
+
+  const said = (await A.page.locator("body").innerText()).replace(/\s+/g, " ");
+  assert(
+    /2 accounts in your workspace/i.test(said),
+    `the import did not report two accounts landing: ${said.slice(said.indexOf("Import"), 300)}`
+  );
+
+  // And the claim has to be true on the page that lists them, not just in the toast.
+  await A.page.goto(`${BASE}/accounts`, { waitUntil: "domcontentloaded" });
+  await A.page.waitForTimeout(3500);
+  const list = (await A.page.locator("body").innerText()).replace(/\s+/g, " ");
+  assert(list.includes(IMPORTED_A), `${IMPORTED_A} was reported imported but is not listed`);
+  assert(
+    !/This workspace is empty/i.test(list),
+    "the workspace still reported itself empty after a successful import"
+  );
 });
 
 // ── 3. they write something private ─────────────────────────────────────────
@@ -257,6 +295,15 @@ await step("a second customer cannot see the first one's data", async () => {
     !theirs.some(c => c.title === PRIVATE),
     `a different customer could read ${PRIVATE} — tenants are not isolated`
   );
+
+  // Import is a write path of its own, and a new one. Its own scoping is asserted here
+  // rather than assumed from the call above.
+  const theirAccounts = await trpc(B.page, "accounts.list");
+  assert(
+    !theirAccounts.some(a => a.name === IMPORTED_A),
+    `a different customer could read the account ${IMPORTED_A} — import is not org-scoped`
+  );
+  assert(theirAccounts.length === 0, `a new workspace held ${theirAccounts.length} accounts`);
 });
 
 // ── 5. an admin invites a colleague, through the UI ─────────────────────────

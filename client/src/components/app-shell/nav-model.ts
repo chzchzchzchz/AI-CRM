@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Target,
   TrendingUp,
+  Upload,
   Users,
   Workflow,
 } from "lucide-react";
@@ -41,7 +42,7 @@ export type NavSection = {
 };
 
 /**
- * Twenty-five destinations is too many for a flat list, so they are grouped by
+ * Twenty-six destinations is too many for a flat list, so they are grouped by
  * the question the user is answering — who to work, what is happening, what to
  * send, where the data comes from — rather than by which team built them.
  */
@@ -85,6 +86,7 @@ export const NAV_SECTIONS: NavSection[] = [
     id: "data",
     label: "Data",
     items: [
+      { path: "/import", label: "Import Accounts", icon: Upload },
       { path: "/data-hub", label: "Data Hub", icon: Database },
       { path: "/lead-processor", label: "Lead Processor", icon: Users },
       { path: "/csv-processor", label: "CSV Processor", icon: FileSpreadsheet },
