@@ -6,7 +6,7 @@ A sales rep opens this in the morning and sees which accounts moved, why they mo
 do about it — with the evidence for every claim attached. It sits on top of a CRM rather than
 replacing one.
 
-`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 576 tests, ~54k lines,
+`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 584 tests, ~54k lines,
 runs with zero API keys.
 
 ```bash
@@ -27,7 +27,7 @@ Sign in with `demo@ai-crm.com` / `DemoPass123!`. No database, no keys, no signup
 | 6sense, Gong, Salesforce, Clay, + 20 other connectors | Real HTTP clients against documented APIs, exercised by unit tests with mocked transports. Not verified against live paid accounts — but `pnpm smoke` checks 16 of the 24 for real the moment a key exists, on every run |
 | AI features with no key set | Fall back to a local Ollama model; with nothing reachable they say so plainly |
 | Auth, 2FA, audit logging, rate limiting | Implemented and tested. Not independently audited |
-| Multi-tenancy | Org boundary on every tenant table, enforced by a build check that fails if a query loses its org filter. Not yet run with two real customers |
+| Multi-tenancy | Org boundary on every tenant table, enforced by a build check. `SIGNUP_MODE=self-serve` gives each new customer their own workspace; the default stays single-workspace. Not yet run with two paying customers |
 | Billing, onboarding | Not built. Not pretending to be |
 
 `pnpm doctor` reads your `.env` and tells you which integrations are actually ready, which are
@@ -161,8 +161,14 @@ data. See [`SECURITY.md`](SECURITY.md).
 - **Multi-tenancy is new and unproven at scale.** Every tenant table carries an `orgId`,
   `ctx.orgId` comes from the session and never from input, inbound webhooks resolve their
   org from a per-organization credential, and `pnpm check:claims` fails the build if any
-  query on a tenant table loses its org filter. It has not yet run a real deployment with
-  two paying customers on it — the isolation is tested and enforced, not battle-worn.
+  query on a tenant table loses its org filter. With `SIGNUP_MODE=self-serve` each signup
+  creates its own organization and its first user is that org's admin; the default
+  (`invite-only`) keeps the single-workspace behaviour every existing install has. Two
+  customers signing up and staying isolated is verified in a browser, not just in tests.
+  It has not run a deployment with two *paying* customers — tested and enforced, not
+  battle-worn.
+- **No billing, metering or plan enforcement.** Nothing counts seats, limits usage or
+  takes money. Selling means bolting that on, or invoicing out of band.
 - **The AI quality depends entirely on the model you point it at.** The grounding work constrains
   what a model can claim; it can't make a weak local model insightful.
 - **No accessibility audit.** The design targets WCAG 2.1 AA and the gate checks contrast and

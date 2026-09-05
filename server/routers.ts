@@ -42,6 +42,8 @@ import { notifyOwner } from "./_core/notification";
 import { getApprovalLinks } from "./admin-approval-api";
 import { hotLeadsRouter } from "./hot-leads-router";
 import { recordFailedLogin, clearLoginAttempts, getLoginLockout, validatePasswordComplexity, logSecurityEvent, getClientIP } from "./_core/security";
+import { signupMode, createOrganization } from "./_core/onboarding";
+import { DEFAULT_ORG_ID } from "./_core/tenancy";
 import { twoFARouter } from "./twofa-router";
 import {
   createChallenge,
@@ -278,15 +280,34 @@ export const appRouter = router({
         // Create user with unique openId
         const openId = `email_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-        // tenancy-exempt: signup creates the user row; the org column takes its default and the admin path sets it
+        // Which organization does this person belong to?
+        //
+        // Until now: none, implicitly. The insert omitted orgId, so every signup in every
+        // deployment took the column default and landed in org 1 — including the second
+        // customer of a product whose README said tenants were isolated. The boundary was
+        // real and nothing ever put anyone on the far side of it.
+        //
+        // invite-only (default) keeps exactly the old behaviour: join the existing org,
+        // wait for an admin. self-serve creates a new organization and makes this person
+        // its admin, which is what a new customer signing up actually is.
+        const mode = signupMode();
+        const selfServe = mode === "self-serve";
+        const orgId = selfServe
+          ? await createOrganization(db, `${input.name}'s workspace`)
+          : DEFAULT_ORG_ID;
+
+        // tenancy-exempt: signup creates the user row; the org is resolved immediately above
         const result = await db.insert(users).values({
+          orgId,
           openId,
           email: normalizedEmail,
           name: input.name,
           passwordHash,
-          loginMethod: "email",
-          isApproved: false, // Require admin approval
-          role: "user",
+          // The first member of a brand-new organization has no one to approve them —
+          // they ARE the customer. Waiting for an admin would mean waiting for
+          // themselves, which is how a self-serve signup becomes a dead end.
+          isApproved: selfServe,
+          role: selfServe ? "admin" : "user",
         });
         
         // Get the new user ID

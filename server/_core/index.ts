@@ -9,6 +9,8 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { securityHeaders, rateLimiter, corsMiddleware } from "./security";
+import { ensureDefaultOrganization } from "./onboarding";
+import { getDb } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -69,6 +71,13 @@ async function startServer() {
   } else {
     serveStatic(app);
   }
+
+  // Org 1 is referenced by every existing row in every existing deployment — it is the
+  // column default on all 34 tenant tables — and until now it existed only as an integer.
+  // Nothing broke because nothing read it; anything that lists organizations or names the
+  // workspace you are in would have found the incumbent tenant to be the missing one.
+  // Idempotent, and never blocks boot.
+  await ensureDefaultOrganization(await getDb());
 
   const preferredPort = parseInt(process.env.PORT || "3000");
   // In production (Docker / managed hosts like Render/Railway/Fly) the platform
