@@ -394,6 +394,14 @@ function walk(dir, exts, acc = []) {
  * opened the obviously-named file, edited it, and fixed nothing. A dead file with
  * the right name is worse than no file, because it answers the question you were
  * about to ask.
+ *
+ * .cjs and .mjs are walked too, which they were not. server/mcp-server.cjs was the
+ * PRE-FIX copy of the MCP server, sitting beside the fixed one: it still pointed at
+ * http://localhost:3000/trpc — the wrong port and the wrong path, named in the .ts
+ * file's own header as the thing that was fixed — and still called account.list,
+ * account.getById, account.search and insights.getSummary, none of which exist. Its
+ * own docstring said "Run: node server/mcp-server.cjs". Scanning only .ts made a
+ * whole second entry point invisible to the rule written to find exactly this.
  */
 {
   const entry = new Set();
@@ -417,7 +425,7 @@ function walk(dir, exts, acc = []) {
       if (target) queue.push(path.relative(ROOT, target));
     }
   }
-  const orphans = walk(path.join(ROOT, "server"), [".ts"])
+  const orphans = walk(path.join(ROOT, "server"), [".ts", ".cjs", ".mjs"])
     .map(f => path.relative(ROOT, f))
     .filter(rel => !rel.endsWith(".test.ts") && !rel.includes("_core") && !entry.has(rel))
     // Entry points, tooling and test helpers are run directly or imported by tests,
