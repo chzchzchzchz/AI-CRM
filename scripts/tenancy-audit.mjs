@@ -148,6 +148,8 @@ export function auditTenancy(root) {
 export function auditTenancyFull(root) {
   const sites = [];
   const exemptions = [];
+  /** Files this audit knows it cannot read. Never silently skipped. */
+  const blind = [];
   const tables = TENANT_TABLES.join("|");
   const touches = new RegExp(
     `\\.(?:from|insert|update|delete)\\s*\\(\\s*(${tables})\\s*[,)]|` +
@@ -169,11 +171,30 @@ export function auditTenancyFull(root) {
     // tenant table this way. A blind spot in the thing that certifies the boundary is
     // worse than no boundary check, because it certifies.
     const aliases = new Map();
-    for (const im of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*["'][^"']*schema["']/g)) {
-      for (const part of im[1].split(",")) {
-        const as = part.match(/([A-Za-z_$][\w$]*)\s+as\s+([A-Za-z_$][\w$]*)/);
-        if (as && TENANT_TABLES.includes(as[1])) aliases.set(as[2], as[1]);
+    // Static `import { X as Y } from "…/schema"` and the dynamic
+    // `const { X as Y } = await import("…/schema")` — both are in use in this codebase,
+    // and only one of them being handled is how the first blind spot happened.
+    const importForms = [
+      /import\s*\{([^}]*)\}\s*from\s*["'][^"']*schema["']/g,
+      /\{([^}]*)\}\s*=\s*await\s+import\(\s*["'][^"']*schema["']\s*\)/g,
+    ];
+    for (const form of importForms) {
+      for (const im of src.matchAll(form)) {
+        for (const part of im[1].split(",")) {
+          const as = part.match(/([A-Za-z_$][\w$]*)\s*:\s*([A-Za-z_$][\w$]*)/) // destructure rename
+            || part.match(/([A-Za-z_$][\w$]*)\s+as\s+([A-Za-z_$][\w$]*)/);      // import rename
+          if (as && TENANT_TABLES.includes(as[1])) aliases.set(as[2], as[1]);
+        }
       }
+    }
+
+    // A namespace import puts the table behind a property access (`schema.accounts`),
+    // which this audit cannot follow. Nothing does it today. Rather than quietly missing
+    // those queries if something starts to — which is precisely how the alias gap came
+    // about — say so and let the count fail, because an audit that cannot see a file must
+    // not certify it.
+    if (/import\s*\*\s*as\s+\w+\s*from\s*["'][^"']*schema["']/.test(src)) {
+      blind.push(rel);
     }
     const names = [...TENANT_TABLES, ...aliases.keys()];
     const localTouches = new RegExp(
@@ -224,5 +245,5 @@ export function auditTenancyFull(root) {
   const byPlace = (a, b) => a.file.localeCompare(b.file) || a.line - b.line;
   sites.sort(byPlace);
   exemptions.sort(byPlace);
-  return { sites, exemptions };
+  return { sites, exemptions, blind };
 }

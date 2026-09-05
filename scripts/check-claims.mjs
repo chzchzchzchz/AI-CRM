@@ -726,7 +726,7 @@ function walk(dir, exts, acc = []) {
   if (!fs.existsSync(statusPath)) {
     fail("tenancy scoping count is real", "shared/tenancy-status.ts missing");
   } else {
-    const { sites, exemptions } = auditTenancyFull(ROOT);
+    const { sites, exemptions, blind } = auditTenancyFull(ROOT);
     const actual = sites.length;
     const statusSrc = fs.readFileSync(statusPath, "utf8");
     const m = statusSrc
@@ -735,7 +735,15 @@ function walk(dir, exts, acc = []) {
       .match(/UNSCOPED_QUERY_SITES\s*(?::\s*number\s*)?=\s*(\d+)/);
     const em = statusSrc.match(/EXEMPT_QUERY_SITES\s*(?::\s*number\s*)?=\s*(\d+)/);
 
-    if (!m) {
+    if (blind.length) {
+      // An audit that cannot read a file must not certify it. A namespace import puts
+      // the table behind a property access this scan cannot follow.
+      fail(
+        "tenancy scoping count is real",
+        `cannot see through a namespace import of the schema in: ${blind.join(", ")} — ` +
+          `import the tables by name so the org filter on each query is checkable`
+      );
+    } else if (!m) {
       fail("tenancy scoping count is real", "could not read UNSCOPED_QUERY_SITES");
     } else if (Number(m[1]) !== actual) {
       const claimed = Number(m[1]);

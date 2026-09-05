@@ -304,4 +304,55 @@ describe("the audit's own blind spots", () => {
 
     fs.rmSync(root, { recursive: true, force: true });
   });
+
+  it("sees through a renamed DYNAMIC import too", async () => {
+    // This codebase uses both forms. Handling only the static one is how the first gap
+    // happened, so the dynamic one is covered before anything relies on it.
+    const { auditTenancyFull } = await import("../scripts/tenancy-audit.mjs");
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "tenancy-"));
+    fs.mkdirSync(path.join(root, "server"));
+    fs.writeFileSync(
+      path.join(root, "server", "dynamic.ts"),
+      [
+        'const { accounts: acct } = await import("../drizzle/schema");',
+        "const a = await db.select().from(acct).where(eq(acct.id, id));",
+      ].join("\n")
+    );
+
+    const { sites } = auditTenancyFull(root);
+    expect(sites).toHaveLength(1);
+    expect(sites[0].table).toBe("accounts");
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("refuses to certify a file it cannot read, instead of skipping it", async () => {
+    // A namespace import puts the table behind a property access this scan cannot
+    // follow. Nothing does that today. The failure mode to avoid is the one that already
+    // happened twice: quietly not seeing a file and reporting zero anyway. An audit that
+    // cannot read something must say so and fail, not certify it.
+    const { auditTenancyFull } = await import("../scripts/tenancy-audit.mjs");
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "tenancy-"));
+    fs.mkdirSync(path.join(root, "server"));
+    fs.writeFileSync(
+      path.join(root, "server", "namespaced.ts"),
+      [
+        'import * as schema from "../drizzle/schema";',
+        "const a = await db.select().from(schema.accounts);",
+      ].join("\n")
+    );
+
+    const { blind } = auditTenancyFull(root);
+    expect(blind).toContain(path.join("server", "namespaced.ts"));
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
 });
