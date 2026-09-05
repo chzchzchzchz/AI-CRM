@@ -7,7 +7,7 @@ import { Upload, Loader2, FileUp, CheckCircle2, AlertCircle } from "lucide-react
 import { toast } from "sonner";
 
 /**
- * Getting a customer's own accounts into their own workspace.
+ * Getting a customer's own data into their own workspace.
  *
  * `SIGNUP_MODE=self-serve` gives every new customer an empty organization, and until this
  * page there was no way to put anything in one. Salesforce and 6sense sync need operator-
@@ -16,32 +16,30 @@ import { toast } from "sonner";
  * returns. So a paying customer could sign up, land on an empty dashboard, and have no
  * route to their own data at all.
  *
- * The server half already existed and was already tested — `clayImport.importRawData`
- * parses pasted CSV/TSV/JSON, maps it onto real account columns, scopes both the lookup
- * and the write to `ctx.orgId`, and reports honest counts. It was listed as
- * automation-only in server/inventory.ts because nothing in the app called it: built,
- * tested and unreachable, the same shape as the email-verification router and
- * `twoFA.verify` before them. This page is the missing screen, not new machinery.
+ * Accounts AND contacts, from the same paste, because that is how a lead list is actually
+ * shaped: one row per person with their company beside them. An accounts-only import left
+ * the contacts page's empty state pointing at something that could not fill it — a
+ * smaller copy of the dead end this page exists to remove.
  *
- * What it will not do is claim more than the import returned. The procedure counts a row
- * with no usable website as an error and skips it — a Clay or Salesforce export whose
- * domain column is named something unexpected fails EVERY row that way — so the result
- * says which number is which instead of totalling them into a success.
+ * What it will not do is claim more than the import returned. A row with no usable
+ * website and no usable email is skipped, and a Clay or Salesforce export whose columns
+ * are named unexpectedly fails EVERY row that way — so the result reports accounts,
+ * contacts and skipped rows separately instead of totalling them into a success.
  */
 export default function ImportAccounts() {
   const [raw, setRaw] = useState("");
   const [result, setResult] = useState<{
     success: boolean;
-    imported: number;
-    updated: number;
-    errors: number;
+    accounts: { imported: number; updated: number };
+    contacts: { imported: number; updated: number };
+    skipped: number;
     total: number;
   } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const utils = trpc.useUtils();
 
-  const importData = trpc.clayImport.importRawData.useMutation({
+  const importData = trpc.dataImport.importRows.useMutation({
     onSuccess: res => {
       setResult(res);
       // The lists this just changed are cached. Without this a customer imports 400
@@ -79,9 +77,10 @@ export default function ImportAccounts() {
               <Upload className="h-6 w-6 text-accent" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold">Import accounts</h1>
+              <h1 className="text-xl font-semibold">Import your data</h1>
               <p className="text-muted-foreground">
-                Bring your own accounts into this workspace — no connector required.
+                Bring your own accounts and contacts into this workspace — no connector
+                required.
               </p>
             </div>
           </div>
@@ -91,13 +90,15 @@ export default function ImportAccounts() {
           <CardHeader>
             <CardTitle className="text-base">Paste rows, or choose a file</CardTitle>
             <CardDescription>
-              CSV, TSV, or JSON — copying straight out of a spreadsheet works. Each row needs
-              a company website or domain; that is what an account is matched on, so rows
-              without one are skipped rather than guessed at. A column named{" "}
-              <code className="text-xs">domain</code>, <code className="text-xs">website</code>{" "}
-              or <code className="text-xs">url</code> is found automatically, as is{" "}
-              <code className="text-xs">name</code> or <code className="text-xs">company</code>.
-              Importing the same list twice updates those accounts instead of duplicating them.
+              CSV, TSV, or JSON — copying straight out of a spreadsheet works. A row with a{" "}
+              <code className="text-xs">website</code> or <code className="text-xs">domain</code>{" "}
+              becomes an account; a row with an <code className="text-xs">email</code> becomes a
+              contact; a lead list with both becomes both, with the person attached to their
+              company. Columns like <code className="text-xs">first name</code>,{" "}
+              <code className="text-xs">job title</code>, <code className="text-xs">company</code>{" "}
+              and <code className="text-xs">mobile</code> are recognised however they're spelled.
+              Rows with neither a website nor an email are skipped rather than guessed at, and
+              importing the same list twice updates those records instead of duplicating them.
             </CardDescription>
           </CardHeader>
 
@@ -123,7 +124,11 @@ export default function ImportAccounts() {
               }}
               rows={12}
               spellCheck={false}
-              placeholder={"name,domain,employees\nAcme Corp,acme.com,1200\nGlobex,globex.io,340"}
+              placeholder={
+                "first name,last name,email,job title,company,website\n" +
+                "Jordan,Okonkwo,jordan@acme.com,VP Engineering,Acme Corp,acme.com\n" +
+                "Priya,Raman,priya@globex.io,Head of Security,Globex,globex.io"
+              }
               className="font-mono text-xs"
               aria-label="Rows to import"
             />
@@ -172,25 +177,28 @@ export default function ImportAccounts() {
 /**
  * What actually happened, in the import's own numbers.
  *
- * `imported + updated` is the only figure that means anything landed. Reporting `total`
- * as the outcome would call an import of 400 rows a success when all 400 were skipped for
- * having no domain — which is exactly what a mis-named column does.
+ * Records written is the only figure that means anything landed. Reporting `total` as the
+ * outcome would call an import of 400 rows a success when all 400 were skipped for having
+ * no matchable column — which is exactly what a mis-named export does.
  */
 function ImportResult({
   success,
-  imported,
-  updated,
-  errors,
+  accounts,
+  contacts,
+  skipped,
   total,
 }: {
   success: boolean;
-  imported: number;
-  updated: number;
-  errors: number;
+  accounts: { imported: number; updated: number };
+  contacts: { imported: number; updated: number };
+  skipped: number;
   total: number;
 }) {
-  const landed = imported + updated;
+  const accountsLanded = accounts.imported + accounts.updated;
+  const contactsLanded = contacts.imported + contacts.updated;
+  const landed = accountsLanded + contactsLanded;
   const nothingLanded = landed === 0;
+  const plural = (n: number, one: string) => `${n.toLocaleString()} ${one}${n === 1 ? "" : "s"}`;
 
   return (
     <div
@@ -208,20 +216,28 @@ function ImportResult({
         )}
         {nothingLanded
           ? "Nothing was imported."
-          : `${landed.toLocaleString()} account${landed === 1 ? "" : "s"} in your workspace.`}
+          : [
+              accountsLanded > 0 ? plural(accountsLanded, "account") : null,
+              contactsLanded > 0 ? plural(contactsLanded, "contact") : null,
+            ]
+              .filter(Boolean)
+              .join(" and ") + " in your workspace."}
       </p>
 
       <p className="mt-1 text-xs text-ink-muted">
-        {imported.toLocaleString()} new · {updated.toLocaleString()} updated ·{" "}
-        {errors.toLocaleString()} skipped · {total.toLocaleString()} rows read
+        Accounts: {accounts.imported.toLocaleString()} new, {accounts.updated.toLocaleString()}{" "}
+        updated · Contacts: {contacts.imported.toLocaleString()} new,{" "}
+        {contacts.updated.toLocaleString()} updated · {skipped.toLocaleString()} rows skipped ·{" "}
+        {total.toLocaleString()} rows read
       </p>
 
-      {errors > 0 ? (
+      {skipped > 0 ? (
         <p className="mt-2 text-xs text-ink-muted">
-          Skipped rows had no usable website or domain. If that is every row, the column
-          holding it is probably named something this doesn't recognise — rename it to{" "}
-          <code>domain</code> and import again. Nothing was written for those rows, so
-          re-importing is safe.
+          {skipped === total
+            ? "No row had a usable website or email, so the columns holding them are probably named something this doesn't recognise. "
+            : "Skipped rows had neither a usable website nor a usable email. "}
+          Rename the column to <code>domain</code> or <code>email</code> and import again —
+          nothing was written for those rows, so re-importing is safe.
         </p>
       ) : null}
     </div>

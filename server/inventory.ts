@@ -301,10 +301,11 @@ const AGGREGATE_API: Record<string, string> = {
  * by a person clicking. Listing them as UI drift is what makes a to-do list untrustworthy.
  */
 const AUTOMATION_BY_DESIGN: Record<string, string> = {
-  // importRawData is no longer here by design: /import calls it, which is the whole
-  // point of that page. Listed as automation-only, it had been built, tested and
-  // unreachable while a self-serve customer had no way to get data into their own
-  // workspace — the exemption was describing the defect rather than a decision.
+  // These two really are automation-only, now that they are not the ONLY way in. The
+  // person-facing path is dataImport.importRows, which /import calls; before it existed
+  // this exemption was describing a defect rather than a decision, since a self-serve
+  // customer had no way to get data into their own workspace at all.
+  "clayImport.importRawData": "bulk import — driven by a Clay export or automation",
   "clayImport.importAccounts": "bulk import — driven by a Clay export or automation",
   "clayImport.getImportStats": "import telemetry for the automation that ran it",
   "clayPull.triggerEnrichment": "connector action — Clay enrichment run",

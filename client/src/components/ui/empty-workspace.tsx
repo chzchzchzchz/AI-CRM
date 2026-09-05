@@ -55,7 +55,7 @@ export function EmptyWorkspace({
           <Route
             to="/import"
             icon={<Upload className="h-4 w-4" />}
-            title="Import your accounts"
+            title="Import your data"
             detail="Paste rows or drop a CSV — nothing to set up"
           />
           <Route

@@ -234,7 +234,7 @@ await step("an empty workspace says so, instead of blaming the filters", async (
     // walked for real in the next step — a link that goes nowhere useful would be this
     // component's own defect wearing its fix.
     assert(
-      /Connect a tool/i.test(screen) && /Import your accounts/i.test(screen),
+      /Connect a tool/i.test(screen) && /Import your data/i.test(screen),
       `${route} said the workspace was empty but offered no way to fill it`
     );
   }
@@ -248,20 +248,29 @@ await step("the empty state's import link fills the workspace it came from", asy
   // route this offers is walked: paste rows, import, and see them in the list.
   await A.page.goto(`${BASE}/accounts`, { waitUntil: "domcontentloaded" });
   await A.page.waitForTimeout(2500);
-  await A.page.getByRole("link", { name: /Import your accounts/i }).first().click();
+  await A.page.getByRole("link", { name: /Import your data/i }).first().click();
   await A.page.waitForTimeout(2500);
   assert(A.page.url().includes("/import"), `the import link went to ${A.page.url()}`);
 
+  // A lead list: one row per person with their company beside them, which is the shape
+  // a customer actually exports. Both records have to come out of it — an accounts-only
+  // import left the contacts page pointing at something that could not fill it.
   await A.page.locator("textarea").first().fill(
-    `name,domain\n${IMPORTED_A},acme-${NONCE}.example\nSecond Co,second-${NONCE}.example`
+    `first name,last name,email,job title,company,website\n` +
+      `Jordan,Okonkwo,jordan-${NONCE}@acme.example,VP Engineering,${IMPORTED_A},https://www.acme-${NONCE}.example/\n` +
+      `Priya,Raman,priya-${NONCE}@globex.example,Head of Security,Second Co,globex-${NONCE}.example`
   );
   await A.page.getByRole("button", { name: /^Import/i }).first().click();
   await A.page.waitForTimeout(3500);
 
   const said = (await A.page.locator("body").innerText()).replace(/\s+/g, " ");
   assert(
-    /2 accounts in your workspace/i.test(said),
-    `the import did not report two accounts landing: ${said.slice(said.indexOf("Import"), 300)}`
+    /2 accounts and 2 contacts in your workspace/i.test(said),
+    `the import did not report two accounts and two contacts: ${said.slice(said.indexOf("Import"), 320)}`
+  );
+  assert(
+    /0 rows skipped/i.test(said),
+    `an ordinary lead list had rows skipped: ${said.slice(said.indexOf("Accounts:"), 260)}`
   );
 
   // And the claim has to be true on the page that lists them, not just in the toast.
@@ -272,6 +281,16 @@ await step("the empty state's import link fills the workspace it came from", asy
   assert(
     !/This workspace is empty/i.test(list),
     "the workspace still reported itself empty after a successful import"
+  );
+
+  // The contacts half, on the page whose empty state sent them here.
+  await A.page.goto(`${BASE}/contacts`, { waitUntil: "domcontentloaded" });
+  await A.page.waitForTimeout(3500);
+  const people = (await A.page.locator("body").innerText()).replace(/\s+/g, " ");
+  assert(people.includes("Okonkwo"), "the imported contact is not on the contacts page");
+  assert(
+    !/This workspace is empty/i.test(people),
+    "contacts still reported itself empty after importing contacts"
   );
 });
 

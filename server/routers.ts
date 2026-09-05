@@ -16,6 +16,7 @@ import { enrichAccountWithAI, analyzeGongCall, generateOutreachEmail, intelligen
 import { enrichAccount } from "./sixsense";
 import { conversationWithMemory, generateAccountSummary, generateContactSummary } from "./aiContext";
 import { clayImportRouter } from "./clay-import";
+import { dataImportRouter } from "./data-import-router";
 import { clayWebhookRouter } from "./clay-webhook";
 import { intentScoresRouter, zapierRouter, clayPullRouter, integrationsRouter } from "./integrations-router";
 import { calls as callsTable } from "../drizzle/schema";
@@ -1210,6 +1211,7 @@ Or go to the Admin Panel: /admin/approval`
 
   // Clay data import
   clayImport: clayImportRouter,
+  dataImport: dataImportRouter,
   intentScores: intentScoresRouter,
   zapier: zapierRouter,
   clayPull: clayPullRouter,

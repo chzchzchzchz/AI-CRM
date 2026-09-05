@@ -86,7 +86,7 @@ export const NAV_SECTIONS: NavSection[] = [
     id: "data",
     label: "Data",
     items: [
-      { path: "/import", label: "Import Accounts", icon: Upload },
+      { path: "/import", label: "Import Data", icon: Upload },
       { path: "/data-hub", label: "Data Hub", icon: Database },
       { path: "/lead-processor", label: "Lead Processor", icon: Users },
       { path: "/csv-processor", label: "CSV Processor", icon: FileSpreadsheet },
