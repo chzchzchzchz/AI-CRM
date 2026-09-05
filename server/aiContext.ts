@@ -9,8 +9,8 @@ import { getCompanyConfig } from "./config";
 // assistant reports actual spikes instead of always answering "none detected".
 import { detectIntentSpikes } from "./intel/spikes";
 
-async function getRecentIntentSpikes(limit: number = 10): Promise<any[]> {
-  return detectIntentSpikes({ limit });
+async function getRecentIntentSpikes(orgId: number, limit: number = 10): Promise<any[]> {
+  return detectIntentSpikes({ orgId, limit });
 }
 
 /**
@@ -152,7 +152,7 @@ export async function conversationWithMemory(params: {
     let recentSpikes: any[] = [];
     let spikesChecked = true;
     try {
-      recentSpikes = await getRecentIntentSpikes(10);
+      recentSpikes = await getRecentIntentSpikes(params.orgId, 10);
     } catch (err) {
       spikesChecked = false;
       console.error('[aiContext] could not check intent spikes:', err);

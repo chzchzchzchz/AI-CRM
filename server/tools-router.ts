@@ -1,5 +1,6 @@
 import { wrapUntrusted, INJECTION_GUARD, stripLeakedFence, stripLeakedFenceDeep } from "./_core/untrusted";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
+import { affectedRows } from "./_core/affected-rows";
 import { z } from "zod";
 import { invokeLLM, isLlmUnavailable, llmText, LLM_UNAVAILABLE_NOTE, parseLlmJson } from "./_core/llm";
 import { asRevenueArchitect } from "./ai-system-prompt";
@@ -464,6 +465,7 @@ Generate professional, actionable content.`;
       }
       
       // Update generated content with user edits
+      let editsSaved: boolean | undefined;
       if (contentId && editedContent) {
         const db = await (await import('./db')).getDb();
         if (db) {
@@ -472,9 +474,17 @@ Generate professional, actionable content.`;
           const { and } = await import('drizzle-orm');
           // A bare id here meant any signed-in user could overwrite anyone else's
           // generated content by passing their contentId — no owner check of any kind.
-          await db.update(generatedContent)
+          const result = await db.update(generatedContent)
             .set({ userEdits: editedContent, feedback })
             .where(and(eq(generatedContent.orgId, ctx.orgId), eq(generatedContent.id, contentId)));
+          // The caller typed an edit and pressed save. If the row was not there — a stale
+          // contentId, or one belonging to another organization — the edit is gone, and
+          // `{ success: true }` told them it was kept. Report what actually happened; the
+          // feedback below is still recorded either way, which is why this is a field on
+          // the response rather than a thrown error.
+          editsSaved = affectedRows(result) > 0;
+        } else {
+          editsSaved = false;
         }
       }
       
@@ -483,7 +493,7 @@ Generate professional, actionable content.`;
         userId: ctx.user.id
       });
       
-      return { success: true };
+      return { success: true, editsSaved };
     }),
 
   // Get learning insights for a content type

@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
 import { getDb, getAllAccounts, getAllOpportunities, getAllPeople, getAllGongCalls } from "./db";
@@ -65,7 +66,8 @@ async function loadReal(orgId: number): Promise<RealData> {
   // own guarded step rather than chaining .catch on the builder.
   const fetchIntent = async () => {
     try {
-      return (await db.select().from(intentScoresTable)) as any[];
+      return (await db.select().from(intentScoresTable)
+        .where(eq(intentScoresTable.orgId, orgId))) as any[];
     } catch {
       return [] as any[];
     }

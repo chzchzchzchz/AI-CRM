@@ -1,5 +1,6 @@
 import { router, publicProcedure } from "./_core/trpc";
 import { validatePasswordComplexity, logSecurityEvent, enforceSendCooldown } from "./_core/security";
+import { affectedRows } from "./_core/affected-rows";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./_core/email";
 import { withUserLock } from "./twofa";
 
@@ -155,6 +156,9 @@ export const emailVerificationRouter = router({
       const code = generateVerificationCode();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
+      // write-unchecked: clearing any previous code before issuing a new one. Deleting
+      // zero rows is the normal first-send case, and the `success: true` below is about
+      // the code that was just created and sent, not about this housekeeping.
       await db
         .delete(emailVerificationCodes)
         .where(eq(emailVerificationCodes.userId, input.userId));
@@ -262,11 +266,29 @@ export const emailVerificationRouter = router({
 
       const passwordHash = await bcrypt.hash(input.newPassword, 10);
 
+      // The reset code was validated, but the USER it points at is a separate row and can
+      // be gone by now — deleted or deactivated between issuing the code and redeeming
+      // it. This returned `{ success: true }` regardless, so the person was told their
+      // password had been changed, the code was burned, and the new password did not
+      // work. On a password-reset path that is the worst possible place to be vague:
+      // they cannot log in and have no reason to suspect the reset itself.
+      //
       // tenancy-exempt: auth path — runs before a session exists, so there is no org to filter by
-      await db
+      const reset = await db
         .update(users)
         .set({ passwordHash })
         .where(eq(users.id, code.userId));
+
+      if (affectedRows(reset) === 0) {
+        logSecurityEvent(
+          "PASSWORD_RESET_FAILED",
+          { userId: code.userId, email: code.email, reason: "user_row_missing" },
+          "warn"
+        );
+        // The code is deliberately left unused: nothing was changed, so nothing was
+        // spent, and the person can try again if the account comes back.
+        throw new Error("That account is no longer available. Your password was not changed.");
+      }
 
       await db
         .update(passwordResetCodes)

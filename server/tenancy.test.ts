@@ -266,3 +266,42 @@ describe("the audit behind the count", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 });
+
+describe("the audit's own blind spots", () => {
+  it("sees a tenant table imported under an alias", async () => {
+    // The audit matched table names as they appear in the query, so
+    // `import { emailSequences as sequences }` made every query in that file invisible.
+    // Three files alias a tenant table that way, and seven genuinely unscoped queries sat
+    // behind them while the count read zero — with multi-org already enabled on the
+    // strength of that zero.
+    //
+    // A blind spot in the thing that certifies the boundary is worse than having no check
+    // at all, because it certifies. This is the second one found in this audit (the first
+    // was `users` being excluded as "reference data") and the reason both are pinned by
+    // a test rather than by having been fixed once.
+    const { auditTenancyFull } = await import("../scripts/tenancy-audit.mjs");
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "tenancy-"));
+    fs.mkdirSync(path.join(root, "server"));
+    fs.writeFileSync(
+      path.join(root, "server", "aliased.ts"),
+      [
+        'import { emailSequences as sequences, accounts as acct } from "../drizzle/schema";',
+        "const a = await db.select().from(sequences).where(eq(sequences.id, id));",
+        "const b = await db.select().from(acct).where(and(eq(acct.orgId, orgId), eq(acct.id, id)));",
+      ].join("\n")
+    );
+
+    const { sites } = auditTenancyFull(root);
+    expect(sites).toHaveLength(1);
+    expect(sites[0].line).toBe(2);
+    // Reported under its REAL table name, not the local alias — otherwise the worklist
+    // sends you looking for a table that does not exist.
+    expect(sites[0].table).toBe("emailSequences");
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+});

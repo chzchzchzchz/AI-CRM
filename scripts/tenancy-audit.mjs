@@ -160,11 +160,32 @@ export function auditTenancyFull(root) {
     if (rel.endsWith(".test.ts")) continue;
     const raw = fs.readFileSync(file, "utf8");
     const src = stripComments(raw);
+
+    // Resolve aliased imports before matching.
+    //
+    // This audit matched table names as they appear in the query, so
+    // `import { emailSequences as sequences }` made every query in that file invisible —
+    // and the file had five unscoped ones while the count read zero. Three files alias a
+    // tenant table this way. A blind spot in the thing that certifies the boundary is
+    // worse than no boundary check, because it certifies.
+    const aliases = new Map();
+    for (const im of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*["'][^"']*schema["']/g)) {
+      for (const part of im[1].split(",")) {
+        const as = part.match(/([A-Za-z_$][\w$]*)\s+as\s+([A-Za-z_$][\w$]*)/);
+        if (as && TENANT_TABLES.includes(as[1])) aliases.set(as[2], as[1]);
+      }
+    }
+    const names = [...TENANT_TABLES, ...aliases.keys()];
+    const localTouches = new RegExp(
+      `\\.(?:from|insert|update|delete)\\s*\\(\\s*(${names.join("|")})\\s*[,)]|` +
+        `\\.(?:leftJoin|innerJoin|rightJoin)\\s*\\(\\s*(${names.join("|")})\\s*,`,
+      "g",
+    );
     // Comments are blanked (not removed) so offsets still line up with the original.
     const rawLines = raw.split("\n");
 
     for (const st of statements(src)) {
-      const hit = [...st.text.matchAll(touches)];
+      const hit = [...st.text.matchAll(localTouches)];
       if (!hit.length) continue;
       if (/\borgId\b/.test(st.text)) continue;
 
@@ -177,7 +198,8 @@ export function auditTenancyFull(root) {
       if (/\bctx\.user[!?]?\.id\b/.test(st.text)) continue;
 
       const line = lineOf(src, st.offset);
-      const table = hit[0][1] ?? hit[0][2];
+      const found = hit[0][1] ?? hit[0][2];
+      const table = aliases.get(found) ?? found;
 
       // An exemption must carry a reason, on one of the few lines above the statement.
       // The NEAREST marker wins: taking the first match in the window would let an

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { intentScores as intentScoresTable } from "../../drizzle/schema";
 import {
   getDb,
@@ -163,14 +163,14 @@ function toNumber(value: unknown): number | null {
 
 
 /** Pull the intent-score time series. Isolated so a demo-shim quirk can't break the pack. */
-async function fetchIntentHistory(accountId: number) {
+async function fetchIntentHistory(orgId: number, accountId: number) {
   try {
     const db = await getDb();
     if (!db) return [];
     const rows = await db
       .select()
       .from(intentScoresTable)
-      .where(eq(intentScoresTable.accountId, accountId));
+      .where(and(eq(intentScoresTable.orgId, orgId), eq(intentScoresTable.accountId, accountId)));
     return Array.isArray(rows) ? rows : [];
   } catch (error) {
     console.error(`[signals] intent history unavailable for account ${accountId}:`, error);
@@ -192,7 +192,7 @@ export async function gatherAccountSignals(orgId: number, accountId: number): Pr
     getContactsByAccountId(orgId, accountId),
     getGongCallsByAccountId(orgId, accountId),
     getOpportunitiesByAccountId(orgId, accountId),
-    fetchIntentHistory(accountId),
+    fetchIntentHistory(orgId, accountId),
   ]);
 
   const a = account as any;

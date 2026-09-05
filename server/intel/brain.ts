@@ -150,7 +150,7 @@ export async function crawlSnapshot(orgId: number): Promise<BrainSnapshot> {
   let movers: BrainSnapshot["movers"] = [];
   try {
     const { detectIntentSpikes } = await import("./spikes");
-    movers = (await detectIntentSpikes({ minDelta: 8, limit: 5 })).map((s) => ({
+    movers = (await detectIntentSpikes({ orgId, minDelta: 8, limit: 5 })).map((s) => ({
       account: s.accountName, from: s.previousScore, to: s.currentScore, delta: s.scoreDelta,
     }));
   } catch { /* spikes unavailable → empty movers */ }

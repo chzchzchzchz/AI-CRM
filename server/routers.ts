@@ -67,6 +67,9 @@ async function issueSession(
   const db = await getDb();
   if (db) {
     // tenancy-exempt: writes the sign-in timestamp on the row the session just resolved; no org known yet
+    // write-unchecked: the `success: true` below is the LOGIN's, not this write's. A
+    // sign-in must not fail because a cosmetic last-seen timestamp did not persist —
+    // that would turn a display detail into an outage.
     await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
   }
 
@@ -764,10 +767,11 @@ Or go to the Admin Panel: /admin/approval`
         actionItems: z.array(z.string()).optional(),
         callDate: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
         await db.insert(callsTable).values({
+          orgId: ctx.orgId,
           accountId: input.accountId ?? null,
           contactId: input.contactId ?? null,
           title: input.title,

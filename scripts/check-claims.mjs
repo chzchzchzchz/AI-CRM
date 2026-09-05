@@ -29,7 +29,13 @@ const ok = rule => checks.push(rule);
  */
 function stripComments(src) {
   return src
-    .replace(/\/\*[\s\S]*?\*\//g, m => " ".repeat(m.length))
+    // Newlines are preserved, so a line number computed from the stripped text still
+    // points at the same line of the original. The first version replaced a block
+    // comment with spaces of the same TOTAL length, which ate its newlines — every line
+    // number after a `/* … */` was wrong, silently. Rule 18 reports file:line and reads
+    // the raw file for an exemption marker near that line, so both would have pointed at
+    // unrelated code; the same defect was found and fixed in scripts/tenancy-audit.mjs.
+    .replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, " "))
     .replace(/(^|[^:])\/\/[^\n]*/g, (m, lead) => lead + " ".repeat(m.length - lead.length));
 }
 
@@ -887,7 +893,124 @@ function walk(dir, exts, acc = []) {
     : ok("no documented-and-left bugs");
 }
 
-/* --------------------------------------------------------------- 18. report */
+/* ------------------------------------------- 18. writes that report what they did */
+/**
+ * A write that reports success must have checked that it wrote something.
+ *
+ * Found three times in this codebase, each time by hand:
+ *
+ *   1. admin-router's approveUser / deleteUser / setRole — "a bare UPDATE with no
+ *      affectedRows check reported success for a userId that matched nothing —
+ *      confirmed live, id 999999999 and id -1 both returned {success:true}".
+ *   2. validation.fixIssue — "Updated industry on account 4021" for an account that does
+ *      not exist, after which the Data Validation page struck the issue off as resolved.
+ *   3. follow-ups' complete / reopen / remove — an attempt on a colleague's follow-up
+ *      came back done and the UI removed it from their list.
+ *
+ * The third one is the reason this is a rule and not three fixes. Its own comment read
+ * "an id alone must never be enough to close someone else's commitment": the WHERE was
+ * right, and the return value did not reflect it. That is a shape, not an oversight, and
+ * org scoping made it likelier rather than rarer — another tenant's id is now a routine
+ * zero-row write, and it must never read back as a completed action.
+ *
+ * A write passes if it does either honest thing: capture its result (so the caller can
+ * check affectedRows), or sit behind a lookup that already threw when the row was absent.
+ *
+ * A third case exists and is narrow: a fire-and-forget side effect whose enclosing
+ * `success: true` is a claim about something else entirely. Those carry
+ * `write-unchecked: <reason>` on the line above, and the count of them is pinned below,
+ * so adding one is a number someone has to move in the diff — the same discipline the
+ * tenancy exemptions use, for the same reason.
+ */
+{
+  const offenders = [];
+  const exempted = [];
+  for (const file of walk(path.join(ROOT, "server"), [".ts"])) {
+    const rel = path.relative(ROOT, file);
+    if (rel.endsWith(".test.ts")) continue;
+    const src = stripComments(fs.readFileSync(file, "utf8"));
+    const lines = src.split("\n");
+
+    // Scanned over the whole source rather than line by line, because the shape this rule
+    // exists for is written across lines:
+    //
+    //     await db
+    //       .delete(followUps)
+    //       .where(...);
+    //     return { success: true };
+    //
+    // A per-line regex cannot match `await db` and `.delete(` together, so the first
+    // version of this rule missed all three follow-up mutations — the very instances that
+    // motivated writing it. Caught by replaying each historical bug against the rule
+    // instead of trusting that it would have.
+    for (const m of src.matchAll(/await\s+db\s*\.\s*(update|delete)\s*\(/g)) {
+      const i = src.slice(0, m.index).split("\n").length - 1;
+
+      // Captured (`const x = await db.update(...)`) or returned — the caller can see it.
+      const lineStart = src.lastIndexOf("\n", m.index) + 1;
+      const before = src.slice(lineStart, m.index).trimEnd();
+      if (before.endsWith("=") || before.endsWith("return")) continue;
+
+      // Does a success claim follow closely enough to be about this write?
+      const after = lines.slice(i, i + 15).join("\n");
+      if (!/success:\s*true/.test(after)) continue;
+
+      // Guarded by a lookup that already threw for a missing row — a perfectly good way
+      // to be honest, and how snooze, the transcript delete and the verification-code
+      // writes all do it.
+      //
+      // Scoped to the ENCLOSING HANDLER rather than a fixed number of lines back: a
+      // 25-line window flagged five writes whose guard sat just outside it, which would
+      // have taught everyone to reach for the exemption marker instead of reading the
+      // code. The handler starts at the nearest `.mutation(`/`.query(` above.
+      const handlerStart = Math.max(
+        src.lastIndexOf(".mutation(", m.index),
+        src.lastIndexOf(".query(", m.index)
+      );
+      const window = src.slice(handlerStart < 0 ? 0 : handlerStart, m.index);
+      const guarded = /\.select\s*\(/.test(window) && /\bthrow\b/.test(window);
+      if (guarded) continue;
+
+      // An explicit, reasoned exemption on one of the two lines above. Comments are
+      // blanked by stripComments, so read the raw file for this.
+      const raw = fs.readFileSync(file, "utf8").split("\n");
+      const near = raw.slice(Math.max(0, i - 3), i).join("\n");
+      const reason = near.match(/write-unchecked:\s*(.+)/);
+      if (reason && reason[1].trim().length > 15) {
+        exempted.push(`${rel}:${i + 1} — ${reason[1].trim()}`);
+        continue;
+      }
+
+      offenders.push(`${rel}:${i + 1}: ${lines[i].trim().slice(0, 80)}`);
+    }
+  }
+
+  // Pinned, so an exemption cannot be added silently. Raise it deliberately, in a commit
+  // that says why the enclosing success claim is about something other than this write.
+  const EXPECTED_EXEMPT = 2;
+
+  if (offenders.length) {
+    fail(
+      "writes report what they did",
+      offenders.join("\n    ") +
+        "\n    This write returns success without checking it matched a row. Capture the" +
+        "\n    result and check affectedRows(), or guard it with a lookup that throws first." +
+        "\n    A refused or missed write must not read back as a completed action."
+    );
+  } else if (exempted.length !== EXPECTED_EXEMPT) {
+    fail(
+      "writes report what they did",
+      `${exempted.length} write-unchecked exemptions, expected ${EXPECTED_EXEMPT}:\n    ` +
+        exempted.join("\n    ") +
+        "\n    Each is a claim that a nearby `success: true` is about something other than" +
+        "\n    that write. Raise the expected count here and say why in the commit."
+    );
+  } else {
+    ok(`writes report what they did (${exempted.length} reasoned exemptions)`);
+  }
+}
+
+/* --------------------------------------------------------------- 19. report */
 for (const c of checks) console.log(`  ✓ ${c}`);
 for (const f of failures) console.log(`  ✘ ${f.rule}\n    ${f.detail}`);
 

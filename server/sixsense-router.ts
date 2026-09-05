@@ -7,8 +7,8 @@ import {
 } from "./sixsense";
 // Real intent-spike detection, computed from the intentScores time series.
 import { detectIntentSpikes } from "./intel/spikes";
-const detectAndNotifyIntentSpikes = () => detectIntentSpikes();
-const getRecentIntentSpikes = (limit: number = 10) => detectIntentSpikes({ limit });
+const detectAndNotifyIntentSpikes = (orgId: number) => detectIntentSpikes({ orgId });
+const getRecentIntentSpikes = (orgId: number, limit: number = 10) => detectIntentSpikes({ orgId, limit });
 import { getDb } from "./db";
 import { accounts } from "../drizzle/schema";
 import { eq, isNotNull, sql, and } from "drizzle-orm";
@@ -293,8 +293,8 @@ export const sixsenseRouter = router({
    * Detect and notify about intent spikes (20+ point increases)
    */
   detectIntentSpikes: protectedProcedure
-    .mutation(async () => {
-      const spikes = await detectAndNotifyIntentSpikes();
+    .mutation(async ({ ctx }) => {
+      const spikes = await detectAndNotifyIntentSpikes(ctx.orgId);
       return {
         success: true,
         spikesDetected: spikes.length,
