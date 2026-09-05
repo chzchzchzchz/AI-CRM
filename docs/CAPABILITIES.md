@@ -225,7 +225,7 @@ Not called by our UI, and should not be — these are entry points for other sys
 | `intentScores.create` | write path — connectors push scores in through it |
 | `sixsense.syncAccountByDomain` | connector action — sync one account from 6sense |
 | `sixsense.identifyByIP` | connector action — de-anonymise a visiting IP |
-| `system.health` | uptime probe |
+| `system.health` | uptime probe — queries the database and probes the auth-state store |
 | `system.notifyOwner` | outbound notification, called by other server code |
 | `zapier.webhook` | inbound webhook (Zapier/Make/n8n) |
 

@@ -28,6 +28,19 @@ services:
       db:
         condition: service_healthy
         required: false          # db only exists in the 'full' profile
+    # Reads /api/ready, not /api/health. Readiness actually probes the database and the
+    # auth-state store and returns 503 when either is unreachable; liveness deliberately
+    # checks nothing external, so a container marked healthy by it can be one that cannot
+    # serve a single request. The db service has had a real healthcheck all along — the
+    # app, which is the thing users talk to, had none.
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3333/api/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      # Generous, because first boot runs migrations and seeds; a healthcheck that fails
+      # during normal startup teaches everyone to ignore it.
+      start_period: 60s
+      retries: 5
     restart: unless-stopped
 
   # Persistent MySQL — only started with:  docker compose --profile full up

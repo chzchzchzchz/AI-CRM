@@ -6,7 +6,7 @@ A sales rep opens this in the morning and sees which accounts moved, why they mo
 do about it — with the evidence for every claim attached. It sits on top of a CRM rather than
 replacing one.
 
-`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 599 tests, ~54k lines,
+`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 618 tests, ~54k lines,
 runs with zero API keys.
 
 ```bash
