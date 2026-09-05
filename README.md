@@ -177,6 +177,11 @@ data. See [`SECURITY.md`](SECURITY.md).
   which is the honest half of the fix, not the whole of it. Running self-serve with
   connectors configured means one customer (the operator's own workspace) gets them and
   the rest import their own data.
+- **Who you are is configured per deployment too.** `COMPANY_NAME`, the differentiators,
+  the competitor list and the rep territories in `shared/territories.ts` are one set of
+  values for the whole instance, and they ground every AI generation. A second workspace's
+  outreach is therefore written as the deployment owner's company. The CRM half is fully
+  theirs; the AI writing is not, until that config is per organization.
 - **The AI quality depends entirely on the model you point it at.** The grounding work constrains
   what a model can claim; it can't make a weak local model insightful.
 - **No accessibility audit.** The design targets WCAG 2.1 AA and the gate checks contrast and
