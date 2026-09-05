@@ -8,14 +8,14 @@ Every backend capability, and whether anything in the product actually reaches i
 
 | | Count |
 |---|---|
-| Procedures total | 166 |
-| Reachable from the UI | 120 |
+| Procedures total | 171 |
+| Reachable from the UI | 125 |
 | External by design (webhooks, probes, connector actions) | 43 |
 | **Built but not routed anywhere** | **0** |
 | ↳ exempted from that zero (maps in `server/inventory.ts`, plus the `integrations.*` rule) | 46 |
 | ↳ of those, called only by unreachable client code | 0 |
 | Superseded by a live capability (kept, not a to-do) | 3 |
-| App routes | 34 |
+| App routes | 35 |
 | Client modules unreachable from `main.tsx` | 9 |
 | Integration connectors | 24 |
 
@@ -112,6 +112,11 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `intel.accountSignals` | `pages/AccountDetail.tsx` |
 | `intel.briefHistory` | `components/AccountTrajectory.tsx` |
 | `intel.brain` | `pages/Insights.tsx` |
+| `invites.create` | `components/TeamInvites.tsx` |
+| `invites.list` | `components/TeamInvites.tsx` |
+| `invites.revoke` | `components/TeamInvites.tsx` |
+| `invites.preview` | `pages/AcceptInvite.tsx` |
+| `invites.accept` | `pages/AcceptInvite.tsx` |
 | `opportunities.list` | `pages/Home.tsx`, `pages/Opportunities.tsx` |
 | `opportunities.upsert` | `pages/Opportunities.tsx` |
 | `opportunities.aiScore` | `pages/Opportunities.tsx` |
@@ -230,6 +235,7 @@ Not called by our UI, and should not be — these are entry points for other sys
 |---|---|
 | `/login` | `Login` |
 | `/signup` | `SignUp` |
+| `/accept-invite` | `AcceptInvite` |
 | `/request-access` | `RequestAccess` |
 | `/forgot-password` | `ForgotPassword` |
 | `/` | `Home` |

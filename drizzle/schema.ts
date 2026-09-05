@@ -55,6 +55,39 @@ export type WebhookCredential = typeof webhookCredentials.$inferSelect;
 export type InsertWebhookCredential = typeof webhookCredentials.$inferInsert;
 
 /**
+ * An invitation to join an existing organization.
+ *
+ * Without this a customer cannot add a colleague. Self-serve signup gives every new
+ * person their OWN organization, and the public access-request form has no org to attach
+ * to, so it lands in the default one — invisible to the admin of the org that actually
+ * wanted the teammate. A sales-team product where a team cannot be a team.
+ *
+ * The token is stored as a SHA-256 hash, never in the clear: this row is a bearer
+ * credential that creates an approved account inside a customer's workspace, so a leaked
+ * database dump must not be a set of working invitations. Hashed rather than bcrypted
+ * because it is looked up BY the token on every acceptance, and 256 bits from a CSPRNG
+ * has no structure a fast hash exposes — the same reasoning as webhook_credentials.
+ */
+export const organizationInvites = mysqlTable("organization_invites", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  tokenHash: varchar("tokenHash", { length: 64 }).notNull().unique(),
+  invitedBy: int("invitedBy"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  // Set rather than deleted, so a spent invitation stays auditable — and so "already
+  // used" can be told apart from "never existed", which are different answers to give
+  // someone standing at a broken link.
+  acceptedAt: timestamp("acceptedAt"),
+  revokedAt: timestamp("revokedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OrganizationInvite = typeof organizationInvites.$inferSelect;
+export type InsertOrganizationInvite = typeof organizationInvites.$inferInsert;
+
+/**
  * Core user table backing auth flow.
  */
 export const users = mysqlTable("users", {

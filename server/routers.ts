@@ -24,6 +24,7 @@ import { rfpRouter } from "./rfp-scraper";
 import { outreachRouter } from "./outreach";
 import { geminiRouter } from "./gemini";
 import { clayRouter } from "./clay";
+import { invitesRouter } from "./invites-router";
 import { validationRouter } from "./validation-router";
 import { priorityActionsRouter } from "./priority-actions-router";
 import { bulkInsightsRouter } from "./bulk-insights-router";
@@ -148,6 +149,7 @@ export const appRouter = router({
         return await deepThinkHelp({ orgId: ctx.orgId, ...input });
       }),
   }),
+  invites: invitesRouter,
   sixsenseAnalytics: sixsenseAnalyticsRouter,
   analytics: router({
     overview: protectedProcedure.query(async ({ ctx }) => {

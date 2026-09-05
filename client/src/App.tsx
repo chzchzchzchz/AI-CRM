@@ -35,6 +35,7 @@ const AITools = lazyLoad(() => import("./pages/AITools"));
 const TopAccounts = lazyLoad(() => import("./pages/TopAccounts"));
 const Login = lazyLoad(() => import("./pages/Login"));
 const SignUp = lazyLoad(() => import("./pages/SignUp"));
+const AcceptInvite = lazyLoad(() => import("./pages/AcceptInvite"));
 const RequestAccess = lazyLoad(() => import("./pages/RequestAccess"));
 const ForgotPassword = lazyLoad(() => import("./pages/ForgotPassword"));
 const LeadProcessor = lazyLoad(() => import("./pages/LeadProcessor"));
@@ -52,6 +53,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/signup" component={SignUp} />
+      <Route path="/accept-invite" component={AcceptInvite} />
       <Route path="/request-access" component={RequestAccess} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path={"/"} component={Home} />

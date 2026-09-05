@@ -33,9 +33,9 @@ export const UNSCOPED_QUERY_SITES: number = 0;
  * still passes. Requiring this number to move puts every new exemption in the diff, next
  * to the reason someone wrote for it.
  *
- * All sixteen today are auth-path queries — login, signup, session resolution, the 2FA
+ * All eighteen today are auth-path queries — login, signup, session resolution, the 2FA
  * challenge, one-click approval links — plus one share-link lookup. They run before a
  * session exists, or are authorized by an unguessable token rather than a session, so
  * there is genuinely no org to filter by. `pnpm tenancy` lists them with their reasons.
  */
-export const EXEMPT_QUERY_SITES: number = 16;
+export const EXEMPT_QUERY_SITES: number = 18;
