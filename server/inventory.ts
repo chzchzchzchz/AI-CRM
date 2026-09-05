@@ -258,7 +258,7 @@ const EXTERNAL_BY_DESIGN: Record<string, string> = {
   "clay.ping": "connectivity probe for Clay setup",
   "clayWebhook.receive": "inbound webhook",
   "clayWebhook.test": "connectivity probe",
-  "zapier.webhook": "inbound webhook (Zapier/Make/n8n)",
+  "zapier.webhook": "inbound webhook (Zapier/Make/n8n) — acknowledges events; nothing consumes them yet",
   "system.health": "uptime probe — queries the database and probes the auth-state store",
 };
 

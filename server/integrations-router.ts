@@ -235,8 +235,26 @@ export const zapierRouter = router({
       } else if (process.env.DEMO_MODE !== "true") {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Zapier webhook not configured (set ZAPIER_WEBHOOK_SECRET)" });
       }
-      console.log(`[Zapier] event=${input.event}`, input.data ?? {});
-      return { received: true, event: input.event };
+      // Acknowledged and dropped, which is all this has ever done. Nothing reads these
+      // events — no store, no queue, no handler — so the log line and the response both
+      // say so. `{ received: true }` alone was the problem: Zapier shows any 2xx as a
+      // successful run, so someone wiring a Zap to POST enrichment here (which
+      // INTEGRATIONS.md told them to do) would watch it go green on every call, forever,
+      // while nothing ever appeared in the app and nothing anywhere said why.
+      //
+      // Not turned into an error: the request WAS well-formed and authenticated, and
+      // failing it would be a different untruth — plus retries. Clay's receiver is the
+      // one that actually ingests; the doc now points there instead.
+      console.log(
+        `[Zapier] event=${input.event} — acknowledged, not stored (no consumer)`,
+        input.data ?? {},
+      );
+      return {
+        received: true,
+        stored: false,
+        event: input.event,
+        note: "Acknowledged. Nothing consumes these events yet — to load data, POST to the Clay receiver or use /import.",
+      };
     }),
 });
 
