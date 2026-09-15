@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, RefreshCw, Database, Zap, CheckCircle2, XCircle, TrendingUp, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { TeamInvites } from "@/components/TeamInvites";
+import { ConnectorCredentials } from "@/components/ConnectorCredentials";
 
 export default function Admin() {
   const { user, loading } = useAuth();
@@ -95,6 +96,7 @@ export default function Admin() {
         {/* First, because adding a colleague is the thing a new customer needs on day
             one — and until this existed there was no way to do it at all. */}
         <TeamInvites />
+        <ConnectorCredentials />
 
         {/* 6sense Enrichment */}
         <Card className="border-accent/30 shadow-lg">

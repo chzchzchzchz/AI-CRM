@@ -3,6 +3,7 @@
  * Handles OAuth authentication and data sync
  */
 
+import { credential } from "./_core/connector-credentials";
 import { ENV } from './_core/env';
 
 // Read from process.env at call time.
@@ -12,10 +13,26 @@ import { ENV } from './_core/env';
 // twice over. Anything that loaded this before dotenv ran held "" for the life of
 // the process, and every Salesforce call then failed with "not configured" against
 // an .env file that plainly had the key in it.
-const SALESFORCE_CLIENT_ID = () => process.env.SALESFORCE_CLIENT_ID || ENV.salesforceClientId;
-const SALESFORCE_CLIENT_SECRET = () => process.env.SALESFORCE_CLIENT_SECRET || ENV.salesforceClientSecret;
+// Read through credential(), not process.env.
+//
+// Inside a credential scope these are the calling ORGANIZATION's values and nothing else —
+// no fallback to the environment, deliberately. A half-filled org credential has to fail
+// as a half-filled org credential; borrowing the operator's client secret to fill the gap
+// is the very thing this exists to stop. Outside a scope it reads the environment exactly
+// as before, which is what the deployment's own workspace and the CLI tooling want.
+//
+// The old `|| ENV.salesforceX` fallbacks are gone because ENV.salesforceClientId IS
+// `process.env.SALESFORCE_CLIENT_ID` — keeping them would only have reintroduced the
+// environment underneath a scoped call. The instance-URL default is kept.
+const SALESFORCE_CLIENT_ID = () => credential("SALESFORCE_CLIENT_ID") || "";
+const SALESFORCE_CLIENT_SECRET = () => credential("SALESFORCE_CLIENT_SECRET") || "";
 const SALESFORCE_INSTANCE_URL = () =>
-  process.env.SALESFORCE_INSTANCE_URL || ENV.salesforceInstanceUrl || "https://login.salesforce.com";
+  credential("SALESFORCE_INSTANCE_URL") || "https://login.salesforce.com";
+
+/** The instance the CURRENT credential scope points at — not the deployment's. */
+export function instanceUrl(): string {
+  return SALESFORCE_INSTANCE_URL();
+}
 
 interface SalesforceTokenResponse {
   access_token: string;

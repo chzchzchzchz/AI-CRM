@@ -37,7 +37,10 @@ describe("assertDeploymentConnectorAllowed", () => {
 
   it("says whose credentials they are and what to do instead", () => {
     // A bare FORBIDDEN reads as a bug in the product. The person hitting this has done
-    // nothing wrong and has a real alternative — their own import.
+    // nothing wrong and now has a real way out: connect their own account. The message
+    // used to end "per-workspace connections aren't available yet", which stopped being
+    // true the moment they were — a stale sentence in a refusal is how a product teaches
+    // people a limitation it no longer has.
     let message = "";
     try {
       assertDeploymentConnectorAllowed(2, "Salesforce");
@@ -46,7 +49,8 @@ describe("assertDeploymentConnectorAllowed", () => {
     }
     expect(message).toMatch(/Salesforce/);
     expect(message).toMatch(/this whole deployment/i);
-    expect(message).toMatch(/import your own data/i);
+    expect(message).toMatch(/connect your own/i);
+    expect(message).not.toMatch(/aren't available yet/i);
   });
 
   it("names the connector it is refusing", () => {

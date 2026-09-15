@@ -9,35 +9,62 @@ import * as salesforce from "../salesforce";
 import { bulkUpsertAccountsFromSalesforce, bulkUpsertContactsFromSalesforce, getSyncStatus } from "../db";
 import { ENV } from "../_core/env";
 import { assertDeploymentConnectorAllowed } from "../_core/tenancy";
+import { resolveCredentials, withCredentials } from "../_core/connector-credentials";
+import { getDb as getDatabase } from "../db";
 
 /**
- * Every procedure below spends the deployment's single SALESFORCE_* credential set. The
- * sync ones pull `SELECT … FROM Account` with no limit — the whole connected Salesforce
- * org — and write it into the CALLER's workspace, so on a self-serve deployment any
- * customer could copy the operator's book of business into their own. See
- * assertDeploymentConnectorAllowed. `getSyncStatus` is exempt on purpose: it reads the
- * caller's own rows, and it is what the page can still show when it cannot sync.
+ * Every procedure below spends somebody's SALESFORCE_* credentials. The sync ones pull
+ * `SELECT … FROM Account` with no limit — a whole Salesforce org — and write it into the
+ * CALLER's workspace, so which credentials are in force decides whose book of business
+ * lands where. `getSyncStatus` is exempt on purpose: it reads the caller's own rows, and
+ * it is what the page can still show when it cannot sync.
  */
 const CONNECTOR = "Salesforce";
+
+/**
+ * Whose Salesforce this call talks to, and the refusal when the answer is nobody's.
+ *
+ * The organization's own stored credentials if it has any; the deployment's environment
+ * only for the organization that owns the deployment. Anyone else is refused — which is
+ * the same answer as before, except it is now escapable by bringing your own credentials
+ * rather than permanent.
+ *
+ * Everything inside the callback runs in that credential scope, so server/salesforce.ts
+ * reads the caller's values and cannot fall through to the environment.
+ */
+async function asSalesforceFor<T>(orgId: number, fn: () => Promise<T>): Promise<T> {
+  const resolved = await resolveCredentials(await getDatabase(), orgId, "salesforce");
+  if (resolved) return withCredentials(resolved.values, fn);
+
+  // Nothing of their own. Only the workspace that owns the deployment may fall back to
+  // its environment — and this throws for anyone else.
+  assertDeploymentConnectorAllowed(orgId, CONNECTOR);
+
+  // The deployment's own workspace, with nothing configured anywhere. An EMPTY scope on
+  // purpose: the accessors return "" and salesforce.ts reports itself unconfigured, which
+  // is the truth. Running unscoped here would read process.env — which is exactly what we
+  // just established is empty, but relying on that would leave the one code path where a
+  // scope is absent, and that is the path this whole mechanism exists to remove.
+  return withCredentials({}, fn);
+}
 
 export const salesforceRouter = router({
   /**
    * Get configured Salesforce instance URL
    */
-  getInstanceUrl: protectedProcedure.query(async ({ ctx }) => {
-    // The operator's Salesforce hostname names their company. Small, but it is theirs.
-    assertDeploymentConnectorAllowed(ctx.orgId, CONNECTOR);
-    return ENV.salesforceInstanceUrl;
-  }),
+  getInstanceUrl: protectedProcedure.query(async ({ ctx }) =>
+    // Resolved rather than read from ENV: an organization using its own credentials is
+    // pointed at its own instance, and reading the deployment's would have shown them the
+    // operator's hostname — which names the operator's company.
+    asSalesforceFor(ctx.orgId, async () => salesforce.instanceUrl())
+  ),
 
   /**
    * Test Salesforce connection
    */
-  testConnection: protectedProcedure.query(async ({ ctx }) => {
-    assertDeploymentConnectorAllowed(ctx.orgId, CONNECTOR);
-    const result = await salesforce.testConnection();
-    return result;
-  }),
+  testConnection: protectedProcedure.query(async ({ ctx }) =>
+    asSalesforceFor(ctx.orgId, () => salesforce.testConnection())
+  ),
 
   /**
    * Get current sync status
@@ -50,11 +77,11 @@ export const salesforceRouter = router({
   /**
    * Sync accounts from Salesforce
    */
-  syncAccounts: protectedProcedure.mutation(async ({ ctx }) => {
-    // Before the try: a refusal must reach the caller as a refusal. The catch below
-    // turns everything into { success: false, message }, which the page renders as a
-    // failed sync rather than as "this is not yours to sync".
-    assertDeploymentConnectorAllowed(ctx.orgId, CONNECTOR);
+  syncAccounts: protectedProcedure.mutation(async ({ ctx }) =>
+    // Outside the try, via the helper: a refusal must reach the caller AS a refusal. The
+    // catch below turns everything into { success: false, message }, which the page
+    // renders as a failed sync rather than as "this is not yours to sync".
+    asSalesforceFor(ctx.orgId, async () => {
     try {
       // Fetch accounts from Salesforce
       const sfAccounts = await salesforce.fetchAccounts();
@@ -90,16 +117,16 @@ export const salesforceRouter = router({
         totalFromSalesforce: 0,
       };
     }
-  }),
+  })),
 
   /**
    * Sync contacts from Salesforce
    */
-  syncContacts: protectedProcedure.mutation(async ({ ctx }) => {
-    // Before the try: a refusal must reach the caller as a refusal. The catch below
-    // turns everything into { success: false, message }, which the page renders as a
-    // failed sync rather than as "this is not yours to sync".
-    assertDeploymentConnectorAllowed(ctx.orgId, CONNECTOR);
+  syncContacts: protectedProcedure.mutation(async ({ ctx }) =>
+    // Outside the try, via the helper: a refusal must reach the caller AS a refusal. The
+    // catch below turns everything into { success: false, message }, which the page
+    // renders as a failed sync rather than as "this is not yours to sync".
+    asSalesforceFor(ctx.orgId, async () => {
     try {
       // Fetch contacts from Salesforce
       const sfContacts = await salesforce.fetchContacts();
@@ -131,17 +158,14 @@ export const salesforceRouter = router({
         totalFromSalesforce: 0,
       };
     }
-  }),
+  })),
 
   /**
    * Full sync - accounts then contacts
    */
-  fullSync: protectedProcedure.mutation(async ({ ctx }) => {
-    // Before anything else: a refusal must reach the caller as a refusal. The catch
-    // below turns everything into { success: false, message }, which the page renders
-    // as a failed sync rather than as "this is not yours to sync".
-    assertDeploymentConnectorAllowed(ctx.orgId, CONNECTOR);
-
+  fullSync: protectedProcedure.mutation(async ({ ctx }) =>
+    // Outside the try, via the helper — see syncAccounts.
+    asSalesforceFor(ctx.orgId, async () => {
     const results = {
       accounts: { success: false, message: '', inserted: 0, updated: 0, errors: 0 },
       contacts: { success: false, message: '', inserted: 0, updated: 0, linked: 0, errors: 0 },
@@ -187,5 +211,5 @@ export const salesforceRouter = router({
         results,
       };
     }
-  }),
+  })),
 });

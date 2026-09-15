@@ -51,6 +51,40 @@ export const webhookCredentials = mysqlTable("webhook_credentials", {
   revokedAt: timestamp("revokedAt"),
 });
 
+/**
+ * A connector credential belonging to ONE organization.
+ *
+ * Every connector in this app was configured from the deployment's environment — one
+ * SALESFORCE_*, one GONG_*, one TWILIO_* shared by every workspace on the instance. That
+ * made "sync" mean "copy whatever the operator connected into whichever workspace asked",
+ * so the only safe thing to do was refuse every org but the deployment's own. This is the
+ * other half: a customer brings their own, and the refusal stops applying to them.
+ *
+ * `secret` is a JSON object of the vendor's fields, encrypted with AES-256-GCM (see
+ * _core/secret-box.ts) — not hashed, because unlike an inbound webhook secret the app has
+ * to present these to the vendor. Rows are revoked rather than deleted so a withdrawal
+ * stays auditable, which is why (orgId, provider) is not unique.
+ */
+export const connectorCredentials = mysqlTable("connector_credentials", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
+  provider: varchar("provider", { length: 64 }).notNull(),
+  /** AES-256-GCM blob: v1.<iv>.<tag>.<ciphertext>. Never a readable value. */
+  secret: text("secret").notNull(),
+  /** The last four characters of one identifying field, so a person can tell which is saved. */
+  hint: varchar("hint", { length: 32 }),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  revokedAt: timestamp("revokedAt"),
+}, (table) => ({
+  // The lookup every connector call makes: this org's live credential for this vendor.
+  orgProviderIdx: index("connector_credentials_org_provider").on(table.orgId, table.provider),
+}));
+
+export type ConnectorCredential = typeof connectorCredentials.$inferSelect;
+export type InsertConnectorCredential = typeof connectorCredentials.$inferInsert;
+
 export type WebhookCredential = typeof webhookCredentials.$inferSelect;
 export type InsertWebhookCredential = typeof webhookCredentials.$inferInsert;
 

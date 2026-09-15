@@ -94,9 +94,11 @@ export function assertOrgAllowedOrThrow(orgId: number): void {
  * customer's book of business — into their own workspace. Writing someone else's data
  * correctly into your own tenant is still a leak; it is just a tidily scoped one.
  *
- * The real fix is per-organization credentials, which is a feature and not a guard. Until
- * it exists this refuses, which is the honest half: the credentials belong to whoever
- * configured the deployment, so only their workspace may spend them.
+ * Per-organization credentials now exist (see _core/connector-credentials.ts), so this is
+ * the fallback rather than the whole answer: an organization that has stored its own is
+ * never refused, because resolveCredentials() returns theirs and the caller never asks
+ * this. What remains refused is spending the DEPLOYMENT's credentials from a workspace
+ * that does not own them, which is still exactly right.
  *
  * Nothing changes for a single-tenant install. Every user is in the default org, so this
  * never fires — which is every existing deployment.
@@ -107,8 +109,8 @@ export function assertDeploymentConnectorAllowed(orgId: number, connector: strin
     code: "FORBIDDEN",
     message:
       `${connector} is connected with credentials configured for this whole deployment, ` +
-      `not for your workspace — syncing would copy someone else's records into yours. ` +
-      `Per-workspace connections aren't available yet. Import your own data instead, or ` +
-      `ask your administrator to run a deployment for your organization.`,
+      `not for your workspace — using them would spend someone else's vendor account and ` +
+      `pull someone else's records into yours. Connect your own ${connector} from the ` +
+      `admin page and this stops applying to you.`,
   });
 }

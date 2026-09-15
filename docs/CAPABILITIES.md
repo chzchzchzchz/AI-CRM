@@ -8,8 +8,8 @@ Every backend capability, and whether anything in the product actually reaches i
 
 | | Count |
 |---|---|
-| Procedures total | 147 |
-| Reachable from the UI | 122 |
+| Procedures total | 151 |
+| Reachable from the UI | 126 |
 | External by design (webhooks, probes, connector actions) | 22 |
 | **Built but not routed anywhere** | **0** |
 | ↳ exempted from that zero (maps in `server/inventory.ts`, plus the `integrations.*` rule) | 25 |
@@ -79,6 +79,10 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `auth.loginVerify` | `pages/Login.tsx` |
 | `auth.requestAccess` | `pages/RequestAccess.tsx` |
 | `bulkInsights.generateForTopLeads` | `pages/BulkInsights.tsx` |
+| `connectorCredentials.list` | `components/ConnectorCredentials.tsx` |
+| `connectorCredentials.fields` | `components/ConnectorCredentials.tsx` |
+| `connectorCredentials.save` | `components/ConnectorCredentials.tsx` |
+| `connectorCredentials.revoke` | `components/ConnectorCredentials.tsx` |
 | `csvProcessor.getTemplateInfo` | `pages/CsvProcessor.tsx` |
 | `csvProcessor.analyzeAndMap` | `pages/CsvProcessor.tsx` |
 | `csvProcessor.processData` | `pages/CsvProcessor.tsx` |

@@ -6,7 +6,7 @@ A sales rep opens this in the morning and sees which accounts moved, why they mo
 do about it — with the evidence for every claim attached. It sits on top of a CRM rather than
 replacing one.
 
-`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 673 tests, ~54k lines,
+`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 693 tests, ~54k lines,
 runs with zero API keys.
 
 ```bash
@@ -29,7 +29,7 @@ Sign in with `demo@ai-crm.com` / `DemoPass123!`. No database, no keys, no signup
 | Auth, 2FA, audit logging, rate limiting | Implemented and tested. Not independently audited |
 | Multi-tenancy | Org boundary on every tenant table, enforced by a build check. `SIGNUP_MODE=self-serve` gives each new customer their own workspace, and admins invite colleagues into it from `/admin`. Not yet run with two paying customers |
 | Getting your own data in | `/import` takes pasted rows or a CSV/TSV/JSON file straight into your workspace — accounts and contacts from the same paste, no connector needed. The CSV Processor builds a file for import into *Salesforce*, not into this app |
-| Connectors under multi-tenancy | Every connector is configured from the deployment's environment, so only the workspace that owns those credentials can use one. Other workspaces are refused and told why, and import instead. Per-organization credentials are not built |
+| Connectors under multi-tenancy | A workspace connects its own accounts from `/admin` — stored AES-256-GCM encrypted, never shown again, and used only for that workspace's calls. Falling back to the deployment's own `SALESFORCE_*`/`GONG_*` is allowed only for the workspace that owns them; anyone else is refused and told to connect their own. Needs `CREDENTIALS_KEY`, and refuses to store anything without it |
 | Billing, metering, plan enforcement | Not built. Nothing counts seats, limits usage or takes money |
 
 `pnpm doctor` reads your `.env` and tells you which integrations are actually ready, which are
@@ -171,12 +171,11 @@ data. See [`SECURITY.md`](SECURITY.md).
   customers — tested and enforced, not battle-worn.
 - **No billing, metering or plan enforcement.** Nothing counts seats, limits usage or
   takes money. Selling means bolting that on, or invoicing out of band.
-- **Connectors are per deployment, not per workspace.** There is one `SALESFORCE_*`, one
-  `GONG_*`, one `TWILIO_*` for the whole instance. Until per-organization credentials
-  exist, every connector action is refused to any workspace but the one that owns them —
-  which is the honest half of the fix, not the whole of it. Running self-serve with
-  connectors configured means one customer (the operator's own workspace) gets them and
-  the rest import their own data.
+- **Connector coverage is per workspace now, but only Salesforce is threaded through.**
+  A workspace stores its own credentials and calls run in that scope, with no fallback to
+  the deployment's environment for a field it left blank. Salesforce reads through it;
+  the remaining connectors still read the environment directly and so remain refused to
+  any workspace but the deployment's own until they are converted the same way.
 - **Who you are is configured per deployment too.** `COMPANY_NAME`, the differentiators,
   the competitor list and the rep territories in `shared/territories.ts` are one set of
   values for the whole instance, and they ground every AI generation. A second workspace's
