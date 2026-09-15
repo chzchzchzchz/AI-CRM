@@ -18,6 +18,7 @@ import { conversationWithMemory, generateAccountSummary, generateContactSummary 
 import { clayImportRouter } from "./clay-import";
 import { dataImportRouter } from "./data-import-router";
 import { connectorCredentialsRouter } from "./connector-credentials-router";
+import { companyProfileRouter } from "./company-profile-router";
 import { clayWebhookRouter } from "./clay-webhook";
 import { intentScoresRouter, zapierRouter, clayPullRouter, integrationsRouter } from "./integrations-router";
 import { calls as callsTable } from "../drizzle/schema";
@@ -1222,6 +1223,7 @@ Or go to the Admin Panel: /admin/approval`
   clayImport: clayImportRouter,
   dataImport: dataImportRouter,
   connectorCredentials: connectorCredentialsRouter,
+  companyProfile: companyProfileRouter,
   intentScores: intentScoresRouter,
   zapier: zapierRouter,
   clayPull: clayPullRouter,

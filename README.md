@@ -6,7 +6,7 @@ A sales rep opens this in the morning and sees which accounts moved, why they mo
 do about it — with the evidence for every claim attached. It sits on top of a CRM rather than
 replacing one.
 
-`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 693 tests, ~54k lines,
+`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 704 tests, ~54k lines,
 runs with zero API keys.
 
 ```bash
@@ -176,11 +176,11 @@ data. See [`SECURITY.md`](SECURITY.md).
   the deployment's environment for a field it left blank. Salesforce reads through it;
   the remaining connectors still read the environment directly and so remain refused to
   any workspace but the deployment's own until they are converted the same way.
-- **Who you are is configured per deployment too.** `COMPANY_NAME`, the differentiators,
-  the competitor list and the rep territories in `shared/territories.ts` are one set of
-  values for the whole instance, and they ground every AI generation. A second workspace's
-  outreach is therefore written as the deployment owner's company. The CRM half is fully
-  theirs; the AI writing is not, until that config is per organization.
+- **Rep territories are still per deployment.** `shared/territories.ts` is one roster for
+  the whole instance. Company identity is now per workspace (set it in `/admin`), so a
+  second workspace no longer writes as the deployment owner's company — but the AE list
+  and their territories are still shared, and a workspace that has set no identity writes
+  as "Your company" rather than inheriting anyone's.
 - **The AI quality depends entirely on the model you point it at.** The grounding work constrains
   what a model can claim; it can't make a weak local model insightful.
 - **No accessibility audit.** The design targets WCAG 2.1 AA and the gate checks contrast and

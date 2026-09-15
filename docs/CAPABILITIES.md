@@ -8,8 +8,8 @@ Every backend capability, and whether anything in the product actually reaches i
 
 | | Count |
 |---|---|
-| Procedures total | 151 |
-| Reachable from the UI | 126 |
+| Procedures total | 153 |
+| Reachable from the UI | 128 |
 | External by design (webhooks, probes, connector actions) | 22 |
 | **Built but not routed anywhere** | **0** |
 | ↳ exempted from that zero (maps in `server/inventory.ts`, plus the `integrations.*` rule) | 25 |
@@ -79,6 +79,8 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `auth.loginVerify` | `pages/Login.tsx` |
 | `auth.requestAccess` | `pages/RequestAccess.tsx` |
 | `bulkInsights.generateForTopLeads` | `pages/BulkInsights.tsx` |
+| `companyProfile.get` | `components/CompanyProfile.tsx` |
+| `companyProfile.save` | `components/CompanyProfile.tsx` |
 | `connectorCredentials.list` | `components/ConnectorCredentials.tsx` |
 | `connectorCredentials.fields` | `components/ConnectorCredentials.tsx` |
 | `connectorCredentials.save` | `components/ConnectorCredentials.tsx` |

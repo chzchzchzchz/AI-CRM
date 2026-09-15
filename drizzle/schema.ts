@@ -15,6 +15,20 @@ export const organizations = mysqlTable("organizations", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 100 }).notNull().unique(),
+  /**
+   * Who this organization IS, for the AI to write as.
+   *
+   * COMPANY_NAME, the differentiators, the competitor list and the rep roster were one set
+   * of values per deployment, read straight from the environment, and they ground every
+   * generated email, brief and call analysis. So on a self-serve instance a second
+   * customer's outreach went out written as the OPERATOR's company, pitching the
+   * operator's differentiators against the operator's competitors. Correct isolation of
+   * their data, and someone else's identity on top of it.
+   *
+   * Null means "use the deployment's" — which is right for the workspace that owns the
+   * deployment, and is why every existing single-tenant install is unaffected.
+   */
+  profile: json("profile"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -60,6 +60,48 @@ const requireUser = t.middleware(async opts => {
   // data and being right about the login.
   assertOrgAllowed(orgId);
 
+  // Run the whole procedure inside this organization's identity.
+  //
+  // getCompanyConfig() is read from 43 places, several frames deep inside AI prompt
+  // builders that know nothing about organizations, and every one of them used to get the
+  // deployment's COMPANY_NAME — so a second customer's outreach went out written as the
+  // operator's company. Setting the scope in the one place that already resolves the org
+  // covers all of them by construction; threading an argument through instead would fail
+  // silently the first time a call site was missed.
+  //
+  // An organization with no profile of its own inherits the deployment's only if it OWNS
+  // the deployment. For anyone else that would be the defect, so they get the neutral
+  // defaults until they fill their own in.
+  const { loadProfile, mayInheritDeploymentIdentity, neutralProfile, enterCompanyIdentity } =
+    await import("./company-profile");
+  // Fail-safe, in full. loadProfile() already swallows a query error, but the failure
+  // this hit was earlier than that: a test that partially mocks ./db has no getDb export,
+  // so destructuring it threw a TypeError before any query ran and took the whole
+  // procedure down with it.
+  //
+  // Identity is not worth a 500. If it cannot be read, an inheriting workspace falls back
+  // to the deployment's — exactly what it did before this existed — and everyone else
+  // falls back to the neutral placeholders, which is degraded but never someone else's
+  // company name.
+  let stored: Awaited<ReturnType<typeof loadProfile>> = null;
+  try {
+    const { getDb } = await import("../db");
+    stored = await loadProfile(await getDb(), orgId);
+  } catch {
+    stored = null;
+  }
+
+  // An EMPTY scope is not enough. getCompanyConfig() merges the scope over the
+  // deployment's config, so `{}` merges nothing and the deployment's name shows straight
+  // through — which is the defect, for exactly the workspaces it matters most for. The
+  // neutral placeholders have to be IN the profile.
+  const inherit = mayInheritDeploymentIdentity(orgId);
+  enterCompanyIdentity(
+    inherit
+      ? stored && { profile: stored, inherit: true }
+      : { profile: { ...neutralProfile(), ...(stored ?? {}) }, inherit: false }
+  );
+
   return next({
     ctx: {
       ...ctx,
