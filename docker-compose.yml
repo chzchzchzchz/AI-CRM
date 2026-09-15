@@ -16,6 +16,11 @@ services:
       DEMO_MODE: "${DEMO_MODE:-true}"
       # Defaults to the bundled MySQL below; demo mode ignores it.
       DATABASE_URL: "${DATABASE_URL:-mysql://root:targetdash@db:3306/targetdash}"
+      # The bundled mysql:8 below generates its own self-signed certificate, which the
+      # default (verify) correctly refuses. skip-verify still encrypts and still exercises
+      # the TLS handshake — it just cannot authenticate a certificate nobody signed.
+      # Against a managed provider, drop this line and let the default verify.
+      DATABASE_SSL: "${DATABASE_SSL:-skip-verify}"
       # Required once DEMO_MODE=false: the server refuses to start outside demo mode
       # with a missing or placeholder secret. Generate one with:
       #   JWT_SECRET="$(openssl rand -base64 48)" DEMO_MODE=false docker compose --profile full up

@@ -38,7 +38,16 @@ const EXPLICIT = process.env.CHROME_PATH || "/opt/pw-browsers/chromium";
 const CHROME = fs.existsSync(EXPLICIT) ? EXPLICIT : undefined;
 const PORT = Number(process.env.E2E_PORT || 3399);
 const BASE = `http://localhost:${PORT}`;
+// Which store to walk this against.
+//
+// The demo store is an in-memory JSON array behind a hand-written Drizzle shim, and every
+// gate in this repo runs on it. That shim has been wrong before — range operators that
+// compared for equality, an orderBy that never sorted — so "passes against the demo store"
+// has never been the same claim as "works". Set E2E_DATABASE_URL and this walks the exact
+// same eleven steps against a real MySQL through the real driver.
+const REAL_DB = process.env.E2E_DATABASE_URL || "";
 const DB = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "tenancy-e2e-")), "db.json");
+const STORE = REAL_DB ? "mysql" : "demo store";
 
 // One nonce per run, so a rerun against a leftover database cannot pass on stale rows.
 const NONCE = Math.random().toString(36).slice(2, 10);
@@ -69,8 +78,9 @@ const server = spawn("pnpm", ["dev"], {
   env: {
     ...process.env,
     PORT: String(PORT),
-    DEMO_MODE: "true",
-    DEMO_DB_PATH: DB,
+    ...(REAL_DB
+      ? { DEMO_MODE: "false", DATABASE_URL: REAL_DB }
+      : { DEMO_MODE: "true", DEMO_DB_PATH: DB }),
     // The whole point. Without it every signup lands in org 1 and there is nothing
     // to isolate.
     SIGNUP_MODE: "self-serve",
@@ -149,7 +159,13 @@ async function signUp(page, name, email) {
   await page.click('button[type="submit"]');
   await page.waitForTimeout(3000);
 
-  // Demo mode prints the code rather than mailing it, so verification is walkable.
+  // Getting past the verify step, the two ways a real person can.
+  //
+  // Demo mode prints the code on screen instead of mailing it. Against a real database
+  // with no mailer configured the server says so honestly — "We couldn't send a
+  // verification email right now" — and offers "Do this later", which is the escape hatch
+  // an actual customer would take. Walking only the first path made this step fail
+  // against MySQL for a reason that was never a product defect.
   const code = await page
     .locator("span.tabular-nums.font-semibold")
     .first()
@@ -159,6 +175,12 @@ async function signUp(page, name, email) {
     await page.fill('input[placeholder="123456"]', code.trim());
     await page.click('button[type="submit"]');
     await page.waitForTimeout(2500);
+  } else {
+    const later = page.getByRole("button", { name: /do this later/i }).first();
+    if (await later.count()) {
+      await later.click();
+      await page.waitForTimeout(1500);
+    }
   }
   return (await page.locator("body").innerText()).replace(/\s+/g, " ");
 }
@@ -400,7 +422,7 @@ await browser.close();
 stop();
 
 const width = Math.max(...passes.concat(failures.map(f => f.name)).map(s => s.length), 0);
-console.log("");
+console.log(`\n  store: ${STORE}`);
 for (const p of passes) console.log(`  ✓ ${p}`);
 for (const f of failures) console.log(`  ✘ ${f.name.padEnd(width)}  ${f.detail}`);
 console.log(`\n${passes.length} passed, ${failures.length} failed\n`);

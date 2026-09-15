@@ -1,5 +1,6 @@
 import { eq, and, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { assertDatabaseConfigured, sslOption } from "./_core/database-config";
 import mysql from "mysql2/promise";
 import { InsertUser, users, accounts, InsertAccount, contacts, /* people, InsertPerson, clayRequests, InsertClayRequest, gongCalls, InsertGongCall */ calls, opportunities, Opportunity, InsertOpportunity } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -1010,7 +1011,10 @@ export async function getPool(): Promise<mysql.Pool | null> {
         user: url.username,
         password: url.password,
         database: url.pathname.slice(1),
-        ssl: { rejectUnauthorized: false },
+        // Was `{ rejectUnauthorized: false }`, hardcoded: encrypted but unauthenticated
+        // where the server spoke TLS, and a failed handshake where it did not. See
+        // _core/database-config.ts.
+        ssl: sslOption(),
         waitForConnections: true,
         connectionLimit: 10,
       });
@@ -1042,6 +1046,12 @@ export async function getDb() {
       _db = new MockDrizzle() as any;
     }
   } else if (!_db) {
+    // Only demo mode gets the demo store. This branch used not to check, so
+    // DEMO_MODE=false with no DATABASE_URL served 1,000 synthetic accounts as though
+    // they were the customer's — and the readiness probe, which MockDrizzle answers
+    // perfectly, called that instance healthy. assertDatabaseConfigured() stops a real
+    // deployment from reaching here at all; this is the second lock on the same door.
+    assertDatabaseConfigured();
     console.warn("[Database] No DATABASE_URL found, falling back to local JSON database");
     _db = new MockDrizzle() as any;
   }

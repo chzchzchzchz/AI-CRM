@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite";
 import { securityHeaders, rateLimiter, corsMiddleware } from "./security";
 import { ensureDefaultOrganization } from "./onboarding";
 import { checkReadiness } from "./health";
+import { assertDatabaseConfigured, describeSsl } from "./database-config";
 import { registerApiNotFound } from "./api-404";
 import { probeStore } from "./shared-store";
 import { getDb } from "../db";
@@ -35,6 +36,16 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  // Before anything else. A deployment that asks for a real database and has not been
+  // given one used to come up serving the bundled demo dataset — 1,000 fabricated
+  // accounts, writes going to a JSON file a redeploy discards, and /api/ready reporting
+  // healthy because MockDrizzle answers the probe query perfectly. An outage is a much
+  // better outcome than that, so this refuses to start instead.
+  assertDatabaseConfigured();
+  if (process.env.DEMO_MODE !== "true") {
+    console.log(`[Database] ${describeSsl()}`);
+  }
+
   const app = express();
   const server = createServer(app);
   

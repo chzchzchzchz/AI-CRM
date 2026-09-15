@@ -39,6 +39,12 @@ export default defineConfig({
       // demo dataset the product ships with — polluting an account's intent history and
       // call list, which silently corrupts the briefs built from those signals.
       DEMO_DB_PATH: path.resolve(templateRoot, "demo-db.test.json"),
+      // Say out loud what was always true: these run against the demo store. It used to
+      // be implicit, because getDb() fell back to MockDrizzle whenever DATABASE_URL was
+      // absent — the same silent fallback that made a misconfigured PRODUCTION deployment
+      // serve 1,000 fabricated accounts while reporting itself healthy. That fallback is
+      // now refused outside demo mode, so the suite has to declare which store it wants.
+      DEMO_MODE: "true",
     },
   },
 });

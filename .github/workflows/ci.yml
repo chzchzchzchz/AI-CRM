@@ -103,6 +103,67 @@ jobs:
           SALESFORCE_USERNAME: ${{ secrets.SALESFORCE_USERNAME }}
           SALESFORCE_PASSWORD: ${{ secrets.SALESFORCE_PASSWORD }}
 
+  # Everything in `build` runs against the demo store: an in-memory array behind a
+  # hand-written Drizzle shim. That shim has been wrong before — range operators that
+  # compared for equality, an orderBy that never sorted — so a green build has never been
+  # the same claim as "works against a database".
+  #
+  # The first time anyone pointed this app at a real MySQL, all eleven tenancy steps failed
+  # at the first query: the pool hardcoded `ssl: { rejectUnauthorized: false }`, which fails
+  # the handshake outright against a server without TLS. And with DEMO_MODE=false and no
+  # DATABASE_URL it served the 1,000-account demo dataset as though it were real, with
+  # /api/ready reporting healthy. Neither was visible to anything here.
+  #
+  # Separate job, like `docker` below, so a database failure is legible on its own.
+  mysql:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: targetdash
+          MYSQL_DATABASE: targetdash
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ptargetdash"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DATABASE_URL: mysql://root:targetdash@127.0.0.1:3306/targetdash
+      # mysql:8 ships a self-signed certificate, so `verify` (the default) cannot succeed
+      # here. skip-verify still exercises the TLS handshake, which is the path a managed
+      # provider uses; `disable` would skip it entirely and test less.
+      DATABASE_SSL: skip-verify
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright-core install --with-deps chromium
+
+      # The schema has to survive a real engine, not just drizzle-kit's offline generator.
+      - name: Apply the schema to a real MySQL
+        run: pnpm db:push
+
+      # The same eleven steps the build job walks against the demo store, against MySQL
+      # through the real driver. Two customers sign up, import a lead list, invite a
+      # colleague, and stay out of each other's workspace.
+      - name: Tenancy end to end, against MySQL
+        run: pnpm tenancy:e2e
+        env:
+          E2E_DATABASE_URL: mysql://root:targetdash@127.0.0.1:3306/targetdash
+
   # The Docker path the README advertises — `docker compose up`, and the Render
   # one-click button, which builds this same Dockerfile.
   #
