@@ -1,12 +1,14 @@
 # TargetDash
 
+[![CI](https://github.com/chzchzchzchz/AI-CRM/actions/workflows/ci.yml/badge.svg)](https://github.com/chzchzchzchz/AI-CRM/actions/workflows/ci.yml)
+
 **An AI account-intelligence layer for B2B sales.**
 
 A sales rep opens this in the morning and sees which accounts moved, why they moved, and what to
 do about it — with the evidence for every claim attached. It sits on top of a CRM rather than
 replacing one.
 
-`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 452 tests, ~54k lines,
+`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 479 tests, ~55k lines,
 runs with zero API keys.
 
 ```bash
@@ -35,6 +37,53 @@ URL pointed at the wrong vendor.
 
 ---
 
+## How it works
+
+The unit of work is an **account brief**: why this account matters today, what to do about it,
+and the evidence for both. It's built in three passes, and the split between them is the design.
+
+**1 · Signals — code only, no model.** `server/intel/signals.ts` reads every stored data point
+for one account and folds it into a single `SignalPack`:
+
+| | |
+|---|---|
+| Intent | current score, the full reading history, direction of travel, and the largest single jump between consecutive readings — a spike is the buying signal |
+| Stakeholders | every contact bucketed by seniority inferred from job title, plus departments and who has a reachable email |
+| Conversations | call count, days since the last one, sentiment, topics, and still-open action items |
+| Pipeline | open / won / lost, total value, and `amount × probability` summed for the forecast figure |
+| Technology | tech stack and security stack |
+
+Every number here is computed in code, so it's arithmetically true by construction, and nothing
+downstream recalculates it.
+
+**2 · Judgement — the model, constrained to a schema.** The pack goes to the model, which has to
+return structure rather than prose: `whyNow[]`, `actions[]`, `risks[]`, each item carrying an
+`evidence` string naming the specific `section.field` it came from. Prose is easy to make
+plausible; a citation to `intent.largestJump` either matches the pack or it doesn't.
+
+**3 · Validation — checked against the pack before anyone sees it.** `validateJudgement` builds
+the set of names the pack can support, the currency figures it can support, and the legitimate
+values for every field an evidence string may cite — then rejects anything outside them. A model
+that invents a contact, a number, or a citation doesn't get to ship it.
+
+Briefs are keyed by a hash of the *material* signals rather than a timestamp, so an account that
+hasn't moved reuses its brief instead of paying to regenerate it. With no model reachable at all,
+each surface says so rather than presenting an empty brief as a finished one.
+
+---
+
+## How this was built
+
+A personal project, written largely by AI coding agents — Manus early on, Claude Code since —
+under my direction. `git log --format='%an' | sort | uniq -c` shows the split.
+
+The verification is the part I'd point at. `pnpm check:claims` asserts this README against the
+code and the seed data and fails the build when a figure drifts; `pnpm gate` walks every route in
+a real browser at desktop and mobile; `pnpm flows` clicks through the app rather than only
+loading it. [`docs/QUALITY-GATE.md`](docs/QUALITY-GATE.md) has the detail.
+
+---
+
 ## The demo dataset
 
 ```text
@@ -45,7 +94,7 @@ URL pointed at the wrong vendor.
 ```
 
 <sub>Counted from `demo-db.seed.json` by `pnpm check:claims`, which fails the build if this block
-drifts from the data. It once advertised 16 accounts against 1,000 actual.</sub>
+drifts from the data.</sub>
 
 Point it at your own data and the same views render your real book of business — see
 [`SETUP.md`](SETUP.md) for the tiers and [`ADMIN_SETUP.md`](ADMIN_SETUP.md) for reps,
@@ -102,10 +151,8 @@ full-size captures in [`docs/screenshots/`](docs/screenshots/).
 With `DEMO_MODE=true` no credential is needed. Against a real deployment, set
 `MCP_SESSION_COOKIE`.
 
-<sub>Every one of these was broken for a long time. Four called tRPC procedures that don't exist,
-and two returned *"import initiated"* for an import that was never written. The server started,
-listed its tools, and failed on every call — and nothing in the repo called it, so nothing
-noticed. `server/mcp.test.ts` now asserts each named procedure exists in the router.</sub>
+<sub>`server/mcp.test.ts` asserts every tool above resolves to a procedure that exists in the
+router, so a renamed procedure breaks the build rather than the agent.</sub>
 
 ---
 
@@ -120,8 +167,8 @@ pnpm mcp                   # MCP server over stdio
 
 The AI features run for free: with no cloud key set they fall back to a local Ollama model at
 `localhost:11434` ([`SETUP.md`](SETUP.md) has the one-time install). With no model reachable at
-all, each feature says plainly that none is configured — a CI flow check asserts exactly that,
-because it used to report "Content generated" and hand you the apology as the content.
+all, each feature says plainly that none is configured rather than presenting the outage note as
+output — a CI flow check asserts exactly that.
 
 ---
 
