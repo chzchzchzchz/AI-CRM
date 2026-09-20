@@ -1,5 +1,7 @@
 # TargetDash
 
+[![CI](https://github.com/chzchzchzchz/AI-CRM/actions/workflows/ci.yml/badge.svg)](https://github.com/chzchzchzchz/AI-CRM/actions/workflows/ci.yml)
+
 **An AI account-intelligence layer for B2B sales.**
 
 A sales rep opens this in the morning and sees which accounts moved, why they moved, and what to
