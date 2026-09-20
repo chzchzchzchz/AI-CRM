@@ -1,12 +1,14 @@
 # TargetDash
 
+[![CI](https://github.com/chzchzchzchz/AI-CRM/actions/workflows/ci.yml/badge.svg)](https://github.com/chzchzchzchz/AI-CRM/actions/workflows/ci.yml)
+
 **An AI account-intelligence layer for B2B sales.**
 
 A sales rep opens this in the morning and sees which accounts moved, why they moved, and what to
 do about it — with the evidence for every claim attached. It sits on top of a CRM rather than
 replacing one.
 
-`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 452 tests, ~54k lines,
+`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 479 tests, ~55k lines,
 runs with zero API keys.
 
 ```bash

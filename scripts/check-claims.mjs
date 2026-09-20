@@ -544,13 +544,42 @@ function walk(dir, exts, acc = []) {
   }
 
   const bad = [];
+
+  // The tolerance is deliberately ASYMMETRIC, because the two directions do not
+  // mean the same thing.
+  //
+  // testCount is a floor: it.each expands at runtime, so the true figure is the
+  // floor or above it, never below. A claim ABOVE the floor is therefore ordinary
+  // and gets real slack. A claim BELOW it cannot be explained by expansion — it is
+  // a number that was true once and is not any more, which is the drift this rule
+  // exists to catch.
+  //
+  // It was symmetric (0.75–1.5) and that is how it passed the very thing it was
+  // written for: the README said 452 against a floor of 481 and a runtime of 480,
+  // and 452 sat comfortably inside a band running down to 361. The slack was
+  // justified in the comment above by it.each expansion — but expansion only
+  // pushes the runtime UP, so it was never an argument for a loose FLOOR. Measured
+  // here at the time: floor 481, runtime 480, a gap of 0.2%.
+  //
+  // 2% below the floor is left for the counting itself, which is a regex over
+  // source and can over-count (an `it(` inside a string or a fixture).
+  const FLOOR_SLACK = 0.98;
+  const EXPANSION_HEADROOM = 1.5;
+
   const checkTestClaim = (label, text, re) => {
     const m = text.match(re);
     if (!m) return;
     const claimed = Number(m[1].replace(/,/g, ""));
-    if (claimed < testCount * 0.75 || claimed > testCount * 1.5) {
+    if (claimed < testCount * FLOOR_SLACK) {
       bad.push(
-        `${label} says ${claimed} tests, ${testCount} found in source (a floor — it.each expands at runtime, so the true count is normally somewhat higher)`
+        `${label} says ${claimed} tests, but ${testCount} test call sites are in source.\n` +
+          `    A claim below the floor is stale: it.each only ever expands the runtime count upward,\n` +
+          `    so nothing explains a number under it. Run \`pnpm test\` and quote what it prints.`
+      );
+    } else if (claimed > testCount * EXPANSION_HEADROOM) {
+      bad.push(
+        `${label} says ${claimed} tests, ${testCount} found in source — more than 50% above the floor,\n` +
+          `    which is further than it.each expansion accounts for. Check the figure is real.`
       );
     }
   };
