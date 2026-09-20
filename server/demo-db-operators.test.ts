@@ -239,3 +239,51 @@ describe("demo store — column projection", () => {
     expect(row.count).toBe(all.length);
   });
 });
+
+
+/**
+ * `count(*)` used to depend on what you named it.
+ *
+ * The shim decided a projection was an aggregate by testing `'count' in selectFields` —
+ * the ALIAS, not the expression. So:
+ *
+ *   select({ count: sql`count(*)` })  ->  [{ count: N }]        correct
+ *   select({ n:     sql`count(*)` })  ->  N empty objects       silently wrong
+ *   select({ count: contacts.id })    ->  [{ count: N }]        a plain column replaced
+ *                                                               by a row count
+ *
+ * The middle one is how it surfaced: an entitlement check read zero because its alias was
+ * `n`, so a seat limit silently never fired in the mode almost everyone runs. The third
+ * was latent and worse — a projection asking for a column and getting a total.
+ */
+describe("count(*) in the demo store", () => {
+  it("counts, whatever the alias is called", async () => {
+    const db: any = await getDb();
+    const { sql } = await import("drizzle-orm");
+    const all = (await db.select().from(accounts)).length;
+
+    expect(await db.select({ count: sql`count(*)` }).from(accounts)).toEqual([{ count: all }]);
+    expect(await db.select({ n: sql`count(*)` }).from(accounts)).toEqual([{ n: all }]);
+    expect(await db.select({ total: sql`COUNT(*)` }).from(accounts)).toEqual([{ total: all }]);
+  });
+
+  it("does not turn a real column into a row count because of its alias", async () => {
+    const db: any = await getDb();
+    const rows = await db.select({ count: accounts.id }).from(accounts);
+    const all = (await db.select().from(accounts)).length;
+    expect(rows.length).toBe(all);
+    // The id of the first account, not the number of accounts.
+    expect(rows[0].count).not.toBe(all);
+  });
+
+  it("still honours the where clause it is counting under", async () => {
+    // A count that ignores its filter is the same lie as a filter that ignores its count.
+    const db: any = await getDb();
+    const { sql, eq } = await import("drizzle-orm");
+    const [{ n }] = await db
+      .select({ n: sql`count(*)` })
+      .from(accounts)
+      .where(eq(accounts.orgId, 999999));
+    expect(n).toBe(0);
+  });
+});

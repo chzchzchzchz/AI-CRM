@@ -29,6 +29,16 @@ export const organizations = mysqlTable("organizations", {
    * deployment, and is why every existing single-tenant install is unaffected.
    */
   profile: json("profile"),
+  /**
+   * What this organization is entitled to, as `{ seats, accounts, contacts,
+   * aiCallsPerMonth }`.
+   *
+   * Null, or a missing key, means UNLIMITED — deliberately. Nothing in this product knows
+   * what a plan costs or how many seats one should include, and inventing those numbers
+   * would cap real customers on a guess. An operator sets a limit when they have decided
+   * there should be one; until then this changes nothing for anybody.
+   */
+  entitlements: json("entitlements"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -95,6 +105,33 @@ export const connectorCredentials = mysqlTable("connector_credentials", {
   // The lookup every connector call makes: this org's live credential for this vendor.
   orgProviderIdx: index("connector_credentials_org_provider").on(table.orgId, table.provider),
 }));
+
+/**
+ * Billable usage that cannot be counted by looking at rows.
+ *
+ * Seats, accounts and contacts are just COUNT(*) on tables that already exist, so they
+ * need no meter — a meter for them would be a second number that can disagree with the
+ * first. AI calls leave no trace of their own, so they are recorded here as they happen.
+ *
+ * One row per call rather than a running total per org: a counter you increment cannot be
+ * audited, re-aggregated over a different window, or explained to a customer disputing an
+ * invoice.
+ */
+export const usageEvents = mysqlTable("usage_events", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").default(1).notNull(),
+  /** What was consumed. Today only "ai_call". */
+  kind: varchar("kind", { length: 32 }).notNull(),
+  quantity: int("quantity").default(1).notNull(),
+  /** Free-form detail — the model, the feature — for explaining a bill, never for billing. */
+  detail: varchar("detail", { length: 255 }),
+  at: timestamp("at").defaultNow().notNull(),
+}, (table) => ({
+  // The query every usage read makes: this org's events of this kind since a date.
+  orgKindAtIdx: index("usage_events_org_kind_at").on(table.orgId, table.kind, table.at),
+}));
+
+export type UsageEvent = typeof usageEvents.$inferSelect;
 
 export type ConnectorCredential = typeof connectorCredentials.$inferSelect;
 export type InsertConnectorCredential = typeof connectorCredentials.$inferInsert;

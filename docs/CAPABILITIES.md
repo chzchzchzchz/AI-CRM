@@ -8,11 +8,11 @@ Every backend capability, and whether anything in the product actually reaches i
 
 | | Count |
 |---|---|
-| Procedures total | 153 |
-| Reachable from the UI | 128 |
-| External by design (webhooks, probes, connector actions) | 22 |
+| Procedures total | 155 |
+| Reachable from the UI | 129 |
+| External by design (webhooks, probes, connector actions) | 23 |
 | **Built but not routed anywhere** | **0** |
-| ↳ exempted from that zero (maps in `server/inventory.ts`, plus the `integrations.*` rule) | 25 |
+| ↳ exempted from that zero (maps in `server/inventory.ts`, plus the `integrations.*` rule) | 26 |
 | ↳ of those, called only by unreachable client code | 0 |
 | Superseded by a live capability (kept, not a to-do) | 3 |
 | App routes | 36 |
@@ -96,6 +96,7 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `emailVerification.resendVerificationCode` | `pages/SignUp.tsx` |
 | `emailVerification.sendPasswordResetCode` | `pages/ForgotPassword.tsx` |
 | `emailVerification.resetPassword` | `pages/ForgotPassword.tsx` |
+| `entitlements.usage` | `components/UsageAndLimits.tsx` |
 | `followUps.list` | `components/FollowUps.tsx` |
 | `followUps.create` | `components/LogFollowUpDialog.tsx` |
 | `followUps.complete` | `components/FollowUpDialog.tsx` |
@@ -202,6 +203,7 @@ Not called by our UI, and should not be — these are entry points for other sys
 | `dust.getContactIntelligence` | Dust connector action |
 | `dust.searchGongCalls` | Dust connector action |
 | `dust.query` | Dust connector action |
+| `entitlements.setLimits` | operator action — sets a workspace's limits, from a console or script |
 | `gemini.researchAccount` | **cannot succeed in this deployment** — needs browser automation that isn't installed; it throws by design. Use the configured LLM provider instead |
 | `intel.brainLearn` | forces a learning cycle that otherwise runs on a schedule |
 | `intentScores.create` | write path — connectors push scores in through it |

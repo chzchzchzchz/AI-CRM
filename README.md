@@ -6,7 +6,7 @@ A sales rep opens this in the morning and sees which accounts moved, why they mo
 do about it — with the evidence for every claim attached. It sits on top of a CRM rather than
 replacing one.
 
-`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 704 tests, ~54k lines,
+`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 722 tests, ~54k lines,
 runs with zero API keys.
 
 ```bash
@@ -30,7 +30,8 @@ Sign in with `demo@ai-crm.com` / `DemoPass123!`. No database, no keys, no signup
 | Multi-tenancy | Org boundary on every tenant table, enforced by a build check. `SIGNUP_MODE=self-serve` gives each new customer their own workspace, and admins invite colleagues into it from `/admin`. Not yet run with two paying customers |
 | Getting your own data in | `/import` takes pasted rows or a CSV/TSV/JSON file straight into your workspace — accounts and contacts from the same paste, no connector needed. The CSV Processor builds a file for import into *Salesforce*, not into this app |
 | Connectors under multi-tenancy | A workspace connects its own accounts from `/admin` — stored AES-256-GCM encrypted, never shown again, and used only for that workspace's calls. Falling back to the deployment's own `SALESFORCE_*`/`GONG_*` is allowed only for the workspace that owns them; anyone else is refused and told to connect their own. Needs `CREDENTIALS_KEY`, and refuses to store anything without it |
-| Billing, metering, plan enforcement | Not built. Nothing counts seats, limits usage or takes money |
+| Metering and limits | Seats, accounts, contacts and AI calls are counted per workspace and shown in `/admin`. A limit refuses the action that would exceed it, saying the numbers. No limit is set anywhere by default — a guessed cap fires on a real customer for a rule nobody chose |
+| Taking money | Not built. No prices, no plans, no payment provider — metering and enforcement are the half that belongs in the product; what a seat costs is yours to decide |
 
 `pnpm doctor` reads your `.env` and tells you which integrations are actually ready, which are
 half-configured, and which are set but wrong — a placeholder value, a quoted string, a webhook
@@ -169,8 +170,11 @@ data. See [`SECURITY.md`](SECURITY.md).
   customers signing up, inviting colleagues, and staying isolated from each other is
   verified in a browser, not just in tests. It has not run a deployment with two *paying*
   customers — tested and enforced, not battle-worn.
-- **No billing, metering or plan enforcement.** Nothing counts seats, limits usage or
-  takes money. Selling means bolting that on, or invoicing out of band.
+- **No payment provider, and no prices.** Usage is metered per workspace and limits are
+  enforced when set, but nothing charges anybody: there are no plans, no prices and no
+  Stripe. Selling still means invoicing out of band, or wiring a provider to the meter
+  that now exists. Limits default to unset — every deployment behaves exactly as it did
+  until an operator chooses a number.
 - **Connector coverage is per workspace now, but only Salesforce is threaded through.**
   A workspace stores its own credentials and calls run in that scope, with no fallback to
   the deployment's environment for a field it left blank. Salesforce reads through it;

@@ -122,8 +122,14 @@ function walk(dir, exts, acc = []) {
     const n = k => (seed[k] || []).length;
 
     // Any comma-grouped integer the README claims, checked against the real counts.
+    //
+    // `\d[\d,]*`, not `[\d,]+`: the latter matches a bare COMMA, so ordinary prose
+    // containing ", accounts" parsed as the number zero and this rule reported
+    // "README says 0 accounts, seed has 1,000" — pointing at the seed when the fault was
+    // here. A checker whose failure message sends you to the wrong file is worse than no
+    // checker for as long as it takes to notice.
     const claimed = k => {
-      const re = new RegExp(`([\\d,]+)\\s+${k}`, "i");
+      const re = new RegExp(`(\\d[\\d,]*)\\s+${k}`, "i");
       const m = readme.match(re);
       return m ? Number(m[1].replace(/,/g, "")) : null;
     };
@@ -156,9 +162,15 @@ function walk(dir, exts, acc = []) {
     const scoreOf = a => a.intentScore || 0;
     const openOpps = opps.filter(o => !String(o.stage || "").toLowerCase().startsWith("closed"));
 
+    // Same reasoning as `claimed` above — every one of these patterns uses `[\d,]+`,
+    // so each could match a comma in prose. They are literal enough to be safe today;
+    // the guard is here so a future one written loosely fails visibly rather than
+    // silently reporting zero.
     const num = re => {
       const m = readme.match(re);
-      return m ? Number(m[1].replace(/,/g, "")) : null;
+      if (!m) return null;
+      const digits = m[1].replace(/,/g, "");
+      return /^\d+$/.test(digits) ? Number(digits) : null;
     };
 
     check("accounts with intent data", accounts.filter(a => a.intentScore).length,

@@ -5,6 +5,7 @@ import { getDb } from "./db";
 import { accounts, contacts } from "../drizzle/schema";
 import { parseUniversalData } from "./universal-parser";
 import { mapRows, type MappedAccount, type MappedContact } from "./_core/data-import";
+import { assertWithinLimit } from "./_core/entitlements";
 
 /**
  * Import a customer's own accounts and contacts into their own workspace.
@@ -57,6 +58,16 @@ export const dataImportRouter = router({
       }
 
       const batch = mapRows(parsed);
+
+      // Checked against what this import would ADD, before any of it is written — a
+      // partial import that stops halfway is worse than one that is refused, because the
+      // customer then has to work out which half landed.
+      //
+      // Counted against the mapped totals rather than the row count: forty people at one
+      // company is forty contacts and one account, and charging forty accounts for it
+      // would be a limit nobody could predict from their own spreadsheet.
+      await assertWithinLimit(db, ctx.orgId, "accounts", batch.accounts.length);
+      await assertWithinLimit(db, ctx.orgId, "contacts", batch.contacts.length);
 
       const accountResult = await writeAccounts(db, ctx.orgId, batch.accounts);
       const contactResult = await writeContacts(db, ctx.orgId, batch.contacts, accountResult.idByDomain);

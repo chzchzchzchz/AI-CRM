@@ -6,6 +6,7 @@ import { getDb } from "./db";
 import { organizationInvites, users } from "../drizzle/schema";
 import { affectedRows } from "./_core/affected-rows";
 import { validatePasswordComplexity, logSecurityEvent } from "./_core/security";
+import { assertWithinLimit } from "./_core/entitlements";
 import {
   INVITE_TTL_MS,
   claimInvite,
@@ -47,6 +48,11 @@ export const invitesRouter = router({
       if (ctx.user?.role !== "admin") throw new Error("Admin access required");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      // Checked when the invitation is ISSUED as well as when it is accepted. Letting an
+      // admin hand out links that will be refused later wastes their time and the
+      // invitee's, and the person who hits the wall is the one who did nothing wrong.
+      await assertWithinLimit(db, ctx.orgId, "seats");
 
       const email = input.email.trim().toLowerCase();
 
@@ -168,6 +174,11 @@ export const invitesRouter = router({
 
       const found = await lookupInvite(db, input.token);
       if (!found.ok) throw new Error(rejectionMessage(found.reason));
+
+      // And again here, because the seat count can have changed between issuing the link
+      // and someone clicking it — two invitations outstanding against one remaining seat
+      // is the ordinary case, not an edge one.
+      await assertWithinLimit(db, found.invite.orgId, "seats");
 
       const passwordError = validatePasswordComplexity(input.password);
       if (passwordError) throw new Error(passwordError);

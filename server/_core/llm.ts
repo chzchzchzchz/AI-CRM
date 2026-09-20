@@ -320,7 +320,54 @@ const normalizeResponseFormat = ({
   };
 };
 
+/**
+ * The organization this request belongs to, or undefined outside one.
+ *
+ * Dynamically imported and swallowed: llm.ts is imported by CLI tooling and the connector
+ * smoke test, neither of which has a request, an organization, or a database.
+ */
+async function currentOrgIdSafe(): Promise<number | undefined> {
+  try {
+    const { currentOrgId } = await import("./org-scope");
+    return currentOrgId();
+  } catch {
+    return undefined;
+  }
+}
+
+/** Fire-and-forget. recordUsage never throws; this also never waits. */
+async function recordAiCall(orgId: number | undefined, model: string): Promise<void> {
+  if (orgId === undefined) return;
+  try {
+    const { recordUsage } = await import("./entitlements");
+    const { getDb } = await import("../db");
+    await recordUsage(await getDb(), orgId, "ai_call", model);
+  } catch {
+    /* metering must not fail the thing being metered */
+  }
+}
+
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
+  // Metering and the AI-call limit, for whichever organization this request belongs to.
+  //
+  // Enforced BEFORE the model is called, so an organization over its limit is told so
+  // rather than billed for the call that tipped it over. Recorded after, because a call
+  // that never happened is not usage.
+  //
+  // Both halves are best-effort by design: outside a request there is no organization
+  // (the CLI, the smoke test, a scheduled job), and a metering failure must never fail
+  // the feature being metered — losing a row from an invoice is a far smaller problem
+  // than an AI feature that breaks because a usage insert timed out.
+  const meteredOrgId = await currentOrgIdSafe();
+  if (meteredOrgId !== undefined) {
+    const { assertWithinLimit } = await import("./entitlements");
+    const { getDb } = await import("../db");
+    // Not wrapped in try/catch: assertWithinLimit throws ONLY a LimitExceededError, and
+    // that one has to reach the caller. Everything it could fail on internally already
+    // fails open inside entitlements.ts.
+    await assertWithinLimit(await getDb().catch(() => null), meteredOrgId, "aiCallsPerMonth");
+  }
+
   const providers = resolveProviders();
 
   const {
@@ -431,7 +478,13 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
       // guarded path so a stalled read falls through to the next provider instead of
       // escaping invokeLLM and crashing the caller.
       try {
-        if (response.ok) return (await response.json()) as InvokeResult;
+        if (response.ok) {
+          // Usage is recorded here, on the success path only. A call that every provider
+          // refused is not consumption, and billing a customer for an outage is the
+          // fastest way to make them read the invoice line by line.
+          void recordAiCall(meteredOrgId, model);
+          return (await response.json()) as InvokeResult;
+        }
         lastError = `${provider.url} (${model}): ${response.status} ${response.statusText} – ${await response.text()}`;
       } catch (err) {
         lastError = `${provider.url} (${model}): response body read failed – ${(err as Error)?.message}`;

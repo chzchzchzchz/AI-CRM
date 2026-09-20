@@ -95,6 +95,12 @@ const requireUser = t.middleware(async opts => {
   // deployment's config, so `{}` merges nothing and the deployment's name shows straight
   // through — which is the defect, for exactly the workspaces it matters most for. The
   // neutral placeholders have to be IN the profile.
+  // Also make the org id readable from the places that are not queries — metering, where
+  // invokeLLM sits several frames below anything that knows an organization exists. Not
+  // for reads or writes of tenant data: those take ctx.orgId explicitly and always will.
+  const { enterOrgScope } = await import("./org-scope");
+  enterOrgScope(orgId);
+
   const inherit = mayInheritDeploymentIdentity(orgId);
   enterCompanyIdentity(
     inherit

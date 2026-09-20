@@ -791,9 +791,26 @@ class MockDrizzleQueryBuilder {
         });
       }
 
-      // Handle count query projection
-      if (this.selectFields && typeof this.selectFields === 'object' && 'count' in this.selectFields) {
-        return [{ count: results.length }];
+      // Aggregate projections — decided by the EXPRESSION, not by the alias.
+      //
+      // This used to be `'count' in this.selectFields`, so whether `count(*)` worked
+      // depended on what you happened to name it:
+      //
+      //   select({ count: sql`count(*)` })  ->  [{ count: 10023 }]   correct
+      //   select({ n:     sql`count(*)` })  ->  10023 empty objects  silently wrong
+      //   select({ count: users.id })       ->  [{ count: 10023 }]   a plain column
+      //                                                             replaced by a row count
+      //
+      // The middle one is how this was found: a limit check that read zero because its
+      // alias was `n`. The third is worse and was latent — a legitimate projection
+      // aliased `count` returning something entirely different from what it asked for.
+      const aggregates = Object.entries(this.selectFields ?? {}).filter(([, expr]) =>
+        isCountExpression(expr)
+      );
+      if (aggregates.length > 0) {
+        const row: any = {};
+        for (const [alias] of aggregates) row[alias] = results.length;
+        return [row];
       }
 
       // Apply the column projection.
@@ -994,6 +1011,27 @@ class MockDrizzle {
     const builder = new MockDrizzleQueryBuilder('delete');
     builder.from(table);
     return builder;
+  }
+}
+
+/**
+ * Is this projection value a `count(...)` aggregate?
+ *
+ * Drizzle builds `sql\`count(*)\`` into an object of query chunks rather than a string,
+ * so there is nothing to compare against directly — this stringifies the chunks and looks
+ * for the call. Crude, and right for the one aggregate this shim claims to support:
+ * anything else (sum, avg, a window function) is not detected, does not pretend to work,
+ * and falls through to the ordinary projection where its alias comes back undefined
+ * rather than confidently wrong.
+ */
+function isCountExpression(expr: any): boolean {
+  if (!expr || typeof expr !== "object") return false;
+  const chunks = (expr as any).queryChunks ?? (expr as any).sql ?? null;
+  if (!chunks) return false;
+  try {
+    return /count\s*\(/i.test(JSON.stringify(chunks));
+  } catch {
+    return false;
   }
 }
 

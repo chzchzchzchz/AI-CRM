@@ -8,6 +8,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { TeamInvites } from "@/components/TeamInvites";
 import { ConnectorCredentials } from "@/components/ConnectorCredentials";
 import { CompanyProfile } from "@/components/CompanyProfile";
+import { UsageAndLimits } from "@/components/UsageAndLimits";
 
 export default function Admin() {
   const { user, loading } = useAuth();
@@ -97,6 +98,7 @@ export default function Admin() {
         {/* First, because adding a colleague is the thing a new customer needs on day
             one — and until this existed there was no way to do it at all. */}
         <TeamInvites />
+        <UsageAndLimits />
         <CompanyProfile />
         <ConnectorCredentials />
 

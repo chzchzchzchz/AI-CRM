@@ -305,6 +305,10 @@ const AUTOMATION_BY_DESIGN: Record<string, string> = {
   // person-facing path is dataImport.importRows, which /import calls; before it existed
   // this exemption was describing a defect rather than a decision, since a self-serve
   // customer had no way to get data into their own workspace at all.
+  // An OPERATOR action, not a customer one: it sets another organization's ceiling, so a
+  // button for it inside a customer's own admin page would be a cap they could raise.
+  // Called from a console or a deployment script by whoever runs the instance.
+  "entitlements.setLimits": "operator action — sets a workspace's limits, from a console or script",
   "clayImport.importRawData": "bulk import — driven by a Clay export or automation",
   "clayImport.importAccounts": "bulk import — driven by a Clay export or automation",
   "clayImport.getImportStats": "import telemetry for the automation that ran it",
