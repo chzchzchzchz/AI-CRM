@@ -103,6 +103,32 @@ jobs:
           SALESFORCE_USERNAME: ${{ secrets.SALESFORCE_USERNAME }}
           SALESFORCE_PASSWORD: ${{ secrets.SALESFORCE_PASSWORD }}
 
+  # docs/DEVELOPMENT.md has said "`pnpm audit` — must report zero advisories" since long
+  # before anything enforced it, and by the time anyone ran it there were sixteen: a high
+  # in mysql2 (auth-plugin downgrade to mysql_clear_password, on the connection carrying
+  # every customer's CRM), four in fast-uri, two in browserslist, and stale pins in the
+  # overrides map that had themselves become vulnerable.
+  #
+  # Its own job rather than a step in `build`, and deliberately not inside `pnpm verify`:
+  # an advisory published upstream overnight is not a defect in the change being pushed,
+  # and failing an unrelated PR — or a developer's local run mid-task — is how a control
+  # like this gets switched off. A separate red job says what it is.
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Audit
+        run: pnpm audit
+
   # Everything in `build` runs against the demo store: an in-memory array behind a
   # hand-written Drizzle shim. That shim has been wrong before — range operators that
   # compared for equality, an orderBy that never sorted — so a green build has never been
