@@ -37,30 +37,50 @@ URL pointed at the wrong vendor.
 
 ---
 
-## How this was built
+## How it works
 
-A personal project, and one written largely by AI coding agents — Manus early on, Claude Code
-since — working under my direction. `git log --format='%an' | sort | uniq -c` shows the split.
-I'd rather you read it there than take my word for it.
+The unit of work is an **account brief**: why this account matters today, what to do about it,
+and the evidence for both. It's built in three passes, and the split between them is the design.
 
-That is the less interesting half. Agents produce a lot of plausible code quickly, and the
-failure mode is never a compile error. It's a function that returns a confident wrong answer, a
-test that passes without asserting anything, a number on a dashboard that quietly stopped
-meaning what its label says. Catching that is the actual problem, and it's where most of my own
-time went:
+**1 · Signals — code only, no model.** `server/intel/signals.ts` reads every stored data point
+for one account and folds it into a single `SignalPack`:
 
 | | |
 |---|---|
-| `pnpm check:claims` | Asserts the documentation against the code and the seed data. If this README quotes a figure the code disagrees with, the build fails. It has caught its own author more than once |
-| `pnpm gate` | Walks every route in a real browser at desktop and mobile — unreadable type, horizontal overflow, runaway DOM, placeholder text that reached the screen, pages that render a shell and nothing else |
-| `pnpm flows` | Actually uses the app: filters a list, opens a record, searches. The gate above never clicks anything, so "I tried it and nothing happened" was invisible to it |
-| `pnpm inventory` | Fails the build on anything built but unreachable — a procedure with no way to it from the UI |
+| Intent | current score, the full reading history, direction of travel, and the largest single jump between consecutive readings — a spike is the buying signal |
+| Stakeholders | every contact bucketed by seniority inferred from job title, plus departments and who has a reachable email |
+| Conversations | call count, days since the last one, sentiment, topics, and still-open action items |
+| Pipeline | open / won / lost, total value, and `amount × probability` summed for the forecast figure |
+| Technology | tech stack and security stack |
 
-Every rule in those harnesses exists because something got past the ones before it.
-[`docs/QUALITY-GATE.md`](docs/QUALITY-GATE.md) names the specific defect behind each, which is
-the part I'd point at: a rule invented in the abstract is one that eventually gets silenced.
+Every number here is computed in code, so it's arithmetically true by construction, and nothing
+downstream recalculates it.
 
-What I was practising here is deciding what gets verified and what gets refused — not the typing.
+**2 · Judgement — the model, constrained to a schema.** The pack goes to the model, which has to
+return structure rather than prose: `whyNow[]`, `actions[]`, `risks[]`, each item carrying an
+`evidence` string naming the specific `section.field` it came from. Prose is easy to make
+plausible; a citation to `intent.largestJump` either matches the pack or it doesn't.
+
+**3 · Validation — checked against the pack before anyone sees it.** `validateJudgement` builds
+the set of names the pack can support, the currency figures it can support, and the legitimate
+values for every field an evidence string may cite — then rejects anything outside them. A model
+that invents a contact, a number, or a citation doesn't get to ship it.
+
+Briefs are keyed by a hash of the *material* signals rather than a timestamp, so an account that
+hasn't moved reuses its brief instead of paying to regenerate it. With no model reachable at all,
+each surface says so rather than presenting an empty brief as a finished one.
+
+---
+
+## How this was built
+
+A personal project, written largely by AI coding agents — Manus early on, Claude Code since —
+under my direction. `git log --format='%an' | sort | uniq -c` shows the split.
+
+The verification is the part I'd point at. `pnpm check:claims` asserts this README against the
+code and the seed data and fails the build when a figure drifts; `pnpm gate` walks every route in
+a real browser at desktop and mobile; `pnpm flows` clicks through the app rather than only
+loading it. [`docs/QUALITY-GATE.md`](docs/QUALITY-GATE.md) has the detail.
 
 ---
 
@@ -74,7 +94,7 @@ What I was practising here is deciding what gets verified and what gets refused 
 ```
 
 <sub>Counted from `demo-db.seed.json` by `pnpm check:claims`, which fails the build if this block
-drifts from the data. It once advertised 16 accounts against 1,000 actual.</sub>
+drifts from the data.</sub>
 
 Point it at your own data and the same views render your real book of business — see
 [`SETUP.md`](SETUP.md) for the tiers and [`ADMIN_SETUP.md`](ADMIN_SETUP.md) for reps,
@@ -131,10 +151,8 @@ full-size captures in [`docs/screenshots/`](docs/screenshots/).
 With `DEMO_MODE=true` no credential is needed. Against a real deployment, set
 `MCP_SESSION_COOKIE`.
 
-<sub>Every one of these was broken for a long time. Four called tRPC procedures that don't exist,
-and two returned *"import initiated"* for an import that was never written. The server started,
-listed its tools, and failed on every call — and nothing in the repo called it, so nothing
-noticed. `server/mcp.test.ts` now asserts each named procedure exists in the router.</sub>
+<sub>`server/mcp.test.ts` asserts every tool above resolves to a procedure that exists in the
+router, so a renamed procedure breaks the build rather than the agent.</sub>
 
 ---
 
@@ -149,8 +167,8 @@ pnpm mcp                   # MCP server over stdio
 
 The AI features run for free: with no cloud key set they fall back to a local Ollama model at
 `localhost:11434` ([`SETUP.md`](SETUP.md) has the one-time install). With no model reachable at
-all, each feature says plainly that none is configured — a CI flow check asserts exactly that,
-because it used to report "Content generated" and hand you the apology as the content.
+all, each feature says plainly that none is configured rather than presenting the outage note as
+output — a CI flow check asserts exactly that.
 
 ---
 
