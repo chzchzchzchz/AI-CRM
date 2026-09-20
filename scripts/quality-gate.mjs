@@ -289,6 +289,35 @@ for (const width of [1440, 390]) {
         detail: "still showing the loading spinner after 15s",
       });
     }
+
+    // And then the same wait again for the page's DATA, which is a separate race the
+    // fixed settle below never won. Every one of these loading states — three bare
+    // spinners and five skeletons — renders zero characters, so a page measured
+    // during one is indistinguishable from a page with nothing on it.
+    //
+    // /insights was the one that surfaced it: `accounts.list` is 1,000 rows, and on an
+    // idle machine its content lands at ~1,690ms, past the 1,200ms below. So the gate
+    // measured the spinner and reported "0 chars — the page rendered its shell and
+    // little else", which is a true description of a spinner and a false one of the
+    // page. It failed on one commit and passed on the next with identical page code,
+    // decided by how loaded the runner was. A gate that flakes is worse than no gate:
+    // it teaches you to re-run until green, which is how a real breach gets clicked
+    // past. /contacts cleared the old window by about 200ms and was next.
+    //
+    // Worth saying that this was under-measuring, not just mis-measuring: /insights
+    // was recorded at 310 nodes and 1 screen — the spinner's numbers — so the node,
+    // height and cross-page metric rules were quietly never applied to it.
+    const settled = await page
+      .waitForSelector("[data-page-loading]", { state: "detached", timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!settled) {
+      failures.push({
+        route: `${route} @${width}`,
+        rule: "page data finishes loading",
+        detail: "still showing a loading state after 15s",
+      });
+    }
     await page.waitForTimeout(1200);
 
     let m;

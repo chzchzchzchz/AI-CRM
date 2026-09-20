@@ -167,7 +167,7 @@ export default function TopAccounts() {
 
   if (isLoading) {
     return (
-      <div>
+      <div data-page-loading="true">
         <div className="container py-1 max-w-7xl space-y-6">
           <div className="h-12 w-64 rounded-sm bg-muted animate-pulse" />
           <div className="grid gap-4">

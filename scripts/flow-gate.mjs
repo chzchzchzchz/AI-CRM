@@ -67,10 +67,15 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
 const page = await ctx.newPage();
 
-/** Wait for the code-split chunk, then let queries settle. */
+/** Wait for the code-split chunk, then for the page's data, then let the rest settle. */
 async function goto(route) {
   await page.goto(`${BASE}${route}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("[data-route-loading]", { state: "detached", timeout: 15_000 }).catch(() => {});
+  // "Let queries settle" was what the fixed wait below was for, and a fixed wait is a
+  // guess: /insights' account list lands at ~1.7s on an idle machine, past the 1.5s.
+  // Clicks survive it because locators auto-wait, but a flow that ASSERTS on content
+  // would read an empty skeleton and pass for the wrong reason.
+  await page.waitForSelector("[data-page-loading]", { state: "detached", timeout: 15_000 }).catch(() => {});
   await page.waitForTimeout(1500);
 }
 

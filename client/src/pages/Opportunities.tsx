@@ -81,7 +81,7 @@ export default function Opportunities() {
     } as any);
   };
 
-  if (isLoading) return <div className="p-8 text-ink-muted">Loading Pipeline…</div>;
+  if (isLoading) return <div data-page-loading="true" className="p-8 text-ink-muted">Loading Pipeline…</div>;
 
   const allOpps = opportunities || [];
   const openOpps = allOpps.filter(

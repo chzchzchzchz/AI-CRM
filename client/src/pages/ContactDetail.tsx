@@ -109,7 +109,7 @@ export default function ContactDetail() {
   // Loading state
   if (isLoading) {
     return (
-      <div>
+      <div data-page-loading="true">
         <div className="container py-6 max-w-5xl">
           <div className="animate-pulse space-y-4">
             <div className="h-8 w-64 bg-muted rounded" />

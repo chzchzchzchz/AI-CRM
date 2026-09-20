@@ -74,7 +74,7 @@ export default function AcceptInvite() {
 
   if (preview.isLoading) {
     return shell(
-      <Card>
+      <Card data-page-loading="true">
         <CardContent className="py-12 text-center">
           <Loader2 className="mx-auto h-6 w-6 animate-spin text-accent" />
         </CardContent>

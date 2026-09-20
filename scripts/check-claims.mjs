@@ -1122,7 +1122,62 @@ function walk(dir, exts, acc = []) {
   }
 }
 
-/* --------------------------------------------------------------- 21. report */
+/* ------------------------------------------------------- 21. loading states */
+/**
+ * A page that replaces itself with a loading state must say so in the DOM.
+ *
+ * Every one of these renders zero characters — three bare spinners and five
+ * skeletons made of empty divs — so a page measured mid-load is indistinguishable
+ * from a page with nothing on it. The quality gate measured exactly that: /insights
+ * was reported as "0 chars — the page rendered its shell and little else", a true
+ * description of a spinner and a false one of the page, and at 310 nodes and 1
+ * screen the node, height and metric rules never really ran against it.
+ *
+ * It failed on one commit and passed on the next with identical page code, decided
+ * by how loaded the runner was — and it was misdiagnosed as environmental for a
+ * week on exactly that evidence. `data-page-loading` is what makes the gate wait
+ * for the data instead of guessing at 1,200ms, the same fix `data-route-loading`
+ * already applies to the chunk. A ninth page with a wordless skeleton and no marker
+ * puts the flake straight back, so the marker is checked rather than remembered.
+ */
+{
+  const offenders = [];
+  for (const file of walk(path.join(ROOT, "client", "src", "pages"), [".tsx"])) {
+    const src = stripComments(fs.readFileSync(file, "utf8"));
+    for (const m of src.matchAll(/if\s*\(([^)]*\bisLoading\b[^)]*)\)\s*(\{|return\b)/g)) {
+      let body;
+      if (m[2] === "{") {
+        // Brace-match the block, so a nested `}` inside the JSX does not end it early.
+        const start = m.index + m[0].length - 1;
+        let depth = 0;
+        let i = start;
+        for (; i < src.length; i++) {
+          if (src[i] === "{") depth++;
+          else if (src[i] === "}" && --depth === 0) { i++; break; }
+        }
+        body = src.slice(start, i);
+      } else {
+        const nl = src.indexOf("\n", m.index);
+        body = src.slice(m.index, nl === -1 ? src.length : nl);
+      }
+      // Only returns that actually render something stand in for the page. A guard
+      // that returns null, or sets state and falls through, is not a loading state.
+      if (!/return[\s\S]*</.test(body)) continue;
+      if (/data-page-loading/.test(body)) continue;
+      offenders.push(`${path.relative(ROOT, file)}: if (${m[1].trim()}) renders without data-page-loading`);
+    }
+  }
+  offenders.length
+    ? fail(
+        "loading states are marked",
+        offenders.join("\n    ") +
+          "\n    Add data-page-loading=\"true\" to the element this returns. The quality" +
+          "\n    gate waits for it to detach; without it the page is measured mid-load."
+      )
+    : ok("loading states are marked");
+}
+
+/* --------------------------------------------------------------- 22. report */
 for (const c of checks) console.log(`  ✓ ${c}`);
 for (const f of failures) console.log(`  ✘ ${f.rule}\n    ${f.detail}`);
 

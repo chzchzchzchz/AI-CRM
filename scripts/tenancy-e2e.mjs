@@ -246,6 +246,12 @@ await step("an empty workspace says so, instead of blaming the filters", async (
     await A.page
       .waitForSelector("[data-route-loading]", { state: "detached", timeout: 15_000 })
       .catch(() => {});
+    // The data too, not just the chunk. This assertion is for the ABSENCE of a
+    // sentence, so a page still showing its skeleton passes it without testing
+    // anything — the check would go green on a screen it never actually read.
+    await A.page
+      .waitForSelector("[data-page-loading]", { state: "detached", timeout: 15_000 })
+      .catch(() => {});
     await A.page.waitForTimeout(3000);
     const screen = (await A.page.locator("body").innerText()).replace(/\s+/g, " ");
     assert(

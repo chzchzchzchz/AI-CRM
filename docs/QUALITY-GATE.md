@@ -88,10 +88,12 @@ rather than passing quietly.
 | At least 120 characters of content | a page can render its shell, show nothing, and meet every budget above |
 | No console errors | a failed query logs and renders an empty state rather than throwing, so `pageerror` never sees it |
 | Route finishes loading | every route is code-split; a fixed wait measures whichever ones happened to arrive |
+| Page data finishes loading | `/insights` was measured at 0 characters and 310 nodes — its spinner. Same page code passed one commit and failed the next, decided by how loaded the runner was |
 
-The last two are the ones that catch a page which looks right. A tile can be
-legible, well-spaced, error-free and still be lying; the mechanical tells are that
-the sentence is a shape rather than an answer, and that the app contradicts itself.
+**No placeholder output** and **metric agreement** are the ones that catch a page
+which looks right. A tile can be legible, well-spaced, error-free and still be
+lying; the mechanical tells are that the sentence is a shape rather than an answer,
+and that the app contradicts itself.
 
 **Metric agreement** works off two attributes. A tile that claims to describe the
 whole book of business carries `data-metric="decision-makers"`,
@@ -103,6 +105,18 @@ Contacts tiles switch their own scope when a filter is on.
 
 Height and node budgets are asserted at desktop only: on a phone everything stacks,
 so those numbers describe the layout rather than the page's restraint.
+
+**Waiting** works off two attributes, because there are two separate races and a
+fixed wait loses both. `data-route-loading` marks the Suspense fallback while a
+code-split chunk is in flight; `data-page-loading` marks a page that has replaced
+itself with a spinner or skeleton while its query runs. All three harnesses wait
+for each to detach, and treat one still present after 15s as a finding rather than
+retrying. Both matter because every one of these loading states renders **zero
+characters** — so a page measured during one is indistinguishable from a page with
+nothing on it, and the gate reports the spinner's numbers as the page's. A new
+page-level `if (isLoading)` that returns markup must carry the attribute;
+`pnpm check:claims` fails the build otherwise, which is how the tenth one was
+found after nine had been fixed by hand.
 
 ---
 

@@ -94,7 +94,7 @@ export default function Calls() {
   // Loading state
   if (isLoading && !data) {
     return (
-      <div className="text-foreground">
+      <div data-page-loading="true" className="text-foreground">
         <div className="container mx-auto py-8 px-4 space-y-6 max-w-6xl">
           <div className="h-10 w-48 skeleton rounded" />
           <div className="space-y-3">

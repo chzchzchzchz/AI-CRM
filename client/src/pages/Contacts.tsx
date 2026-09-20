@@ -241,7 +241,7 @@ export default function ContactsEnhanced() {
   // Loading state
   if (isLoading) {
     return (
-      <div>
+      <div data-page-loading="true">
         <div className="container py-10 space-y-6 max-w-7xl">
           <div className="space-y-3">
             <div className="h-9 w-72 skeleton" />
