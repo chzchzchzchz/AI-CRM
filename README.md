@@ -37,6 +37,33 @@ URL pointed at the wrong vendor.
 
 ---
 
+## How this was built
+
+A personal project, and one written largely by AI coding agents — Manus early on, Claude Code
+since — working under my direction. `git log --format='%an' | sort | uniq -c` shows the split.
+I'd rather you read it there than take my word for it.
+
+That is the less interesting half. Agents produce a lot of plausible code quickly, and the
+failure mode is never a compile error. It's a function that returns a confident wrong answer, a
+test that passes without asserting anything, a number on a dashboard that quietly stopped
+meaning what its label says. Catching that is the actual problem, and it's where most of my own
+time went:
+
+| | |
+|---|---|
+| `pnpm check:claims` | Asserts the documentation against the code and the seed data. If this README quotes a figure the code disagrees with, the build fails. It has caught its own author more than once |
+| `pnpm gate` | Walks every route in a real browser at desktop and mobile — unreadable type, horizontal overflow, runaway DOM, placeholder text that reached the screen, pages that render a shell and nothing else |
+| `pnpm flows` | Actually uses the app: filters a list, opens a record, searches. The gate above never clicks anything, so "I tried it and nothing happened" was invisible to it |
+| `pnpm inventory` | Fails the build on anything built but unreachable — a procedure with no way to it from the UI |
+
+Every rule in those harnesses exists because something got past the ones before it.
+[`docs/QUALITY-GATE.md`](docs/QUALITY-GATE.md) names the specific defect behind each, which is
+the part I'd point at: a rule invented in the abstract is one that eventually gets silenced.
+
+What I was practising here is deciding what gets verified and what gets refused — not the typing.
+
+---
+
 ## The demo dataset
 
 ```text
