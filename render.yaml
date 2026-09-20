@@ -9,7 +9,17 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
-    healthCheckPath: /api/health
+    # /api/ready, not /api/health. Render's health check is the only gate on whether a
+    # deploy goes live, which is the readiness question by definition — a deploy that
+    # cannot reach its database should roll back, not replace a working one. Pointed at
+    # liveness it gated on "the process is listening", so a deploy with a wrong
+    # DATABASE_URL passed and went live serving errors.
+    #
+    # The trade-off, stated honestly: Render also restarts an instance that keeps failing
+    # this check, so a long database outage will restart this service. On a single
+    # instance that costs a few seconds and changes nothing; if you scale out, point this
+    # back at /api/health and put /api/ready on the load balancer instead.
+    healthCheckPath: /api/ready
     envVars:
       - key: DEMO_MODE
         value: "true"

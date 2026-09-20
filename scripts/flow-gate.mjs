@@ -67,10 +67,15 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
 const page = await ctx.newPage();
 
-/** Wait for the code-split chunk, then let queries settle. */
+/** Wait for the code-split chunk, then for the page's data, then let the rest settle. */
 async function goto(route) {
   await page.goto(`${BASE}${route}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("[data-route-loading]", { state: "detached", timeout: 15_000 }).catch(() => {});
+  // "Let queries settle" was what the fixed wait below was for, and a fixed wait is a
+  // guess: /insights' account list lands at ~1.7s on an idle machine, past the 1.5s.
+  // Clicks survive it because locators auto-wait, but a flow that ASSERTS on content
+  // would read an empty skeleton and pass for the wrong reason.
+  await page.waitForSelector("[data-page-loading]", { state: "detached", timeout: 15_000 }).catch(() => {});
   await page.waitForTimeout(1500);
 }
 
@@ -126,6 +131,43 @@ await flow("contacts search narrows the list", async () => {
   const some = await read();
   assert(some > 0, `"director" matched nothing`);
   assert(some < before, `"director" matched ${some} of ${before} — the filter did not narrow`);
+});
+
+/**
+ * The accounts page must not claim a filter is on when none is.
+ *
+ * The intent tiles are a segmented control, and "all" is one of the segments — so
+ * `active = intentFilter === segment` was true for "all" on the DEFAULT view, and every
+ * first load rendered "Reset intent filter · active" under the total. It offered to reset
+ * something already reset, and named a filter as the reason for whatever the list showed.
+ * On a workspace with no data that is the whole story: a rep clicks reset, nothing
+ * changes, and the product looks broken.
+ *
+ * Selecting a real intent filter must still say "active", or this check would pass just
+ * as happily against a badge that never renders.
+ */
+await flow("the unfiltered accounts view does not claim a filter is active", async () => {
+  await goto("/accounts");
+  const tiles = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
+
+  const before = await tiles();
+  assert(
+    !/· active/.test(before),
+    `the default view reported an active filter: ${before.match(/.{0,40}· active/)?.[0]}`
+  );
+  assert(
+    !/Reset intent filter/.test(before),
+    "the default view offered to reset a filter that is not applied"
+  );
+
+  await page.getByRole("button", { name: /Hot leads/i }).first().click();
+  await page.waitForTimeout(1200);
+  const after = await tiles();
+  assert(/· active/.test(after), "selecting Hot leads did not mark the filter active");
+  assert(
+    /Reset intent filter/.test(after),
+    "with a filter applied there was no way back to all accounts"
+  );
 });
 
 /**

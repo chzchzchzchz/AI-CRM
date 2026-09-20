@@ -123,12 +123,12 @@ export const hotLeadsRouter = router({
       region: z.string().optional(),
       industry: z.string().optional(),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const { limit, minIntentScore, region, industry } = input;
 
       // Fetch via demo-safe helpers and join in JS so this works with both the
       // real DB and the JSON demo database (which can't execute innerJoin/groupBy).
-      const [accts, people] = await Promise.all([getAllAccounts(), getAllPeople()]);
+      const [accts, people] = await Promise.all([getAllAccounts(ctx.orgId), getAllPeople(ctx.orgId)]);
       const acctById = new Map<number, any>(accts.map((a: any) => [a.id, a]));
 
       const hotLeads: HotLead[] = [];
@@ -186,10 +186,10 @@ export const hotLeadsRouter = router({
   /**
    * Get summary stats for hot leads
    */
-  getSummary: protectedProcedure.query(async () => {
+  getSummary: protectedProcedure.query(async ({ ctx }) => {
     // Fetch via demo-safe helpers and aggregate in JS (the JSON demo DB can't
     // execute SQL groupBy/COUNT).
-    const [accts, people] = await Promise.all([getAllAccounts(), getAllPeople()]);
+    const [accts, people] = await Promise.all([getAllAccounts(ctx.orgId), getAllPeople(ctx.orgId)]);
 
     // Contacts per account id
     const contactsByAccount = new Map<number, number>();
@@ -227,10 +227,10 @@ export const hotLeadsRouter = router({
       stage: z.enum(['Purchase', 'Decision', 'Consideration', 'Evaluation', 'Awareness']),
       limit: z.number().min(1).max(20).default(5),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const { stage, limit } = input;
 
-      const [accts, people] = await Promise.all([getAllAccounts(), getAllPeople()]);
+      const [accts, people] = await Promise.all([getAllAccounts(ctx.orgId), getAllPeople(ctx.orgId)]);
       const acctById = new Map<number, any>(accts.map((a: any) => [a.id, a]));
 
       // Same HotLead shape as getTopLeads, and ranked the same way.

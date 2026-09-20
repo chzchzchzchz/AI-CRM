@@ -2,7 +2,7 @@ import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb } from "./db";
 import { rfps, RFP } from "../drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 /**
  * SAM.gov Opportunities API Integration
@@ -169,7 +169,7 @@ async function scrapeAllRFPs(apiKey: string): Promise<{ opportunities: SAMOpport
 /**
  * Store scraped RFPs in database
  */
-async function storeRFPs(opportunities: SAMOpportunity[]): Promise<number> {
+async function storeRFPs(orgId: number, opportunities: SAMOpportunity[]): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -178,10 +178,15 @@ async function storeRFPs(opportunities: SAMOpportunity[]): Promise<number> {
   for (const opp of opportunities) {
     try {
       // Check if already exists
-      const existing = await db.select().from(rfps).where(eq(rfps.url, opp.uiLink)).limit(1);
+      // A solicitation number is a public identifier — two tenants can legitimately
+      // both be tracking the same government RFP, so the match has to be per org or
+      // one tenant's scrape silently skips (or overwrites) the other's row.
+      const existing = await db.select().from(rfps)
+        .where(and(eq(rfps.orgId, orgId), eq(rfps.url, opp.uiLink))).limit(1);
       
       if (existing.length === 0) {
         await db.insert(rfps).values({
+          orgId,
           title: opp.title,
           agency: `${opp.department} - ${opp.subTier}`,
           responseDeadline: opp.responseDeadLine ? new Date(opp.responseDeadLine) : null,
@@ -228,13 +233,14 @@ export const rfpRouter = router({
       type: z.enum(["government", "private"]).optional(),
       limit: z.number().optional(),
     }).optional())
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) return [];
 
       // Filtering by effective status (not the stored column) needs every row in
       // hand first — fine at this table's size (tens of rows, not millions).
-      const all = await db.select().from(rfps).orderBy(desc(rfps.createdAt));
+      const all = await db.select().from(rfps)
+        .where(eq(rfps.orgId, ctx.orgId)).orderBy(desc(rfps.createdAt));
       const withEffectiveStatus = all.map((r: RFP) => ({ ...r, status: effectiveRfpStatus(r) }));
       const filtered = input?.status
         ? withEffectiveStatus.filter((r: RFP) => r.status === input.status)
@@ -250,7 +256,7 @@ export const rfpRouter = router({
     .input(z.object({
       apiKey: z.string().optional(),   // optional override; defaults to server env
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const apiKey = input.apiKey || process.env.SAM_GOV_API_KEY;
         if (!apiKey) {
@@ -269,7 +275,7 @@ export const rfpRouter = router({
           };
         }
 
-        const inserted = await storeRFPs(opportunities);
+        const inserted = await storeRFPs(ctx.orgId, opportunities);
 
         return {
           success: true,
@@ -291,11 +297,11 @@ export const rfpRouter = router({
   /**
    * Get RFP statistics
    */
-  stats: protectedProcedure.query(async () => {
+  stats: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) return { total: 0, open: 0, closed: 0, awarded: 0 };
 
-    const allRfps = await db.select().from(rfps);
+    const allRfps = await db.select().from(rfps).where(eq(rfps.orgId, ctx.orgId));
     const effectiveStatuses = allRfps.map((r: RFP) => effectiveRfpStatus(r));
 
     return {
@@ -321,10 +327,11 @@ export const rfpRouter = router({
       url: z.string().optional(),
       status: z.string().default("open"),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       await db.insert(rfps).values({
+        orgId: ctx.orgId,
         title: input.title,
         description: input.description ?? null,
         agency: input.agency ?? null,

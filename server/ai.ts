@@ -304,11 +304,11 @@ Return only the email body (no subject line).
 /**
  * Smart search with natural language understanding
  */
-export async function intelligentSearch(query: string): Promise<any> {
+export async function intelligentSearch(orgId: number, query: string): Promise<any> {
   // Get all data for context
-  const accounts = await getAllAccounts();
-  const people = await getAllPeople();
-  const calls = await getAllGongCalls();
+  const accounts = await getAllAccounts(orgId);
+  const people = await getAllPeople(orgId);
+  const calls = await getAllGongCalls(orgId);
 
   const prompt = `${getCompanyContext()}
 

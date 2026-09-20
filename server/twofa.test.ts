@@ -104,40 +104,51 @@ describe("backup codes", () => {
 describe("login challenge", () => {
   beforeEach(() => __resetChallenges());
 
-  it("resolves to the user who passed the password step", () => {
-    const id = createChallenge(42);
-    const claim = claimChallengeAttempt(id);
+  it("resolves to the user who passed the password step", async () => {
+    const id = await createChallenge(42);
+    const claim = await claimChallengeAttempt(id);
     expect(claim).toEqual({ ok: true, userId: 42 });
   });
 
-  it("issues unguessable, distinct ids", () => {
-    const ids = new Set(Array.from({ length: 50 }, (_, i) => createChallenge(i)));
+  it("issues unguessable, distinct ids", async () => {
+    const ids = new Set(await Promise.all(Array.from({ length: 50 }, (_, i) => createChallenge(i))));
     expect(ids.size).toBe(50);
     for (const id of ids) expect(id.length).toBeGreaterThanOrEqual(40);
   });
 
-  it("rejects an unknown or already-consumed challenge", () => {
-    expect(claimChallengeAttempt("nope")).toEqual({ ok: false, reason: "expired" });
-    const id = createChallenge(1);
-    consumeChallenge(id);
-    expect(claimChallengeAttempt(id)).toEqual({ ok: false, reason: "expired" });
+  it("rejects an unknown or already-consumed challenge", async () => {
+    expect(await claimChallengeAttempt("nope")).toEqual({ ok: false, reason: "expired" });
+    const id = await createChallenge(1);
+    await consumeChallenge(id);
+    expect(await claimChallengeAttempt(id)).toEqual({ ok: false, reason: "expired" });
   });
 
-  it("stops accepting attempts once they are exhausted", () => {
+  it("stops accepting attempts once they are exhausted", async () => {
     // Without this a challenge is a 6-digit code with unlimited guesses, which is
     // not a second factor at all.
-    const id = createChallenge(7);
-    for (let i = 0; i < 5; i++) expect(claimChallengeAttempt(id).ok).toBe(true);
-    expect(claimChallengeAttempt(id)).toEqual({ ok: false, reason: "exhausted" });
+    const id = await createChallenge(7);
+    for (let i = 0; i < 5; i++) expect((await claimChallengeAttempt(id)).ok).toBe(true);
+    expect(await claimChallengeAttempt(id)).toEqual({ ok: false, reason: "exhausted" });
     // …and it is gone, not merely refused.
-    expect(claimChallengeAttempt(id)).toEqual({ ok: false, reason: "expired" });
+    expect(await claimChallengeAttempt(id)).toEqual({ ok: false, reason: "expired" });
   });
 
-  it("keeps challenges separate", () => {
-    const a = createChallenge(1);
-    const b = createChallenge(2);
-    expect(claimChallengeAttempt(a)).toEqual({ ok: true, userId: 1 });
-    expect(claimChallengeAttempt(b)).toEqual({ ok: true, userId: 2 });
+  it("keeps challenges separate", async () => {
+    const a = await createChallenge(1);
+    const b = await createChallenge(2);
+    expect(await claimChallengeAttempt(a)).toEqual({ ok: true, userId: 1 });
+    expect(await claimChallengeAttempt(b)).toEqual({ ok: true, userId: 2 });
+  });
+
+  it("counts parallel guesses against the same cap as serial ones", async () => {
+    // The attempt count used to be a read-modify-write. Six guesses fired at once
+    // could each read the same low count and all be admitted — which is the only
+    // shape of attack worth mounting against a 6-digit code in a 5-minute window.
+    const id = await createChallenge(8);
+    const results = await Promise.all(
+      Array.from({ length: 12 }, () => claimChallengeAttempt(id))
+    );
+    expect(results.filter((r) => r.ok)).toHaveLength(5);
   });
 });
 

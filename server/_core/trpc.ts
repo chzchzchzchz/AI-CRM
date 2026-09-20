@@ -3,6 +3,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
+import { assertDeploymentConnectorAllowed, assertOrgAllowed, orgIdFor } from "./tenancy";
 
 /**
  * Extracted as a standalone function (rather than inlined in `.create()`) so it can
@@ -46,15 +47,116 @@ const requireUser = t.middleware(async opts => {
     throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
   }
 
+  // Narrowed to a number here, not left `number | null`, so a resolver cannot
+  // accidentally build a query with a nullish org and have it read as "no filter".
+  // Every signed-in user has an org: the column defaults to 1 and is not nullable.
+  const orgId = orgIdFor(ctx.user);
+
+  // The load-bearing guard. There is no UI for creating a second organization, so the
+  // only way a user row carries one today is an operator putting it there by hand —
+  // exactly the person about to onboard a second customer onto one deployment. While
+  // any query still runs unscoped, that user's requests would read the first customer's
+  // accounts. Refuse the request and say why, rather than serving the wrong tenant's
+  // data and being right about the login.
+  assertOrgAllowed(orgId);
+
+  // Run the whole procedure inside this organization's identity.
+  //
+  // getCompanyConfig() is read from 43 places, several frames deep inside AI prompt
+  // builders that know nothing about organizations, and every one of them used to get the
+  // deployment's COMPANY_NAME — so a second customer's outreach went out written as the
+  // operator's company. Setting the scope in the one place that already resolves the org
+  // covers all of them by construction; threading an argument through instead would fail
+  // silently the first time a call site was missed.
+  //
+  // An organization with no profile of its own inherits the deployment's only if it OWNS
+  // the deployment. For anyone else that would be the defect, so they get the neutral
+  // defaults until they fill their own in.
+  const { loadProfile, mayInheritDeploymentIdentity, neutralProfile, enterCompanyIdentity } =
+    await import("./company-profile");
+  // Fail-safe, in full. loadProfile() already swallows a query error, but the failure
+  // this hit was earlier than that: a test that partially mocks ./db has no getDb export,
+  // so destructuring it threw a TypeError before any query ran and took the whole
+  // procedure down with it.
+  //
+  // Identity is not worth a 500. If it cannot be read, an inheriting workspace falls back
+  // to the deployment's — exactly what it did before this existed — and everyone else
+  // falls back to the neutral placeholders, which is degraded but never someone else's
+  // company name.
+  let stored: Awaited<ReturnType<typeof loadProfile>> = null;
+  try {
+    const { getDb } = await import("../db");
+    stored = await loadProfile(await getDb(), orgId);
+  } catch {
+    stored = null;
+  }
+
+  // An EMPTY scope is not enough. getCompanyConfig() merges the scope over the
+  // deployment's config, so `{}` merges nothing and the deployment's name shows straight
+  // through — which is the defect, for exactly the workspaces it matters most for. The
+  // neutral placeholders have to be IN the profile.
+  // Also make the org id readable from the places that are not queries — metering, where
+  // invokeLLM sits several frames below anything that knows an organization exists. Not
+  // for reads or writes of tenant data: those take ctx.orgId explicitly and always will.
+  const { enterOrgScope } = await import("./org-scope");
+  enterOrgScope(orgId);
+
+  const inherit = mayInheritDeploymentIdentity(orgId);
+  enterCompanyIdentity(
+    inherit
+      ? stored && { profile: stored, inherit: true }
+      : { profile: { ...neutralProfile(), ...(stored ?? {}) }, inherit: false }
+  );
+
   return next({
     ctx: {
       ...ctx,
       user: ctx.user,
+      orgId,
     },
   });
 });
 
+/**
+ * A signed-in user, with `ctx.orgId` narrowed to a number.
+ *
+ * The name is the point: `protectedProcedure` reads as "this is protected", and what it
+ * actually guaranteed was only "somebody is signed in" — it said nothing about whose data
+ * the resolver then went and read. Both names now resolve the tenant; the query still has
+ * to use it, which is what `pnpm tenancy` counts and `pnpm check:claims` pins.
+ */
 export const protectedProcedure = t.procedure.use(requireUser);
+export const orgProcedure = protectedProcedure;
+
+/**
+ * A signed-in user of the organization that owns this deployment's connector credentials.
+ *
+ * Every connector in this app is configured from the deployment's environment — one
+ * SALESFORCE_*, one GONG_*, one TWILIO_*, shared by every tenant on the instance. The org
+ * work made every WRITE land in the caller's own tenant and stopped there; it never asked
+ * whether the vendor account being spent or read was the caller's. So on a self-serve
+ * deployment a customer who signed up two minutes ago could pull the operator's entire
+ * Salesforce org into their workspace, read their Gong call transcripts verbatim, or send
+ * SMS on their Twilio account — with every resulting row correctly scoped to themselves,
+ * which is exactly what made it invisible.
+ *
+ * Per-organization credentials are the real answer and are a feature, not a guard. Until
+ * they exist this refuses, which is the honest half.
+ *
+ * A no-op on every single-tenant install: everyone is in the default org.
+ */
+export const deploymentConnectorProcedure = protectedProcedure.use(
+  t.middleware(async ({ ctx, next }) => {
+    // requireUser has already run and narrowed this to a number; the type here is the
+    // base context's. A null org means no session at all, which is not the deployment's
+    // organization either — refusing is the same answer.
+    // No vendor name: a procedure name like `salesloftCreatePerson` reads as jargon in a
+    // sentence aimed at whoever pressed the button. Call sites that know the vendor —
+    // Salesforce, Gong — call the guard directly and name it.
+    assertDeploymentConnectorAllowed(ctx.orgId ?? -1, "This connector");
+    return next({ ctx });
+  })
+);
 
 export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {

@@ -2,7 +2,7 @@ import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
 import { wrapUntrusted, INJECTION_GUARD, stripLeakedFence } from "./_core/untrusted";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and } from "drizzle-orm";
 import { contacts, accounts } from "../drizzle/schema";
 import { getDb } from "./db";
 
@@ -44,7 +44,7 @@ export const outreachRouter = router({
         templateType: z.enum(["mfa", "sso", "zero-trust", "custom"]).optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -52,7 +52,9 @@ export const outreachRouter = router({
       const accountData = await db
         .select()
         .from(accounts)
-        .where(inArray(accounts.id, input.accountIds));
+        // The ids come straight from the request. Without the org half, passing
+        // another tenant's account ids returns their accounts and drafts email about them.
+        .where(and(eq(accounts.orgId, ctx.orgId), inArray(accounts.id, input.accountIds)));
 
       if (accountData.length === 0) {
         throw new Error("No accounts found");
@@ -66,7 +68,7 @@ export const outreachRouter = router({
         contactData = await db
           .select()
           .from(contacts)
-          .where(inArray(contacts.id, input.contactIds));
+          .where(and(eq(contacts.orgId, ctx.orgId), inArray(contacts.id, input.contactIds)));
       }
 
       const contact = contactData[0];

@@ -2,25 +2,15 @@ import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { users, accessRequests } from "../drizzle/schema";
 import { getDb } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { isSixsenseConfigured } from "./sixsense";
 import { toPublicUser } from "./_core/publicUser";
+import { affectedRows } from "./_core/affected-rows";
 import { sendAccessApprovalEmail } from "./_core/email";
 
-/**
- * Real mysql2 resolves `db.update(...)`/`db.delete(...)` to a `[ResultSetHeader, ...]`
- * tuple; the demo-mode JSON shim (server/db.ts) resolves to a plain `{ affectedRows }`
- * object instead. Neither shape survives being read the other way — destructuring the
- * shim's result as a tuple throws, and reading `.affectedRows` off the real tuple reads
- * it off an array. This normalizes both so a caller can check the one thing that
- * actually matters here: did the row exist.
- */
-function affectedRows(result: unknown): number {
-  const row = Array.isArray(result) ? result[0] : result;
-  return (row as { affectedRows?: number } | undefined)?.affectedRows ?? 0;
-}
+
 
 export const adminRouter = router({
   // Real configuration/health check — the Admin page used to hardcode "6sense API:
@@ -43,7 +33,9 @@ export const adminRouter = router({
     }
     const db = await getDb();
     if (!db) throw new Error("Database not available");
-    return await db.select().from(accessRequests).orderBy(accessRequests.createdAt);
+    return await db.select().from(accessRequests)
+      .where(eq(accessRequests.orgId, ctx.orgId))
+      .orderBy(accessRequests.createdAt);
   }),
 
   approveAccessRequest: protectedProcedure
@@ -58,7 +50,7 @@ export const adminRouter = router({
       const request = await db
         .select()
         .from(accessRequests)
-        .where(eq(accessRequests.id, input.requestId))
+        .where(and(eq(accessRequests.orgId, ctx.orgId), eq(accessRequests.id, input.requestId)))
         .limit(1);
 
       if (!request[0]) throw new Error("Request not found");
@@ -70,6 +62,10 @@ export const adminRouter = router({
       const passwordHash = await bcrypt.hash(tempPassword, 10);
 
       await db.insert(users).values({
+        // A user an admin creates joins that admin's organization. There is no other
+        // org they could sensibly belong to, and defaulting to org 1 would put every
+        // tenant's new users in the first tenant.
+        orgId: ctx.orgId,
         openId,
         email: request[0].email,
         name: request[0].name,
@@ -86,7 +82,7 @@ export const adminRouter = router({
           reviewedBy: ctx.user?.id,
           reviewedAt: new Date(),
         })
-        .where(eq(accessRequests.id, input.requestId));
+        .where(and(eq(accessRequests.orgId, ctx.orgId), eq(accessRequests.id, input.requestId)));
 
       // The password created above has to reach the new user somehow, and until now it
       // reached nowhere: sendAccessApprovalEmail existed but nothing called it, and the
@@ -121,7 +117,7 @@ export const adminRouter = router({
           reviewedAt: new Date(),
           denialReason: input.reason,
         })
-        .where(eq(accessRequests.id, input.requestId));
+        .where(and(eq(accessRequests.orgId, ctx.orgId), eq(accessRequests.id, input.requestId)));
       if (affectedRows(result) === 0) throw new Error(`Request ${input.requestId} not found`);
 
       return { success: true };
@@ -143,7 +139,11 @@ export const adminRouter = router({
       loginMethod: users.loginMethod,
       createdAt: users.createdAt,
       lastSignedIn: users.lastSignedIn,
-    }).from(users).orderBy(users.createdAt);
+    }).from(users)
+      // Without this, a second organization's admin sees the first organization's
+      // people — names, email addresses and roles — on their own user-management page.
+      .where(eq(users.orgId, ctx.orgId))
+      .orderBy(users.createdAt);
     return rows.map(toPublicUser);
   }),
 
@@ -162,7 +162,9 @@ export const adminRouter = router({
       isApproved: users.isApproved,
       loginMethod: users.loginMethod,
       createdAt: users.createdAt,
-    }).from(users).where(eq(users.isApproved, false)).orderBy(users.createdAt);
+    }).from(users)
+      .where(and(eq(users.orgId, ctx.orgId), eq(users.isApproved, false)))
+      .orderBy(users.createdAt);
     return rows.map(toPublicUser);
   }),
 
@@ -179,7 +181,7 @@ export const adminRouter = router({
       const result = await db
         .update(users)
         .set({ isApproved: true })
-        .where(eq(users.id, input.userId));
+        .where(and(eq(users.orgId, ctx.orgId), eq(users.id, input.userId)));
       // A bare UPDATE with no affectedRows check reported success for a userId that
       // matched nothing — confirmed live, id 999999999 and id -1 both returned
       // {success:true} with no user actually approved.
@@ -198,7 +200,10 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const result = await db.delete(users).where(eq(users.id, input.userId));
+      // The org half turns a cross-tenant delete into a no-op, which the affectedRows
+      // check below already reports as "user not found" — the correct answer for an id
+      // that is not this admin's to act on.
+      const result = await db.delete(users).where(and(eq(users.orgId, ctx.orgId), eq(users.id, input.userId)));
       if (affectedRows(result) === 0) throw new Error(`User ${input.userId} not found`);
 
       return { success: true };
@@ -220,7 +225,7 @@ export const adminRouter = router({
       const result = await db
         .update(users)
         .set({ role: input.role })
-        .where(eq(users.id, input.userId));
+        .where(and(eq(users.orgId, ctx.orgId), eq(users.id, input.userId)));
       if (affectedRows(result) === 0) throw new Error(`User ${input.userId} not found`);
 
       return { success: true };

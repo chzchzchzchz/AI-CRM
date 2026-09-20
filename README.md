@@ -8,7 +8,7 @@ A sales rep opens this in the morning and sees which accounts moved, why they mo
 do about it — with the evidence for every claim attached. It sits on top of a CRM rather than
 replacing one.
 
-`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 479 tests, ~55k lines,
+`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 722 tests, ~65k lines,
 runs with zero API keys.
 
 ```bash
@@ -26,10 +26,14 @@ Sign in with `demo@ai-crm.com` / `DemoPass123!`. No database, no keys, no signup
 |---|---|
 | The app, routing, data model, AI pipeline, MCP server | Real, running, tested |
 | Demo dataset | Synthetic — deterministically generated, no real entities |
-| 6sense, Gong, Salesforce, Clay, + 20 other connectors | Real HTTP clients against documented APIs, exercised by unit tests with mocked transports. Not verified against live paid accounts |
+| 6sense, Gong, Salesforce, Clay, + 20 other connectors | Real HTTP clients against documented APIs, exercised by unit tests with mocked transports. Not verified against live paid accounts — but `pnpm smoke` checks 16 of the 24 for real the moment a key exists, on every run |
 | AI features with no key set | Fall back to a local Ollama model; with nothing reachable they say so plainly |
 | Auth, 2FA, audit logging, rate limiting | Implemented and tested. Not independently audited |
-| Multi-tenancy, billing, onboarding | Not built. Not pretending to be |
+| Multi-tenancy | Org boundary on every tenant table, enforced by a build check. `SIGNUP_MODE=self-serve` gives each new customer their own workspace, and admins invite colleagues into it from `/admin`. Not yet run with two paying customers |
+| Getting your own data in | `/import` takes pasted rows or a CSV/TSV/JSON file straight into your workspace — accounts and contacts from the same paste, no connector needed. The CSV Processor builds a file for import into *Salesforce*, not into this app |
+| Connectors under multi-tenancy | A workspace connects its own accounts from `/admin` — stored AES-256-GCM encrypted, never shown again, and used only for that workspace's calls. Falling back to the deployment's own `SALESFORCE_*`/`GONG_*` is allowed only for the workspace that owns them; anyone else is refused and told to connect their own. Needs `CREDENTIALS_KEY`, and refuses to store anything without it |
+| Metering and limits | Seats, accounts, contacts and AI calls are counted per workspace and shown in `/admin`. A limit refuses the action that would exceed it, saying the numbers. No limit is set anywhere by default — a guessed cap fires on a real customer for a rule nobody chose |
+| Taking money | Not built. No prices, no plans, no payment provider — metering and enforcement are the half that belongs in the product; what a seat costs is yours to decide |
 
 `pnpm doctor` reads your `.env` and tells you which integrations are actually ready, which are
 half-configured, and which are set but wrong — a placeholder value, a quoted string, a webhook
@@ -70,6 +74,9 @@ Briefs are keyed by a hash of the *material* signals rather than a timestamp, so
 hasn't moved reuses its brief instead of paying to regenerate it. With no model reachable at all,
 each surface says so rather than presenting an empty brief as a finished one.
 
+Every workspace gets its own version of this: the company identity the prompts are grounded in
+comes from `organizations.profile`, not from the deployment.
+
 ---
 
 ## How this was built
@@ -80,7 +87,9 @@ under my direction. `git log --format='%an' | sort | uniq -c` shows the split.
 The verification is the part I'd point at. `pnpm check:claims` asserts this README against the
 code and the seed data and fails the build when a figure drifts; `pnpm gate` walks every route in
 a real browser at desktop and mobile; `pnpm flows` clicks through the app rather than only
-loading it. [`docs/QUALITY-GATE.md`](docs/QUALITY-GATE.md) has the detail.
+loading it; `pnpm tenancy:e2e` signs two customers up in separate workspaces and asserts neither
+can read the other's data, against the demo store and against a real MySQL.
+[`docs/QUALITY-GATE.md`](docs/QUALITY-GATE.md) has the detail.
 
 ---
 
@@ -184,6 +193,9 @@ Written down honestly, because a self-hosted app that reads your CRM deserves th
 - `SameSite` negotiated per request (`None; Secure` over HTTPS, `Lax` over plain HTTP)
 - A weak or missing `JWT_SECRET` refuses to sign in production
 - CORS hardened; rate limiting scoped to `/api` so static assets can't exhaust a real user's budget
+- Login lockout, rate limiting and 2FA challenges share one store — per-process by default,
+  Redis when `REDIS_URL` is set, so throttling holds across instances instead of being
+  N × looser per pod. `pnpm doctor` proves which mode is live with a real round trip
 - `pnpm audit` clean, and CI keeps it that way
 
 `DEMO_MODE=true` bypasses authentication by design. Never run it on a public deployment with real
@@ -195,8 +207,36 @@ data. See [`SECURITY.md`](SECURITY.md).
 
 - **Connectors are unproven against live paid accounts.** The clients are real and unit-tested
   against mocked transports, but no enterprise 6sense/Gong tenant was available to
-  integration-test against.
-- **Single-tenant.** There's no org isolation, so it's one deployment per team.
+  integration-test against. `pnpm smoke` closes the *remembering* half of that: set a key —
+  locally or as a CI secret — and that connector is exercised for real on every run from
+  then on, so a vendor changing its response shape breaks the build instead of a sync
+  quietly returning nothing. It reports how much it can speak for: 16 of 24 connectors are
+  checkable at all, 4 of them deeply. The other 8 are webhook-delivered or have no read
+  endpoint, and no key will ever verify those from a test harness.
+- **Multi-tenancy is new and unproven at scale.** Every tenant table carries an `orgId`,
+  `ctx.orgId` comes from the session and never from input, inbound webhooks resolve their
+  org from a per-organization credential, and `pnpm check:claims` fails the build if any
+  query on a tenant table loses its org filter. With `SIGNUP_MODE=self-serve` each signup
+  creates its own organization and its first user is that org's admin; the default
+  (`invite-only`) keeps the single-workspace behaviour every existing install has. Two
+  customers signing up, inviting colleagues, and staying isolated from each other is
+  verified in a browser, not just in tests. It has not run a deployment with two *paying*
+  customers — tested and enforced, not battle-worn.
+- **No payment provider, and no prices.** Usage is metered per workspace and limits are
+  enforced when set, but nothing charges anybody: there are no plans, no prices and no
+  Stripe. Selling still means invoicing out of band, or wiring a provider to the meter
+  that now exists. Limits default to unset — every deployment behaves exactly as it did
+  until an operator chooses a number.
+- **Connector coverage is per workspace now, but only Salesforce is threaded through.**
+  A workspace stores its own credentials and calls run in that scope, with no fallback to
+  the deployment's environment for a field it left blank. Salesforce reads through it;
+  the remaining connectors still read the environment directly and so remain refused to
+  any workspace but the deployment's own until they are converted the same way.
+- **Rep territories are still per deployment.** `shared/territories.ts` is one roster for
+  the whole instance. Company identity is now per workspace (set it in `/admin`), so a
+  second workspace no longer writes as the deployment owner's company — but the AE list
+  and their territories are still shared, and a workspace that has set no identity writes
+  as "Your company" rather than inheriting anyone's.
 - **The AI quality depends entirely on the model you point it at.** The grounding work constrains
   what a model can claim; it can't make a weak local model insightful.
 - **No accessibility audit.** The design targets WCAG 2.1 AA and the gate checks contrast and

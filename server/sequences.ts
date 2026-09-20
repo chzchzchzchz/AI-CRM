@@ -1,4 +1,5 @@
 import { router, protectedProcedure } from "./_core/trpc";
+import { affectedRows } from "./_core/affected-rows";
 import { z } from "zod";
 import { getDb } from "./db";
 import { emailSequences as sequences, EmailSequence } from "../drizzle/schema";
@@ -69,7 +70,7 @@ export const sequencesRouter = router({
     const rows: EmailSequence[] = await db
       .select()
       .from(sequences)
-      .where(eq(sequences.createdBy, ctx.user.id));
+      .where(and(eq(sequences.orgId, ctx.orgId), eq(sequences.createdBy, ctx.user.id)));
 
     return rows
       .map((seq) => {
@@ -109,7 +110,7 @@ export const sequencesRouter = router({
         const existing: EmailSequence[] = await db
           .select()
           .from(sequences)
-          .where(and(eq(sequences.id, input.id), eq(sequences.createdBy, ctx.user.id)))
+          .where(and(eq(sequences.orgId, ctx.orgId), eq(sequences.id, input.id), eq(sequences.createdBy, ctx.user.id)))
           .limit(1);
         if (!existing[0]) throw new Error("Sequence not found");
 
@@ -121,7 +122,7 @@ export const sequencesRouter = router({
             steps: stepsJson,
             updatedAt: new Date(),
           })
-          .where(eq(sequences.id, input.id));
+          .where(and(eq(sequences.orgId, ctx.orgId), eq(sequences.id, input.id)));
 
         return { id: input.id, name: input.name };
       }
@@ -145,7 +146,7 @@ export const sequencesRouter = router({
       const rows: EmailSequence[] = await db
         .select()
         .from(sequences)
-        .where(and(eq(sequences.id, input.id), eq(sequences.createdBy, ctx.user.id)))
+        .where(and(eq(sequences.orgId, ctx.orgId), eq(sequences.id, input.id), eq(sequences.createdBy, ctx.user.id)))
         .limit(1);
       const source = rows[0];
       if (!source) throw new Error("Sequence not found");
@@ -168,9 +169,13 @@ export const sequencesRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      await db
+      // Same refusal-as-success shape as the follow-up mutations: this returned
+      // { success: true } whether or not it matched, so deleting a colleague's sequence
+      // came back done and the UI removed it from their list.
+      const removed = await db
         .delete(sequences)
-        .where(and(eq(sequences.id, input.id), eq(sequences.createdBy, ctx.user.id)));
+        .where(and(eq(sequences.orgId, ctx.orgId), eq(sequences.id, input.id), eq(sequences.createdBy, ctx.user.id)));
+      if (affectedRows(removed) === 0) throw new Error("That sequence is not yours to delete.");
 
       return { success: true };
     }),

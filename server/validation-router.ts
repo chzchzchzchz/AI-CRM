@@ -1,4 +1,6 @@
+import { eq, and } from "drizzle-orm";
 import { router, protectedProcedure } from "./_core/trpc";
+import { affectedRows } from "./_core/affected-rows";
 import { z } from "zod";
 import {
   validateAccount,
@@ -40,8 +42,8 @@ export const validationRouter = router({
   /**
    * Get validation summary (quick stats, no web searches)
    */
-  getSummary: protectedProcedure.query(async () => {
-    return await getValidationSummary();
+  getSummary: protectedProcedure.query(async ({ ctx }) => {
+    return await getValidationSummary(ctx.orgId);
   }),
 
   /**
@@ -51,8 +53,8 @@ export const validationRouter = router({
     .input(z.object({
       accountId: z.number()
     }))
-    .mutation(async ({ input }) => {
-      const account = await getAccountById(input.accountId);
+    .mutation(async ({ input, ctx }) => {
+      const account = await getAccountById(ctx.orgId, input.accountId);
       if (!account) {
         throw new Error(`Account ${input.accountId} not found`);
       }
@@ -83,15 +85,15 @@ export const validationRouter = router({
     .input(z.object({
       contactId: z.number()
     }))
-    .mutation(async ({ input }) => {
-      const contacts = await getAllPeople();
+    .mutation(async ({ input, ctx }) => {
+      const contacts = await getAllPeople(ctx.orgId);
       const contact = contacts.find((c: Contact) => c.id === input.contactId);
       
       if (!contact) {
         throw new Error(`Contact ${input.contactId} not found`);
       }
 
-      const accounts = await getAllAccounts();
+      const accounts = await getAllAccounts(ctx.orgId);
       const account = accounts.find((a: Account) => a.id === contact.accountId);
 
       resetSearchEvidenceStats();
@@ -155,7 +157,7 @@ export const validationRouter = router({
     .input(z.object({
       limit: z.number().default(30).optional()
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       resetSearchEvidenceStats();
       resetLlmEvidenceStats();
       const issues = await validateAllContacts(input.limit || 30);
@@ -185,10 +187,10 @@ export const validationRouter = router({
    * Validate ALL accounts (bulk operation with progress tracking)
    */
   validateAllAccountsBulk: protectedProcedure
-    .mutation(async () => {
+    .mutation(async ({ ctx }) => {
       resetSearchEvidenceStats();
       resetLlmEvidenceStats();
-      const accounts = await getAllAccounts();
+      const accounts = await getAllAccounts(ctx.orgId);
       const totalAccounts = accounts.length;
 
       // Process in batches of 50 to avoid timeout
@@ -224,9 +226,9 @@ export const validationRouter = router({
    * web search, so it's instant). Surfaces missing/malformed fields on accounts and
    * contacts. The heavier evidence-backed checks live in validateAllAccounts/Contacts.
    */
-  getAllIssues: protectedProcedure.query(async () => {
-    const accounts = await getAllAccounts();
-    const contacts = await getAllPeople();
+  getAllIssues: protectedProcedure.query(async ({ ctx }) => {
+    const accounts = await getAllAccounts(ctx.orgId);
+    const contacts = await getAllPeople(ctx.orgId);
     const issues: ValidationIssue[] = [];
     const now = new Date();
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -289,7 +291,7 @@ export const validationRouter = router({
       field: z.string(),
       newValue: z.string()
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       if (!EDITABLE_FIELDS[input.entityType].has(input.field)) {
         return { success: false, message: `Field "${input.field}" is not editable` };
       }
@@ -302,13 +304,33 @@ export const validationRouter = router({
       if (!db) return { success: false, message: "Database not available" };
 
       try {
+        // Both branches report what they actually touched. This used to return
+        // `{ success: true, message: "Updated ..." }` unconditionally — the account
+        // branch discarded updateAccount's result (it returned void), and the contact
+        // branch never looked at the UPDATE's. So an id that matched nothing produced a
+        // confident "Updated industry on account 4021" and the validation issue stayed
+        // exactly where it was, now marked resolved.
+        //
+        // Org scoping makes a miss MORE likely rather than less: another tenant's id is
+        // a legitimate zero-row write, and it is precisely the case that must not read
+        // as a successful edit.
+        let touched: number;
         if (input.entityType === 'account') {
-          await updateAccount(input.entityId, { [input.field]: value } as any);
+          touched = await updateAccount(ctx.orgId, input.entityId, { [input.field]: value } as any);
         } else {
           const { contacts } = await import("../drizzle/schema");
           const { eq } = await import("drizzle-orm");
-          await db.update(contacts).set({ [input.field]: value, updatedAt: new Date() } as any)
-            .where(eq(contacts.id, input.entityId));
+          const result = await db.update(contacts)
+            .set({ [input.field]: value, updatedAt: new Date() } as any)
+            .where(and(eq(contacts.orgId, ctx.orgId), eq(contacts.id, input.entityId)));
+          touched = affectedRows(result);
+        }
+
+        if (touched === 0) {
+          return {
+            success: false,
+            message: `No ${input.entityType} ${input.entityId} to update — it may have been deleted, or it belongs to another organization.`,
+          };
         }
         return { success: true, message: `Updated ${input.field} on ${input.entityType} ${input.entityId}` };
       } catch (error) {

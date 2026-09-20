@@ -23,6 +23,7 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
 
 /**
  * SEQUENCE BUILDER
@@ -65,7 +66,7 @@ function dayLabel(day: number): string {
 
 export default function Sequences() {
   const utils = trpc.useUtils();
-  const { data: sequences, isLoading } = trpc.sequences.list.useQuery(undefined, {
+  const { data: sequences, isLoading, error, refetch } = trpc.sequences.list.useQuery(undefined, {
     refetchOnWindowFocus: false,
   });
 
@@ -155,6 +156,8 @@ export default function Sequences() {
               <Skeleton key={i} className="h-20 w-full" />
             ))}
           </div>
+        ) : error ? (
+          <DataUnavailable what="sequences" detail={error} onRetry={() => refetch()} />
         ) : !sequences?.length ? (
           <Card>
             <CardContent className="p-0">

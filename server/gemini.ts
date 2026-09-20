@@ -15,8 +15,8 @@ export const geminiRouter = router({
         customPrompt: z.string().optional(),
       })
     )
-    .mutation(async ({ input }) => {
-      const account = await getAccountById(input.accountId);
+    .mutation(async ({ input, ctx }) => {
+      const account = await getAccountById(ctx.orgId, input.accountId);
       
       if (!account) {
         throw new Error("Account not found");

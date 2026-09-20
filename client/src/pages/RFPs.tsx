@@ -14,6 +14,7 @@ import { FileText, Search, ExternalLink, Calendar, DollarSign, Building2, Loader
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { AddRfpDialog } from "@/components/AddRfpDialog";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
 
 /**
  * awardAmount is a free-text column: SAM.gov leaves it null, and the Add-RFP form accepts
@@ -36,7 +37,7 @@ export default function RFPs() {
   const [apiKey, setApiKey] = useState("");
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
-  const { data: rfps = [], isLoading, refetch } = trpc.rfps.list.useQuery({
+  const { data: rfps = [], isLoading, error, refetch } = trpc.rfps.list.useQuery({
     status: "open",
     limit: 100
   });
@@ -193,6 +194,8 @@ export default function RFPs() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-accent" />
           </div>
+        ) : error ? (
+          <DataUnavailable what="RFPs" detail={error} onRetry={() => refetch()} />
         ) : filteredRFPs.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">

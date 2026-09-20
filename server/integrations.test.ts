@@ -45,6 +45,20 @@ describe("integration endpoints", () => {
     expect(res.event).toBe("account.enriched");
   });
 
+  it("zapier.webhook does not report storing an event it drops", async () => {
+    // Nothing reads these events — no store, no queue, no handler. `{ received: true }`
+    // on its own was the problem: Zapier shows any 2xx as a successful run, so someone
+    // wiring a Zap to POST enrichment here — which INTEGRATIONS.md told them to do —
+    // would watch it go green on every call, forever, while nothing appeared in the app.
+    const caller = appRouter.createCaller(createAuthContext());
+    const res: any = await caller.zapier.webhook({
+      event: "account.enriched",
+      data: { domain: "acme.com", employees: 1200 },
+    });
+    expect(res.stored).toBe(false);
+    expect(res.note).toMatch(/nothing consumes these events/i);
+  });
+
   it("clayPull.triggerEnrichment reports not-configured without CLAY_WEBHOOK_URL", async () => {
     delete process.env.CLAY_WEBHOOK_URL;
     const caller = appRouter.createCaller(createAuthContext());

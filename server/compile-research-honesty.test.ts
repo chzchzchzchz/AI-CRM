@@ -36,7 +36,7 @@ describe("ai.compileResearch", () => {
       return {
         ...actual,
         getAccountById: vi.fn().mockResolvedValue(fakeAccount),
-        updateAccount: vi.fn().mockImplementation(async (_id: number, patch: any) => {
+        updateAccount: vi.fn().mockImplementation(async (_orgId: number, _id: number, patch: any) => {
           if ("aiResearchCache" in patch) cachedResearch = patch.aiResearchCache;
         }),
       };
@@ -72,7 +72,7 @@ describe("ai.compileResearch", () => {
       return {
         ...actual,
         getAccountById: vi.fn().mockResolvedValue(fakeAccount),
-        updateAccount: vi.fn().mockImplementation(async (_id: number, patch: any) => {
+        updateAccount: vi.fn().mockImplementation(async (_orgId: number, _id: number, patch: any) => {
           if ("aiResearchCache" in patch) cachedResearch = JSON.parse(patch.aiResearchCache);
         }),
       };

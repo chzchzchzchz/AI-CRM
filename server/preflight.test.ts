@@ -184,15 +184,28 @@ describe("preflight — core settings", () => {
 });
 
 describe("preflight — report", () => {
-  it("counts every connector exactly once", () => {
-    const r = buildReport(env({ SIXSENSE_API_KEY: "a".repeat(20) }));
+  it("counts every connector exactly once", async () => {
+    const r = await buildReport(env({ SIXSENSE_API_KEY: "a".repeat(20) }));
     const total = r.counts.ready + r.counts.incomplete + r.counts.invalid + r.counts["not-configured"];
     expect(total).toBe(CONNECTORS.length);
     expect(r.counts.ready).toBe(1);
   });
 
-  it("surfaces core problems separately from connector state", () => {
-    const r = buildReport(env());
+  it("surfaces core problems separately from connector state", async () => {
+    const r = await buildReport(env());
     expect(r.counts.coreProblems).toBeGreaterThan(0);
+  });
+
+  it("reports whether auth throttling state is shared across instances", async () => {
+    // Login lockout, rate limiting and 2FA challenges live in one store. An operator
+    // running two pods against a per-instance store gets N × the attempts they
+    // configured, and nothing in the running app would tell them — so `pnpm doctor`
+    // has to, and has to say it either way rather than only warning on the bad case.
+    const r = await buildReport(env());
+    const auth = r.core.find(c => c.name === "Auth state")!;
+    expect(auth).toBeDefined();
+    // No REDIS_URL in CI: per-instance is the correct, non-failing state to report.
+    expect(auth.ok).toBe(true);
+    expect(auth.message).toMatch(/per-instance/i);
   });
 });

@@ -46,9 +46,32 @@ const DEFAULT_DEMO_REPS: RepConfig[] = [
   { name: "Riley Nguyen", email: "riley.nguyen@demo.example.com", region: "East", sizeSegment: "enterprise" },
 ];
 
+import { currentIdentity, type CompanyProfile } from "./_core/company-profile";
+
 let cachedConfig: CompanyConfig | null = null;
 
 export function getCompanyConfig(): CompanyConfig {
+  // The calling ORGANIZATION's identity, when a request has set one.
+  //
+  // This function is synchronous, module-cached and read from 43 places — prompt builders
+  // several frames inside AI paths that have no idea an organization exists. Every one of
+  // them used to get the deployment's COMPANY_NAME, so on a self-serve instance a second
+  // customer's outreach went out written as the operator's company, pitching the
+  // operator's differentiators against the operator's competitors.
+  //
+  // Reading the scope here rather than threading an orgId through all 43 is deliberate:
+  // the failure mode of missing one call site is silent, and a silently-wrong identity on
+  // one prompt is the whole defect. See _core/company-profile.ts.
+  const scoped = currentIdentity();
+  if (!scoped) return deploymentConfig();
+  // inherit:false means the profile IS the identity — a blank field is blank, not the
+  // deployment's value showing through. See _core/company-profile.ts.
+  const base = scoped.inherit ? deploymentConfig() : { ...deploymentConfig(), ...neutralBase() };
+  return withProfile(base, scoped.profile, scoped.inherit);
+}
+
+/** The deployment's own identity, from config file or environment. Unchanged behaviour. */
+function deploymentConfig(): CompanyConfig {
   if (cachedConfig) return cachedConfig;
 
   try {
@@ -121,6 +144,39 @@ export function getCompanyConfig(): CompanyConfig {
       demoMode: true,
     };
   }
+}
+
+/** The identity fields blanked, for a workspace that inherits nothing. */
+function neutralBase(): Partial<CompanyConfig> {
+  return {
+    companyName: "Your company",
+    productName: "Your product",
+    companyDescription: "",
+    industry: "",
+    productDescription: "",
+    keyDifferentiators: [],
+    targetCustomers: "",
+    competitors: "",
+  } as Partial<CompanyConfig>;
+}
+
+/**
+ * Overlay an organization's profile on a base, field by field.
+ *
+ * When inheriting, a blank field is skipped so the base shows through. When not, a blank
+ * field is a real value and is written — that distinction is the whole reason the scope
+ * carries `inherit`, and getting it wrong left the operator's differentiators in an
+ * unconfigured customer's prompts while their company name was correctly blanked.
+ */
+function withProfile(base: CompanyConfig, profile: CompanyProfile, inherit: boolean): CompanyConfig {
+  const merged: CompanyConfig = { ...base };
+  for (const [k, v] of Object.entries(profile)) {
+    if (v === undefined || v === null) continue;
+    const blank = Array.isArray(v) ? v.length === 0 : String(v).trim() === "";
+    if (blank && inherit) continue;
+    (merged as any)[k] = v;
+  }
+  return merged;
 }
 
 export function getCompanyContext(): string {

@@ -85,6 +85,7 @@ export async function resolveApprovalToken(
   const db = await getDb();
   if (!db) return { kind: "db-unavailable" };
 
+  // tenancy-exempt: authorized by the unguessable one-click token in the approval link, not by a session
   const [user] = await db.select().from(users).where(eq(users.id, tokenData.userId));
   if (!user) {
     retireTokensFor(tokenData.userId);
@@ -96,12 +97,14 @@ export async function resolveApprovalToken(
       retireTokensFor(tokenData.userId);
       return { kind: "already-approved", user: { name: user.name, email: user.email } };
     }
+    // tenancy-exempt: authorized by the unguessable one-click token in the approval link, not by a session
     await db.update(users).set({ isApproved: true }).where(eq(users.id, tokenData.userId));
     retireTokensFor(tokenData.userId);
     return { kind: "approved", user: { name: user.name, email: user.email } };
   }
 
   // Deny = remove from system.
+  // tenancy-exempt: authorized by the unguessable one-click token in the approval link, not by a session
   await db.delete(users).where(eq(users.id, tokenData.userId));
   retireTokensFor(tokenData.userId);
   return { kind: "denied", user: { name: user.name, email: user.email } };

@@ -53,7 +53,7 @@ describe("generateContactSummary — model-availability honesty", () => {
     });
 
     const { generateContactSummary } = await import("./aiContext");
-    const result = await generateContactSummary(701, false);
+    const result = await generateContactSummary(1, 701, false);
 
     expect(result.available).toBe(false);
     expect(result.content).toContain("AI generation is unavailable");
@@ -73,7 +73,7 @@ describe("generateContactSummary — model-availability honesty", () => {
     });
 
     const { generateContactSummary } = await import("./aiContext");
-    const result = await generateContactSummary(702, false);
+    const result = await generateContactSummary(1, 702, false);
 
     expect(result.available).toBe(true);
     expect(result.content).toContain("Jordan is a hands-on VP Engineering leader");
@@ -81,7 +81,7 @@ describe("generateContactSummary — model-availability honesty", () => {
 
   it("reports available:false for a contact that does not exist, not a crash or a fake summary", async () => {
     const { generateContactSummary } = await import("./aiContext");
-    const result = await generateContactSummary(999999, false);
+    const result = await generateContactSummary(1, 999999, false);
 
     expect(result.available).toBe(false);
     expect(result.content).toBe("Contact not found");

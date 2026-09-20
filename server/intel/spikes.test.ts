@@ -21,34 +21,49 @@ describe("detectIntentSpikes", () => {
       getDb: async () => ({
         select: () => ({
           from: () => ({
-            orderBy: () => Promise.reject(new Error("connection reset")),
+            // Both reads are org-scoped now, so `.where()` sits between `.from()` and
+            // `.orderBy()`; the accounts read ends at `.where()` and is awaited there.
+            //
+            // One shared rejection rather than two. Promise.all settles on the first, and
+            // a second, independently-created rejected promise would be left unconsumed —
+            // an unhandled rejection warning from the test's own scaffolding, which is
+            // exactly the kind of noise that gets a real one ignored later.
+            where: () => {
+              const failure = Promise.reject(new Error("connection reset"));
+              failure.catch(() => {});
+              return Object.assign(
+                { then: (...args: any[]) => (failure as any).then(...args) },
+                { orderBy: () => failure }
+              );
+            },
           }),
         }),
       }),
     }));
 
     const { detectIntentSpikes } = await import("./spikes");
-    await expect(detectIntentSpikes()).rejects.toThrow(/connection reset/);
+    await expect(detectIntentSpikes({ orgId: 1 })).rejects.toThrow(/connection reset/);
   });
 
   it("still returns [] when the database genuinely has no rows (not an error)", async () => {
     vi.doMock("../db", () => ({
       getDb: async () => ({
-        // intentScores is queried with .orderBy(); accounts is awaited straight off
-        // .from() with no further chaining — `await []` resolves to `[]` either way,
-        // so returning a plain array here satisfies both call shapes.
-        select: () => ({ from: () => Object.assign([], { orderBy: () => [] }) }),
+        // Both reads go .from().where(); the intent one then chains .orderBy(). An array
+        // with an orderBy property satisfies both — `await []` resolves to `[]`.
+        select: () => ({
+          from: () => ({ where: () => Object.assign([], { orderBy: () => [] }) }),
+        }),
       }),
     }));
 
     const { detectIntentSpikes } = await import("./spikes");
-    await expect(detectIntentSpikes()).resolves.toEqual([]);
+    await expect(detectIntentSpikes({ orgId: 1 })).resolves.toEqual([]);
   });
 
   it("returns [] when there is genuinely no database configured (not an error either)", async () => {
     vi.doMock("../db", () => ({ getDb: async () => null }));
 
     const { detectIntentSpikes } = await import("./spikes");
-    await expect(detectIntentSpikes()).resolves.toEqual([]);
+    await expect(detectIntentSpikes({ orgId: 1 })).resolves.toEqual([]);
   });
 });

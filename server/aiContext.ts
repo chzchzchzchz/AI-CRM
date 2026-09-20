@@ -9,8 +9,8 @@ import { getCompanyConfig } from "./config";
 // assistant reports actual spikes instead of always answering "none detected".
 import { detectIntentSpikes } from "./intel/spikes";
 
-async function getRecentIntentSpikes(limit: number = 10): Promise<any[]> {
-  return detectIntentSpikes({ limit });
+async function getRecentIntentSpikes(orgId: number, limit: number = 10): Promise<any[]> {
+  return detectIntentSpikes({ orgId, limit });
 }
 
 /**
@@ -19,6 +19,8 @@ async function getRecentIntentSpikes(limit: number = 10): Promise<any[]> {
  */
 
 export interface ContextEntry {
+  /** The tenant this memory belongs to. AI memory is account data by another name. */
+  orgId: number;
   type: 'account_insight' | 'contact_insight' | 'call_analysis' | 'user_interaction' | 'search_pattern' | 'recommendation' | 'learning' | 'account_brief' | 'company_brain';
   key: string;
   value: string;
@@ -34,6 +36,7 @@ export async function storeContext(entry: ContextEntry): Promise<void> {
   if (!db) return;
 
   await db.insert(contextStore).values({
+    orgId: entry.orgId,
     type: entry.type,
     key: entry.key,
     value: entry.value,
@@ -45,14 +48,14 @@ export async function storeContext(entry: ContextEntry): Promise<void> {
 /**
  * Retrieve context by type and key
  */
-export async function getContext(type: string, key?: string): Promise<any[]> {
+export async function getContext(orgId: number, type: string, key?: string): Promise<any[]> {
   const db = await getDb();
   if (!db) return [];
 
   if (key) {
     const results = await db.select()
       .from(contextStore)
-      .where(and(eq(contextStore.type, type), eq(contextStore.key, key)))
+      .where(and(eq(contextStore.orgId, orgId), eq(contextStore.type, type), eq(contextStore.key, key)))
       .orderBy(desc(contextStore.createdAt))
       .limit(10);
     
@@ -63,7 +66,7 @@ export async function getContext(type: string, key?: string): Promise<any[]> {
   } else {
     const results = await db.select()
       .from(contextStore)
-      .where(eq(contextStore.type, type))
+      .where(and(eq(contextStore.orgId, orgId), eq(contextStore.type, type)))
       .orderBy(desc(contextStore.createdAt))
       .limit(50);
     
@@ -78,6 +81,7 @@ export async function getContext(type: string, key?: string): Promise<any[]> {
  * Build comprehensive context for AI queries
  */
 export async function buildAIContext(params: {
+  orgId: number;
   accountId?: number;
   contactId?: number;
   includeHistory?: boolean;
@@ -86,7 +90,7 @@ export async function buildAIContext(params: {
 
   // Get account insights
   if (params.accountId) {
-    const accountContext = await getContext('account_insight', `account_${params.accountId}`);
+    const accountContext = await getContext(params.orgId, 'account_insight', `account_${params.accountId}`);
     if (accountContext.length > 0) {
       contextParts.push(`\nACCOUNT INSIGHTS:\n${accountContext.map(c => `- ${c.value}`).join('\n')}`);
     }
@@ -94,7 +98,7 @@ export async function buildAIContext(params: {
 
   // Get contact insights
   if (params.contactId) {
-    const contactContext = await getContext('contact_insight', `contact_${params.contactId}`);
+    const contactContext = await getContext(params.orgId, 'contact_insight', `contact_${params.contactId}`);
     if (contactContext.length > 0) {
       contextParts.push(`\nCONTACT INSIGHTS:\n${contactContext.map(c => `- ${c.value}`).join('\n')}`);
     }
@@ -102,7 +106,7 @@ export async function buildAIContext(params: {
 
   // Get recent learnings
   if (params.includeHistory) {
-    const learnings = await getContext('learning');
+    const learnings = await getContext(params.orgId, 'learning');
     if (learnings.length > 0) {
       contextParts.push(`\nPREVIOUS LEARNINGS:\n${learnings.slice(0, 5).map(c => `- ${c.value}`).join('\n')}`);
     }
@@ -115,22 +119,25 @@ export async function buildAIContext(params: {
  * Intelligent conversation handler with persistent memory
  */
 export async function conversationWithMemory(params: {
+  /** The tenant asking. The workspace brain below is per-org; without this the chat
+   *  would answer one customer's question using another customer's portfolio. */
+  orgId: number;
   query: string;
   accountId?: number;
   contactId?: number;
   userId?: number;
   conversationHistory?: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
 }): Promise<{ answer: string; insights: string[]; available: boolean }> {
-  const { query, accountId, contactId, userId, conversationHistory = [] } = params;
+  const { orgId, query, accountId, contactId, userId, conversationHistory = [] } = params;
 
   // Build context from storage
-  let storedContext = await buildAIContext({ accountId, contactId, includeHistory: true });
+  let storedContext = await buildAIContext({ orgId, accountId, contactId, includeHistory: true });
 
   // Prepend the continuously-learning workspace brain (verified snapshot + accumulated
   // lessons) so chat answers draw on the whole portfolio's knowledge.
   try {
     const { getBrainDigest, brainContextBlock } = await import("./intel/brain");
-    storedContext = `${brainContextBlock(await getBrainDigest())}\n${storedContext}`;
+    storedContext = `${brainContextBlock(await getBrainDigest(params.orgId))}\n${storedContext}`;
   } catch { /* brain unavailable → chat still works */ }
 
   // Check for intent spike queries
@@ -145,7 +152,7 @@ export async function conversationWithMemory(params: {
     let recentSpikes: any[] = [];
     let spikesChecked = true;
     try {
-      recentSpikes = await getRecentIntentSpikes(10);
+      recentSpikes = await getRecentIntentSpikes(params.orgId, 10);
     } catch (err) {
       spikesChecked = false;
       console.error('[aiContext] could not check intent spikes:', err);
@@ -173,18 +180,22 @@ export async function conversationWithMemory(params: {
   if (db) {
     if (accountId) {
       const { accounts, calls } = await import("../drizzle/schema");
-      const accountResults = await db.select().from(accounts).where(eq(accounts.id, accountId)).limit(1);
+      const accountResults = await db.select().from(accounts)
+        .where(and(eq(accounts.orgId, orgId), eq(accounts.id, accountId))).limit(1);
       accountData = accountResults[0] || null;
-      
-      relatedCalls = await db.select().from(calls).where(eq(calls.accountId, accountId)).limit(5);
+
+      relatedCalls = await db.select().from(calls)
+        .where(and(eq(calls.orgId, orgId), eq(calls.accountId, accountId))).limit(5);
     }
 
     if (contactId) {
       const { contacts, calls } = await import("../drizzle/schema");
-      const contactResults = await db.select().from(contacts).where(eq(contacts.id, contactId)).limit(1);
+      const contactResults = await db.select().from(contacts)
+        .where(and(eq(contacts.orgId, orgId), eq(contacts.id, contactId))).limit(1);
       contactData = contactResults[0] || null;
-      
-      const callResults = await db.select().from(calls).where(eq(calls.contactId, contactId)).limit(5);
+
+      const callResults = await db.select().from(calls)
+        .where(and(eq(calls.orgId, orgId), eq(calls.contactId, contactId))).limit(5);
       relatedCalls = [...relatedCalls, ...callResults];
     }
   }
@@ -242,6 +253,7 @@ ${intentSpikeContext}`;
   
   // Store this interaction for learning
   await storeContext({
+    orgId,
     type: 'user_interaction',
     key: `query_${Date.now()}`,
     value: query,
@@ -293,6 +305,7 @@ Return a JSON array of insight strings.`;
         // Store insights
         if (accountId) {
           await storeContext({
+            orgId,
             type: 'account_insight',
             key: `account_${accountId}`,
             value: insight,
@@ -302,6 +315,7 @@ Return a JSON array of insight strings.`;
         
         if (contactId) {
           await storeContext({
+            orgId,
             type: 'contact_insight',
             key: `contact_${contactId}`,
             value: insight,
@@ -310,6 +324,7 @@ Return a JSON array of insight strings.`;
         }
 
         await storeContext({
+          orgId,
           type: 'learning',
           key: `learning_${Date.now()}`,
           value: insight,
@@ -327,20 +342,23 @@ Return a JSON array of insight strings.`;
 /**
  * Auto-generate account summary with AI
  */
-export async function generateAccountSummary(accountId: number): Promise<string> {
+export async function generateAccountSummary(orgId: number, accountId: number): Promise<string> {
   const db = await getDb();
   if (!db) return "Unable to generate summary";
 
   const { accounts, contacts, calls } = await import("../drizzle/schema");
   
-  const account = await db.select().from(accounts).where(eq(accounts.id, accountId)).limit(1);
+  const account = await db.select().from(accounts)
+    .where(and(eq(accounts.orgId, orgId), eq(accounts.id, accountId))).limit(1);
   if (!account[0]) return "Account not found";
 
-  const accountContacts = await db.select().from(contacts).where(eq(contacts.accountId, accountId)).limit(10);
-  const accountCalls = await db.select().from(calls).where(eq(calls.accountId, accountId)).limit(10);
+  const accountContacts = await db.select().from(contacts)
+    .where(and(eq(contacts.orgId, orgId), eq(contacts.accountId, accountId))).limit(10);
+  const accountCalls = await db.select().from(calls)
+    .where(and(eq(calls.orgId, orgId), eq(calls.accountId, accountId))).limit(10);
 
   // Get stored insights
-  const storedInsights = await getContext('account_insight', `account_${accountId}`);
+  const storedInsights = await getContext(orgId, 'account_insight', `account_${accountId}`);
 
   const contactNames = accountContacts.map((c: any) => `${c.name} - ${c.title || 'No title'}`).join('\n');
   const config = getCompanyConfig();
@@ -413,6 +431,7 @@ ${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `
 
   // Store the summary
   await storeContext({
+    orgId,
     type: 'account_insight',
     key: `account_${accountId}`,
     value: `Auto-generated summary: ${summaryStr.substring(0, 200)}...`,
@@ -426,6 +445,7 @@ ${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `
  * Auto-generate contact summary with AI, optionally including LinkedIn data
  */
 export async function generateContactSummary(
+  orgId: number,
   contactId: number,
   includeLinkedIn: boolean = false
 ): Promise<{ content: string; available: boolean }> {
@@ -435,22 +455,25 @@ export async function generateContactSummary(
   const { contacts, calls, accounts } = await import("../drizzle/schema");
   const { getLinkedInContextForContact } = await import("./linkedin");
 
-  const contact = await db.select().from(contacts).where(eq(contacts.id, contactId)).limit(1);
+  const contact = await db.select().from(contacts)
+    .where(and(eq(contacts.orgId, orgId), eq(contacts.id, contactId))).limit(1);
   if (!contact[0]) return { content: "Contact not found", available: false };
 
   // Get account context if available
   let accountContext = '';
   if (contact[0].accountId) {
-    const account = await db.select().from(accounts).where(eq(accounts.id, contact[0].accountId)).limit(1);
+    const account = await db.select().from(accounts)
+      .where(and(eq(accounts.orgId, orgId), eq(accounts.id, contact[0].accountId))).limit(1);
     if (account[0]) {
       accountContext = `\nACCOUNT CONTEXT:\n- Company: ${account[0].name}\n- Industry: ${account[0].industry || 'Unknown'}\n- Intent Score: ${account[0].intentScore || 'N/A'}\n- Buying Stage: ${(account[0] as any).sixsenseBuyingStage || 'Unknown'}`;
     }
   }
 
-  const contactCalls = await db.select().from(calls).where(eq(calls.contactId, contactId)).limit(10);
+  const contactCalls = await db.select().from(calls)
+    .where(and(eq(calls.orgId, orgId), eq(calls.contactId, contactId))).limit(10);
 
   // Get stored insights
-  const storedInsights = await getContext('contact_insight', `contact_${contactId}`);
+  const storedInsights = await getContext(orgId, 'contact_insight', `contact_${contactId}`);
 
   // Fetch real-time LinkedIn data if requested and URL is available
   let linkedInSection = '';
@@ -512,6 +535,7 @@ Be specific, actionable, and avoid generic statements. Focus on what makes this 
 
   // Store the summary
   await storeContext({
+    orgId,
     type: 'contact_insight',
     key: `contact_${contactId}`,
     value: `Auto-generated profile: ${summaryStr.substring(0, 200)}...`,

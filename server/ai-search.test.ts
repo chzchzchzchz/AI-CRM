@@ -69,7 +69,7 @@ describe("intelligentSearch — no recognized structure returns zero results", (
   it("returns 0 results for gibberish, not the whole dataset ranked by intent", async () => {
     await seed();
     const { intelligentSearch } = await import("./ai");
-    const result = await intelligentSearch("zzznonexistentqwertycompany999xyz");
+    const result = await intelligentSearch(1, "zzznonexistentqwertycompany999xyz");
     expect(result.resultCount).toBe(0);
     expect(result.results).toEqual([]);
   });
@@ -77,14 +77,14 @@ describe("intelligentSearch — no recognized structure returns zero results", (
   it("returns 0 results for an empty query", async () => {
     await seed();
     const { intelligentSearch } = await import("./ai");
-    const result = await intelligentSearch("");
+    const result = await intelligentSearch(1, "");
     expect(result.resultCount).toBe(0);
   });
 
   it("still returns real matches for a query with actual text overlap", async () => {
     await seed();
     const { intelligentSearch } = await import("./ai");
-    const result = await intelligentSearch("Vertex Cloud Systems");
+    const result = await intelligentSearch(1, "Vertex Cloud Systems");
     expect(result.resultCount).toBeGreaterThan(0);
     expect(result.results.some((r: any) => r.name === "Vertex Cloud Systems")).toBe(true);
   });
@@ -94,7 +94,7 @@ describe("intelligentSearch — contact-intent routing", () => {
   it("routes a plural title query to contact search", async () => {
     await seed();
     const { intelligentSearch } = await import("./ai");
-    const result = await intelligentSearch("Find CISOs at companies with 1000+ employees");
+    const result = await intelligentSearch(1, "Find CISOs at companies with 1000+ employees");
     expect(result.resultType).toBe("contact");
     expect(result.results.some((r: any) => r.title === "CISO")).toBe(true);
   });
@@ -102,7 +102,7 @@ describe("intelligentSearch — contact-intent routing", () => {
   it("routes the app's other plural example the same way", async () => {
     await seed();
     const { intelligentSearch } = await import("./ai");
-    const result = await intelligentSearch("find CTOs");
+    const result = await intelligentSearch(1, "find CTOs");
     expect(result.resultType).toBe("contact");
   });
 });
@@ -139,7 +139,7 @@ describe("intelligentSearch — filters reported match what actually ran", () =>
     });
 
     const { intelligentSearch } = await import("./ai");
-    const result = await intelligentSearch("show me accounts");
+    const result = await intelligentSearch(1, "show me accounts");
 
     // The array-shaped industry filter never actually constrained anything — the
     // response must not claim it did. minEmployees (a scalar, via firstNum) DOES

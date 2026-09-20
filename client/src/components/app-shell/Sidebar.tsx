@@ -21,6 +21,7 @@ import { ChevronsLeft, LogOut, Monitor, Moon, ShieldCheck, Sun } from "lucide-re
 import { Link, useLocation } from "wouter";
 import { APP_TITLE } from "@/const";
 import { isItemActive, visibleSections } from "./nav-model";
+import { toast } from "sonner";
 
 type SidebarProps = {
   collapsed: boolean;
@@ -187,6 +188,19 @@ function SidebarAccount({ collapsed }: { collapsed: boolean }) {
     onSuccess: () => {
       queryClient.invalidateQueries();
       window.location.href = "/login";
+    },
+    // Without this, a failed logout did nothing at all: the click was swallowed, the page
+    // did not move, and the session stayed live. On a shared machine that is someone
+    // walking away believing they are signed out.
+    //
+    // Deliberately NOT navigating to /login on failure. The server call is what ends the
+    // session; if it did not land, the cookie is still valid and sending the user to a
+    // login screen would tell them they are out while anyone with the browser can press
+    // Back and still be in. Say what happened instead, and let them retry.
+    onError: (err) => {
+      toast.error("Couldn't sign you out — your session is still active.", {
+        description: err?.message || "Check your connection and try again.",
+      });
     },
   });
 

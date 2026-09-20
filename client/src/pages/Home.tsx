@@ -17,6 +17,7 @@ import { useRep, REP_TERRITORIES } from "@/contexts/RepContext";
 import { CompanyLogo } from "@/components/ui/company-logo";
 import { PageHeader } from "@/components/app-shell/PageHeader";
 import { DataErrorBanner } from "@/components/ui/data-error-banner";
+import { EmptyWorkspace } from "@/components/ui/empty-workspace";
 import { MetricGrid } from "@/components/ui/metric";
 import { StatCard } from "@/components/StatCard";
 
@@ -212,6 +213,15 @@ export default function Home() {
           errors={[repStatsError, topKeywordsError]}
           message="Some dashboard data couldn't be loaded — rep-specific counts below may show workspace-wide numbers instead, and trending keywords may be missing."
         />
+
+        {/* A brand-new workspace has nothing in it, and every tile below reads as a
+            statement about a business: "Accounts 0 · Hot 0 · Open pipeline $0 · No
+            qualified accounts". That is the first screen a self-serve customer sees,
+            and it describes an empty pipeline rather than an empty workspace. Say
+            which one it is before they read the numbers as their own. */}
+        {!accountsLoading && (accounts?.length ?? 0) === 0 ? (
+          <EmptyWorkspace what="data in this workspace" />
+        ) : null}
 
         <ContextualAI context="home" placeholder="Ask about today's pipeline…" />
 

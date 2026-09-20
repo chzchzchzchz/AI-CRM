@@ -1,5 +1,6 @@
 import { wrapUntrusted, INJECTION_GUARD, stripLeakedFence, stripLeakedFenceDeep } from "./_core/untrusted";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
+import { affectedRows } from "./_core/affected-rows";
 import { z } from "zod";
 import { invokeLLM, isLlmUnavailable, llmText, LLM_UNAVAILABLE_NOTE, parseLlmJson } from "./_core/llm";
 import { asRevenueArchitect } from "./ai-system-prompt";
@@ -206,6 +207,7 @@ export const toolsRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const result = await uploadDocument(
+        ctx.orgId,
         ctx.user.id,
         input.fileName,
         input.content,
@@ -213,7 +215,7 @@ export const toolsRouter = router({
         input.category
       );
       
-      await trackInteraction('document_upload', { fileName: input.fileName }, result, {
+      await trackInteraction(ctx.orgId, 'document_upload', { fileName: input.fileName }, result, {
         userId: ctx.user.id
       });
       
@@ -222,13 +224,13 @@ export const toolsRouter = router({
 
   getDocuments: protectedProcedure
     .query(async ({ ctx }) => {
-      return getUserDocuments(ctx.user.id);
+      return getUserDocuments(ctx.orgId, ctx.user.id);
     }),
 
   deleteDocument: protectedProcedure
     .input(z.object({ documentId: z.number() }))
-    .mutation(async ({ input }) => {
-      await deleteDocument(input.documentId);
+    .mutation(async ({ input, ctx }) => {
+      await deleteDocument(ctx.orgId, input.documentId);
       return { success: true };
     }),
 
@@ -238,7 +240,7 @@ export const toolsRouter = router({
       topK: z.number().default(5)
     }))
     .query(async ({ ctx, input }) => {
-      return searchKnowledgeBase(input.query, ctx.user.id, input.topK);
+      return searchKnowledgeBase(ctx.orgId, input.query, ctx.user.id, input.topK);
     }),
 
   // Unified content generation with RAG
@@ -258,6 +260,7 @@ export const toolsRouter = router({
       // Get RAG context from knowledge base (use undefined if not logged in)
       const userId = ctx.user?.id;
       const ragContext = await getRAGContext(
+        ctx.orgId,
         `${input.contentType} ${input.context} ${input.targetAccount || ''} ${input.targetContact || ''}`,
         userId,
         input.accountId,
@@ -370,6 +373,7 @@ Generate professional, actionable content.`;
         let contentId: number | null = null;
         if (ctx.user) {
           contentId = await saveGeneratedContent(
+            ctx.orgId,
             ctx.user.id,
             input.contentType,
             typeof content === 'string' ? content : JSON.stringify(content),
@@ -382,7 +386,7 @@ Generate professional, actionable content.`;
           );
           
           // Track interaction
-          await trackInteraction('content_generated', input, { contentId, content }, {
+          await trackInteraction(ctx.orgId, 'content_generated', input, { contentId, content }, {
             userId: ctx.user.id,
             accountId: input.accountId,
             contactId: input.contactId,
@@ -457,27 +461,39 @@ Generate professional, actionable content.`;
       // Record feedback on interaction
       if (interactionId) {
         const { recordFeedback } = await import('./rag-service');
-        await recordFeedback(interactionId, feedback, details);
+        await recordFeedback(ctx.orgId, interactionId, feedback, details);
       }
       
       // Update generated content with user edits
+      let editsSaved: boolean | undefined;
       if (contentId && editedContent) {
         const db = await (await import('./db')).getDb();
         if (db) {
           const { generatedContent } = await import('../drizzle/schema');
           const { eq } = await import('drizzle-orm');
-          await db.update(generatedContent)
+          const { and } = await import('drizzle-orm');
+          // A bare id here meant any signed-in user could overwrite anyone else's
+          // generated content by passing their contentId — no owner check of any kind.
+          const result = await db.update(generatedContent)
             .set({ userEdits: editedContent, feedback })
-            .where(eq(generatedContent.id, contentId));
+            .where(and(eq(generatedContent.orgId, ctx.orgId), eq(generatedContent.id, contentId)));
+          // The caller typed an edit and pressed save. If the row was not there — a stale
+          // contentId, or one belonging to another organization — the edit is gone, and
+          // `{ success: true }` told them it was kept. Report what actually happened; the
+          // feedback below is still recorded either way, which is why this is a field on
+          // the response rather than a thrown error.
+          editsSaved = affectedRows(result) > 0;
+        } else {
+          editsSaved = false;
         }
       }
       
       // Track the feedback interaction itself
-      await trackInteraction('feedback_submitted', input, { recorded: true }, {
+      await trackInteraction(ctx.orgId, 'feedback_submitted', input, { recorded: true }, {
         userId: ctx.user.id
       });
       
-      return { success: true };
+      return { success: true, editsSaved };
     }),
 
   // Get learning insights for a content type
@@ -485,9 +501,9 @@ Generate professional, actionable content.`;
     .input(z.object({
       contentType: z.string()
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const { getLearningInsights } = await import('./rag-service');
-      return getLearningInsights(input.contentType);
+      return getLearningInsights(ctx.orgId, input.contentType);
     }),
 
   generateWebinarContent: protectedProcedure
@@ -765,7 +781,7 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
             
             // Try exact match first
             let matchedAccounts = await db.select().from(accounts)
-              .where(like(accounts.name, `%${companyName}%`))
+              .where(and(eq(accounts.orgId, ctx.orgId), like(accounts.name, `%${companyName}%`)))
               .limit(5);
             
             // If no match, try partial matching
@@ -773,7 +789,7 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
               const words = companyName.split(' ').filter((w: string) => w.length > 3);
               if (words.length > 0) {
                 matchedAccounts = await db.select().from(accounts)
-                  .where(like(accounts.name, `%${words[0]}%`))
+                  .where(and(eq(accounts.orgId, ctx.orgId), like(accounts.name, `%${words[0]}%`)))
                   .limit(5);
               }
             }
@@ -826,6 +842,7 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
       // Generate a unique share ID for public access
       const shareId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       const result = await db.insert(transcriptReports).values({
+        orgId: ctx.orgId,
         userId: ctx.user?.id || 0,
         name: input.name,
         transcript: input.transcript,
@@ -846,7 +863,7 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
       // real total even past 100 saved reports, the same silent-truncation shape already
       // fixed for Salesforce's contact/account sync (server/salesforce.ts's queryAll).
       const rows = await db.select().from(transcriptReports)
-        .where(eq(transcriptReports.userId, ctx.user.id))
+        .where(and(eq(transcriptReports.orgId, ctx.orgId), eq(transcriptReports.userId, ctx.user.id)))
         .orderBy(desc(transcriptReports.createdAt))
         .limit(101);
       return { reports: rows.slice(0, 100), hasMore: rows.length > 100 };
@@ -857,6 +874,10 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error('Database not available');
+      // tenancy-exempt: the unguessable shareId in the URL is itself the authorization.
+      // This is a publicProcedure — there is no session, so there is no authenticated org
+      // to compare against. Adding an org filter here would break sharing without adding
+      // any check at all.
       const [report] = await db.select().from(transcriptReports)
         .where(eq(transcriptReports.shareId, input.shareId))
         .limit(1);
@@ -898,13 +919,13 @@ ${wrapUntrusted("meeting transcript pasted by the rep", input.transcript)}`;
       if (!db) throw new Error('Database not available');
       // Only allow deletion of reports owned by the current user
       const [report] = await db.select().from(transcriptReports)
-        .where(and(eq(transcriptReports.id, input.id), eq(transcriptReports.userId, ctx.user.id)))
+        .where(and(eq(transcriptReports.orgId, ctx.orgId), eq(transcriptReports.id, input.id), eq(transcriptReports.userId, ctx.user.id)))
         .limit(1);
       if (!report) {
         throw new Error('Report not found or you do not have permission to delete it');
       }
       await db.delete(transcriptReports)
-        .where(and(eq(transcriptReports.id, input.id), eq(transcriptReports.userId, ctx.user.id)));
+        .where(and(eq(transcriptReports.orgId, ctx.orgId), eq(transcriptReports.id, input.id), eq(transcriptReports.userId, ctx.user.id)));
       return { success: true };
     })
 });

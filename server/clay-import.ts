@@ -2,7 +2,7 @@ import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb } from "./db";
 import { accounts } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { parseUniversalData, mapToAccountSchema } from "./universal-parser";
 
 /**
@@ -19,7 +19,7 @@ export const clayImportRouter = router({
     .input(z.object({
       rawData: z.string()
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       // Parse the raw data
       const parsed = parseUniversalData(input.rawData);
       const accountsData = mapToAccountSchema(parsed);
@@ -42,7 +42,10 @@ export const clayImportRouter = router({
           const existing = await db
             .select()
             .from(accounts)
-            .where(eq(accounts.domain, account.domain))
+            // Domain alone would match another tenant's row for the same company —
+            // two customers can legitimately both track acme.com — and the update
+            // below would then overwrite their enrichment with this import's.
+            .where(and(eq(accounts.orgId, ctx.orgId), eq(accounts.domain, account.domain)))
             .limit(1);
 
           // Map onto the real account columns — stack/research/trigger are not columns
@@ -65,11 +68,11 @@ export const clayImportRouter = router({
             await db
               .update(accounts)
               .set(accountData)
-              .where(eq(accounts.id, existing[0].id));
+              .where(and(eq(accounts.orgId, ctx.orgId), eq(accounts.id, existing[0].id)));
             updated++;
           } else {
             // Insert new account
-            await db.insert(accounts).values(accountData);
+            await db.insert(accounts).values({ ...accountData, orgId: ctx.orgId });
             imported++;
           }
         } catch (error) {
@@ -106,7 +109,7 @@ export const clayImportRouter = router({
         rawData: z.record(z.string(), z.any()).optional(),
       }))
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -120,7 +123,10 @@ export const clayImportRouter = router({
           const existing = await db
             .select()
             .from(accounts)
-            .where(eq(accounts.domain, account.domain))
+            // Domain alone would match another tenant's row for the same company —
+            // two customers can legitimately both track acme.com — and the update
+            // below would then overwrite their enrichment with this import's.
+            .where(and(eq(accounts.orgId, ctx.orgId), eq(accounts.domain, account.domain)))
             .limit(1);
 
           // Real columns — not stack/research/trigger (those aren't on the accounts table).
@@ -141,11 +147,11 @@ export const clayImportRouter = router({
             await db
               .update(accounts)
               .set(accountData)
-              .where(eq(accounts.id, existing[0].id));
+              .where(and(eq(accounts.orgId, ctx.orgId), eq(accounts.id, existing[0].id)));
             updated++;
           } else {
             // Insert new account
-            await db.insert(accounts).values(accountData);
+            await db.insert(accounts).values({ ...accountData, orgId: ctx.orgId });
             imported++;
           }
         } catch (error) {
@@ -166,11 +172,11 @@ export const clayImportRouter = router({
   /**
    * Get import status and statistics
    */
-  getImportStats: protectedProcedure.query(async () => {
+  getImportStats: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    const allAccounts = await db.select().from(accounts);
+    const allAccounts = await db.select().from(accounts).where(eq(accounts.orgId, ctx.orgId));
     
     const withStack = allAccounts.filter((a: any) => a.techStack && a.techStack !== '{}').length;
     const withResearch = allAccounts.filter((a: any) => a.aiResearchCache && a.aiResearchCache !== '{}').length;

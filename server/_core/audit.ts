@@ -17,6 +17,13 @@ export type AuditEventType =
 
 export interface AuditLogEntry {
   userId: number;
+  /**
+   * The tenant the event belongs to. Optional because the events that matter most —
+   * a failed login, a signup — happen before any session exists, and inventing an org
+   * for them would file one tenant's failed logins under another's audit trail.
+   * Unset means "not attributable to an organization", which is the honest record.
+   */
+  orgId?: number;
   eventType: AuditEventType;
   description: string;
   ipAddress?: string;
@@ -36,6 +43,10 @@ export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
     }
 
     await db.insert(auditLogs).values({
+      // Unset stays unset rather than defaulting: an event that cannot be attributed to
+      // an org should not be filed under one. Reads filter on orgId, so these appear in
+      // no tenant's audit view — which is correct for a pre-session event.
+      orgId: entry.orgId,
       userId: entry.userId,
       eventType: entry.eventType,
       description: entry.description,
