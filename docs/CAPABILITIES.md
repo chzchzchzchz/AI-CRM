@@ -130,7 +130,7 @@ Design-system parts with no current consumer. Not drift — a library is allowed
 | `people.list` | `components/GlobalSearch.tsx`, `pages/Contacts.tsx`, `pages/Insights.tsx`, `pages/Outreach.tsx` |
 | `people.prioritize` | `pages/Contacts.tsx` |
 | `priorityActions.getEnriched` | `pages/Home.tsx` |
-| `priorityActions.getRepStats` | `pages/Home.tsx`, `pages/TopAccounts.tsx` |
+| `priorityActions.getRepStats` | `pages/Accounts.tsx`, `pages/Home.tsx`, `pages/TopAccounts.tsx` |
 | `rfps.list` | `pages/RFPs.tsx` |
 | `rfps.scrape` | `pages/RFPs.tsx` |
 | `rfps.stats` | `pages/RFPs.tsx` |

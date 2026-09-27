@@ -1,3 +1,4 @@
+import { unworkedSixQAs } from "./six-qa";
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getAllAccounts, getContactsByAccountId, getGongCallsByAccountId, getAllOpportunities } from "./db";
@@ -303,16 +304,18 @@ export const priorityActionsRouter = router({
       const accountsWithOpp = new Set(
         (allOpps as any[]).map((o) => o.accountId).filter((id) => id != null)
       );
-      const sixQAGap = accounts.filter(
-        (a: Account) => (a.intentScore || 0) >= 70 && !accountsWithOpp.has(a.id)
-      ).length;
+      const unworked = unworkedSixQAs(accounts, accountsWithOpp);
 
       return {
         totalAccounts: accounts.length,
         hotLeads,
         warmLeads,
         coldLeads,
-        sixQAGap,
+        sixQAGap: unworked.length,
+        // The home tile links to /accounts?filter=unworked. The accounts page filters to
+        // exactly these ids rather than re-deriving the set, so the list it shows is the
+        // number the tile promised — same territory, same definition.
+        unworkedAccountIds: unworked.map((a) => a.id),
       };
     }),
 });
