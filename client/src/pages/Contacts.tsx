@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from"react";
+import { MFA_PROVIDERS } from "@/lib/mfa-providers";
 import { Card, CardContent } from"@/components/ui/card";
 import { Button } from"@/components/ui/button";
 import { Input } from"@/components/ui/input";
@@ -101,8 +102,6 @@ export default function ContactsEnhanced() {
   }, [contacts]);
 
   // MFA/Identity Provider options - hardcoded list of identity/auth vendors
-  const MFA_PROVIDERS = ["Ping Identity","Okta","Duo Security","Azure AD","OneLogin","ForgeRock","Auth0","CyberArk","RSA SecurID","SailPoint","Saviynt","IBM Security Verify","Oracle Identity","SecureAuth","Thales SafeNet"
-  ];
 
   // Extract MFA/Identity providers found in accounts' techStack
   const mfaProviders = useMemo(() => {

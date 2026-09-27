@@ -32,6 +32,105 @@ interface Transformation {
   description: string;
 }
 
+// Pure CSV parsing, hoisted out of the component: none of it reads state, and the
+// upload callbacks memoise on it, so a per-render copy was only ever a stale one.
+
+/**
+ * Parse a whole CSV file into rows of raw string fields (before headers are
+ * applied). A single state machine over the entire text, tracking quote state
+ * across the whole scan — not per-line.
+ *
+ * The previous version split the text into lines with `text.split(/\r?\n/)`
+ * BEFORE any quote-awareness ran, so a quoted field containing a literal
+ * newline — an ordinary, RFC-4180-legal CSV field, and common in Notes/
+ * Comments/Address columns exported from HubSpot, Wistia, and similar tools
+ * this page's own copy says it supports — got torn in half at that newline.
+ * Confirmed live: 'Email,Comments\na@x.com,"line one\nline two"\nb@x.com,...'
+ * produced a phantom row with "line two" shoved into the Email column and an
+ * empty Comments cell, silently corrupting real data with no warning.
+ */
+const parseCSVRows = (text: string): string[][] => {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += char;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = true;
+    } else if (char === ",") {
+      row.push(field.trim());
+      field = "";
+    } else if (char === "\n" || char === "\r") {
+      if (char === "\r" && text[i + 1] === "\n") i++;
+      row.push(field.trim());
+      field = "";
+      // Drop a fully blank line (no fields, or a single empty field) rather
+      // than emitting an empty row — matches the previous line-filter behavior.
+      if (row.length > 1 || row[0] !== "") rows.push(row);
+      row = [];
+    } else {
+      field += char;
+    }
+  }
+  // Final field/row with no trailing newline.
+  if (field !== "" || row.length > 0) {
+    row.push(field.trim());
+    if (row.length > 1 || row[0] !== "") rows.push(row);
+  }
+  return rows;
+};
+
+/**
+ * Header names repeat when combining exports from multiple tools (two
+ * "Phone" or "Company" columns is common). Assigning by plain object key
+ * silently overwrote the first column's value with the second's, with no
+ * warning and no way to map the first column at all. Suffix every repeat
+ * so both survive as distinct, mappable source fields.
+ */
+function disambiguateHeaders(headers: string[]): string[] {
+  const seen = new Map<string, number>();
+  return headers.map((h) => {
+    const count = (seen.get(h) || 0) + 1;
+    seen.set(h, count);
+    return count === 1 ? h : `${h} (${count})`;
+  });
+}
+
+// Parse CSV file
+const parseCSV = (text: string): { headers: string[]; rows: Record<string, string>[] } => {
+  const rawRows = parseCSVRows(text);
+  if (rawRows.length === 0) return { headers: [], rows: [] };
+
+  const headers = disambiguateHeaders(rawRows[0]);
+  const rows: Record<string, string>[] = [];
+  for (let i = 1; i < rawRows.length; i++) {
+    const values = rawRows[i];
+    const row: Record<string, string> = {};
+    headers.forEach((header, idx) => {
+      row[header] = values[idx] || "";
+    });
+    rows.push(row);
+  }
+
+  return { headers, rows };
+};
+
 export default function CsvProcessor() {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [combinedData, setCombinedData] = useState<{ headers: string[]; rows: Record<string, string>[] } | null>(null);
@@ -53,102 +152,6 @@ export default function CsvProcessor() {
   const { data: templateInfo } = trpc.csvProcessor.getTemplateInfo.useQuery();
   const analyzeAndMapMutation = trpc.csvProcessor.analyzeAndMap.useMutation();
   const processDataMutation = trpc.csvProcessor.processData.useMutation();
-
-  /**
-   * Parse a whole CSV file into rows of raw string fields (before headers are
-   * applied). A single state machine over the entire text, tracking quote state
-   * across the whole scan — not per-line.
-   *
-   * The previous version split the text into lines with `text.split(/\r?\n/)`
-   * BEFORE any quote-awareness ran, so a quoted field containing a literal
-   * newline — an ordinary, RFC-4180-legal CSV field, and common in Notes/
-   * Comments/Address columns exported from HubSpot, Wistia, and similar tools
-   * this page's own copy says it supports — got torn in half at that newline.
-   * Confirmed live: 'Email,Comments\na@x.com,"line one\nline two"\nb@x.com,...'
-   * produced a phantom row with "line two" shoved into the Email column and an
-   * empty Comments cell, silently corrupting real data with no warning.
-   */
-  const parseCSVRows = (text: string): string[][] => {
-    const rows: string[][] = [];
-    let row: string[] = [];
-    let field = "";
-    let inQuotes = false;
-
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      if (inQuotes) {
-        if (char === '"') {
-          if (text[i + 1] === '"') {
-            field += '"';
-            i++;
-          } else {
-            inQuotes = false;
-          }
-        } else {
-          field += char;
-        }
-        continue;
-      }
-
-      if (char === '"') {
-        inQuotes = true;
-      } else if (char === ",") {
-        row.push(field.trim());
-        field = "";
-      } else if (char === "\n" || char === "\r") {
-        if (char === "\r" && text[i + 1] === "\n") i++;
-        row.push(field.trim());
-        field = "";
-        // Drop a fully blank line (no fields, or a single empty field) rather
-        // than emitting an empty row — matches the previous line-filter behavior.
-        if (row.length > 1 || row[0] !== "") rows.push(row);
-        row = [];
-      } else {
-        field += char;
-      }
-    }
-    // Final field/row with no trailing newline.
-    if (field !== "" || row.length > 0) {
-      row.push(field.trim());
-      if (row.length > 1 || row[0] !== "") rows.push(row);
-    }
-    return rows;
-  };
-
-  /**
-   * Header names repeat when combining exports from multiple tools (two
-   * "Phone" or "Company" columns is common). Assigning by plain object key
-   * silently overwrote the first column's value with the second's, with no
-   * warning and no way to map the first column at all. Suffix every repeat
-   * so both survive as distinct, mappable source fields.
-   */
-  function disambiguateHeaders(headers: string[]): string[] {
-    const seen = new Map<string, number>();
-    return headers.map((h) => {
-      const count = (seen.get(h) || 0) + 1;
-      seen.set(h, count);
-      return count === 1 ? h : `${h} (${count})`;
-    });
-  }
-
-  // Parse CSV file
-  const parseCSV = (text: string): { headers: string[]; rows: Record<string, string>[] } => {
-    const rawRows = parseCSVRows(text);
-    if (rawRows.length === 0) return { headers: [], rows: [] };
-
-    const headers = disambiguateHeaders(rawRows[0]);
-    const rows: Record<string, string>[] = [];
-    for (let i = 1; i < rawRows.length; i++) {
-      const values = rawRows[i];
-      const row: Record<string, string> = {};
-      headers.forEach((header, idx) => {
-        row[header] = values[idx] || "";
-      });
-      rows.push(row);
-    }
-
-    return { headers, rows };
-  };
 
   // Handle file upload
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {

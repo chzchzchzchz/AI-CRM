@@ -31,7 +31,7 @@ takes a few minutes. The pieces, if you want to run one on its own:
 | Command | What it does |
 |---|---|
 | `pnpm check` | typechecks **both** TS projects (server and client are separate configs) |
-| `pnpm lint` | rules-of-hooks only — deliberately narrow, so it's never noise |
+| `pnpm lint` | the two React hook rules, both errors — deliberately narrow, so it's never noise |
 | `pnpm test` | vitest, 729 tests |
 | `pnpm inventory` | regenerates `docs/CAPABILITIES.md` |
 | `pnpm check:claims` | asserts the docs' factual claims against the code and the seed data |
