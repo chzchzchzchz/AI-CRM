@@ -435,7 +435,7 @@ export default function CsvProcessor() {
                           <div>
                             <p className="font-medium text-foreground">{file.name}</p>
                             <p className="text-sm text-ink-muted">
-                              <span className="tabular-nums text-ink-muted">{file.rowCount}</span> rows •{""}
+                              <span className="tabular-nums text-ink-muted">{file.rowCount}</span> rows •{" "}
                               <span className="tabular-nums text-ink-muted">{file.headers.length}</span> columns
                             </p>
                           </div>
@@ -508,8 +508,8 @@ export default function CsvProcessor() {
                   <AlertCircle className="h-4 w-4 text-accent" />
                   <AlertTitle className="text-foreground">Data Summary</AlertTitle>
                   <AlertDescription className="text-ink-muted">
-                    <span className="tabular-nums text-ink-muted">{combinedData?.rows.length}</span> total rows from{""}
-                    <span className="tabular-nums text-ink-muted">{uploadedFiles.length}</span> file(s) •{""}
+                    <span className="tabular-nums text-ink-muted">{combinedData?.rows.length}</span> total rows from{" "}
+                    <span className="tabular-nums text-ink-muted">{uploadedFiles.length}</span> file(s) •{" "}
                     <span className="tabular-nums text-ink-muted">{combinedData?.headers.length}</span> columns detected
                   </AlertDescription>
                 </Alert>

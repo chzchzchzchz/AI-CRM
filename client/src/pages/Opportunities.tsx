@@ -107,10 +107,10 @@ export default function Opportunities() {
               Active Pipeline
             </h1>
             <p className="text-ink-muted mt-1 text-sm">
-              AI-scored deals, grounded in stated win probability.{""}
+              AI-scored deals, grounded in stated win probability.{" "}
               <span className="text-ink-muted">
-                <span className="tabular-nums text-foreground">{usd0(openValue)}</span> across{""}
-                <span className="tabular-nums text-foreground">{openOpps.length}</span> open{""}
+                <span className="tabular-nums text-foreground">{usd0(openValue)}</span> across{" "}
+                <span className="tabular-nums text-foreground">{openOpps.length}</span> open{" "}
                 {openOpps.length === 1 ?"deal" :"deals"}.
               </span>
             </p>
