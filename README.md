@@ -8,7 +8,7 @@ A sales rep opens this in the morning and sees which accounts moved, why they mo
 do about it — with the evidence for every claim attached. It sits on top of a CRM rather than
 replacing one.
 
-`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 722 tests, ~65k lines,
+`React 19` · `TypeScript` · `tRPC` · `Express` · `Drizzle` · `Vite` — 726 tests, ~65k lines,
 runs with zero API keys.
 
 ```bash
@@ -17,6 +17,8 @@ pnpm install && cp .env.example .env && pnpm dev    # → http://localhost:3333
 ```
 
 Sign in with `demo@ai-crm.com` / `DemoPass123!`. No database, no keys, no signup.
+
+![The Today view: totals across the book, then a ranked list of accounts to work first — each with why it matters now, the named contact, and the next best action](docs/screenshots/07-home.png)
 
 ---
 
@@ -68,7 +70,8 @@ plausible; a citation to `intent.largestJump` either matches the pack or it does
 **3 · Validation — checked against the pack before anyone sees it.** `validateJudgement` builds
 the set of names the pack can support, the currency figures it can support, and the legitimate
 values for every field an evidence string may cite — then rejects anything outside them. A model
-that invents a contact, a number, or a citation doesn't get to ship it.
+that invents a contact, a number, a citation, or an RFP the account never issued doesn't get to
+ship it.
 
 Briefs are keyed by a hash of the *material* signals rather than a timestamp, so an account that
 hasn't moved reuses its brief instead of paying to regenerate it. With no model reachable at all,
@@ -76,6 +79,12 @@ each surface says so rather than presenting an empty brief as a finished one.
 
 Every workspace gets its own version of this: the company identity the prompts are grounded in
 comes from `organizations.profile`, not from the deployment.
+
+![An account brief for Northwind Logistics: intent 92 and rising, signal coverage, the open deal, and a "What to do next" panel where each point is followed by the evidence it cites — intent.score: 92, intent.buyingStage: Purchase, triggers: New VP Sales hire, Series D raise](docs/screenshots/01-account-brief.png)
+
+<sub>Generated on this demo data by `qwen2.5:7b` running locally through Ollama, on a four-core CPU
+with no GPU and no API key — about four minutes per brief, then cached. Every fact in it checks
+out against the account's data.</sub>
 
 ---
 
@@ -108,6 +117,19 @@ drifts from the data.</sub>
 Point it at your own data and the same views render your real book of business — see
 [`SETUP.md`](SETUP.md) for the tiers and [`ADMIN_SETUP.md`](ADMIN_SETUP.md) for reps,
 territories, branding, and live connectors.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/02-accounts-list.png" alt="Accounts list: 1,000 targets with intent score, heat, industry, headcount and region, filterable by each"><br><sub><b>Accounts</b> — every target, filterable by region, industry, type and intent.</sub></td>
+    <td width="50%"><img src="docs/screenshots/04-pipeline.png" alt="Pipeline board by stage, each deal showing its CRM win probability beside a separate AI score"><br><sub><b>Pipeline</b> — each deal's CRM probability beside an independent AI score.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/03-insights-brain.png" alt="Insights: workspace summary, hot leads, decision makers, and intent, industry and region breakdowns"><br><sub><b>Insights</b> — the whole book at once, every segment clickable.</sub></td>
+    <td width="50%"><img src="docs/screenshots/08-top-accounts.png" alt="Top accounts grouped by region, ranked by intent score"><br><sub><b>Top accounts</b> — the highest-intent accounts in each region.</sub></td>
+  </tr>
+</table>
+
+<sub>Captured from the running app by `pnpm screenshots`, from a fresh copy of the seed.</sub>
 
 ---
 
