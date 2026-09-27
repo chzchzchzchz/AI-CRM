@@ -38,6 +38,12 @@ interface StatCardProps {
   tone?: Tone;
   className?: string;
   onClick?: () => void;
+  /**
+   * Declares this tile as a figure the quality gate compares across pages. A "global"
+   * tile must show the same value as every other global tile with the same key; a "view"
+   * tile is scoped (a territory, a filter) and is allowed to differ.
+   */
+  metric?: { key: string; scope: "global" | "view"; value: string | number };
 }
 
 export function StatCard({
@@ -49,6 +55,7 @@ export function StatCard({
   tone,
   className,
   onClick,
+  metric,
 }: StatCardProps) {
   const resolved: Tone =
     tone ?? (borderColor ? TONE_BY_LEGACY_COLOR[borderColor] : undefined) ?? "neutral";
@@ -58,6 +65,9 @@ export function StatCard({
   return (
     <Comp
       onClick={onClick}
+      data-metric={metric?.key}
+      data-metric-scope={metric?.scope}
+      data-metric-value={metric?.value}
       className={cn(
         "bg-card px-4 py-3.5 text-left",
         onClick &&

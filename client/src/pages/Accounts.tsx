@@ -3,7 +3,8 @@ import { Card, CardContent } from"@/components/ui/card";
 import { Button } from"@/components/ui/button";
 import { Input } from"@/components/ui/input";
 import { trpc } from"@/lib/trpc";
-import { Link } from"wouter";
+import { Link, useSearch } from"wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
 import {
   Building2, Users, MapPin, TrendingUp, Search, ArrowUpDown, Flame,
   Mail, Snowflake, Clock, Activity, ChevronRight
@@ -26,12 +27,21 @@ import { DataErrorBanner } from "@/components/ui/data-error-banner";
 type SortField ="name" |"intentScore" |"employees" |"industry";
 type SortOrder ="asc" |"desc";
 
+/** The intent filters a link can ask for with ?filter=. */
+const INTENT_FILTERS = ["hot", "warm", "cold", "unworked"] as const;
+
 const AccountsEnhanced = memo(function AccountsEnhanced() {
   const [searchQuery, setSearchQuery] = useState("");
   const [regionFilter, setRegionFilter] = useState<string>("all");
   const [industryFilter, setIndustryFilter] = useState<string>("all");
   const [relationshipFilter, setRelationshipFilter] = useState<string>("all");
-  const [intentFilter, setIntentFilter] = useState<string>("all");
+  // The home page's Hot, Warm and Unworked 6QA tiles link here with ?filter=. This page
+  // never read it, so every one of them landed on the full, unfiltered list.
+  const search = useSearch();
+  const urlIntent = new URLSearchParams(search).get("filter");
+  const intentFromUrl = INTENT_FILTERS.includes(urlIntent as any) ? (urlIntent as string) : "all";
+  const [intentFilter, setIntentFilter] = useState<string>(intentFromUrl);
+  useEffect(() => setIntentFilter(intentFromUrl), [intentFromUrl]);
   const [techFilter, setTechFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("intentScore");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
@@ -39,7 +49,28 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   const ACCOUNTS_PER_PAGE = 50;
 
   // Get rep context for territory filtering
-  const { matchesTerritory, repInfo, isRepMode } = useRep();
+  const { matchesTerritory, repInfo, isRepMode, selectedRep } = useRep();
+  const { user } = useAuth();
+
+  // Filtered to the ids the home tile counted — same territory, same definition — so the
+  // list is the number the tile promised rather than a second computation of it.
+  const {
+    data: repStats,
+    error: repStatsError,
+    refetch: refetchRepStats,
+  } = trpc.priorityActions.getRepStats.useQuery(
+    { userEmail: selectedRep || user?.email || "" },
+    { enabled: intentFilter === "unworked" && !!user }
+  );
+  const unworkedIds = useMemo(
+    () => (repStats ? new Set<number>(repStats.unworkedAccountIds) : null),
+    [repStats]
+  );
+  // Until the ids arrive every account fails the filter, which would render "0 accounts"
+  // and an empty state for a moment — a confident wrong answer. Load instead; and if the
+  // ids can't be fetched, say so rather than showing an empty list as if it were real.
+  const unworkedFailed = intentFilter === "unworked" && !!repStatsError;
+  const unworkedPending = intentFilter === "unworked" && !unworkedIds && !repStatsError;
 
   const { data: accounts, isLoading, error, refetch } = trpc.accounts.list.useQuery(undefined, {
     staleTime: 3 * 60 * 1000
@@ -123,12 +154,16 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
       const normalizedIndustry = normalizeIndustry(account.industry);
       const matchesIndustry = industryFilter ==="all" || normalizedIndustry === industryFilter;
 
+      // A missing score is a score of 0, which is how the home tiles count it. Skipping
+      // unscored accounts instead let all 526 of them through every filter, so "Hot"
+      // listed 631 accounts under a tile that said 105.
       let matchesIntent = true;
-      if (intentFilter !=="all" && account.intentScore) {
-        const score = parseInt(String(account.intentScore));
+      if (intentFilter !=="all") {
+        const score = parseInt(String(account.intentScore ?? 0)) || 0;
         if (intentFilter ==="hot") matchesIntent = score >= 70;
         else if (intentFilter ==="warm") matchesIntent = score >= 40 && score < 70;
         else if (intentFilter ==="cold") matchesIntent = score < 40;
+        else if (intentFilter ==="unworked") matchesIntent = unworkedIds?.has(account.id) ?? false;
       }
 
       // MFA Provider filter - match by provider name or short name
@@ -174,7 +209,11 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     });
 
     return filtered;
-  }, [accounts, searchQuery, regionFilter, industryFilter, relationshipFilter, intentFilter, techFilter, sortField, sortOrder]);
+  // matchesTerritory and unworkedIds were both read above and missing here. Without the
+  // first, switching territory left the list as it was; without the second, choosing
+  // "Unworked 6QA" froze an empty list computed before the ids had arrived — 0 accounts
+  // under a home tile that said 69.
+  }, [accounts, searchQuery, regionFilter, industryFilter, relationshipFilter, intentFilter, techFilter, sortField, sortOrder, matchesTerritory, unworkedIds]);
 
   // Intent heat: tinted text + glyph + word, never color alone.
   const getHeat = (score: number) => {
@@ -214,7 +253,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
     setCurrentPage(1);
   }, [searchQuery, regionFilter, industryFilter, relationshipFilter, intentFilter, techFilter, sortField, sortOrder]);
 
-  if (isLoading) {
+  if (isLoading || unworkedPending) {
     return (
       <div data-page-loading="true">
         <div className="container py-10 space-y-6 max-w-7xl">
@@ -296,7 +335,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
             back. The banner says so above them; the list body itself renders
             DataUnavailable rather than "No accounts found". */}
         <DataErrorBanner
-          errors={[error]}
+          errors={[error, unworkedFailed ? repStatsError : null]}
           message="Accounts couldn't be loaded, so the counts below are not your real numbers."
         />
 
@@ -386,6 +425,7 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
                   <SelectItem value="hot">Hot (70+)</SelectItem>
                   <SelectItem value="warm">Warm (40-69)</SelectItem>
                   <SelectItem value="cold">Cold (&lt;40)</SelectItem>
+                  <SelectItem value="unworked">Unworked 6QA</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -439,8 +479,12 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
         </div>
 
         {/* Accounts List */}
-        {error ? (
-          <DataUnavailable what="accounts" detail={error} onRetry={() => refetch()} />
+        {error || unworkedFailed ? (
+          <DataUnavailable
+            what="accounts"
+            detail={error ?? repStatsError}
+            onRetry={() => (error ? refetch() : refetchRepStats())}
+          />
         ) : !isLoading && (accounts?.length ?? 0) === 0 ? (
           /* Nothing has ever been imported into this workspace, which is a different
              answer from "your filters excluded everything" and needs a different one.

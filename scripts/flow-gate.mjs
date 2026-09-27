@@ -171,6 +171,90 @@ await flow("the unfiltered accounts view does not claim a filter is active", asy
 });
 
 /**
+ * The home page's tiles have to open the list they counted.
+ *
+ * Hot, Warm and Unworked 6QA linked to /accounts?filter=…, and the accounts page never
+ * read the parameter, so each one landed on all 1,000 accounts. The intent filter also let
+ * every unscored account through, so even choosing Hot by hand listed 631 under a tile that
+ * said 105. Clicked here the way a person would, and the landing count compared with the
+ * number on the tile.
+ */
+await flow("the home page's tiles open the list they counted", async () => {
+  const listCount = async () => {
+    await page.waitForSelector("[data-route-loading]", { state: "detached", timeout: 15_000 }).catch(() => {});
+    await page.waitForSelector("[data-page-loading]", { state: "detached", timeout: 15_000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const text = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
+    const m = text.match(/Target Accounts\s*([\d,]+)\s+accounts/i);
+    return m ? Number(m[1].replace(/,/g, "")) : null;
+  };
+
+  // Hot: identified by its subtitle, which no other tile on the page carries.
+  await goto("/");
+  const hot = page.getByRole("button").filter({ hasText: "Intent 70+" }).first();
+  const hotShown = Number(((await hot.innerText()).match(/\d[\d,]*/) || [""])[0].replace(/,/g, ""));
+  assert(hotShown > 0, "could not read the Hot tile's number");
+  await hot.click();
+  const hotListed = await listCount();
+  assert(
+    hotListed === hotShown,
+    `the Hot tile said ${hotShown} and opened a list of ${hotListed}`
+  );
+
+  // Unworked 6QA: the tile declares its own value for the quality gate, so read that.
+  await goto("/");
+  const unworked = page.locator('[data-metric="unworked-6qa"]').first();
+  const unworkedShown = Number(await unworked.getAttribute("data-metric-value"));
+  assert(unworkedShown > 0, "could not read the Unworked 6QA tile's number");
+  await unworked.click();
+  const unworkedListed = await listCount();
+  assert(
+    unworkedListed === unworkedShown,
+    `the Unworked 6QA tile said ${unworkedShown} and opened a list of ${unworkedListed}`
+  );
+
+  // The same filter chosen on the accounts page itself, with nothing cached from the home
+  // page. This path showed 0: the list was computed before the ids arrived and nothing
+  // told it to recompute when they did.
+  await goto("/accounts"); // a full page load, so nothing is cached from the home page
+  await page.getByRole("combobox").filter({ hasText: "All Intent" }).first().click();
+  await page.getByRole("option", { name: "Unworked 6QA" }).click();
+  const chosenListed = await listCount();
+  assert(
+    chosenListed === unworkedShown,
+    `choosing Unworked 6QA on the accounts page listed ${chosenListed}; the home tile says ${unworkedShown}`
+  );
+});
+
+/**
+ * Picking a territory has to change the list.
+ *
+ * The accounts list was memoised without the territory predicate among its dependencies,
+ * so choosing a rep re-rendered the page and handed back the list it already had — every
+ * account, under a switcher showing one rep's name.
+ */
+await flow("switching territory re-filters the accounts list", async () => {
+  await goto("/accounts");
+  const read = async () => {
+    await page.waitForTimeout(1200);
+    const text = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
+    const m = text.match(/Target Accounts\s*([\d,]+)\s+accounts/i);
+    return m ? Number(m[1].replace(/,/g, "")) : null;
+  };
+  const everyone = await read();
+  await page.getByRole("combobox", { name: "Select view" }).first().click();
+  const rep = page.getByRole("option").nth(1);
+  const repName = (await rep.innerText()).trim();
+  await rep.click();
+  const theirs = await read();
+  assert(everyone && theirs !== null, "could not read the account count");
+  assert(
+    theirs < everyone,
+    `switching to ${repName} still listed ${theirs} of ${everyone} accounts`
+  );
+});
+
+/**
  * Clicking an account row has to open that account.
  *
  * A list of links that render but don't navigate looks identical to one that works

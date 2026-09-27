@@ -1,3 +1,4 @@
+import { SIX_QA_THRESHOLD, unworkedSixQAs } from "./six-qa";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
@@ -16,8 +17,6 @@ import { intentScores as intentScoresTable } from "../drizzle/schema";
  * return shapes are unchanged, so the Insights / SixsenseAnalytics / Home pages keep working.
  */
 
-// An account counts as a "6sense Qualified Account" at/above this intent score.
-const SIX_QA_THRESHOLD = 70;
 const STAGE_ORDER = ["Target", "Awareness", "Consideration", "Decision", "Purchase"];
 
 function toNum(v: unknown): number {
@@ -56,6 +55,8 @@ type RealData = {
   wonOppValueByAccount: Map<number, number>;
   hasOpenOpp: Set<number>;
   hasWonOpp: Set<number>;
+  /** Any opportunity at all, lost included — the shared definition of a worked 6QA. */
+  accountIdsWithOpportunity: Set<number>;
 };
 
 async function loadReal(orgId: number): Promise<RealData> {
@@ -98,9 +99,11 @@ async function loadReal(orgId: number): Promise<RealData> {
   const wonOppValueByAccount = new Map<number, number>();
   const hasOpenOpp = new Set<number>();
   const hasWonOpp = new Set<number>();
+  const accountIdsWithOpportunity = new Set<number>();
   for (const o of opportunities as any[]) {
     const id = o.accountId;
     if (id == null) continue;
+    accountIdsWithOpportunity.add(id);
     const amt = toNum(o.amount);
     const status = String(o.status || "Open").toLowerCase();
     if (status === "won") {
@@ -125,6 +128,7 @@ async function loadReal(orgId: number): Promise<RealData> {
     wonOppValueByAccount,
     hasOpenOpp,
     hasWonOpp,
+    accountIdsWithOpportunity,
   };
 }
 
@@ -251,10 +255,11 @@ function computeKeywords(d: RealData) {
 function compute6QA(d: RealData) {
   const qaAccounts = d.accounts.filter((a) => toNum(a.intentScore) >= SIX_QA_THRESHOLD);
   const total6QAs = qaAccounts.length;
-  const worked = qaAccounts.filter(
-    (a) => (d.contactsByAccount.get(a.id) || 0) > 0 || (d.callsByAccount.get(a.id) || 0) > 0 || d.hasOpenOpp.has(a.id) || d.hasWonOpp.has(a.id)
-  ).length;
-  const unworked = total6QAs - worked;
+  // Worked means an opportunity exists. It used to also mean "has a contact on file",
+  // which the seed gives nearly every account, so this read 99 worked of 105 against the
+  // home page's 36 — the same label on two pages, eleven times apart. See ./six-qa.
+  const unworked = unworkedSixQAs(qaAccounts, d.accountIdsWithOpportunity).length;
+  const worked = total6QAs - unworked;
   const totalCalls = qaAccounts.reduce((s, a) => s + (d.callsByAccount.get(a.id) || 0), 0);
   const totalContacts = qaAccounts.reduce((s, a) => s + (d.contactsByAccount.get(a.id) || 0), 0);
 

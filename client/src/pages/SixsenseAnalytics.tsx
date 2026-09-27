@@ -100,16 +100,22 @@ export default function SixsenseAnalytics() {
             </div>
             <div className="mt-2 tabular-nums text-2xl text-positive">{summary?.sixQA?.worked || 0}</div>
             <div className="mt-1 text-xs text-ink-muted">
-              {hasSixQA ? `${workedPct}% of 6QAs` : "no qualified accounts yet"}
+              {hasSixQA ? `${workedPct}% of 6QAs have an opportunity` : "no qualified accounts yet"}
             </div>
           </div>
-          <div className="bg-card p-4">
+          <div
+            className="bg-card p-4"
+            // The home page shows this same figure; the quality gate fails if they differ.
+            data-metric="unworked-6qa"
+            data-metric-scope="global"
+            data-metric-value={summary?.sixQA?.unworked}
+          >
             <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
               <span aria-hidden className="text-caution">●</span> Unworked gap
             </div>
             <div className="mt-2 tabular-nums text-2xl text-caution">{summary?.sixQA?.unworked || 0}</div>
             <div className="mt-1 text-xs text-ink-muted">
-              {hasSixQA ? `${100 - workedPct}% opportunity gap` : "nothing to work yet"}
+              {hasSixQA ? `${100 - workedPct}% have no opportunity yet` : "nothing to work yet"}
             </div>
           </div>
           <div className="bg-card p-4">

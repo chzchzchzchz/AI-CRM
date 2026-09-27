@@ -283,6 +283,14 @@ export default function Home() {
             icon={Target}
             tone="accent"
             onClick={() => setLocation("/accounts?filter=unworked")}
+            // Intent Signals shows the same figure. Declared global so the quality gate
+            // fails if the two ever disagree again; in a rep's territory it is a subset,
+            // and says so.
+            metric={
+              sixQAGap !== undefined
+                ? { key: "unworked-6qa", scope: isKnownRep ? "view" : "global", value: sixQAGap }
+                : undefined
+            }
           />
         </MetricGrid>
 

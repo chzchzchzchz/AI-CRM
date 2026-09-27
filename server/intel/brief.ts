@@ -572,6 +572,17 @@ function findFabrication(
     return `cites ${m[1]}.${m[2]} ${m[3]}, but the pack records ${recorded}`;
   }
 
+  // 4. A formal solicitation the account's data never mentions. A deal at Proposal is not
+  //    an RFP, but a model reading "Proposal" will write "a defined open RFP" — and none of
+  //    the checks above fire, because an invented document is not a name, an amount or a
+  //    cited figure. Grounded against the same vocabulary as names: if the account's own
+  //    triggers, call topics or action items mention one, citing it is fine.
+  for (const m of text.matchAll(/\b(RF[PIQ])s?\b/gi)) {
+    const kind = m[1].toLowerCase();
+    if (known.has(kind) || known.has(`${kind}s`)) continue;
+    return `mentions an ${m[1].toUpperCase()}, but nothing in the account's data does`;
+  }
+
   return null;
 }
 

@@ -648,9 +648,9 @@ export default function ContactsEnhanced() {
               Previous
             </Button>
             <span className="px-4 py-2 text-sm text-ink-muted">
-              Page <span className="tabular-nums text-ink-muted">{currentPage}</span> of{""}
+              Page <span className="tabular-nums text-ink-muted">{currentPage}</span> of{" "}
               <span className="tabular-nums text-ink-muted">{totalPages}</span>
-              {""}(<span className="tabular-nums text-ink-muted">{filteredContacts.length}</span> contacts)
+              {" "}(<span className="tabular-nums text-ink-muted">{filteredContacts.length}</span> contacts)
             </span>
             <Button
               variant="outline"
