@@ -366,3 +366,50 @@ describe('seniority inference', () => {
     expect(inferSeniority(null)).toBe('Unknown');
   });
 });
+
+describe('documents the account data never mentions', () => {
+  // From a real run: qwen2.5:7b on the demo data wrote that Northwind had "a defined open
+  // RFP". Its one deal is at Proposal, and nothing in its data mentions an RFP. The brief
+  // came back with nothing dropped — an invented document is not a name, an amount or a
+  // cited figure, which are the three things the validator looked for.
+  it('drops a situation that asserts an RFP the data never mentions', () => {
+    const { judgement: out, validation } = validateJudgement(
+      judgement({ situation: 'Northwind Logistics is at the proposal stage with a defined open RFP.' }),
+      pack
+    );
+    expect(out.situation).toBe('');
+    expect(validation.dropped.map((d) => d.section)).toContain('Situation');
+    expect(validation.dropped[0].reason).toMatch(/RFP/);
+  });
+
+  it('drops an action built on one', () => {
+    const { judgement: out } = validateJudgement(
+      judgement({
+        actions: [{
+          action: 'Respond to the open RFP before the deadline',
+          rationale: 'Late responses are disqualified.',
+          evidence: 'pipeline stage Proposal',
+          priority: 'high',
+        }],
+      }),
+      pack
+    );
+    expect(out.actions).toHaveLength(0);
+  });
+
+  it('allows one the account data does mention', () => {
+    const withRfp: SignalPack = { ...pack, triggers: [...pack.triggers, 'RFP issued for fleet software'] };
+    const { validation } = validateJudgement(
+      judgement({ situation: 'Northwind Logistics has an open RFP for fleet software.' }),
+      withRfp
+    );
+    expect(validation.dropped).toHaveLength(0);
+  });
+
+  it('treats RFIs and RFQs, and plurals, the same way', () => {
+    for (const situation of ['They issued an RFI last month.', 'Two RFQs are pending.']) {
+      const { validation } = validateJudgement(judgement({ situation }), pack);
+      expect(validation.dropped.length).toBeGreaterThan(0);
+    }
+  });
+});
