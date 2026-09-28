@@ -4,7 +4,7 @@ import { Card, CardContent } from"@/components/ui/card";
 import { Button } from"@/components/ui/button";
 import { Input } from"@/components/ui/input";
 import { trpc } from"@/lib/trpc";
-import { Link, useLocation } from"wouter";
+import { Link, useLocation, useSearch } from"wouter";
 import {
   User, Mail, Linkedin, MapPin, Building2, Search, ArrowUpDown, ExternalLink,
   Briefcase, Users, Sparkles, Phone, TrendingUp, Flame, Snowflake, ChevronRight, Target
@@ -53,8 +53,16 @@ export default function ContactsEnhanced() {
   // The true totals, so the header can say how much it is NOT showing.
   const { data: totals } = trpc.accounts.getStats.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
 
+  // The account page's "View all" links here with ?account=<id>. This page read no
+  // parameters, so it opened every contact in the workspace — 10,023 for an account with
+  // two. The server returns that account's contacts in full, so the 1,500-row cap on the
+  // unfiltered list can't hide any of them.
+  const search = useSearch();
+  const accountParam = new URLSearchParams(search).get("account");
+  const accountIdFilter = accountParam && /^\d+$/.test(accountParam) ? Number(accountParam) : undefined;
+
   const { data: contacts, isLoading, error: contactsError, refetch: refetchContacts } = trpc.people.list.useQuery(
-    { search: debouncedSearch || undefined },
+    { search: debouncedSearch || undefined, accountId: accountIdFilter },
     { staleTime: 3 * 60 * 1000 }
   );
 
@@ -274,6 +282,7 @@ export default function ContactsEnhanced() {
   // contacts even though only 1,500 rows were fetched.
   const isNarrowed =
     isRepMode ||
+    accountIdFilter !== undefined ||
     showAIPriority ||
     !!searchQuery ||
     companyFilter !=="all" ||
@@ -322,6 +331,18 @@ export default function ContactsEnhanced() {
               )}
               {repInfo && <> · {repInfo.label} territory</>}
             </p>
+            {accountIdFilter !== undefined && (
+              <p className="mt-1 text-sm text-ink-muted">
+                Contacts at{" "}
+                <span className="font-medium text-foreground">
+                  {accounts?.find((a: any) => a.id === accountIdFilter)?.name ?? `account #${accountIdFilter}`}
+                </span>
+                {" · "}
+                <Link href="/contacts" className="text-accent hover:underline">
+                  Show all
+                </Link>
+              </p>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <RepSwitcher />

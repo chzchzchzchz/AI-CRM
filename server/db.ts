@@ -1363,18 +1363,6 @@ export async function getPeoplePaginated(orgId: number, limit: number = 100, off
   };
 }
 
-export async function getPeopleByCompany(orgId: number, companyName: string) {
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get people: database not available");
-    return [];
-  }
-
-  // Company column doesn't exist - this function is deprecated
-  // Use getContactsByAccountId instead
-  return [];
-}
-
 export async function getPersonById(orgId: number, id: number) {
   const db = await getDb();
   if (!db) {

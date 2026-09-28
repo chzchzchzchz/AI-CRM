@@ -137,7 +137,7 @@ anything.** So the whole class of "I tried it and nothing happened" was invisibl
 a search box that filters nothing, a row that doesn't navigate, a dialog that
 opens empty. Every one of those renders perfectly.
 
-Nine flows, each a thing a rep does in the first two minutes, each asserting an
+Eleven flows, each a thing a rep does in the first two minutes, each asserting an
 observable change rather than that a handler exists:
 
 | Flow | What it asserts |
@@ -146,6 +146,8 @@ observable change rather than that a handler exists:
 | The unfiltered view doesn't claim a filter is active | the default accounts page offers no reset and marks nothing active; selecting Hot leads does both |
 | The home page's tiles open the list they counted | clicking Hot, then Unworked 6QA, on the home page lands on an accounts list of exactly the number the tile showed — and choosing Unworked 6QA on the accounts page itself gives the same |
 | Switching territory re-filters the accounts list | picking a rep narrows the list below the unfiltered count |
+| A region's View all opens that region | Top Accounts' "View all Central accounts" lands on exactly the number on the Central card |
+| An account's View all opens its contacts | the account page's "View all" contacts lands on that account's contacts, and says so |
 | Clicking an account opens it | the URL moves to the row's own href, and the page isn't a 404 or a stub |
 | Global search returns results | Ctrl+K opens, a real query finds something, a nonsense one says so |
 | Every nav link goes somewhere real | every sidebar link is followed and none lands on the 404 page |
