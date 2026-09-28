@@ -246,12 +246,58 @@ await flow("switching territory re-filters the accounts list", async () => {
   const rep = page.getByRole("option").nth(1);
   const repName = (await rep.innerText()).trim();
   await rep.click();
-  const theirs = await read();
-  assert(everyone && theirs !== null, "could not read the account count");
-  assert(
-    theirs < everyone,
-    `switching to ${repName} still listed ${theirs} of ${everyone} accounts`
-  );
+  try {
+    const theirs = await read();
+    assert(everyone && theirs !== null, "could not read the account count");
+    assert(
+      theirs < everyone,
+      `switching to ${repName} still listed ${theirs} of ${everyone} accounts`
+    );
+  } finally {
+    // The selection is saved to localStorage, so it outlives this page and would narrow
+    // every flow after this one to one rep's territory. Put the general view back even
+    // when the assertion above fails, so one failure can't cascade into the rest.
+    await page.getByRole("combobox", { name: "Select view" }).first().click();
+    await page.getByRole("option").nth(0).click();
+    await page.waitForTimeout(500);
+  }
+});
+
+/**
+ * A "View all" link has to open what it names.
+ *
+ * Top Accounts' "View all Central accounts" linked to /accounts?region=Central, and the
+ * account page's "View all" contacts linked to /contacts?account=<id>. Neither page read
+ * the parameter, so one opened all 1,000 accounts and the other every contact in the
+ * workspace — 10,023 for an account with two.
+ */
+await flow("a region's View all opens that region", async () => {
+  await goto("/top-accounts");
+  const text = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
+  const shown = Number(((text.match(/\bCentral\s+(\d[\d,]*)\b/) || [])[1] || "").replace(/,/g, ""));
+  assert(shown > 0, "could not read the Central card's count");
+
+  await page.getByRole("link", { name: /View all Central accounts/i }).click();
+  await page.waitForSelector("[data-page-loading]", { state: "detached", timeout: 15_000 }).catch(() => {});
+  await page.waitForTimeout(1200);
+  const after = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
+  const listed = Number(((after.match(/Target Accounts\s*([\d,]+)\s+accounts/i) || [])[1] || "").replace(/,/g, ""));
+  assert(listed === shown, `the Central card said ${shown} and View all opened ${listed}`);
+});
+
+await flow("an account's View all opens its contacts", async () => {
+  await goto("/accounts/1");
+  const text = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
+  const shown = Number((text.match(/Key Contacts\s+(\d+)/) || [])[1]);
+  assert(shown > 0, "could not read the Key Contacts count");
+
+  await page.locator('a[href^="/contacts?account="]').first().click();
+  await page.waitForSelector("[data-page-loading]", { state: "detached", timeout: 15_000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  const after = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
+  const listed = Number(((after.match(/([\d,]+)\s+of\s+[\d,]+\s+contacts/i) || [])[1] || "").replace(/,/g, ""));
+  assert(listed === shown, `the account showed ${shown} key contacts and View all opened ${listed}`);
+  assert(/Contacts at /.test(after), "the contacts page gave no sign it was showing one account");
 });
 
 /**

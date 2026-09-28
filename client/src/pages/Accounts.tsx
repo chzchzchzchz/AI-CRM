@@ -33,13 +33,19 @@ const INTENT_FILTERS = ["hot", "warm", "cold", "unworked"] as const;
 
 const AccountsEnhanced = memo(function AccountsEnhanced() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [regionFilter, setRegionFilter] = useState<string>("all");
+  // Links arrive with the filter already chosen: the home page's Hot, Warm and Unworked
+  // 6QA tiles pass ?filter=, and Top Accounts' "View all Central accounts" passes
+  // ?region=. This page read neither, so every one of them opened all 1,000 accounts.
+  // Both start from the URL rather than being applied a render later, which would flash
+  // the full list before narrowing it.
+  const search = useSearch();
+  const params = new URLSearchParams(search);
+  const regionFromUrl = params.get("region") || "all";
+  const [regionFilter, setRegionFilter] = useState<string>(regionFromUrl);
+  useEffect(() => setRegionFilter(regionFromUrl), [regionFromUrl]);
   const [industryFilter, setIndustryFilter] = useState<string>("all");
   const [relationshipFilter, setRelationshipFilter] = useState<string>("all");
-  // The home page's Hot, Warm and Unworked 6QA tiles link here with ?filter=. This page
-  // never read it, so every one of them landed on the full, unfiltered list.
-  const search = useSearch();
-  const urlIntent = new URLSearchParams(search).get("filter");
+  const urlIntent = params.get("filter");
   const intentFromUrl = INTENT_FILTERS.includes(urlIntent as any) ? (urlIntent as string) : "all";
   const [intentFilter, setIntentFilter] = useState<string>(intentFromUrl);
   useEffect(() => setIntentFilter(intentFromUrl), [intentFromUrl]);

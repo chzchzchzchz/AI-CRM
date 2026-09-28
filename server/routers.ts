@@ -11,7 +11,7 @@ import { eq } from "drizzle-orm";
 import { sdk } from "./_core/sdk";
 import { toPublicUser } from "./_core/publicUser";
 import { z } from "zod";
-import { getAllAccounts, getAccountById, updateAccount, getAllPeople, getPeoplePaginated, getPeopleByCompany, getContactsByAccountId, getPersonById, /* createClayRequest, updateClayRequest, getAllClayRequests, getClayRequest, */ upsertAccount, upsertPerson, getAllGongCalls, getGongCallsPaginated, getGongCallsByCompany, getGongCallsByAccountId, getAllOpportunities, getOpportunityById, getOpportunitiesByAccountId, upsertOpportunity } from "./db";
+import { getAllAccounts, getAccountById, updateAccount, getAllPeople, getPeoplePaginated, getContactsByAccountId, getPersonById, /* createClayRequest, updateClayRequest, getAllClayRequests, getClayRequest, */ upsertAccount, upsertPerson, getAllGongCalls, getGongCallsPaginated, getGongCallsByCompany, getGongCallsByAccountId, getAllOpportunities, getOpportunityById, getOpportunitiesByAccountId, upsertOpportunity } from "./db";
 import { enrichAccountWithAI, analyzeGongCall, generateOutreachEmail, intelligentSearch, prioritizeContacts } from "./ai";
 import { enrichAccount } from "./sixsense";
 import { conversationWithMemory, generateAccountSummary, generateContactSummary } from "./aiContext";
@@ -852,8 +852,18 @@ Or go to the Admin Panel: /admin/approval`
     // A search term filters server-side across the FULL set, so no contact is unreachable
     // even though only a page is returned. Rich client-side filters run over what's returned.
     list: protectedProcedure
-      .input(z.object({ limit: z.number().optional(), search: z.string().optional() }).optional())
+      .input(
+        z
+          .object({ limit: z.number().optional(), search: z.string().optional(), accountId: z.number().optional() })
+          .optional()
+      )
       .query(async ({ input, ctx }) => {
+        // One account's contacts, all of them. The unfiltered list is capped at 1,500 of
+        // 10,023, so narrowing it client-side would report "0 contacts" for any account
+        // whose people sit past the cap — this is what the account page's "View all" asks for.
+        if (input?.accountId !== undefined) {
+          return await getContactsByAccountId(ctx.orgId, input.accountId);
+        }
         const all = await getAllPeople(ctx.orgId);
         const q = input?.search?.trim().toLowerCase();
         const cap = input?.limit ?? 1500;
@@ -872,7 +882,7 @@ Or go to the Admin Panel: /admin/approval`
       .input(z.object({ accountId: z.number().optional() }))
       .query(async ({ input, ctx }) => {
         let contacts = input.accountId
-          ? await getPeopleByCompany(ctx.orgId, String(input.accountId))
+          ? await getContactsByAccountId(ctx.orgId, input.accountId)
           : await getAllPeople(ctx.orgId);
         // Never feed thousands of contacts into a single LLM prompt. Without an account,
         // rank the most senior contacts (a real signal) and cap the set the model scores.
