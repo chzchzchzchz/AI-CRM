@@ -51,7 +51,7 @@ export default function Calls() {
     { staleTime: 3 * 60 * 1000 }
   );
 
-  const calls = data?.calls || [];
+  const calls = useMemo(() => data?.calls || [], [data]);
   const totalCalls = data?.total || 0;
   const totalPages = Math.ceil(totalCalls / CALLS_PER_PAGE);
 

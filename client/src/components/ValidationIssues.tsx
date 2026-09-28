@@ -112,7 +112,7 @@ export function ValidationIssues() {
     onError: err => toast.error(err.message),
   });
 
-  const all = issuesQuery.data?.issues ?? [];
+  const all = useMemo(() => issuesQuery.data?.issues ?? [], [issuesQuery.data]);
   const matching = useMemo(
     () => (filter === "all" ? all : all.filter(i => i.severity === filter)),
     [all, filter]

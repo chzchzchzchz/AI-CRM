@@ -17,7 +17,7 @@ abstract is a rule that will eventually be silenced.
 ```
 pnpm verify
   ├── pnpm check         typecheck, server + client
-  ├── pnpm lint          rules-of-hooks only
+  ├── pnpm lint          the two React hook rules
   ├── pnpm test          unit tests
   ├── pnpm inventory     regenerate docs/CAPABILITIES.md
   ├── pnpm check:claims  static truth checks

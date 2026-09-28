@@ -23,6 +23,7 @@ import { CompanyLogo } from"@/components/ui/company-logo";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
 import { EmptyWorkspace } from "@/components/ui/empty-workspace";
 import { DataErrorBanner } from "@/components/ui/data-error-banner";
+import { MFA_PROVIDERS } from "@/lib/mfa-providers";
 
 type SortField ="name" |"intentScore" |"employees" |"industry";
 type SortOrder ="asc" |"desc";
@@ -83,8 +84,6 @@ const AccountsEnhanced = memo(function AccountsEnhanced() {
   }, [accounts]);
 
   // MFA/Identity Provider options - hardcoded list of identity/auth vendors
-  const MFA_PROVIDERS = ["Ping Identity","Okta","Duo Security","Azure AD","OneLogin","ForgeRock","Auth0","CyberArk","RSA SecurID","SailPoint","Saviynt","IBM Security Verify","Oracle Identity","SecureAuth","Thales SafeNet"
-  ];
 
   // Extract MFA/Identity providers found in accounts' techStack
   const mfaProviders = useMemo(() => {

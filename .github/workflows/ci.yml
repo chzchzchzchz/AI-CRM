@@ -37,9 +37,11 @@ jobs:
       - name: Typecheck
         run: pnpm check
 
-      # Rules-of-hooks only. A hook below an early return typechecks, builds and
-      # passes every unit test, then renders a blank page at runtime — it happened
-      # three times in this repo before this step existed.
+      # The two React hook rules, both errors. A hook below an early return typechecks,
+      # builds and passes every unit test, then renders a blank page at runtime — it
+      # happened three times in this repo before this step existed. A missing hook
+      # dependency renders fine and behaves wrong: the accounts list ignored territory
+      # changes while that rule was only a warning.
       - name: Lint
         run: pnpm lint
 
