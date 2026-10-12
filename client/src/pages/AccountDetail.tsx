@@ -6,10 +6,11 @@ import { AccountJudgement } from"@/components/AccountJudgement";
 import { trpc } from"@/lib/trpc";
 import {
   ArrowLeft, ExternalLink, Users, TrendingUp, Building2,
-  Copy, Check, Flame, Mail, Linkedin, Globe,
+  Copy, Check, Flame, Mail, Globe,
   ChevronRight, Shield, AlertTriangle, BrainCircuit, ListChecks, Zap,
   ArrowUpRight, ArrowDownRight, Minus
 } from"lucide-react";
+import { Linkedin } from "@/components/icons/linkedin";
 import { Link, useParams } from"wouter";
 import { toast } from"sonner";
 import { CompanyLogo } from"@/components/ui/company-logo";

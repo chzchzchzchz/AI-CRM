@@ -6,9 +6,9 @@ import { AIAssistant } from"@/components/AIAssistant";
 import { trpc } from"@/lib/trpc";
 import { LogFollowUpDialog } from"@/components/LogFollowUpDialog";
 import {
-  ArrowLeft, ExternalLink, Building2, Phone, Mail, MapPin, Linkedin,
-  Sparkles, Copy, Check, User, Loader2, RefreshCw, ChevronRight, Flame
+  ArrowLeft, ExternalLink, Building2, Phone, Mail, MapPin, Sparkles, Copy, Check, User, Loader2, RefreshCw, ChevronRight, Flame
 } from"lucide-react";
+import { Linkedin } from "@/components/icons/linkedin";
 import { Link, useParams } from"wouter";
 import { SafeStreamdown } from"@/components/SafeStreamdown";
 import { toast } from"sonner";

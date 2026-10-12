@@ -15,7 +15,6 @@ import {
   Clock,
   Copy,
   Layers,
-  Linkedin,
   Loader2,
   Mail,
   Phone,
@@ -23,6 +22,7 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
+import { Linkedin } from "@/components/icons/linkedin";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
 
 /**

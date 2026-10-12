@@ -20,7 +20,6 @@ import {
   Clock,
   Copy,
   ExternalLink,
-  Linkedin,
   Loader2,
   Mail,
   Phone,
@@ -28,6 +27,7 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
+import { Linkedin } from "@/components/icons/linkedin";
 import { Link } from "wouter";
 
 /**
