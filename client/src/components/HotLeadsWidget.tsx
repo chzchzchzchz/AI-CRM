@@ -19,7 +19,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Flame, 
   Mail, 
-  Linkedin, 
   Phone, 
   Building2, 
   TrendingUp,
@@ -27,6 +26,7 @@ import {
   ChevronRight,
   Zap
 } from "lucide-react";
+import { Linkedin } from "@/components/icons/linkedin";
 import { Link } from "wouter";
 
 interface HotLeadsWidgetProps {

@@ -6,9 +6,10 @@ import { Input } from"@/components/ui/input";
 import { trpc } from"@/lib/trpc";
 import { Link, useLocation, useSearch } from"wouter";
 import {
-  User, Mail, Linkedin, MapPin, Building2, Search, ArrowUpDown, ExternalLink,
+  User, Mail, MapPin, Building2, Search, ArrowUpDown, ExternalLink,
   Briefcase, Users, Sparkles, Phone, TrendingUp, Flame, Snowflake, ChevronRight, Target
 } from"lucide-react";
+import { Linkedin } from "@/components/icons/linkedin";
 import { ContextualAI } from"@/components/ContextualAI";
 import {
   Select,
