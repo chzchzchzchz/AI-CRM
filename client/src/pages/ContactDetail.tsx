@@ -165,7 +165,7 @@ export default function ContactDetail() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3 min-w-0">
             <Button variant="ghost" size="icon" asChild>
-              <Link href="/contacts"><ArrowLeft className="h-5 w-5" /></Link>
+              <Link href="/contacts" aria-label="Back to contacts"><ArrowLeft className="h-5 w-5" /></Link>
             </Button>
             {/* Contact avatar — purple is the identity accent */}
             <div className="hidden sm:flex w-12 h-12 rounded-sm bg-accent-subtle border border-accent/30 items-center justify-center flex-shrink-0 text-accent font-semibold text-lg">

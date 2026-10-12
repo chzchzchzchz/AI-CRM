@@ -523,18 +523,19 @@ export default function ContactsEnhanced() {
               const phone = contact.phone || (contact as any).mobilePhone || (contact as any).directPhone;
 
               return (
+                // The row stays clickable anywhere for a mouse, but it is not a button: it
+                // used to be role="button" with a LinkedIn button inside it, which a screen
+                // reader cannot operate (axe: nested-interactive, 37 per page). Its key
+                // handler also checked e.key === "" — Space is " " — so Space did nothing.
+                // Keyboard and assistive tech now reach the contact through the name link.
                 <div
                   key={contact.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => navigate(`/contacts/${contact.id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key ==="Enter" || e.key ==="") {
-                      e.preventDefault();
-                      navigate(`/contacts/${contact.id}`);
-                    }
+                  onClick={(e) => {
+                    // A click on the name link or the LinkedIn button handles itself.
+                    if ((e.target as HTMLElement).closest("a, button")) return;
+                    navigate(`/contacts/${contact.id}`);
                   }}
-                  className="group flex flex-wrap items-center gap-4 px-4 py-3 cursor-pointer transition-colors hover:bg-surface/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+                  className="group flex flex-wrap items-center gap-4 px-4 py-3 cursor-pointer transition-colors hover:bg-surface/[0.025]"
                 >
                   {/* Avatar */}
                   <div className="w-9 h-9 rounded-sm bg-muted border border-border/60 flex items-center justify-center flex-shrink-0">
@@ -544,9 +545,12 @@ export default function ContactsEnhanced() {
                   {/* Identity */}
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-[15px] text-foreground truncate group-hover:text-accent transition-colors">
+                      <Link
+                        href={`/contacts/${contact.id}`}
+                        className="font-semibold text-[15px] text-foreground truncate group-hover:text-accent transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      >
                         {contact.name}
-                      </span>
+                      </Link>
                       {dm && (
                         <span className="hidden sm:inline-flex items-center gap-1 text-2xs font-medium text-ink-muted bg-muted rounded px-1.5 py-0.5 flex-shrink-0">
                           <Target className="h-2.5 w-2.5" />

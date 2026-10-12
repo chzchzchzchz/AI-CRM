@@ -329,6 +329,7 @@ export default function Calls() {
             size="sm"
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
+            aria-label="Previous page"
             className="border-border-strong text-ink-muted hover:bg-muted hover:text-foreground"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -356,6 +357,7 @@ export default function Calls() {
             size="sm"
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage >= totalPages}
+            aria-label="Next page"
             className="border-border-strong text-ink-muted hover:bg-muted hover:text-foreground"
           >
             <ChevronRight className="h-4 w-4" />

@@ -261,8 +261,9 @@ data. See [`SECURITY.md`](SECURITY.md).
   as "Your company" rather than inheriting anyone's.
 - **The AI quality depends entirely on the model you point it at.** The grounding work constrains
   what a model can claim; it can't make a weak local model insightful.
-- **No accessibility audit.** The design targets WCAG 2.1 AA and the gate checks contrast and
-  overflow, but nobody has tested it with a screen reader.
+- **Accessibility is checked by machine, not by hand.** Every route passes an axe WCAG 2 A/AA
+  scan at desktop and mobile width in CI, and a failure breaks the build. Nobody has tested it
+  with a screen reader, and automated checks find perhaps a third of real problems.
 
 ---
 
