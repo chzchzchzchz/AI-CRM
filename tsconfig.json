@@ -13,7 +13,6 @@
     "checkJs": false,
     "outDir": "./dist",
     "rootDir": "./",
-    "baseUrl": ".",
     "paths": {
       "@shared/*": ["./shared/*"]
     }
