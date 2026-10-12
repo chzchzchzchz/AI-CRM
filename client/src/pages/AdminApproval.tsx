@@ -217,7 +217,7 @@ export default function AdminApproval() {
 
         <Tabs defaultValue="pending" className="space-y-6">
           <TabsList className="bg-muted">
-            <TabsTrigger value="pending" className="data-[state=active]:bg-caution">
+            <TabsTrigger value="pending" className="data-[state=active]:bg-caution data-[state=active]:text-caution-foreground">
               <Clock className="h-4 w-4 mr-2" />
               Pending Approval
               {totalPendingCount > 0 && (

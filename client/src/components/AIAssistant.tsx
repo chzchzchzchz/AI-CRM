@@ -106,6 +106,7 @@ export function AIAssistant({ context }: AIAssistantProps) {
     return (
       <button
         onClick={() => setIsOpen(true)}
+        aria-label="Open the AI assistant"
         className="fixed bottom-6 right-6 p-4 bg-accent text-accent-foreground rounded-sm shadow-lg hover:shadow-xl transition-all z-50 group"
       >
         <Bot className="h-6 w-6" />
