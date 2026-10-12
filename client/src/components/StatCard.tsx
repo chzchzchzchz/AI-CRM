@@ -71,7 +71,7 @@ export function StatCard({
       className={cn(
         "bg-card px-4 py-3.5 text-left",
         onClick &&
-          "transition-colors hover:bg-muted/60 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+          "group transition-colors hover:bg-muted/60 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         className
       )}
     >
@@ -89,7 +89,11 @@ export function StatCard({
         {value}
       </div>
 
-      {subtitle && <div className="mt-1.5 text-2xs text-ink-faint">{subtitle}</div>}
+      {/* ink-faint clears AA on the card (4.70:1) but not on the lighter hover background
+          (4.22:1), so the caption brightens with its tile rather than fading into it. */}
+      {subtitle && (
+        <div className="mt-1.5 text-2xs text-ink-faint group-hover:text-ink-muted transition-colors">{subtitle}</div>
+      )}
     </Comp>
   );
 }

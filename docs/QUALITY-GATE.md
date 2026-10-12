@@ -89,6 +89,7 @@ rather than passing quietly.
 | No console errors | a failed query logs and renders an empty state rather than throwing, so `pageerror` never sees it |
 | Route finishes loading | every route is code-split; a fixed wait measures whichever ones happened to arrive |
 | Page data finishes loading | `/insights` was measured at 0 characters and 310 nodes — its spinner. Same page code passed one commit and failed the next, decided by how loaded the runner was |
+| No WCAG 2 A/AA violations (axe) | every contact row was a `role="button"` with a button nested inside it; four icon-only controls had no name; the admin page's active tab put white text on amber at 1.55:1 |
 
 **No placeholder output** and **metric agreement** are the ones that catch a page
 which looks right. A tile can be legible, well-spaced, error-free and still be

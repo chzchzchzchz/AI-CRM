@@ -186,7 +186,7 @@ export default function AccountDetailEnhanced() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3 min-w-0">
             <Button variant="ghost" size="icon" asChild>
-              <Link href="/accounts"><ArrowLeft className="h-5 w-5" /></Link>
+              <Link href="/accounts" aria-label="Back to accounts"><ArrowLeft className="h-5 w-5" /></Link>
             </Button>
             {/* Company Logo */}
             <CompanyLogo name={account.name} website={account.domain} size="xl" />
