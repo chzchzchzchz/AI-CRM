@@ -15,7 +15,7 @@ import { getDb } from "./db";
 import { intentScores } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { timingSafeEqual } from "./_core/security";
+import { timingSafeStringEqual } from "./_core/security";
 import {
   slackNotify, discordNotify, teamsNotify, hubspotUpsertContact,
   notionCreatePage, linearCreateIssue, intercomUpsertContact, sendWebhook,
@@ -229,7 +229,7 @@ export const zapierRouter = router({
     .mutation(async ({ input }) => {
       // Fail closed outside demo mode when a secret is configured/expected.
       if (ZAPIER_WEBHOOK_SECRET) {
-        if (!timingSafeEqual(ZAPIER_WEBHOOK_SECRET, input.webhook_secret)) {
+        if (!timingSafeStringEqual(ZAPIER_WEBHOOK_SECRET, input.webhook_secret ?? "")) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid webhook secret" });
         }
       } else if (process.env.DEMO_MODE !== "true") {

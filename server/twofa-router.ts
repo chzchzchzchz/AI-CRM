@@ -22,6 +22,8 @@ import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import { send2FASetupEmail } from "./_core/email";
 import { getCompanyConfig } from "./config";
+import { log2FAEnabled, log2FADisabled } from "./_core/audit";
+import { getClientIP } from "./_core/security";
 import {
   verifyTotp,
   generateBackupCodes,
@@ -107,6 +109,8 @@ export const twoFARouter = router({
         console.error("[2fa] enabled, but the confirmation email failed:", e);
       }
 
+      await log2FAEnabled(ctx.user.id, ctx.user.email as string, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
+
       return { success: true, backupCodes };
     }),
 
@@ -155,6 +159,8 @@ export const twoFARouter = router({
         .update(users)
         .set({ twoFactorSecret: null, twoFactorEnabled: false, twoFactorBackupCodes: null })
         .where(eq(users.id, ctx.user.id));
+
+      await log2FADisabled(ctx.user.id, user.email as string, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
 
       return { success: true };
     }),

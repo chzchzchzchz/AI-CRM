@@ -99,4 +99,121 @@ describe("demo database WHERE-clause fallbacks", () => {
       .where(eq(accounts.lastSixsenseSync, accounts.lastSixsenseSync as any));
     expect(rows.length).toBeGreaterThanOrEqual(1);
   });
+
+  it("gt/lt/gte/lte are evaluated as comparisons, not silently as equality", async () => {
+    // parseCondition extracted {field, value} from ANY simple binary condition with
+    // one column and one scalar param — eq, gt, lt, gte, and lte all produce exactly
+    // that shape, and only the operator TEXT between them (" = ", " > ", " < ", " >=
+    // ", " <= ") distinguishes them. That text was discarded, so execute() always
+    // compared with plain string equality regardless of which one was actually
+    // written. Confirmed live: server/db-dust.ts's gt(expiresAt, now) cache-validity
+    // check could never match a row its own write path had just inserted, and
+    // clearExpiredDustCache's lt(expiresAt, now) never matched an expired row either.
+    const { getDb } = await import("./db");
+    const { accounts } = await import("../drizzle/schema");
+    const { gt, lt, gte, lte } = await import("drizzle-orm");
+    const db: any = await getDb();
+    await db.delete(accounts);
+    await db.insert(accounts).values({ id: 9301, name: "Cold", intentScore: 20 });
+    await db.insert(accounts).values({ id: 9302, name: "Warm", intentScore: 70 });
+    await db.insert(accounts).values({ id: 9303, name: "Hot", intentScore: 95 });
+
+    const gtRows = await db.select().from(accounts).where(gt(accounts.intentScore, 70));
+    expect(gtRows.map((r: any) => r.id).sort()).toEqual([9303]);
+
+    const ltRows = await db.select().from(accounts).where(lt(accounts.intentScore, 70));
+    expect(ltRows.map((r: any) => r.id).sort()).toEqual([9301]);
+
+    const gteRows = await db.select().from(accounts).where(gte(accounts.intentScore, 70));
+    expect(gteRows.map((r: any) => r.id).sort()).toEqual([9302, 9303]);
+
+    const lteRows = await db.select().from(accounts).where(lte(accounts.intentScore, 70));
+    expect(lteRows.map((r: any) => r.id).sort()).toEqual([9301, 9302]);
+  });
+
+  it("gt/lt on a date column compares timestamps, not lexical strings pretending to be numbers", async () => {
+    const { getDb } = await import("./db");
+    const { accounts } = await import("../drizzle/schema");
+    const { gt } = await import("drizzle-orm");
+    const db: any = await getDb();
+    await db.delete(accounts);
+    const now = new Date();
+    await db.insert(accounts).values({
+      id: 9401, name: "Recently synced",
+      lastSixsenseSync: new Date(now.getTime() + 60_000).toISOString(),
+    });
+    await db.insert(accounts).values({
+      id: 9402, name: "Long ago",
+      lastSixsenseSync: new Date(now.getTime() - 60_000).toISOString(),
+    });
+
+    const rows = await db.select().from(accounts).where(gt(accounts.lastSixsenseSync, now));
+    expect(rows.map((r: any) => r.id)).toEqual([9401]);
+  });
+
+  it("update()/delete() honor gt/lt/gte/lte too, not just select()", async () => {
+    // select's filter loop and update/delete's each duplicated their own inline
+    // matching logic; update/delete's version didn't handle gt/lt (or even is_null/
+    // in) at all. Now all three share one matchesFilter function.
+    const { getDb } = await import("./db");
+    const { accounts } = await import("../drizzle/schema");
+    const { lt } = await import("drizzle-orm");
+    const db: any = await getDb();
+    await db.delete(accounts);
+    await db.insert(accounts).values({ id: 9501, name: "Cold", intentScore: 10 });
+    await db.insert(accounts).values({ id: 9502, name: "Hot", intentScore: 90 });
+
+    await db.delete(accounts).where(lt(accounts.intentScore, 50));
+
+    const remaining = await db.select().from(accounts);
+    expect(remaining.map((r: any) => r.id)).toEqual([9502]);
+  });
+
+  it("orderBy(desc(...)) / orderBy(asc(...)) actually sort — they previously sorted nothing", async () => {
+    // desc(col)/asc(col) wrap the column instead of exposing .name/.fieldName
+    // directly, so orderExpr.name and orderExpr.fieldName were both undefined for
+    // EVERY orderBy(desc(...))/orderBy(asc(...)) call in the app against the
+    // demo-mode store — orderByField silently stayed '', which the sort step
+    // treats as falsy and skips. Rows came back in raw insertion order regardless
+    // of what was actually requested, on all 18 call sites across the app that use
+    // this pattern (accounts, contacts, calls, briefs, and more).
+    const { getDb } = await import("./db");
+    const { accounts } = await import("../drizzle/schema");
+    const { desc, asc } = await import("drizzle-orm");
+    const db: any = await getDb();
+    await db.delete(accounts);
+    await db.insert(accounts).values({ id: 9601, name: "B", intentScore: 50 });
+    await db.insert(accounts).values({ id: 9602, name: "A", intentScore: 90 });
+    await db.insert(accounts).values({ id: 9603, name: "C", intentScore: 10 });
+
+    const descRows = await db.select().from(accounts).orderBy(desc(accounts.intentScore));
+    expect(descRows.map((r: any) => r.id)).toEqual([9602, 9601, 9603]);
+
+    const ascRows = await db.select().from(accounts).orderBy(asc(accounts.intentScore));
+    expect(ascRows.map((r: any) => r.id)).toEqual([9603, 9601, 9602]);
+  });
+
+  it("a WHERE clause against dustCache maps its SQL column name back to the JS key", async () => {
+    // dustCache is the one table in the schema whose SQL column names don't match
+    // their JS property names (query_hash vs queryHash, account_id vs accountId,
+    // expires_at vs expiresAt) — every other table's SQL name happens to equal its
+    // JS key, which is what hid this: parseCondition used column.name (the SQL
+    // name) directly as the field to filter on, but insert() stores rows keyed by
+    // the JS property. Every WHERE clause against this table silently filtered on
+    // a key that was never in the stored row, so it could never match anything —
+    // not just for gt/lt, for eq too.
+    const { getDb } = await import("./db");
+    const { dustCache } = await import("../drizzle/schema");
+    const { eq } = await import("drizzle-orm");
+    const db: any = await getDb();
+    await db.delete(dustCache);
+    await db.insert(dustCache).values({
+      queryHash: "abc123", query: "q", result: "r",
+      accountId: 7, contactId: null, expiresAt: new Date(Date.now() + 3600_000),
+    });
+
+    const rows = await db.select().from(dustCache).where(eq(dustCache.accountId, 7));
+    expect(rows.length).toBe(1);
+    expect(rows[0].result).toBe("r");
+  });
 });

@@ -1,10 +1,22 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import dns from "node:dns/promises";
+
+// The SSRF guard in connectors.ts resolves each webhook hostname via a real DNS
+// lookup before posting. Left unmocked, these tests would depend on real network
+// access to resolve hooks.slack.com/discord.com/etc — a hidden dependency the rest
+// of this file doesn't have (fetch itself is mocked). Default every hostname to a
+// public-looking address; the dedicated SSRF tests below override this per-case.
+vi.mock("node:dns/promises", () => ({
+  default: { lookup: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]) },
+}));
+
 import {
   slackNotify,
   discordNotify,
   hubspotUpsertContact,
   notifyAll,
   maybeNotifyHotLead,
+  sendWebhook,
 } from "./integrations/connectors";
 
 /**
@@ -81,6 +93,45 @@ describe("configuration is distinct from failure", () => {
     const res = await hubspotUpsertContact({ email: "a@b.com" });
     expect(res.ok).toBe(false);
     expect(res.error).toMatch(/does not exist/);
+  });
+});
+
+describe("SSRF guard on caller-supplied webhook URLs", () => {
+  // slackNotify/discordNotify/teamsNotify/googleChatNotify/sendWebhook all accept a
+  // webhookUrl override from any authenticated (not necessarily admin) user. Without
+  // this guard, a rep could point it at an internal service or a cloud metadata
+  // endpoint and use ok/status as a reachability oracle.
+  it("refuses a literal loopback address without ever calling fetch", async () => {
+    const res = await sendWebhook("http://127.0.0.1:8080/admin", {});
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/private\/internal/i);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses the cloud metadata address", async () => {
+    const res = await sendWebhook("http://169.254.169.254/latest/meta-data/", {});
+    expect(res.ok).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses localhost by name", async () => {
+    const res = await sendWebhook("http://localhost:5432/", {});
+    expect(res.ok).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses a hostname that resolves to a private address (DNS rebinding case)", async () => {
+    vi.mocked(dns.lookup).mockResolvedValueOnce([{ address: "10.0.0.5", family: 4 }] as any);
+    const res = await sendWebhook("https://internal.example.com/hook", {});
+    expect(res.ok).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("still allows a normal public webhook URL through", async () => {
+    fetchMock.mockResolvedValue(reply(200));
+    const res = await sendWebhook("https://hooks.slack.com/services/real", { text: "hi" });
+    expect(res.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalled();
   });
 });
 

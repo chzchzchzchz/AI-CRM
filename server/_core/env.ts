@@ -38,7 +38,16 @@ export const ENV = {
   // Comma-separated fallback list — free models are rate-limited upstream and rotate,
   // so we try them in order and fall through on 429/unavailable. Set to a single paid
   // model (e.g. openai/gpt-4o-mini) for reliable speed on your own key.
-  openrouterModel: process.env.OPENROUTER_MODEL ?? "nvidia/nemotron-nano-12b-v2-vl:free,google/gemma-4-26b-a4b-it:free,meta-llama/llama-3.3-70b-instruct:free",
+  //
+  // OpenRouter's free-tier catalog turns over — model slugs get discontinued and start
+  // 404ing, not just rate-limiting. Confirmed live via the new per-attempt log in
+  // llm.ts: 2 of the 3 previously-listed models ("nvidia/nemotron-nano-12b-v2-vl:free",
+  // "meta-llama/llama-3.3-70b-instruct:free") 404 — every request to this app's default
+  // config was silently spending its OpenRouter attempts on dead slugs before ever
+  // reaching a model that could actually respond. Re-checked against
+  // GET https://openrouter.ai/api/v1/models; keep this list live the same way if
+  // OpenRouter continues 404ing on it.
+  openrouterModel: process.env.OPENROUTER_MODEL ?? "google/gemma-4-26b-a4b-it:free,liquid/lfm-2.5-2.6b:free,z-ai/glm-5.2:free",
   sixSenseApiKey: process.env.SIXSENSE_API_KEY ?? process.env['6Sense_API'] ?? "",
   clayWebhookUrl: process.env.CLAY_WEBHOOK_URL ?? "",
   // Salesforce OAuth credentials

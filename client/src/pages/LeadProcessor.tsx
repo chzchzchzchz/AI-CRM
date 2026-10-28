@@ -38,28 +38,31 @@ export default function LeadProcessor() {
     setIsDragging(false);
   }, []);
 
+  // Only CSV is parseable — tools.processLeads rejects .xlsx with an "export to CSV"
+  // error, so accepting one here would only defer the failure until after upload.
+  const acceptFiles = useCallback((incoming: File[]) => {
+    if (incoming.length === 0) return;
+    const accepted = incoming.filter(f => /\.csv$/i.test(f.name));
+    if (accepted.length === 0) {
+      toast.error(
+        incoming.some(f => /\.xlsx?$/i.test(f.name))
+          ? "Excel files are not supported. Export to CSV and re-upload."
+          : "Please upload CSV files only"
+      );
+      return;
+    }
+    setFiles(accepted);
+    setResult(null);
+  }, []);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const droppedFiles = Array.from(e.dataTransfer.files).filter(f => 
-      f.name.endsWith('.csv') || f.name.endsWith('.xlsx')
-    );
-    if (droppedFiles.length > 0) {
-      setFiles(droppedFiles);
-      setResult(null);
-    } else {
-      toast.error("Please upload CSV or XLSX files only");
-    }
-  }, []);
+    acceptFiles(Array.from(e.dataTransfer.files));
+  }, [acceptFiles]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []).filter(f =>
-      f.name.endsWith('.csv') || f.name.endsWith('.xlsx')
-    );
-    if (selectedFiles.length > 0) {
-      setFiles(selectedFiles);
-      setResult(null);
-    }
+    acceptFiles(Array.from(e.target.files || []));
   };
 
   const removeFile = (index: number) => {
@@ -155,7 +158,8 @@ export default function LeadProcessor() {
           <h1 className="text-xl font-semibold">Intelligent Lead Processor</h1>
         </div>
         <p className="text-muted-foreground">
-          AI-powered lead cleaning with 90+ rules. Drag, drop, and export clean data.
+          Rule-based lead cleaning — normalization, validation, and filtering run
+          deterministically, so the same file always produces the same result.
         </p>
       </div>
 
@@ -173,15 +177,15 @@ export default function LeadProcessor() {
               id="file-input"
               type="file"
               multiple
-              accept=".csv,.xlsx"
+              accept=".csv"
               onChange={handleFileSelect}
               className="hidden"
             />
             <Upload className="h-12 w-12 mx-auto mb-4 text-ink-muted" />
             <p className="font-semibold text-lg mb-1">Drag & Drop Your Lead Files Here</p>
             <p className="text-sm text-muted-foreground">
-              Accepts <span className="text-positive font-medium">.xlsx</span> or{' '}
-              <span className="text-accent font-medium">.csv</span> files
+              Accepts <span className="text-accent font-medium">.csv</span> files —
+              export Excel to CSV first
             </p>
             <Button variant="link" className="mt-2 text-accent">
               Or click to select files
@@ -215,7 +219,7 @@ export default function LeadProcessor() {
         <CardHeader>
           <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
             <Settings2 className="h-5 w-5 text-accent" />
-            AI Processing Rules
+            Processing Rules
           </CardTitle>
           <CardDescription>
             Automatically applied to your data
@@ -324,7 +328,7 @@ export default function LeadProcessor() {
 
       {/* Footer */}
       <p className="text-xs text-center text-muted-foreground mt-6">
-        All processing uses AI to intelligently clean and standardize your data.
+        Processing is deterministic — no model is called, so nothing here is invented.
       </p>
     </div>
     </div>

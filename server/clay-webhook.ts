@@ -4,6 +4,7 @@ import { getDb } from "./db";
 import { accounts } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { timingSafeStringEqual } from "./_core/security";
 import { resolveWebhookOrg } from "./_core/webhook-auth";
 
 // Webhook secret for Clay - should be set in environment variables
@@ -31,7 +32,7 @@ export const clayWebhookRouter = router({
     .mutation(async ({ input }) => {
       // Authenticates AND identifies the tenant. Still fails CLOSED: outside demo mode
       // an unconfigured receiver rejects every request, so this write endpoint cannot be
-      // left unauthenticated by omission.
+      // left unauthenticated by omission. Uses timing-safe comparison.
       const orgId = await resolveWebhookOrg("clay", input.webhook_secret, CLAY_WEBHOOK_SECRET);
 
       // Remove webhook_secret from payload before processing

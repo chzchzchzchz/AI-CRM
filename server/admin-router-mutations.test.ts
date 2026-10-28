@@ -32,7 +32,10 @@ afterEach(() => {
 
 const adminCtx = () => ({
   user: { id: 1, role: "admin" as const, email: "admin@example.com" },
-  req: {} as any,
+  // getClientIP (server/_core/security.ts) reads req.socket.remoteAddress — a real
+  // Express request always has this. approveAccessRequest/denyAccessRequest now call
+  // it to persist an audit log entry, which this mock previously had nothing for.
+  req: { headers: {}, socket: { remoteAddress: "127.0.0.1" } } as any,
   res: {} as any,
 });
 
@@ -104,6 +107,15 @@ describe("denyAccessRequest persists the reason", () => {
     const [row] = await db.select().from(accessRequests).where(eq(accessRequests.id, 701)).limit(1);
     expect(row.denialReason).toBe("Not a company email");
     expect(row.status).toBe("denied");
+  });
+
+  it("reports emailSent, mirroring the approve path — the applicant was previously never notified of a denial", async () => {
+    await freshDbWithOneUser();
+    const { adminRouter } = await import("./admin-router");
+    const caller = adminRouter.createCaller(adminCtx());
+
+    const result = await caller.denyAccessRequest({ requestId: 701, reason: "Not a company email" });
+    expect(result).toHaveProperty("emailSent");
   });
 });
 

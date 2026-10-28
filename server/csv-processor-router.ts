@@ -1,6 +1,6 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE, parseLlmJson } from "./_core/llm";
+import { invokeLLM, llmText, parseLlmJson, unavailableReason } from "./_core/llm";
 import { wrapUntrusted } from "./_core/untrusted";
 import { withRCP } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
@@ -159,8 +159,11 @@ Return a JSON object with this structure:
 
         const { content, available } = llmText(response);
         // Parsing the note would yield an object with none of the expected fields and
-        // silently mark every row as enriched-with-nothing.
-        if (!available) throw new Error(LLM_UNAVAILABLE_NOTE);
+        // silently mark every row as enriched-with-nothing. json_schema mode means
+        // `content` is the note wrapped as {"available":false,"note":"..."} — unwrap it
+        // rather than throwing the generic constant, so a real timeout on a configured
+        // provider doesn't get reported as nothing being set up.
+        if (!available) throw new Error(unavailableReason(content));
 
         const result = parseLlmJson<any>(content);
         // The model is instructed to write the literal string "UNMAPPED" for fields it
@@ -301,10 +304,30 @@ function createBasicMapping(headers: string[]): Record<string, string | null> {
     "Inbound Comments": ["comments", "notes", "description", "inboundcomments"],
   };
 
+  // A plain substring match lets "address" inside "email_address" satisfy the Street
+  // Address pattern — confirmed live, mapping a CSV's email column into the address
+  // field. Two guards: prefer a whole-token match over a substring one (so
+  // "email_address" splits into ["email","address"] and only the "email" token can
+  // match "email"'s own pattern, not partially match "address" via substring), and once
+  // a source header is claimed by a target field, remove it from consideration so the
+  // same column can't be silently reused for something unrelated.
+  const headerTokens: string[][] = headers.map((h: string) =>
+    h.toLowerCase().split(/[_\-\s]+/).filter(Boolean)
+  );
+  const claimed = new Set<number>();
+
   for (const [targetField, patterns] of Object.entries(fieldPatterns)) {
-    const matchIndex = headerLower.findIndex((h: string) => patterns.some((p: string) => h.includes(p)));
+    let matchIndex = headerTokens.findIndex(
+      (tokens: string[], i: number) => !claimed.has(i) && patterns.some((p: string) => tokens.includes(p))
+    );
+    if (matchIndex === -1) {
+      matchIndex = headerLower.findIndex(
+        (h: string, i: number) => !claimed.has(i) && patterns.some((p: string) => h.includes(p))
+      );
+    }
     if (matchIndex !== -1) {
       mappings[targetField] = headers[matchIndex];
+      claimed.add(matchIndex);
     } else {
       mappings[targetField] = null;
     }

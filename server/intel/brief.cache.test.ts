@@ -62,7 +62,13 @@ vi.mock("../aiContext", () => ({
 }));
 vi.mock("../_core/llm", () => ({
   invokeLLM: (...a: unknown[]) => invokeLLM(...a),
-  llmText: (r: any) => ({ content: r?.content ?? "", available: r?.available !== false }),
+  // Match the real contract: reads the OpenAI choices[0].message.content shape
+  // llmReply() below builds, not a flat {content, available} on the response itself.
+  llmText: (r: any) => {
+    const content = r?.choices?.[0]?.message?.content ?? "";
+    return { content, available: content.length > 0 };
+  },
+  unavailableReason: (t: string) => t,
   LLM_UNAVAILABLE_NOTE: "No model configured.",
 }));
 
