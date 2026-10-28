@@ -260,6 +260,8 @@ const EXTERNAL_BY_DESIGN: Record<string, string> = {
   "clayWebhook.test": "connectivity probe",
   "zapier.webhook": "inbound webhook (Zapier/Make/n8n) — acknowledges events; nothing consumes them yet",
   "system.health": "uptime probe — queries the database and probes the auth-state store",
+  "intel.accountBriefHandoff":
+    "signed account-brief export for an intentional cross-boundary handoff",
 };
 
 /**

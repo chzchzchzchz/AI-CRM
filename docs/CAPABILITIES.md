@@ -8,11 +8,11 @@ Every backend capability, and whether anything in the product actually reaches i
 
 | | Count |
 |---|---|
-| Procedures total | 155 |
+| Procedures total | 156 |
 | Reachable from the UI | 129 |
-| External by design (webhooks, probes, connector actions) | 23 |
+| External by design (webhooks, probes, connector actions) | 24 |
 | **Built but not routed anywhere** | **0** |
-| ↳ exempted from that zero (maps in `server/inventory.ts`, plus the `integrations.*` rule) | 26 |
+| ↳ exempted from that zero (maps in `server/inventory.ts`, plus the `integrations.*` rule) | 27 |
 | ↳ of those, called only by unreachable client code | 0 |
 | Superseded by a live capability (kept, not a to-do) | 3 |
 | App routes | 36 |
@@ -205,6 +205,7 @@ Not called by our UI, and should not be — these are entry points for other sys
 | `dust.query` | Dust connector action |
 | `entitlements.setLimits` | operator action — sets a workspace's limits, from a console or script |
 | `gemini.researchAccount` | **cannot succeed in this deployment** — needs browser automation that isn't installed; it throws by design. Use the configured LLM provider instead |
+| `intel.accountBriefHandoff` | signed account-brief export for an intentional cross-boundary handoff |
 | `intel.brainLearn` | forces a learning cycle that otherwise runs on a schedule |
 | `intentScores.create` | write path — connectors push scores in through it |
 | `sixsense.syncAccountByDomain` | connector action — sync one account from 6sense |

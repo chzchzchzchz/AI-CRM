@@ -1,6 +1,8 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { generateAccountBrief, getAccountBriefHistory } from "./brief";
+import { createAccountBriefHandoff, loadBoundaryAttestPrivateKey } from "./boundary-attest";
 import { gatherAccountSignals } from "./signals";
 import { getBrainDigest, learnCycle } from "./brain";
 
@@ -34,6 +36,39 @@ export const intelRouter = router({
         degradedReason: brief.degradedReason,
         droppedClaims: brief.validation.dropped,
       };
+    }),
+
+  /**
+   * Explicit cross-boundary export. Normal accountBrief reads never sign anything.
+   * The returned artifact string is the exact byte representation bound by the receipt.
+   */
+  accountBriefHandoff: protectedProcedure
+    .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
+    .mutation(async ({ input, ctx }) => {
+      let privateKeyPem: string;
+      try {
+        privateKeyPem = loadBoundaryAttestPrivateKey();
+      } catch (error) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            error instanceof Error
+              ? error.message
+              : "BoundaryAttest signing is not configured.",
+        });
+      }
+
+      const brief = await generateAccountBrief(ctx.orgId, input.accountId, {
+        forceRefresh: input.forceRefresh,
+      });
+      try {
+        return createAccountBriefHandoff(brief, privateKeyPem);
+      } catch {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "BoundaryAttest signing failed. Check the configured Ed25519 private key.",
+        });
+      }
     }),
 
   accountSignals: protectedProcedure
