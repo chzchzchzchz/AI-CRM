@@ -4,6 +4,21 @@ import crypto from "crypto";
 import { getStore } from "./shared-store";
 
 /**
+ * Constant-time comparison for a caller-supplied secret against the expected value
+ * (webhook secrets, API tokens — anything where a `!==` comparison would let response
+ * timing leak how many leading characters a guess got right). Length is compared
+ * first because timingSafeEqual throws on a length mismatch; that branch only reveals
+ * length, which is fixed and public. Mirrors email-verification-router.ts's
+ * codesMatch — same primitive, generalized for secrets that aren't verification codes.
+ */
+export function timingSafeStringEqual(expected: string, provided: string): boolean {
+  const a = Buffer.from(String(expected));
+  const b = Buffer.from(String(provided));
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+/**
  * Security middleware for the TargetDash
  * Implements rate limiting, brute force protection, and security headers
  */
@@ -63,7 +78,7 @@ export function getClientIP(req: Request): string {
       return ips.trim();
     }
   }
-  return req.socket.remoteAddress || req.ip || "unknown";
+  return req.socket?.remoteAddress || req.ip || "unknown";
 }
 
 /**
@@ -122,9 +137,16 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
   
   // Content Security Policy (basic - adjust as needed)
   // Note: This is a permissive CSP for development; tighten for production
+  //
+  // worker-src needs its own directive with blob: — mermaid (pulled in by the
+  // streamdown markdown renderer used by every AI chat surface) renders diagrams
+  // in a blob: worker. Without this, worker-src falls back to script-src, which
+  // has no blob:, and the browser silently blocks the worker: mermaid code blocks
+  // in an AI response render as nothing, with only a console CSP violation to
+  // explain why.
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https:;"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https:;"
   );
   
   next();

@@ -53,6 +53,45 @@ export function getApprovalLinks(userId: number, baseUrl: string): { approveUrl:
   };
 }
 
+/**
+ * Looks up and validates a token shared by both actions below. Centralized so the
+ * confirm page (GET) and the actual mutation (POST) apply exactly the same checks —
+ * a token good enough to show the confirm page must also be good enough to act on.
+ */
+async function resolveToken(
+  token: string,
+  expectedAction: "approve" | "deny"
+): Promise<
+  | { ok: true; user: typeof users.$inferSelect }
+  | { ok: false; page: string; status: number }
+> {
+  const tokenData = approvalTokens.get(token);
+
+  if (!tokenData) {
+    return { ok: false, status: 400, page: renderResultPage("Invalid or Expired Link", `This ${expectedAction === "approve" ? "approval" : "denial"} link is invalid or has already been used.`, false) };
+  }
+  if (tokenData.expiresAt < new Date()) {
+    approvalTokens.delete(token);
+    return { ok: false, status: 400, page: renderResultPage("Link Expired", `This ${expectedAction === "approve" ? "approval" : "denial"} link has expired. Please use the admin panel instead.`, false) };
+  }
+  if (tokenData.action !== expectedAction) {
+    return { ok: false, status: 400, page: renderResultPage("Invalid Action", `This link is not for ${expectedAction === "approve" ? "approval" : "denial"}.`, false) };
+  }
+
+  const db = await getDb();
+  if (!db) {
+    return { ok: false, status: 500, page: renderResultPage("Database Error", "Could not connect to database.", false) };
+  }
+
+  const [user] = await db.select().from(users).where(eq(users.id, tokenData.userId));
+  if (!user) {
+    approvalTokens.delete(token);
+    return { ok: false, status: 404, page: renderResultPage("User Not Found", "The user no longer exists.", false) };
+  }
+
+  return { ok: true, user };
+}
+
 export type ApprovalResolution =
   | { kind: "invalid" }
   | { kind: "expired" }
@@ -110,63 +149,83 @@ export async function resolveApprovalToken(
   return { kind: "denied", user: { name: user.name, email: user.email } };
 }
 
-const LINK_LABEL = { approve: "approval", deny: "denial" } as const;
-
-async function handleApprovalLink(
-  action: "approve" | "deny",
-  req: Request,
-  res: Response
-): Promise<void> {
-  const label = LINK_LABEL[action];
-  try {
-    const resolution = await resolveApprovalToken(req.params.token, action);
-
-    switch (resolution.kind) {
-      case "invalid":
-        res.status(400).send(renderResultPage("Invalid or Expired Link", `This ${label} link is invalid or has already been used.`, false));
-        return;
-      case "expired":
-        res.status(400).send(renderResultPage("Link Expired", `This ${label} link has expired. Please use the admin panel to manage users.`, false));
-        return;
-      case "wrong-action":
-        res.status(400).send(renderResultPage("Invalid Action", `This link is not for ${label}.`, false));
-        return;
-      case "db-unavailable":
-        res.status(500).send(renderResultPage("Database Error", "Could not connect to database.", false));
-        return;
-      case "user-not-found":
-        res.status(404).send(renderResultPage("User Not Found", "The user no longer exists.", false));
-        return;
-      case "already-approved":
-        res.status(200).send(renderResultPage("Already Approved", `${resolution.user.name} (${resolution.user.email}) has already been approved.`, true));
-        return;
-      case "approved":
-        res.status(200).send(renderResultPage(
-          "User Approved ✓",
-          `${resolution.user.name} (${resolution.user.email}) has been approved and can now access the dashboard.`,
-          true
-        ));
-        return;
-      case "denied":
-        res.status(200).send(renderResultPage(
-          "User Denied",
-          `${resolution.user.name} (${resolution.user.email}) has been denied access and removed from the system.`,
-          true
-        ));
-        return;
-    }
-  } catch (error) {
-    console.error(`${action === "approve" ? "Approval" : "Denial"} error:`, error);
-    res.status(500).send(renderResultPage("Error", `An error occurred while processing the ${label}.`, false));
-  }
-}
-
 export function registerAdminApprovalRoutes(app: Express) {
-  // One-click approve endpoint
-  app.get("/api/admin/approve/:token", (req: Request, res: Response) => handleApprovalLink("approve", req, res));
+  // GET renders a confirmation page — it must not itself approve or deny anyone.
+  // Email security gateways (Microsoft Safe Links, Proofpoint, Mimecast, and similar)
+  // routinely prefetch every link in an inbound email to scan it, which fires a GET
+  // before any human ever opens the message. With the mutation on GET, that scan WAS
+  // the approval — a real access decision made by a bot, not the admin. The mutation
+  // now only happens on the POST triggered by an explicit click on this page.
+  app.get("/api/admin/approve/:token", async (req: Request, res: Response) => {
+    const result = await resolveToken(req.params.token, "approve");
+    if (!result.ok) return res.status(result.status).send(result.page);
+    const { user } = result;
 
-  // One-click deny endpoint
-  app.get("/api/admin/deny/:token", (req: Request, res: Response) => handleApprovalLink("deny", req, res));
+    if (user.isApproved) {
+      approvalTokens.delete(req.params.token);
+      return res.status(200).send(renderResultPage("Already Approved", `${user.name} (${user.email}) has already been approved.`, true));
+    }
+
+    return res.status(200).send(renderConfirmPage("approve", req.params.token, user.name ?? user.email ?? "this user", user.email ?? ""));
+  });
+
+  app.post("/api/admin/approve/:token", async (req: Request, res: Response) => {
+    try {
+      const result = await resolveToken(req.params.token, "approve");
+      if (!result.ok) return res.status(result.status).send(result.page);
+      const { user } = result;
+
+      if (user.isApproved) {
+        approvalTokens.delete(req.params.token);
+        return res.status(200).send(renderResultPage("Already Approved", `${user.name} (${user.email}) has already been approved.`, true));
+      }
+
+      const db = await getDb();
+      await db!.update(users).set({ isApproved: true }).where(eq(users.id, user.id));
+      approvalTokens.delete(req.params.token);
+      retireTokensFor(user.id);
+
+      return res.status(200).send(renderResultPage(
+        "User Approved ✓",
+        `${user.name} (${user.email}) has been approved and can now access the dashboard.`,
+        true
+      ));
+    } catch (error) {
+      console.error("Approval error:", error);
+      return res.status(500).send(renderResultPage("Error", "An error occurred while processing the approval.", false));
+    }
+  });
+
+  app.get("/api/admin/deny/:token", async (req: Request, res: Response) => {
+    const result = await resolveToken(req.params.token, "deny");
+    if (!result.ok) return res.status(result.status).send(result.page);
+    const { user } = result;
+
+    return res.status(200).send(renderConfirmPage("deny", req.params.token, user.name ?? user.email ?? "this user", user.email ?? ""));
+  });
+
+  app.post("/api/admin/deny/:token", async (req: Request, res: Response) => {
+    try {
+      const result = await resolveToken(req.params.token, "deny");
+      if (!result.ok) return res.status(result.status).send(result.page);
+      const { user } = result;
+
+      // Deny = remove from system.
+      const db = await getDb();
+      await db!.delete(users).where(eq(users.id, user.id));
+      approvalTokens.delete(req.params.token);
+      retireTokensFor(user.id);
+
+      return res.status(200).send(renderResultPage(
+        "User Denied",
+        `${user.name} (${user.email}) has been denied access and removed from the system.`,
+        true
+      ));
+    } catch (error) {
+      console.error("Denial error:", error);
+      return res.status(500).send(renderResultPage("Error", "An error occurred while processing the denial.", false));
+    }
+  });
 }
 
 /**
@@ -182,6 +241,65 @@ export function escapeHtml(input: string): string {
   return input.replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   })[c] as string);
+}
+
+/** Same interpolation risk as renderResultPage's message — name/email are user-supplied. */
+function renderConfirmPage(action: "approve" | "deny", token: string, name: string, email: string): string {
+  const safeName = escapeHtml(name);
+  const safeEmail = escapeHtml(email);
+  const safeToken = escapeHtml(token);
+  const verb = action === "approve" ? "Approve" : "Deny";
+  const color = action === "approve" ? "#10b981" : "#ef4444";
+  const description = action === "approve"
+    ? "will grant this person access to the dashboard."
+    : "will permanently remove this request and delete the pending account.";
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirm ${verb} - ${getCompanyConfig().productName}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+    .container { text-align: center; padding: 3rem; max-width: 500px; }
+    h1 { font-size: 1.75rem; margin-bottom: 1rem; color: #fff; }
+    p { color: #a0a0a0; line-height: 1.6; margin-bottom: 2rem; }
+    .btn {
+      display: inline-block;
+      padding: 0.75rem 2rem;
+      background: ${color};
+      color: #fff;
+      border: none;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 500;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>${verb} ${safeName}?</h1>
+    <p>${safeName} (${safeEmail}) requested access. Confirming ${description}</p>
+    <form method="POST" action="/api/admin/${action}/${safeToken}">
+      <button type="submit" class="btn">Yes, ${verb.toLowerCase()}</button>
+    </form>
+  </div>
+</body>
+</html>
+  `;
 }
 
 function renderResultPage(title: string, message: string, success: boolean): string {

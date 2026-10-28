@@ -58,7 +58,9 @@ export const validationRouter = router({
       if (!account) {
         throw new Error(`Account ${input.accountId} not found`);
       }
-
+      // Same evidence accounting the bulk passes do. Without it a zero issueCount is
+      // indistinguishable from "the web check produced nothing usable", and the UI
+      // renders "nothing contradicted by the web" for a check that never landed.
       resetSearchEvidenceStats();
       resetLlmEvidenceStats();
       const issues = await validateAccount(account);
@@ -95,7 +97,6 @@ export const validationRouter = router({
 
       const accounts = await getAllAccounts(ctx.orgId);
       const account = accounts.find((a: Account) => a.id === contact.accountId);
-
       resetSearchEvidenceStats();
       resetLlmEvidenceStats();
       const issues = await validateContact(contact, account);

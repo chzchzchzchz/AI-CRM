@@ -61,8 +61,10 @@ async function seed() {
   await db.delete(contacts);
   await db.insert(accounts).values({ id: 1, name: "Vertex Cloud Systems", industry: "Cloud Infrastructure", region: "West", employeeCount: 1500, intentScore: 95 });
   await db.insert(accounts).values({ id: 2, name: "Brightpoint", industry: "Professional Services", region: "East", employeeCount: 31, intentScore: 91 });
+  await db.insert(accounts).values({ id: 3, name: "Zenith Analytics", industry: "Healthcare Technology", region: "Southwest", employeeCount: 22319, intentScore: 24 });
   await db.insert(contacts).values({ id: 1, accountId: 1, name: "Alice CISO", title: "CISO", email: "alice@vertex.example" });
   await db.insert(contacts).values({ id: 2, accountId: 2, name: "Bob Analyst", title: "Business Analyst", email: "bob@brightpoint.example" });
+  await db.insert(contacts).values({ id: 3, accountId: 3, name: "Mia Security", title: "Security Engineer", email: "mia@zenith.example" });
 }
 
 describe("intelligentSearch — no recognized structure returns zero results", () => {
@@ -152,5 +154,44 @@ describe("intelligentSearch — filters reported match what actually ran", () =>
     // constraint — but for the real reason (too few employees), not a phantom
     // industry restriction the explanation no longer claims.
     expect(result.results.some((r: any) => r.name === "Brightpoint")).toBe(false);
+  });
+
+  it("actually enforces minIntentScore on a contact search, not just the account branch", async () => {
+    // The account branch (line ~505) has always excluded accounts below minIntent.
+    // The contact branch only ever used the same value to nudge score, never to
+    // exclude — so appliedFilters/explanation claimed "minIntentScore: 70" was
+    // applied while a contact at a 24-intent account still came back. Confirmed
+    // live via "hot accounts in security", which routes to contact search because
+    // "security" is a title keyword.
+    await seed();
+    vi.doMock("./_core/llm", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("./_core/llm")>();
+      return {
+        ...actual,
+        invokeLLM: vi.fn().mockResolvedValue({
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                intent: "contact_search",
+                filters: { minIntentScore: 70, title: "security" },
+                sortBy: "relevance",
+                explanation: "Applied minIntentScore: 70, title: security.",
+              }),
+            },
+          }],
+        }),
+        llmText: (r: any) => ({ content: r.choices[0].message.content, available: true }),
+      };
+    });
+
+    const { intelligentSearch } = await import("./ai");
+    const result = await intelligentSearch("hot accounts in security");
+
+    expect(result.resultType).toBe("contact");
+    expect(result.filters.minIntentScore).toBe(70);
+    // Mia Security sits at a 24-intent account and must be excluded even though her
+    // title matches — the reported minIntentScore: 70 filter has to actually run.
+    expect(result.results.some((r: any) => r.name === "Mia Security")).toBe(false);
+    expect(result.results.some((r: any) => r.name === "Alice CISO")).toBe(false); // 95 but no title match
   });
 });

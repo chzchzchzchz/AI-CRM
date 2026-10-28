@@ -63,11 +63,6 @@ export default function ContactDetail() {
         contactId: personId,
         includeLinkedIn: true
       });
-      // Not every resolved call produced a real summary — no model reachable, no
-      // database, or a not-found contact all come back as `available: false` with
-      // `content` holding an explanation, not an analysis. Toasting success and
-      // filling the panel with that explanation regardless made a broken feature look
-      // like it worked.
       if (!result.available) {
         toast.error(result.content || "Could not generate a summary right now.");
         return;

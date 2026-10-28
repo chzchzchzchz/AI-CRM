@@ -31,6 +31,7 @@ export const intelRouter = router({
         generatedAt: brief.generatedAt,
         cached: brief.cached,
         degraded: brief.degraded,
+        degradedReason: brief.degradedReason,
         droppedClaims: brief.validation.dropped,
       };
     }),

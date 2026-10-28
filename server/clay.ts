@@ -5,6 +5,7 @@ import { contacts, accounts } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { maybeNotifyHotLead } from "./integrations/connectors";
+import { timingSafeStringEqual } from "./_core/security";
 import { resolveWebhookOrg } from "./_core/webhook-auth";
 
 /**
@@ -53,14 +54,10 @@ const clayContactSchema = z.object({
 
 /**
  * Authenticate the caller AND learn whose data this is, in one step.
- *
- * This used to be `verifyWebhookSecret`, returning void. Authenticating without
- * identifying the tenant is what made these receivers the last unscoped queries in the
- * codebase: the request was known to be legitimate and not known to belong to anyone, so
- * every inbound record went to the same org regardless of who sent it.
- *
- * Still fails CLOSED — outside demo mode an unconfigured receiver rejects everything, so
- * a production deploy cannot expose an unauthenticated write endpoint by omission.
+ * Fails CLOSED: outside demo mode an unset CLAY_WEBHOOK_SECRET rejects all requests,
+ * so a production deploy can never expose an unauthenticated write endpoint by omission.
+ * Uses timing-safe comparison (timingSafeEqual in _core/security) so the secret can't be
+ * brute-forced via response timing.
  */
 async function authenticate(providedSecret: string | undefined): Promise<number> {
   return resolveWebhookOrg("clay", providedSecret, CLAY_WEBHOOK_SECRET);

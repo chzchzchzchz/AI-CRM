@@ -1,66 +1,83 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import fs from "node:fs";
-import path from "node:path";
 
-/**
- * deepThink's DeepThinkResult had no `available` field at all. When no model was
- * reachable, it returned `{ answer: LLM_UNAVAILABLE_NOTE, ... }` — an ordinary,
- * successful-looking string. Both of this app's chat surfaces read it the same way:
- * `response.answer || fallback` — a non-empty degradation note is truthy, so it passed
- * straight through and rendered in the chat as if a model had actually answered.
- * ContextualAI.tsx is used from Accounts/Contacts/Home/Calls/Insights/account and
- * contact detail pages; SupportBot.tsx is the dashboard's help widget. Both are wired
- * through deepThinkSales/deepThinkHelp, which both delegate to this same function.
- */
+const invokeLLM = vi.fn();
 
-const DB = path.join(process.cwd(), "demo-db.test-deep-think.json");
-const ORIGINAL_ENV = { ...process.env };
+vi.mock("./_core/llm", () => ({
+  invokeLLM: (...a: unknown[]) => invokeLLM(...a),
+  llmText: (r: any) => {
+    const content = r?.choices?.[0]?.message?.content ?? "";
+    return { content, available: content.length > 0 && !content.includes("UNAVAILABLE_SENTINEL") };
+  },
+  LLM_UNAVAILABLE_NOTE: "No model configured.",
+}));
+
+vi.mock("./db", () => ({
+  getDb: async () => null, // skip caching entirely for these tests
+}));
+
+vi.mock("./config", () => ({
+  getCompanyContext: () => "Acme Inc.",
+  getCompanyConfig: () => ({ reps: [], supportContact: "support@acme.test" }),
+}));
+
+const reply = (content: string) => ({ choices: [{ message: { content } }] });
 
 beforeEach(() => {
-  process.env.DEMO_MODE = "true";
-  process.env.DEMO_DB_PATH = DB;
-  try { fs.unlinkSync(DB); } catch { /* not there */ }
-  vi.resetModules();
+  invokeLLM.mockReset();
 });
 
 afterEach(() => {
-  process.env = { ...ORIGINAL_ENV };
-  try { fs.unlinkSync(DB); } catch { /* not there */ }
-  vi.doUnmock("./_core/llm");
   vi.resetModules();
 });
 
-describe("deepThink — model-availability honesty", () => {
+describe("deepThink", () => {
+  it("skips layer 2 and returns the degradation note as-is when layer 1 is unavailable", async () => {
+    // Layer 1 fails to reach a model — this is the ONLY invokeLLM call that should
+    // happen. If layer 2 also fires, it will receive the degradation note as a
+    // "REASONING LOG FROM BACKEND" and rewrite it into something that reads like real
+    // advice, which is exactly the fabrication this test guards against.
+    invokeLLM.mockResolvedValueOnce(reply("UNAVAILABLE_SENTINEL: no model reachable."));
+
+    const { deepThink } = await import("./deep-think");
+    const result = await deepThink({ query: "What should I focus on this week?", skipCache: true });
+
+    expect(invokeLLM).toHaveBeenCalledTimes(1);
+    expect(result.answer).toBe("UNAVAILABLE_SENTINEL: no model reachable.");
+    expect(result.reasoning).toBeUndefined();
+    expect(result.available).toBe(false);
+  });
+
+  it("runs both layers and returns the synthesized answer when the model is available", async () => {
+    invokeLLM
+      .mockResolvedValueOnce(reply("<reasoning>step one, step two</reasoning>"))
+      .mockResolvedValueOnce(reply("Here's a polished answer."));
+
+    const { deepThink } = await import("./deep-think");
+    const result = await deepThink({ query: "What should I focus on this week?", skipCache: true });
+
+    expect(invokeLLM).toHaveBeenCalledTimes(2);
+    expect(result.answer).toBe("Here's a polished answer.");
+    expect(result.available).toBe(true);
+  });
+
   it("reports available:false when the synthesis layer is unreachable", async () => {
-    vi.doMock("./_core/llm", async (importOriginal) => {
-      const actual = await importOriginal<typeof import("./_core/llm")>();
-      return {
-        ...actual,
-        // Layer 1 (reasoning) succeeds; layer 2 (synthesis) is the one that's down —
-        // exercises the exact call site the bug was in.
-        invokeLLM: vi.fn()
-          .mockResolvedValueOnce({ choices: [{ message: { content: "some reasoning" } }] })
-          .mockResolvedValueOnce({ choices: [{ message: { content: actual.LLM_UNAVAILABLE_NOTE } }] }),
-      };
-    });
+    // Layer 1 (reasoning) succeeds; layer 2 (synthesis) is the one that's down —
+    // exercises the exact call site the bug was in.
+    invokeLLM
+      .mockResolvedValueOnce(reply("<reasoning>some reasoning</reasoning>"))
+      .mockResolvedValueOnce(reply("UNAVAILABLE_SENTINEL: AI generation is unavailable."));
 
     const { deepThink } = await import("./deep-think");
     const result = await deepThink({ query: "What accounts need attention?", skipCache: true });
 
     expect(result.available).toBe(false);
-    expect(result.answer).toContain("AI generation is unavailable");
+    expect(result.answer).toBe("No model configured.");
   });
 
   it("reports available:true with the real synthesized answer when the model responds", async () => {
-    vi.doMock("./_core/llm", async (importOriginal) => {
-      const actual = await importOriginal<typeof import("./_core/llm")>();
-      return {
-        ...actual,
-        invokeLLM: vi.fn()
-          .mockResolvedValueOnce({ choices: [{ message: { content: "reasoning about the accounts" } }] })
-          .mockResolvedValueOnce({ choices: [{ message: { content: "Acme Corp has the highest intent score this week." } }] }),
-      };
-    });
+    invokeLLM
+      .mockResolvedValueOnce(reply("reasoning about the accounts"))
+      .mockResolvedValueOnce(reply("Acme Corp has the highest intent score this week."));
 
     const { deepThink } = await import("./deep-think");
     const result = await deepThink({ query: "What accounts need attention?", skipCache: true });

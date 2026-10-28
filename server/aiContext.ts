@@ -426,7 +426,7 @@ ${storedInsights.length > 0 ? `\nPREVIOUS INSIGHTS:\n${storedInsights.map(i => `
   // summary AND cached under account_insight, so the apology became the stored answer
   // and outlived the outage.
   const { content: summary, available } = llmText(response);
-  if (!available) return LLM_UNAVAILABLE_NOTE;
+  if (!available) return summary;
   const summaryStr = summary;
 
   // Store the summary

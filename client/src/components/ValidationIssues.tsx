@@ -15,6 +15,7 @@ import {
   Info,
   Loader2,
   Lock,
+  ShieldAlert,
   ShieldCheck,
 } from "lucide-react";
 import { Link } from "wouter";

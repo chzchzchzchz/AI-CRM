@@ -77,47 +77,6 @@ function comparable(v: any): number | null {
  * same query meaning two different things depending on the verb in front of it. One
  * matcher, three call sites.
  */
-function matchesFilter(item: any, filter: any): boolean {
-  const v = item?.[filter.field];
-
-  switch (filter.op) {
-    case 'is_not_null':
-      return v !== null && v !== undefined;
-    case 'is_null':
-      return v === null || v === undefined;
-    case 'in': {
-      const set = new Set((filter.values || []).map((x: any) => String(x)));
-      return set.has(String(v));
-    }
-    case 'gte':
-    case 'lte':
-    case 'gt':
-    case 'lt': {
-      const a = comparable(v);
-      const b = comparable(filter.value);
-      // A null on either side satisfies no ordering comparison, the same as SQL — an
-      // account with no intent score is not "intent 70+", and must not be swept in by a
-      // NaN comparison landing wherever it lands.
-      if (a === null || b === null) return false;
-      if (filter.op === 'gte') return a >= b;
-      if (filter.op === 'lte') return a <= b;
-      if (filter.op === 'gt') return a > b;
-      return a < b;
-    }
-    case 'like':
-      return likeMatches(String(v ?? ''), String(filter.value ?? ''));
-    case 'ne':
-      return String(v) !== String(filter.value);
-    case 'or':
-      // Any branch matching is enough. Each branch is its own AND-list.
-      return (filter.branches || []).some((branch: any[]) => branch.every(f => matchesFilter(item, f)));
-    case 'not':
-      return !(filter.branches?.[0] || []).every((f: any) => matchesFilter(item, f));
-    default:
-      return filter.value === undefined ? true : String(v) === String(filter.value);
-  }
-}
-
 /**
  * SQL LIKE, including the `%` and `_` wildcards, case-insensitively.
  *
@@ -425,6 +384,55 @@ function mergeExisting(existing: any, passed: any, duplicateUpdate: any): any {
   return merged;
 }
 
+/**
+ * Whether one row matches one parsed filter — the single place this store decides
+ * what eq/gt/lt/gte/lte/isNull/isNotNull/inArray mean, used by select, update, and
+ * delete alike. Previously each operation duplicated its own inline version; select's
+ * knew about is_null/in, update's and delete's didn't, and none of the three knew
+ * about gt/lt/gte/lte at all — every comparison operator silently became string
+ * equality. Confirmed live via db-dust.ts's cache-expiry filter, which could never
+ * match a row its own write path had just inserted. One shared function means this
+ * class of bug can't be fixed in one operation while still present in another.
+ */
+function matchesFilter(item: any, filter: { field: string; value: any; op?: string; values?: any[] }): boolean {
+  const raw = item[filter.field];
+  switch (filter.op) {
+    case 'is_not_null':
+      return raw !== null && raw !== undefined;
+    case 'is_null':
+      return raw === null || raw === undefined;
+    case 'in': {
+      const set = new Set((filter.values || []).map((v: any) => String(v)));
+      return set.has(String(raw));
+    }
+    case 'gt':
+    case 'lt':
+    case 'gte':
+    case 'lte': {
+      // Rows in the JSON store keep date columns as ISO strings until the
+      // post-select parse step converts them — compare as timestamps when either
+      // side looks like a date, otherwise as numbers.
+      if (raw === null || raw === undefined) return false;
+      const rawFilter = filter.value;
+      let a: number, b: number;
+      if (rawFilter instanceof Date || raw instanceof Date || /^\d{4}-\d{2}-\d{2}T/.test(String(raw))) {
+        a = new Date(raw).getTime();
+        b = new Date(rawFilter).getTime();
+      } else {
+        a = Number(raw);
+        b = Number(rawFilter);
+      }
+      if (Number.isNaN(a) || Number.isNaN(b)) return false;
+      if (filter.op === 'gt') return a > b;
+      if (filter.op === 'lt') return a < b;
+      if (filter.op === 'gte') return a >= b;
+      return a <= b; // lte
+    }
+    default:
+      return filter.value !== undefined ? String(raw) === String(filter.value) : true;
+  }
+}
+
 class MockDrizzleQueryBuilder {
   private operation: 'select' | 'insert' | 'update' | 'delete';
   private tableName: string = '';
@@ -526,7 +534,18 @@ class MockDrizzleQueryBuilder {
       const inValues = condition.queryChunks.find((chunk: any) => Array.isArray(chunk));
 
       if (column) {
-        const field = column.name;
+        // column.name is the SQL column name as declared (e.g. varchar('query_hash', ...)),
+        // not necessarily the JS property key used everywhere else in this file — insert()
+        // stores rows keyed by the JS property (queryHash), and every other table in this
+        // schema happens to declare its SQL name identical to its JS key, which is what hid
+        // this: dustCache is the one table that doesn't (query_hash vs queryHash), and every
+        // filter against it silently matched a field that was never in the stored row.
+        // Reference-match the column chunk back to its JS key in the table schema so this
+        // works regardless of whether a table's SQL and JS names happen to agree.
+        const jsKey = this.tableSchema
+          ? Object.keys(this.tableSchema).find(k => this.tableSchema[k] === column)
+          : undefined;
+        const field = jsKey ?? column.name;
         if (inValues) {
           this.filters.push({
             field,

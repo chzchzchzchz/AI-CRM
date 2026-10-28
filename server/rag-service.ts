@@ -1,7 +1,7 @@
 import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
 import { getDb } from "./db";
 import { knowledgeBase, documentChunks, userInteractions, generatedContent } from "../drizzle/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { invokeLLM } from "./_core/llm";
 
@@ -275,14 +275,23 @@ export async function recordFeedback(
   orgId: number,
   interactionId: number,
   feedback: 'positive' | 'negative' | 'edited',
-  details?: string
+  details: string | undefined,
+  callerId: number
 ): Promise<void> {
   const db = await getDb();
   if (!db) return;
-  
+
+  // Scoped to the caller: an interactionId alone must not be enough to overwrite
+  // another user's feedback on an interaction that isn't theirs. Found via an
+  // ownership audit of every update()/delete() in the server alongside the same gap
+  // on generatedContent (tools-router.ts's submitFeedback, this function's only
+  // caller, updates both in one call).
   await db.update(userInteractions)
     .set({ feedback, feedbackDetails: details })
-    .where(and(eq(userInteractions.orgId, orgId), eq(userInteractions.id, interactionId)));
+    // Scoped to BOTH the org and the caller: an interactionId alone must never be
+    // enough to overwrite another user's/org's feedback. Combines the userId scoping
+    // (callerId) and orgId scoping so neither axis can be bypassed.
+    .where(and(eq(userInteractions.id, interactionId), eq(userInteractions.userId, callerId), eq(userInteractions.orgId, orgId)));
 }
 
 // Save generated content

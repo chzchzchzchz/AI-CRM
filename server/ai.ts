@@ -1,5 +1,5 @@
 import { wrapUntrusted, INJECTION_GUARD, stripLeakedFence } from "./_core/untrusted";
-import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE, parseLlmJson } from "./_core/llm";
+import { invokeLLM, llmText, parseLlmJson, unavailableReason } from "./_core/llm";
 import { getAllAccounts, getAllPeople, getAllGongCalls } from "./db";
 import { withRCP, asRevenueArchitect } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
@@ -116,7 +116,7 @@ Focus on:
   // fields below, and every caller would read undefined off it.
   const { content, available } = llmText(response);
   if (!available) {
-    return { summary: LLM_UNAVAILABLE_NOTE, score: 0, insights: [], recommendations: [], confidence: 0 };
+    return { summary: unavailableReason(content), score: 0, insights: [], recommendations: [], confidence: 0 };
   }
   return parseLlmJson(content);
 }
@@ -259,7 +259,7 @@ field isn't in the data, return an empty array rather than a plausible-sounding 
     // so the row still expanded and read as "not much happened on this call" rather
     // than "the analysis didn't run."
     return {
-      summary: LLM_UNAVAILABLE_NOTE, keyTopics: [], objections: [], nextSteps: [],
+      summary: unavailableReason(content), keyTopics: [], objections: [], nextSteps: [],
       sentiment: "neutral", buyingSignals: [], competitorsMentioned: [], actionItems: [],
       available: false,
     };
@@ -297,8 +297,8 @@ Return only the email body (no subject line).
     ]
   });
 
-  const { content, available } = llmText(response);
-  return available ? content : LLM_UNAVAILABLE_NOTE;
+  const { content } = llmText(response);
+  return content;
 }
 
 /**
@@ -483,6 +483,13 @@ function runSearch(
         if (titleKeywords.length) { if (!titleHit) return null; score += 40; }
         if (industry && acc) { if (!(acc.industry || "").toLowerCase().includes(industry)) return null; score += 20; }
         if (employeeFloor != null && acc) { if ((acc.employeeCount || 0) < employeeFloor) return null; score += 10; }
+        // The account branch below enforces this as a hard filter; this branch only
+        // ever used it to nudge the score, so a contact whose account's intent score
+        // was well under the threshold still came back — while appliedFilters (and the
+        // "Applied — minIntentScore: 70" explanation shown to the rep) claimed it had
+        // been enforced. Confirmed live: "hot accounts in security" routed to a contact
+        // search and returned a contact at an account with intentScore 24.
+        if (minIntent != null && acc) { if ((acc.intentScore || 0) < minIntent) return null; score += 15; }
         if (acc) score += (acc.intentScore || 0) * 0.2;
         // text relevance
         const hay = `${p.name} ${p.title} ${p.company || ""} ${acc?.name || ""}`.toLowerCase();

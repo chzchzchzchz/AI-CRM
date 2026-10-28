@@ -5,10 +5,12 @@ import { getDb } from "./db";
 import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { affectedRows } from "./_core/affected-rows";
+import { logAccessRequestApproved, logAccessRequestDenied } from "./_core/audit";
+import { sendAccessApprovalEmail, sendAccessDenialEmail } from "./_core/email";
+import { getClientIP } from "./_core/security";
 import { isSixsenseConfigured } from "./sixsense";
 import { toPublicUser } from "./_core/publicUser";
-import { affectedRows } from "./_core/affected-rows";
-import { sendAccessApprovalEmail } from "./_core/email";
 
 
 
@@ -92,6 +94,8 @@ export const adminRouter = router({
       const emailSent = await sendAccessApprovalEmail(request[0].email, request[0].name, tempPassword)
         .catch(() => false);
 
+      await logAccessRequestApproved(ctx.user!.id, input.requestId, request[0].email, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
+
       return { success: true, tempPassword, emailSent, email: request[0].email };
     }),
 
@@ -120,7 +124,20 @@ export const adminRouter = router({
         .where(and(eq(accessRequests.orgId, ctx.orgId), eq(accessRequests.id, input.requestId)));
       if (affectedRows(result) === 0) throw new Error(`Request ${input.requestId} not found`);
 
-      return { success: true };
+      const [request] = await db.select().from(accessRequests).where(eq(accessRequests.id, input.requestId)).limit(1);
+      await logAccessRequestDenied(ctx.user!.id, input.requestId, request?.email ?? "unknown", input.reason, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
+
+      // sendAccessDenialEmail existed, fully built, and nothing called it — the
+      // approve path notifies the applicant (sendAccessApprovalEmail below), but a
+      // denied applicant got no notification at all, just silence. Same class of gap
+      // as audit.ts: a complete function only ever exercised by a test calling it
+      // directly, never wired into the real request path.
+      let emailSent = false;
+      if (request) {
+        emailSent = await sendAccessDenialEmail(request.email, request.name, input.reason).catch(() => false);
+      }
+
+      return { success: true, emailSent };
     }),
 
   // Get all users for admin management

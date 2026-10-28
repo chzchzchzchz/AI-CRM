@@ -254,7 +254,7 @@ export const followUpsRouter = router({
       const next = snoozeTarget(input.days);
 
       const snoozed = await db.update(followUps).set({ dueDate: next })
-        .where(and(eq(followUps.orgId, ctx.orgId), eq(followUps.id, input.id)));
+        .where(and(eq(followUps.id, input.id), eq(followUps.userId, ctx.user.id), eq(followUps.orgId, ctx.orgId)));
       if (affectedRows(snoozed) === 0) throw new Error("That follow-up is not yours to snooze.");
       return { success: true, dueDate: next.toISOString() };
     }),

@@ -1,6 +1,6 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
+import { invokeLLM, llmText } from "./_core/llm";
 import { wrapUntrusted, INJECTION_GUARD, stripLeakedFence } from "./_core/untrusted";
 import { eq, inArray, and } from "drizzle-orm";
 import { contacts, accounts } from "../drizzle/schema";
@@ -197,7 +197,7 @@ OUTPUT ONLY THE EMAIL BODY. Nothing else.`;
         // Same defense as the webinar generator (server/tools-router.ts): a model
         // with nothing real to reference for a missing field can echo the
         // wrapUntrusted fence's own ID back as a stand-in value.
-        content: (available ? stripLeakedFence(emailContent) : LLM_UNAVAILABLE_NOTE).trim(),
+        content: (available ? stripLeakedFence(emailContent) : emailContent).trim(),
         available,
         accountCount: accountData.length,
         /** What the draft was actually grounded in, so the page can show its work. */

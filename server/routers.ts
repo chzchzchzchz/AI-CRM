@@ -1,6 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { isDecisionMaker } from "@shared/taxonomy";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { LLM_UNAVAILABLE_NOTE } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { wrapUntrusted } from "./_core/untrusted";
@@ -47,6 +48,16 @@ import { notifyOwner } from "./_core/notification";
 import { getApprovalLinks } from "./admin-approval-api";
 import { hotLeadsRouter } from "./hot-leads-router";
 import { recordFailedLogin, clearLoginAttempts, getLoginLockout, validatePasswordComplexity, logSecurityEvent, getClientIP } from "./_core/security";
+// logSecurityEvent (above) only writes to console — ephemeral, gone on restart, no
+// admin UI reads it. auditLogs is the persisted, queryable table this app already
+// has a schema and a full set of typed logging helpers for — audit.ts's
+// logUserSignup/logUserLogin/etc. — but none of them were ever called from a real
+// request path; only a test exercised them directly, in isolation. Wiring the
+// security-relevant ones in here alongside the existing console logging, not instead
+// of it. (logAccessRequestCreated is not wired: its signature requires a userId, but
+// requestAccess below runs before any account exists — a mismatch in the original,
+// unused module that a synthetic id would only paper over.)
+import { logUserSignup, logUserLogin, logUserLogout } from "./_core/audit";
 import { signupMode, createOrganization } from "./_core/onboarding";
 import { DEFAULT_ORG_ID, assertDeploymentConnectorAllowed } from "./_core/tenancy";
 import { twoFARouter } from "./twofa-router";
@@ -242,9 +253,12 @@ export const appRouter = router({
     // recovery-code blob included. Shipping it verbatim to the client meant every
     // signed-in user's browser held their own hash and TOTP secret on every page load.
     me: publicProcedure.query(opts => toPublicUser(opts.ctx.user)),
-    logout: publicProcedure.mutation(({ ctx }) => {
+    logout: publicProcedure.mutation(async ({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      if (ctx.user) {
+        await logUserLogout(ctx.user.id, ctx.user.email ?? "unknown", getClientIP(ctx.req), ctx.req.headers["user-agent"]);
+      }
       return {
         success: true,
       } as const;
@@ -257,10 +271,10 @@ export const appRouter = router({
         password: z.string().min(8),
         name: z.string().min(1),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
-        
+
         // Validate password complexity
         const passwordError = validatePasswordComplexity(input.password);
         if (passwordError) {
@@ -374,6 +388,8 @@ Or go to the Admin Panel: /admin/approval`
           }
         }
 
+        await logUserSignup(Number(newUserId), normalizedEmail, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
+
         // The id is what lets the client request a verification code for the account it
         // just created. Without it the whole emailVerification router was unreachable —
         // built, tested, and impossible to call.
@@ -468,6 +484,7 @@ Or go to the Admin Panel: /admin/approval`
         }
 
         logSecurityEvent("LOGIN_SUCCESS", { email: input.email, userId: user.id, ip: clientIP }, "info");
+        await logUserLogin(user.id, user.email, clientIP, ctx.req.headers["user-agent"]);
         return issueSession(ctx, user);
       }),
 
@@ -543,6 +560,7 @@ Or go to the Admin Panel: /admin/approval`
 
         await consumeChallenge(input.challengeId);
         logSecurityEvent("LOGIN_SUCCESS", { userId: user.id, method: "2fa" }, "info");
+        await logUserLogin(user.id, user.email, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
         return issueSession(ctx, user);
       }),
 
@@ -1109,7 +1127,7 @@ Or go to the Admin Panel: /admin/approval`
           news: newsData
         };
 
-        const { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } = await import("./_core/llm");
+        const { invokeLLM, llmText } = await import("./_core/llm");
         const { withRCP } = await import("./ai-system-prompt");
         const response = await invokeLLM({
           messages: [
@@ -1124,6 +1142,10 @@ Or go to the Admin Panel: /admin/approval`
           ]
         });
 
+        // `content` already IS the real reason when unavailable — llm.ts distinguishes
+        // "nothing configured" from "a configured provider timed out" and says so in the
+        // text itself. Substituting the static LLM_UNAVAILABLE_NOTE here discarded that
+        // and told a working-but-slow setup to go install what it already has.
         const { content: insights, available } = llmText(response);
 
         if (!available) {
@@ -1132,9 +1154,6 @@ Or go to the Admin Panel: /admin/approval`
           // for the rest of the day, even after the model comes back — and
           // AccountResearch.tsx renders `insights` through SafeStreamdown with no
           // separate check, so the note would read as real research, not an error.
-          // Same reasoning as bulk-insights-router.ts: leave any prior cache
-          // untouched and let the next view retry against a live model instead of
-          // freezing a failure in place.
           return {
             insights: LLM_UNAVAILABLE_NOTE,
             rawTriggers: triggers,
@@ -1152,11 +1171,15 @@ Or go to the Admin Panel: /admin/approval`
           available: true,
         };
 
-        // Store in cache
-        await updateAccount(ctx.orgId, input.accountId, {
-          aiResearchCache: JSON.stringify(result),
-          aiCacheUpdatedAt: new Date()
-        } as any);
+        // Only cache a real result. Caching a degraded one would pin a transient outage
+        // (a slow Ollama, a rate-limited free tier) as this account's research for a full
+        // 24 hours, long after the provider recovers.
+        if (available) {
+          await updateAccount(ctx.orgId, input.accountId, {
+            aiResearchCache: JSON.stringify(result),
+            aiCacheUpdatedAt: new Date()
+          } as any);
+        }
 
         return { ...result, cached: false, cacheAge: 0 };
       }),

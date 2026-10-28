@@ -167,14 +167,14 @@ function CallAnalyzerTool({ sharedReportId }: { sharedReportId: string | null })
   const [reportName, setReportName] = useState('');
   const [followUpQuestion, setFollowUpQuestion] = useState('');
   const [followUpAnswer, setFollowUpAnswer] = useState('');
+  const [followUpAvailable, setFollowUpAvailable] = useState(true);
   const [askingFollowUp, setAskingFollowUp] = useState(false);
   const [showSavedReports, setShowSavedReports] = useState(false);
   const [viewingReport, setViewingReport] = useState<SavedReport | null>(null);
   const [copied, setCopied] = useState(false);
   const transcriptFileRef = useRef<HTMLInputElement>(null);
 
-  const handleTranscriptFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const acceptTranscriptFile = async (file: File | undefined) => {
     if (!file) return;
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!['txt', 'vtt', 'srt'].includes(ext || '')) {
@@ -193,6 +193,9 @@ function CallAnalyzerTool({ sharedReportId }: { sharedReportId: string | null })
     }
     if (transcriptFileRef.current) transcriptFileRef.current.value = '';
   };
+
+  const handleTranscriptFile = (e: React.ChangeEvent<HTMLInputElement>) =>
+    acceptTranscriptFile(e.target.files?.[0]);
 
   const analyzeMutation = trpc.tools.analyzeTranscript.useMutation({
     onSuccess: (data) => {
@@ -252,6 +255,7 @@ function CallAnalyzerTool({ sharedReportId }: { sharedReportId: string | null })
         return;
       }
       setFollowUpAnswer(typeof data.answer === 'string' ? data.answer : String(data.answer));
+      setFollowUpAvailable(data.available);
       setAskingFollowUp(false);
     },
     onError: (error) => {
@@ -817,7 +821,13 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
               </Button>
             </div>
             {followUpAnswer && (
-              <div className="p-4 bg-accent-subtle border border-accent/30 rounded-sm">
+              <div
+                className={
+                  followUpAvailable
+                    ? "p-4 bg-accent-subtle border border-accent/30 rounded-sm"
+                    : "p-4 bg-caution-subtle border border-caution/30 rounded-sm"
+                }
+              >
                 <p className="text-sm text-foreground">{followUpAnswer}</p>
               </div>
             )}
@@ -1004,6 +1014,11 @@ ${r.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
           <button
             type="button"
             onClick={() => transcriptFileRef.current?.click()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              void acceptTranscriptFile(e.dataTransfer.files?.[0]);
+            }}
             className="w-full border-2 border-dashed border-border-strong rounded-sm p-6 text-center hover:border-accent/30 transition-colors cursor-pointer"
           >
             <Upload className="w-8 h-8 text-accent mx-auto mb-2" />
@@ -1241,8 +1256,7 @@ function DataProcessorTool() {
   const [rowCount, setRowCount] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
+  const acceptFile = async (f: File | undefined) => {
     if (!f) return;
     const ext = f.name.split('.').pop()?.toLowerCase();
     if (ext !== 'csv') {
@@ -1267,6 +1281,8 @@ function DataProcessorTool() {
     toast.success(`Selected ${f.name}`);
     if (fileRef.current) fileRef.current.value = '';
   };
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => acceptFile(e.target.files?.[0]);
 
   const clearFile = () => {
     setFile(null);
@@ -1327,6 +1343,11 @@ function DataProcessorTool() {
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                void acceptFile(e.dataTransfer.files?.[0]);
+              }}
               className="w-full border-2 border-dashed border-border-strong rounded-sm p-12 text-center hover:border-accent/30 transition-colors cursor-pointer"
             >
               <Upload className="w-12 h-12 text-accent mx-auto mb-4" />
