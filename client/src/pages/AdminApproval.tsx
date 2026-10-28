@@ -217,7 +217,7 @@ export default function AdminApproval() {
 
         <Tabs defaultValue="pending" className="space-y-6">
           <TabsList className="bg-muted">
-            <TabsTrigger value="pending" className="data-[state=active]:bg-caution">
+            <TabsTrigger value="pending" className="data-[state=active]:bg-caution data-[state=active]:text-caution-foreground">
               <Clock className="h-4 w-4 mr-2" />
               Pending Approval
               {totalPendingCount > 0 && (
@@ -477,9 +477,11 @@ export default function AdminApproval() {
                         <div className="flex items-center gap-3">
                           <Select
                             value={u.role}
-                            onValueChange={(value: "user" | "admin") => 
-                              updateRoleMutation.mutate({ userId: u.id, role: value })
-                            }
+                            onValueChange={(value) => {
+                              if (value === "user" || value === "admin") {
+                                updateRoleMutation.mutate({ userId: u.id, role: value });
+                              }
+                            }}
                             disabled={u.id === user?.id}
                           >
                             <SelectTrigger aria-label="User role" className="w-24 bg-muted border-border-strong text-foreground">

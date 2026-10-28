@@ -6,12 +6,13 @@ import { AIAssistant } from"@/components/AIAssistant";
 import { trpc } from"@/lib/trpc";
 import { LogFollowUpDialog } from"@/components/LogFollowUpDialog";
 import {
-  ArrowLeft, ExternalLink, Building2, Phone, Mail, MapPin, Linkedin,
-  Sparkles, Copy, Check, User, Loader2, RefreshCw, ChevronRight, Flame
+  ArrowLeft, ExternalLink, Building2, Phone, Mail, MapPin, Sparkles, Copy, Check, User, Loader2, RefreshCw, ChevronRight, Flame
 } from"lucide-react";
+import { Linkedin } from "@/components/icons/linkedin";
 import { Link, useParams } from"wouter";
 import { SafeStreamdown } from"@/components/SafeStreamdown";
 import { toast } from"sonner";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
 
 // Heat pairs a tinted colour with a word + shape so it never relies on colour alone.
 function heatMeta(score: number): { label: string; cls: string; hot: boolean } {
@@ -36,10 +37,8 @@ export default function ContactDetail() {
   const personId = parseInt(id ||"0");
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const { data: contact, isLoading } = trpc.people.getById.useQuery(
-    { id: personId },
-    { enabled: personId > 0 }
-  );
+  const { data: contact, isLoading, error: contactError, refetch: refetchContact } =
+    trpc.people.getById.useQuery({ id: personId }, { enabled: personId > 0 });
 
   const { data: account } = trpc.accounts.getById.useQuery(
     { id: contact?.accountId || 0 },
@@ -64,12 +63,12 @@ export default function ContactDetail() {
         contactId: personId,
         includeLinkedIn: true
       });
-      setAiSummary(result.summary);
-      if (result.available) {
-        toast.success("AI summary generated from LinkedIn!");
-      } else {
-        toast.error(result.summary);
+      if (!result.available) {
+        toast.error(result.content || "Could not generate a summary right now.");
+        return;
       }
+      setAiSummary(result.content);
+      toast.success("AI summary generated from LinkedIn!");
     } catch (error) {
       toast.error("Failed to generate summary");
     } finally {
@@ -105,7 +104,7 @@ export default function ContactDetail() {
   // Loading state
   if (isLoading) {
     return (
-      <div>
+      <div data-page-loading="true">
         <div className="container py-6 max-w-5xl">
           <div className="animate-pulse space-y-4">
             <div className="h-8 w-64 bg-muted rounded" />
@@ -114,6 +113,21 @@ export default function ContactDetail() {
             </div>
             <div className="h-56 bg-muted rounded" />
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Load-failure state, kept distinct from not-found below. Same reasoning as
+  // AccountDetail: a discarded query error rendered a backend outage as a deleted
+  // contact, and since org scoping landed "not found" is also the deliberate answer for
+  // another organization's id.
+  if (contactError) {
+    return (
+      <div className="container py-6 max-w-2xl">
+        <DataUnavailable what="this contact" detail={contactError} onRetry={() => refetchContact()} />
+        <div className="text-center mt-4">
+          <Button asChild variant="ghost"><Link href="/contacts"><ArrowLeft className="mr-2 h-4 w-4" />Back</Link></Button>
         </div>
       </div>
     );
@@ -146,7 +160,7 @@ export default function ContactDetail() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3 min-w-0">
             <Button variant="ghost" size="icon" asChild>
-              <Link href="/contacts"><ArrowLeft className="h-5 w-5" /></Link>
+              <Link href="/contacts" aria-label="Back to contacts"><ArrowLeft className="h-5 w-5" /></Link>
             </Button>
             {/* Contact avatar — purple is the identity accent */}
             <div className="hidden sm:flex w-12 h-12 rounded-sm bg-accent-subtle border border-accent/30 items-center justify-center flex-shrink-0 text-accent font-semibold text-lg">

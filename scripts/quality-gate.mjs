@@ -39,6 +39,20 @@ const BASE = process.env.BASE_URL || `http://localhost:${PORT}`;
 const OWN_SERVER = !process.env.BASE_URL;
 
 /**
+ * Accessibility, checked on every route at both widths.
+ *
+ * The README said "No accessibility audit" and meant it. The first scan found four
+ * problems, none visible to anything else here: every contact row was a role="button"
+ * with a LinkedIn button nested inside it, which a screen reader cannot operate — and
+ * whose key handler compared e.key to "" instead of " ", so Space did nothing; the
+ * floating assistant button, the account page's back arrow and the calls pager's
+ * chevrons were icons with no name at all. WCAG 2 A and AA rules only. This is not a
+ * screen-reader test — axe finds perhaps a third of real problems — but it is a floor
+ * that no longer moves backwards without failing the build.
+ */
+const AXE = fs.readFileSync("node_modules/axe-core/axe.min.js", "utf8");
+
+/**
  * Every route a user can reach — read from the router, not typed out here.
  *
  * This list used to be hand-maintained, and it drifted: `/smart-search`,
@@ -289,6 +303,35 @@ for (const width of [1440, 390]) {
         detail: "still showing the loading spinner after 15s",
       });
     }
+
+    // And then the same wait again for the page's DATA, which is a separate race the
+    // fixed settle below never won. Every one of these loading states — three bare
+    // spinners and five skeletons — renders zero characters, so a page measured
+    // during one is indistinguishable from a page with nothing on it.
+    //
+    // /insights was the one that surfaced it: `accounts.list` is 1,000 rows, and on an
+    // idle machine its content lands at ~1,690ms, past the 1,200ms below. So the gate
+    // measured the spinner and reported "0 chars — the page rendered its shell and
+    // little else", which is a true description of a spinner and a false one of the
+    // page. It failed on one commit and passed on the next with identical page code,
+    // decided by how loaded the runner was. A gate that flakes is worse than no gate:
+    // it teaches you to re-run until green, which is how a real breach gets clicked
+    // past. /contacts cleared the old window by about 200ms and was next.
+    //
+    // Worth saying that this was under-measuring, not just mis-measuring: /insights
+    // was recorded at 310 nodes and 1 screen — the spinner's numbers — so the node,
+    // height and cross-page metric rules were quietly never applied to it.
+    const settled = await page
+      .waitForSelector("[data-page-loading]", { state: "detached", timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!settled) {
+      failures.push({
+        route: `${route} @${width}`,
+        rule: "page data finishes loading",
+        detail: "still showing a loading state after 15s",
+      });
+    }
     await page.waitForTimeout(1200);
 
     let m;
@@ -329,6 +372,25 @@ for (const width of [1440, 390]) {
         route: at,
         rule: `at least ${BUDGET.minContentChars} characters of content`,
         detail: `${m.content} — the page rendered its shell and little else`,
+      });
+
+    // Park the cursor first. It stays wherever the last click left it, so the first run
+    // of this check failed one stat tile on the home page at mobile width only — the
+    // cursor happened to rest on it there, and its hover background dropped the caption to
+    // 4.22:1. Which element that is depends on layout and on the route before, so without
+    // this the result depended on the order routes were visited.
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(150);
+    await page.addScriptTag({ content: AXE });
+    const a11y = await page.evaluate(async () =>
+      (await window.axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa"] } }))
+        .violations.map(v => ({ id: v.id, nodes: v.nodes.length, help: v.help, where: v.nodes[0]?.target?.join(" ") }))
+    );
+    for (const v of a11y)
+      failures.push({
+        route: at,
+        rule: "no WCAG 2 A/AA violations",
+        detail: `${v.id} ×${v.nodes} — ${v.help} (first: ${String(v.where).slice(0, 80)})`,
       });
     for (const { key, value } of m.metrics || []) {
       if (!key || value == null) continue;

@@ -5,10 +5,11 @@ import { Badge } from"@/components/ui/badge";
 import { Progress } from"@/components/ui/progress";
 import { trpc } from"@/lib/trpc";
 import { toast } from"sonner";
-import { 
-  Upload, FileSpreadsheet, Download, Sparkles, CheckCircle2, 
+import {
+  Upload, FileSpreadsheet, Download, Sparkles, CheckCircle2,
   AlertCircle, Loader2, X, FileText, Zap, Settings2
 } from"lucide-react";
+import { csvRow } from"@shared/csv";
 
 interface ProcessingResult {
   originalCount: number;
@@ -93,7 +94,15 @@ export default function LeadProcessor() {
 
       setProgress(100);
       setResult(response);
-      toast.success(`Processed ${response.cleanedCount} leads successfully!`);
+      // originalCount > 0 && cleanedCount === 0 means every row was filtered out
+      // (personal email, unqualified title, or no contact info) — downloadCSV below
+      // already treats that as a failure ("Nothing to download"); this toast, shown
+      // first and reached in the exact same run, was still calling it a success.
+      if (response.originalCount > 0 && response.cleanedCount === 0) {
+        toast.error(`Every row was filtered out of ${response.originalCount} uploaded. See the issues list below.`);
+      } else {
+        toast.success(`Processed ${response.cleanedCount} leads successfully!`);
+      }
     } catch (error) {
       // e.g. ".xlsx" uploads throw a specific "export to CSV" error server-side —
       // flattening every failure into one generic message would hide that actionable
@@ -117,18 +126,14 @@ export default function LeadProcessor() {
       return;
     }
 
-    // Convert to CSV
+    // Convert to CSV. csvRow neutralizes a cell that starts with =, +, - or @ —
+    // Excel/Sheets read that as a formula, not text, the moment this file is
+    // opened, and this data came from an uploaded file nobody here typed
+    // themselves. See shared/csv.ts.
     const headers = Object.keys(result.cleanedData[0] || {});
     const csvContent = [
       headers.join(','),
-      ...result.cleanedData.map(row => 
-        headers.map(h => {
-          const val = row[h] || '';
-          // Escape quotes and wrap in quotes if contains comma
-          const escaped = String(val).replace(/"/g, '""');
-          return escaped.includes(',') ? `"${escaped}"` : escaped;
-        }).join(',')
-      )
+      ...result.cleanedData.map(row => csvRow(headers.map(h => row[h] || '')))
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });

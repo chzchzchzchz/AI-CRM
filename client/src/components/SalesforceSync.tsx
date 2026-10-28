@@ -12,41 +12,51 @@ import { RefreshCw, CheckCircle, XCircle, Database, Users, Building } from "luci
 
 export function SalesforceSync() {
   const [syncStatus, setSyncStatus] = useState<string>("");
-  
+  // The message can now honestly report a non-zero error count (see
+  // server/routers/salesforce.ts) instead of always reading as a clean run — this
+  // tracks that so the status box below can render it distinctly from a real success.
+  const [syncHadErrors, setSyncHadErrors] = useState(false);
+
   // Get current sync status
   const { data: status, refetch: refetchStatus } = trpc.salesforce.getSyncStatus.useQuery();
-  
+
   // Test connection mutation
   const testConnection = trpc.salesforce.testConnection.useQuery();
-  
+
   // Sync mutations
   const syncAccounts = trpc.salesforce.syncAccounts.useMutation({
     onSuccess: (data) => {
       setSyncStatus(data.message);
+      setSyncHadErrors((data.errors ?? 0) > 0);
       refetchStatus();
     },
     onError: (error) => {
       setSyncStatus(`Error: ${error.message}`);
+      setSyncHadErrors(true);
     },
   });
-  
+
   const syncContacts = trpc.salesforce.syncContacts.useMutation({
     onSuccess: (data) => {
       setSyncStatus(data.message);
+      setSyncHadErrors((data.errors ?? 0) > 0);
       refetchStatus();
     },
     onError: (error) => {
       setSyncStatus(`Error: ${error.message}`);
+      setSyncHadErrors(true);
     },
   });
-  
+
   const fullSync = trpc.salesforce.fullSync.useMutation({
     onSuccess: (data) => {
       setSyncStatus(data.message);
+      setSyncHadErrors((data.results.accounts.errors ?? 0) + (data.results.contacts.errors ?? 0) > 0);
       refetchStatus();
     },
     onError: (error) => {
       setSyncStatus(`Error: ${error.message}`);
+      setSyncHadErrors(true);
     },
   });
 
@@ -130,7 +140,9 @@ export function SalesforceSync() {
 
         {/* Status Message */}
         {syncStatus && (
-          <div className="p-3 bg-muted rounded-sm text-sm break-words">
+          <div className={`p-3 rounded-sm text-sm break-words ${
+            syncHadErrors ? "bg-caution-subtle border border-caution/30 text-caution" : "bg-muted"
+          }`}>
             {syncStatus}
           </div>
         )}

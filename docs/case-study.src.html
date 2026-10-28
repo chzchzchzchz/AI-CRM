@@ -177,7 +177,7 @@
       why now, what to do, what could go wrong. Every item it returns must name the signal
       behind it. Categories with no data are reported as gaps rather than filled in.
     </p>
-    <p class="evidence"><b>Why it holds</b> — fabrication becomes structurally impossible rather than filtered: the model never authors a name, a score, or a dollar figure. Those are rendered from the signal pack by code.</p>
+    <p class="evidence"><b>Why it holds</b> — the numbers are computed by code before the model sees them, and everything the model writes is checked against that pack before it renders: a name, a dollar figure, a cited value or a document the account's data doesn't support is dropped, and a situation paragraph that fails falls back to one written by code.</p>
   </div>
 
   <div class="wide">
@@ -186,8 +186,8 @@
       <figcaption>
         <strong>The account brief.</strong> Intent 92 and rising, 100% signal coverage across
         ten categories, $98,000 pipeline at $80,360 weighted. Under “What to do next,” every
-        claim carries its source — <em>triggers.include 'New VP Sales hire' and 'Series D
-        raise'</em> — and the recommended actions name real stakeholders and advance action
+        claim carries its source — <em>intent.score: 92, intent.buyingStage: Purchase</em>;
+        <em>triggers: [New VP Sales hire, Series D raise]</em> — and the recommended actions name real stakeholders and advance action
         items that already exist on recorded calls, rather than inventing new motions.
       </figcaption>
     </figure>

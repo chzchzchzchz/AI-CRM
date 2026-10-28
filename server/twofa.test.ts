@@ -13,6 +13,7 @@ import {
   consumeChallenge,
   __resetChallenges,
   BACKUP_CODE_COUNT,
+  withUserLock,
 } from "./twofa";
 
 const sp = speakeasy as any;
@@ -103,39 +104,120 @@ describe("backup codes", () => {
 describe("login challenge", () => {
   beforeEach(() => __resetChallenges());
 
-  it("resolves to the user who passed the password step", () => {
-    const id = createChallenge(42);
-    const claim = claimChallengeAttempt(id);
+  it("resolves to the user who passed the password step", async () => {
+    const id = await createChallenge(42);
+    const claim = await claimChallengeAttempt(id);
     expect(claim).toEqual({ ok: true, userId: 42 });
   });
 
-  it("issues unguessable, distinct ids", () => {
-    const ids = new Set(Array.from({ length: 50 }, (_, i) => createChallenge(i)));
+  it("issues unguessable, distinct ids", async () => {
+    const ids = new Set(await Promise.all(Array.from({ length: 50 }, (_, i) => createChallenge(i))));
     expect(ids.size).toBe(50);
     for (const id of ids) expect(id.length).toBeGreaterThanOrEqual(40);
   });
 
-  it("rejects an unknown or already-consumed challenge", () => {
-    expect(claimChallengeAttempt("nope")).toEqual({ ok: false, reason: "expired" });
-    const id = createChallenge(1);
-    consumeChallenge(id);
-    expect(claimChallengeAttempt(id)).toEqual({ ok: false, reason: "expired" });
+  it("rejects an unknown or already-consumed challenge", async () => {
+    expect(await claimChallengeAttempt("nope")).toEqual({ ok: false, reason: "expired" });
+    const id = await createChallenge(1);
+    await consumeChallenge(id);
+    expect(await claimChallengeAttempt(id)).toEqual({ ok: false, reason: "expired" });
   });
 
-  it("stops accepting attempts once they are exhausted", () => {
+  it("stops accepting attempts once they are exhausted", async () => {
     // Without this a challenge is a 6-digit code with unlimited guesses, which is
     // not a second factor at all.
-    const id = createChallenge(7);
-    for (let i = 0; i < 5; i++) expect(claimChallengeAttempt(id).ok).toBe(true);
-    expect(claimChallengeAttempt(id)).toEqual({ ok: false, reason: "exhausted" });
+    const id = await createChallenge(7);
+    for (let i = 0; i < 5; i++) expect((await claimChallengeAttempt(id)).ok).toBe(true);
+    expect(await claimChallengeAttempt(id)).toEqual({ ok: false, reason: "exhausted" });
     // …and it is gone, not merely refused.
-    expect(claimChallengeAttempt(id)).toEqual({ ok: false, reason: "expired" });
+    expect(await claimChallengeAttempt(id)).toEqual({ ok: false, reason: "expired" });
   });
 
-  it("keeps challenges separate", () => {
-    const a = createChallenge(1);
-    const b = createChallenge(2);
-    expect(claimChallengeAttempt(a)).toEqual({ ok: true, userId: 1 });
-    expect(claimChallengeAttempt(b)).toEqual({ ok: true, userId: 2 });
+  it("keeps challenges separate", async () => {
+    const a = await createChallenge(1);
+    const b = await createChallenge(2);
+    expect(await claimChallengeAttempt(a)).toEqual({ ok: true, userId: 1 });
+    expect(await claimChallengeAttempt(b)).toEqual({ ok: true, userId: 2 });
+  });
+
+  it("counts parallel guesses against the same cap as serial ones", async () => {
+    // The attempt count used to be a read-modify-write. Six guesses fired at once
+    // could each read the same low count and all be admitted — which is the only
+    // shape of attack worth mounting against a 6-digit code in a 5-minute window.
+    const id = await createChallenge(8);
+    const results = await Promise.all(
+      Array.from({ length: 12 }, () => claimChallengeAttempt(id))
+    );
+    expect(results.filter((r) => r.ok)).toHaveLength(5);
+  });
+});
+
+/**
+ * redeemBackupCode is a pure read-modify-write helper: the caller reads the stored
+ * hashes, calls this, and writes back what's left. With no lock, two callers who both
+ * read before either wrote could each remove a different code from the SAME starting
+ * snapshot, and whichever write landed last would silently restore the other "used"
+ * code. withUserLock closes that by queuing every call for a given userId behind the
+ * one before it, so a later call's work always starts after the earlier one's finished
+ * — see server/twofa-login.test.ts for the end-to-end version of this exact scenario.
+ */
+describe("withUserLock", () => {
+  it("runs calls for the same key one at a time, in order", async () => {
+    const order: number[] = [];
+    const started: number[] = [];
+
+    // Deliberately have call 1 take longer than call 2, so completion order would
+    // differ from start order if they were allowed to run concurrently.
+    const p1 = withUserLock(1, async () => {
+      started.push(1);
+      await new Promise((r) => setTimeout(r, 20));
+      order.push(1);
+    });
+    const p2 = withUserLock(1, async () => {
+      started.push(2);
+      order.push(2);
+    });
+
+    await Promise.all([p1, p2]);
+    // Call 2 must not have even STARTED until call 1 fully finished.
+    expect(started).toEqual([1, 2]);
+    expect(order).toEqual([1, 2]);
+  });
+
+  it("does not block calls for a different key", async () => {
+    const order: string[] = [];
+
+    const slow = withUserLock(10, async () => {
+      await new Promise((r) => setTimeout(r, 20));
+      order.push("slow-10");
+    });
+    const fast = withUserLock(20, async () => {
+      order.push("fast-20");
+    });
+
+    await Promise.all([slow, fast]);
+    // The unrelated user's fast call finishes first — it was never queued behind 10's.
+    expect(order).toEqual(["fast-20", "slow-10"]);
+  });
+
+  it("propagates a failure to its own caller without jamming the queue for the next one", async () => {
+    await expect(
+      withUserLock(30, async () => {
+        throw new Error("boom");
+      })
+    ).rejects.toThrow("boom");
+
+    // A later call for the same user must still actually run.
+    const result = await withUserLock(30, async () => "still works");
+    expect(result).toBe("still works");
+  });
+
+  it("returns each call's own result, not another call's", async () => {
+    const [a, b] = await Promise.all([
+      withUserLock(40, async () => "a"),
+      withUserLock(40, async () => "b"),
+    ]);
+    expect(a).toBe("a");
+    expect(b).toBe("b");
   });
 });

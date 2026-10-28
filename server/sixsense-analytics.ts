@@ -1,3 +1,5 @@
+import { SIX_QA_THRESHOLD, unworkedSixQAs } from "./six-qa";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
 import { getDb, getAllAccounts, getAllOpportunities, getAllPeople, getAllGongCalls } from "./db";
@@ -15,8 +17,6 @@ import { intentScores as intentScoresTable } from "../drizzle/schema";
  * return shapes are unchanged, so the Insights / SixsenseAnalytics / Home pages keep working.
  */
 
-// An account counts as a "6sense Qualified Account" at/above this intent score.
-const SIX_QA_THRESHOLD = 70;
 const STAGE_ORDER = ["Target", "Awareness", "Consideration", "Decision", "Purchase"];
 
 function toNum(v: unknown): number {
@@ -55,9 +55,11 @@ type RealData = {
   wonOppValueByAccount: Map<number, number>;
   hasOpenOpp: Set<number>;
   hasWonOpp: Set<number>;
+  /** Any opportunity at all, lost included — the shared definition of a worked 6QA. */
+  accountIdsWithOpportunity: Set<number>;
 };
 
-async function loadReal(): Promise<RealData> {
+async function loadReal(orgId: number): Promise<RealData> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -65,16 +67,23 @@ async function loadReal(): Promise<RealData> {
   // own guarded step rather than chaining .catch on the builder.
   const fetchIntent = async () => {
     try {
-      return (await db.select().from(intentScoresTable)) as any[];
+      return (await db.select().from(intentScoresTable)
+        .where(eq(intentScoresTable.orgId, orgId))) as any[];
     } catch {
       return [] as any[];
     }
   };
+  // Not caught into [] on failure — see server/intel/brain.ts's crawlSnapshot for the
+  // same fix and the reasoning: these already return [] on their own when there's no
+  // database configured, so a .catch(() => []) here only ever hides a real query
+  // failure behind a "0 accounts / 0 opportunities" analytics dashboard that looks
+  // exactly like a workspace that is genuinely empty. Every call site below sits behind
+  // a protectedProcedure.query, so a throw here becomes a normal client-facing error.
   const [accounts, opportunities, contacts, calls, intent] = await Promise.all([
-    getAllAccounts().catch(() => []),
-    getAllOpportunities().catch(() => []),
-    getAllPeople().catch(() => []),
-    getAllGongCalls().catch(() => []),
+    getAllAccounts(orgId),
+    getAllOpportunities(orgId),
+    getAllPeople(orgId),
+    getAllGongCalls(orgId),
     fetchIntent(),
   ]);
 
@@ -90,9 +99,11 @@ async function loadReal(): Promise<RealData> {
   const wonOppValueByAccount = new Map<number, number>();
   const hasOpenOpp = new Set<number>();
   const hasWonOpp = new Set<number>();
+  const accountIdsWithOpportunity = new Set<number>();
   for (const o of opportunities as any[]) {
     const id = o.accountId;
     if (id == null) continue;
+    accountIdsWithOpportunity.add(id);
     const amt = toNum(o.amount);
     const status = String(o.status || "Open").toLowerCase();
     if (status === "won") {
@@ -117,6 +128,7 @@ async function loadReal(): Promise<RealData> {
     wonOppValueByAccount,
     hasOpenOpp,
     hasWonOpp,
+    accountIdsWithOpportunity,
   };
 }
 
@@ -243,10 +255,11 @@ function computeKeywords(d: RealData) {
 function compute6QA(d: RealData) {
   const qaAccounts = d.accounts.filter((a) => toNum(a.intentScore) >= SIX_QA_THRESHOLD);
   const total6QAs = qaAccounts.length;
-  const worked = qaAccounts.filter(
-    (a) => (d.contactsByAccount.get(a.id) || 0) > 0 || (d.callsByAccount.get(a.id) || 0) > 0 || d.hasOpenOpp.has(a.id) || d.hasWonOpp.has(a.id)
-  ).length;
-  const unworked = total6QAs - worked;
+  // Worked means an opportunity exists. It used to also mean "has a contact on file",
+  // which the seed gives nearly every account, so this read 99 worked of 105 against the
+  // home page's 36 — the same label on two pages, eleven times apart. See ./six-qa.
+  const unworked = unworkedSixQAs(qaAccounts, d.accountIdsWithOpportunity).length;
+  const worked = total6QAs - unworked;
   const totalCalls = qaAccounts.reduce((s, a) => s + (d.callsByAccount.get(a.id) || 0), 0);
   const totalContacts = qaAccounts.reduce((s, a) => s + (d.contactsByAccount.get(a.id) || 0), 0);
 
@@ -278,18 +291,18 @@ function compute6QA(d: RealData) {
 }
 
 export const sixsenseAnalyticsRouter = router({
-  getBuyingStages: protectedProcedure.query(async () => {
-    return computeBuyingStages(await loadReal());
+  getBuyingStages: protectedProcedure.query(async ({ ctx }) => {
+    return computeBuyingStages(await loadReal(ctx.orgId));
   }),
 
-  getEngagement: protectedProcedure.query(async () => {
-    return computeEngagement(await loadReal());
+  getEngagement: protectedProcedure.query(async ({ ctx }) => {
+    return computeEngagement(await loadReal(ctx.orgId));
   }),
 
   getKeywords: protectedProcedure
     .input(z.object({ category: z.string().optional(), limit: z.number().default(20) }))
-    .query(async ({ input }) => {
-      const d = await loadReal();
+    .query(async ({ input, ctx }) => {
+      const d = await loadReal(ctx.orgId);
       const { keywords, dataAsOf } = computeKeywords(d);
       const limited = keywords.slice(0, input.limit);
       const filtered = input.category ? limited.filter((k) => k.category === input.category) : limited;
@@ -303,8 +316,8 @@ export const sixsenseAnalyticsRouter = router({
       return { dataAsOf, keywords: filtered, byCategory, categories: Object.keys(byCategory) };
     }),
 
-  get6QAPerformance: protectedProcedure.query(async () => {
-    const d = await loadReal();
+  get6QAPerformance: protectedProcedure.query(async ({ ctx }) => {
+    const d = await loadReal(ctx.orgId);
     const q = compute6QA(d);
     return {
       dataAsOf: d.now,
@@ -338,8 +351,8 @@ export const sixsenseAnalyticsRouter = router({
     };
   }),
 
-  getSummary: protectedProcedure.query(async () => {
-    const d = await loadReal();
+  getSummary: protectedProcedure.query(async ({ ctx }) => {
+    const d = await loadReal(ctx.orgId);
     const stages = computeBuyingStages(d);
     const engagement = computeEngagement(d);
     const q = compute6QA(d);

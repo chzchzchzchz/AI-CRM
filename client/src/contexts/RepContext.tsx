@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { REP_TERRITORIES, matchesTerritory as matchesTerritoryShared, territoryFor, type RepEmail } from "@shared/territories";
 
 // Re-exported so existing importers (RepSwitcher, TopAccounts, Home) keep working.
@@ -61,8 +61,16 @@ export function RepProvider({ children }: { children: ReactNode }) {
 
   // Helper function to check if an account matches the rep's territory
   // The predicate lives in @shared/territories so the server applies the identical rule.
-  const matchesTerritory = (region: string, employeeCount: number): boolean =>
-    matchesTerritoryShared(territoryFor(selectedRep), region, employeeCount);
+  //
+  // Stable per rep. It used to be a new function on every render, so a list memoised on it
+  // either recomputed constantly or — on the accounts page, which left it out of its
+  // dependencies — never noticed the rep changing at all: picking a territory there left
+  // all 1,000 accounts on screen. Its identity now changes exactly when the rep does.
+  const matchesTerritory = useCallback(
+    (region: string, employeeCount: number): boolean =>
+      matchesTerritoryShared(territoryFor(selectedRep), region, employeeCount),
+    [selectedRep]
+  );
 
   return (
     <RepContext.Provider value={{ selectedRep, setSelectedRep, repInfo, isRepMode, matchesTerritory }}>

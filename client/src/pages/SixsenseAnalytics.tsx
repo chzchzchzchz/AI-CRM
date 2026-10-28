@@ -2,6 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DataErrorBanner } from "@/components/ui/data-error-banner";
 import {
   Target,
   Eye,
@@ -35,11 +36,11 @@ const stageBar: Record<string, string> = {
 };
 
 export default function SixsenseAnalytics() {
-  const { data: summary, isLoading: summaryLoading } = trpc.sixsenseAnalytics.getSummary.useQuery();
-  const { data: buyingStages } = trpc.sixsenseAnalytics.getBuyingStages.useQuery();
-  const { data: engagement } = trpc.sixsenseAnalytics.getEngagement.useQuery();
-  const { data: keywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 50 });
-  const { data: performance } = trpc.sixsenseAnalytics.get6QAPerformance.useQuery();
+  const { data: summary, isLoading: summaryLoading, error: summaryError } = trpc.sixsenseAnalytics.getSummary.useQuery();
+  const { data: buyingStages, error: buyingStagesError } = trpc.sixsenseAnalytics.getBuyingStages.useQuery();
+  const { data: engagement, error: engagementError } = trpc.sixsenseAnalytics.getEngagement.useQuery();
+  const { data: keywords, error: keywordsError } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 50 });
+  const { data: performance, error: performanceError } = trpc.sixsenseAnalytics.get6QAPerformance.useQuery();
 
   const stageIcons: Record<string, React.ReactNode> = {
     Target: <Target className="w-4 h-4 text-ink-muted" />,
@@ -60,6 +61,12 @@ export default function SixsenseAnalytics() {
   }
 
   const workedPct = summary?.sixQA?.workedPercent || 0;
+  // With no qualified accounts there is no percentage — 0 of 0 is not 0%, and its
+  // complement is not 100%. The server already guards the division and returns 0,
+  // which this page rendered as "0% of 6QAs" beside "100% opportunity gap": a new
+  // workspace was told it was missing every opportunity it had, of which there were
+  // none. Neither figure is a fact until there is something to divide.
+  const hasSixQA = (summary?.sixQA?.total || 0) > 0;
 
   return (
     <div>
@@ -72,6 +79,11 @@ export default function SixsenseAnalytics() {
             {summary?.dataAsOf && <span className="ml-1 text-ink-subtle">As of {formatDate(summary.dataAsOf)}.</span>}
           </p>
         </div>
+
+        <DataErrorBanner
+          errors={[summaryError, buyingStagesError, engagementError, keywordsError, performanceError]}
+          message="Some 6sense analytics couldn't be loaded — the figures below may be incomplete, not actually zero."
+        />
 
         {/* 6QA headline funnel row: total → worked → gap → ready-to-buy (tonal grid, no colored stripes) */}
         <div className="mb-8 grid grid-cols-2 md:grid-cols-4 gap-px bg-muted rounded-sm overflow-hidden border border-border">
@@ -87,14 +99,24 @@ export default function SixsenseAnalytics() {
               <span aria-hidden className="text-positive">▲</span> Worked
             </div>
             <div className="mt-2 tabular-nums text-2xl text-positive">{summary?.sixQA?.worked || 0}</div>
-            <div className="mt-1 text-xs text-ink-muted">{workedPct}% of 6QAs</div>
+            <div className="mt-1 text-xs text-ink-muted">
+              {hasSixQA ? `${workedPct}% of 6QAs have an opportunity` : "no qualified accounts yet"}
+            </div>
           </div>
-          <div className="bg-card p-4">
+          <div
+            className="bg-card p-4"
+            // The home page shows this same figure; the quality gate fails if they differ.
+            data-metric="unworked-6qa"
+            data-metric-scope="global"
+            data-metric-value={summary?.sixQA?.unworked}
+          >
             <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">
               <span aria-hidden className="text-caution">●</span> Unworked gap
             </div>
             <div className="mt-2 tabular-nums text-2xl text-caution">{summary?.sixQA?.unworked || 0}</div>
-            <div className="mt-1 text-xs text-ink-muted">{100 - workedPct}% opportunity gap</div>
+            <div className="mt-1 text-xs text-ink-muted">
+              {hasSixQA ? `${100 - workedPct}% have no opportunity yet` : "nothing to work yet"}
+            </div>
           </div>
           <div className="bg-card p-4">
             <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted">

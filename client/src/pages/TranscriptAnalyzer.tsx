@@ -98,7 +98,8 @@ export default function TranscriptAnalyzer() {
     }
   });
 
-  const { data: reports, refetch: refetchReports } = trpc.tools.getSavedTranscriptReports.useQuery();
+  const { data: reportsData, refetch: refetchReports } = trpc.tools.getSavedTranscriptReports.useQuery();
+  const reports = reportsData?.reports;
 
   const saveMutation = trpc.tools.saveTranscriptReport.useMutation({
     onSuccess: () => {
@@ -205,7 +206,9 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="new">New Analysis</TabsTrigger>
-            <TabsTrigger value="saved">Saved Reports ({reports?.length || 0})</TabsTrigger>
+            <TabsTrigger value="saved">
+              Saved Reports ({reportsData?.hasMore ? `${reports?.length}+` : reports?.length || 0})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="new" className="space-y-6">
@@ -468,6 +471,13 @@ ${data.nextSteps.map(s => `- ${s}`).join('\n')}
           </TabsContent>
 
           <TabsContent value="saved" className="space-y-4">
+            {/* The query caps at 100 most-recent reports — hasMore means there are
+                older ones this list doesn't show, not that these are all of them. */}
+            {reportsData?.hasMore && (
+              <p className="text-xs text-muted-foreground">
+                Showing your {reports?.length} most recent reports.
+              </p>
+            )}
             {reports && reports.length > 0 ? (
               reports.map((report: any) => (
                 <Card key={report.id} className="cursor-pointer hover:border-accent/30 transition-colors">

@@ -6,10 +6,11 @@ import { AccountJudgement } from"@/components/AccountJudgement";
 import { trpc } from"@/lib/trpc";
 import {
   ArrowLeft, ExternalLink, Users, TrendingUp, Building2,
-  Copy, Check, Flame, Mail, Linkedin, Globe,
+  Copy, Check, Flame, Mail, Globe,
   ChevronRight, Shield, AlertTriangle, BrainCircuit, ListChecks, Zap,
   ArrowUpRight, ArrowDownRight, Minus
 } from"lucide-react";
+import { Linkedin } from "@/components/icons/linkedin";
 import { Link, useParams } from"wouter";
 import { toast } from"sonner";
 import { CompanyLogo } from"@/components/ui/company-logo";
@@ -18,6 +19,7 @@ import { ActivityTimeline } from"@/components/ActivityTimeline";
 import { LogFollowUpDialog } from"@/components/LogFollowUpDialog";
 import { AccountTrajectory } from"@/components/AccountTrajectory";
 import { AccountResearch } from"@/components/AccountResearch";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
 
 // --- Signal helpers -------------------------------------------------------
 // Heat pairs a tinted color with a word + shape/glyph so it survives greyscale
@@ -46,7 +48,7 @@ export default function AccountDetailEnhanced() {
   const accountId = parseInt(id ||"0");
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const { data: account, isLoading } = trpc.accounts.getById.useQuery({ id: accountId });
+  const { data: account, isLoading, error: accountError, refetch: refetchAccount } = trpc.accounts.getById.useQuery({ id: accountId });
 
   // One signal pack drives every fact on this page: contacts, deals, intent history,
   // coverage. It is the same pack the brief is generated from, so the numbers at the
@@ -55,7 +57,7 @@ export default function AccountDetailEnhanced() {
   //
   // Deterministic and LLM-free, so the facts render immediately; only the judgement
   // (in AccountJudgement) waits on a model.
-  const { data: signals } = trpc.intel.accountSignals.useQuery(
+  const { data: signals, error: signalsError } = trpc.intel.accountSignals.useQuery(
     { accountId },
     { enabled: accountId > 0, refetchOnWindowFocus: false }
   );
@@ -97,7 +99,7 @@ export default function AccountDetailEnhanced() {
   // Loading state
   if (isLoading) {
     return (
-      <div>
+      <div data-page-loading="true">
         <div className="container py-6 max-w-7xl">
           <div className="animate-pulse space-y-4">
             <div className="h-8 w-64 bg-muted rounded" />
@@ -107,6 +109,24 @@ export default function AccountDetailEnhanced() {
               <div className="h-96 bg-muted rounded md:col-span-2" />
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Load-failure state, kept distinct from not-found below.
+  //
+  // The query's error used to be discarded, so a failed request fell through to
+  // "Account not found" — a backend outage rendered as a deleted account. That
+  // distinction matters more since org scoping landed: "not found" is now also the
+  // correct, deliberate answer for an id belonging to another organization, and it must
+  // not double as the answer for "we could not ask".
+  if (accountError) {
+    return (
+      <div className="container py-6 max-w-2xl">
+        <DataUnavailable what="this account" detail={accountError} onRetry={() => refetchAccount()} />
+        <div className="text-center mt-4">
+          <Button asChild variant="ghost"><Link href="/accounts"><ArrowLeft className="mr-2 h-4 w-4" />Back</Link></Button>
         </div>
       </div>
     );
@@ -167,7 +187,7 @@ export default function AccountDetailEnhanced() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3 min-w-0">
             <Button variant="ghost" size="icon" asChild>
-              <Link href="/accounts"><ArrowLeft className="h-5 w-5" /></Link>
+              <Link href="/accounts" aria-label="Back to accounts"><ArrowLeft className="h-5 w-5" /></Link>
             </Button>
             {/* Company Logo */}
             <CompanyLogo name={account.name} website={account.domain} size="xl" />
@@ -220,6 +240,20 @@ export default function AccountDetailEnhanced() {
             )}
           </div>
         </div>
+
+        {/* Every number below — intent, pipeline, stakeholders, triggers — comes from
+            this one query. gatherAccountSignals throws on a genuine failure rather than
+            swallowing it into an empty pack (see server/intel/signals.ts), but every
+            field it feeds here was already written as `signals?.foo ?? 0` /
+            `!!signals?.bar.length`, so a thrown error and a real zero-activity account
+            rendered identically: empty pipeline, no stakeholders, no triggers, nothing
+            said about why. Surfacing the query error is the only thing that tells them apart. */}
+        {signalsError && (
+          <div className="flex items-center gap-2 rounded-sm border border-caution/30 bg-caution-subtle px-4 py-2.5 text-sm text-caution">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            Account signals couldn't be loaded — pipeline, stakeholders and intent below may be incomplete, not actually empty.
+          </div>
+        )}
 
         {/* Signature Account Signal band — the one clear read, evidence a glance away */}
         <Card className="border-border bg-card shadow-none">

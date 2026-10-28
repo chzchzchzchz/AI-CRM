@@ -128,5 +128,11 @@ scripts/*import*.json
 SFDC-*.csv
 Find-people-*.csv
 .worktrees/
+# Per-suite test databases. vitest.config.ts sets DEMO_DB_PATH to demo-db.test.json,
+# and individual suites override it with a demo-db.test-<suite>.json of their own so
+# they don't race each other on one file. Only the exact name was ignored, so all 18
+# of the suffixed variants showed up as untracked whenever a suite left one behind
+# (a crash before afterEach, or a run interrupted partway).
 demo-db.test.json
+demo-db.test-*.json
 .dev-session-secret

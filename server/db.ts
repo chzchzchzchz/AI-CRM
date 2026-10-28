@@ -1,8 +1,10 @@
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { assertDatabaseConfigured, sslOption } from "./_core/database-config";
 import mysql from "mysql2/promise";
 import { InsertUser, users, accounts, InsertAccount, contacts, /* people, InsertPerson, clayRequests, InsertClayRequest, gongCalls, InsertGongCall */ calls, opportunities, Opportunity, InsertOpportunity } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { affectedRows } from './_core/affected-rows';
 
 import fs from 'fs';
 import path from 'path';
@@ -40,6 +42,68 @@ function getTableName(table: any): string {
     }
   }
   return '';
+}
+
+/**
+ * Coerce a stored value into something orderable, or null if it isn't.
+ *
+ * The JSON store keeps dates as ISO strings and numbers as numbers, while a query's
+ * operand arrives as a Date or a number. Comparing those with `<` directly gives
+ * string-lexicographic ordering for dates ("2024-10-01" < "2024-9-01" is true) and NaN
+ * for anything unparseable, which silently answers false for every row.
+ */
+function comparable(v: any): number | null {
+  if (v === null || v === undefined) return null;
+  if (v instanceof Date) return v.getTime();
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'boolean') return v ? 1 : 0;
+  if (typeof v === 'string') {
+    const n = Number(v);
+    if (v.trim() !== '' && Number.isFinite(n)) return n;
+    const t = Date.parse(v);
+    return Number.isNaN(t) ? null : t;
+  }
+  return null;
+}
+
+
+/**
+ * Does one row satisfy one parsed filter?
+ *
+ * Extracted because there were three copies: the select path handled every operator, and
+ * the update and delete paths each carried a reduced copy that understood only
+ * `is_not_null` and equality. So `delete(...).where(gt(expiresAt, now))` compared for
+ * EQUALITY and deleted almost nothing, while the equivalent select was correct — the
+ * same query meaning two different things depending on the verb in front of it. One
+ * matcher, three call sites.
+ */
+/**
+ * SQL LIKE, including the `%` and `_` wildcards, case-insensitively.
+ *
+ * Callers build patterns like `%${companyName}%` and expect substring matching. Treating
+ * the pattern as a literal — which is what an equality filter does with it — matches only
+ * a row whose value is the string "%Acme%", i.e. nothing, ever.
+ */
+function likeMatches(value: string, pattern: string): boolean {
+  const rx = pattern
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')  // escape regex metacharacters in the literal parts
+    .replace(/%/g, '.*')
+    .replace(/_/g, '.');
+  return new RegExp(`^${rx}$`, 'i').test(value);
+}
+
+
+/**
+ * Parse one condition into a standalone AND-list of filters.
+ *
+ * Used for the branches of an OR and the body of a NOT, which need their own lists
+ * rather than being flattened into the query's top-level one. Runs the same parser as
+ * the main path — a second implementation is how the two would drift.
+ */
+function collectFilters(condition: any): any[] {
+  const collector = new MockDrizzleQueryBuilder('select');
+  collector.where(condition);
+  return collector.currentFilters();
 }
 
 // Initial demo dataset
@@ -373,18 +437,22 @@ class MockDrizzleQueryBuilder {
   private operation: 'select' | 'insert' | 'update' | 'delete';
   private tableName: string = '';
   private tableSchema: any = null;
-  private filters: Array<{ field: string; value: any; op?: string; values?: any[] }> = [];
+  private filters: Array<{ field: string; value: any; op?: string; values?: any[]; branches?: any[][] }> = [];
   private limitCount: number = 0;
   private offsetCount: number = 0;
   private insertValues: any = null;
   private duplicateUpdate: any = null;
   private updateValues: any = null;
-  private orderByField: string = '';
-  private orderDirection: 'asc' | 'desc' = 'asc';
+  private orderTerms: Array<{ field: string; direction: 'asc' | 'desc' }> = [];
   public selectFields: any = null;
 
   constructor(operation: 'select' | 'insert' | 'update' | 'delete') {
     this.operation = operation;
+  }
+
+  /** Seam for collectFilters, which parses an OR branch into its own AND-list. */
+  currentFilters() {
+    return this.filters;
   }
 
   from(table: any) {
@@ -405,6 +473,38 @@ class MockDrizzleQueryBuilder {
       // Check for nested SQL / logical compound conditions
       const sqlChunks = condition.queryChunks.filter((chunk: any) => chunk && chunk.queryChunks);
       if (sqlChunks.length > 0) {
+        // The joining word, read from the StringChunks between the branches. Every
+        // sub-condition used to be pushed onto one flat AND list regardless — so
+        // `or(eq(id,1), eq(id,2))` became `id = 1 AND id = 2` and matched nothing. Not a
+        // wrong row count: zero rows, from a query the caller wrote to widen a search.
+        const joiner = condition.queryChunks
+          .filter((c: any) => c && Array.isArray(c.value))
+          .map((c: any) => c.value.join(''))
+          .join(' ')
+          .toLowerCase();
+
+        if (/\bor\b/.test(joiner)) {
+          this.filters.push({
+            field: '',
+            value: null,
+            op: 'or',
+            branches: sqlChunks.map((sub: any) => collectFilters(sub)),
+          });
+          return;
+        }
+
+        if (/\bnot\b/.test(joiner)) {
+          // `not(x)` used to be parsed as plain `x`, so it returned exactly the rows it
+          // was written to exclude — the most confidently wrong answer available.
+          this.filters.push({
+            field: '',
+            value: null,
+            op: 'not',
+            branches: [collectFilters(sqlChunks[0])],
+          });
+          return;
+        }
+
         for (const subCond of sqlChunks) {
           this.parseCondition(subCond);
         }
@@ -416,7 +516,17 @@ class MockDrizzleQueryBuilder {
       // A scalar param is a Param object (has `.value`) that is NOT itself an array and is
       // NOT a StringChunk (whose `.value` is an array like [""] / [" in "]).
       const scalarParam = condition.queryChunks.find(
-        (chunk: any) => chunk && !Array.isArray(chunk) && 'value' in chunk && !Array.isArray(chunk.value)
+        // `typeof chunk === 'object'` is load-bearing: drizzle's like()/ilike() put the
+        // pattern in as a bare string, and `'value' in "%acme%"` throws
+        // "Cannot use 'in' operator to search for 'value' in %acme%" — so every like()
+        // query in demo mode was a 500, not a wrong answer.
+        (chunk: any) =>
+          chunk && typeof chunk === 'object' && !Array.isArray(chunk) &&
+          'value' in chunk && !Array.isArray(chunk.value)
+      );
+      // A bare string operand, which is how like()/ilike() render their pattern.
+      const stringOperand = condition.queryChunks.find(
+        (chunk: any) => typeof chunk === 'string'
       );
       // inArray(col, [...]) renders as: col, " in ", [Param, Param, ...]. The values live in a
       // nested Array of Param objects. Support it so multi-id fetches (e.g.
@@ -443,28 +553,35 @@ class MockDrizzleQueryBuilder {
             op: 'in',
             values: inValues.map((p: any) => (p && typeof p === 'object' && 'value' in p ? p.value : p)),
           });
-        } else if (scalarParam) {
-          // The chunk between column and param carries the actual SQL operator as
-          // text (" = ", " > ", " < ", " >= ", " <= ") — eq/gt/lt/gte/lte all reach
-          // this branch identically (each has exactly one column and one scalar
-          // param), and this used to fall through to a bare {field, value}, which
-          // execute() below always evaluates as string equality regardless of what
-          // the original condition actually was. A gt()/lt()/gte()/lte() against the
-          // demo-mode JSON store silently became an equality check — confirmed live
-          // via db-dust.ts's cache-expiry filter, which could never match anything
-          // its own write path had just inserted. Read the operator text the same
-          // way the is-null / is-not-null branch below already does.
+        } else if (scalarParam || stringOperand !== undefined) {
+          // Read the OPERATOR, not just the operand.
+          //
+          // This used to push a bare { field, value }, which the filter step applies as
+          // equality — so every range comparison in the app silently became "==" in demo
+          // mode. Measured against the shipped dataset: `gte(intentScore, 70)` returned 5
+          // accounts instead of 105 (only those scored exactly 70), and
+          // `lt(intentScore, 40)` returned 6 instead of 751 — the six scored exactly 40,
+          // which are not even in the range asked for. Hot leads, priority actions and
+          // bulk insights all select by score range, and demo mode is how essentially
+          // everyone runs this app: the home page said "HOT 105" (counted in JS over all
+          // accounts) while every server-side range query worked on five.
+          //
+          // Drizzle renders the operator as a StringChunk between the column and the
+          // param — the same chunks the isNull/isNotNull branch below already reads.
           const opText = condition.queryChunks
             .filter((c: any) => c && Array.isArray(c.value))
             .map((c: any) => c.value.join(''))
-            .join('');
+            .join(' ');
+          // Two-character operators first: '>' would otherwise match inside '>='.
           const op =
+            /\blike\b/i.test(opText) ? 'like' :
             opText.includes('>=') ? 'gte' :
             opText.includes('<=') ? 'lte' :
+            opText.includes('<>') || opText.includes('!=') ? 'ne' :
             opText.includes('>') ? 'gt' :
             opText.includes('<') ? 'lt' :
-            'eq';
-          this.filters.push({ field, value: scalarParam.value, op });
+            undefined;
+          this.filters.push({ field, value: scalarParam ? scalarParam.value : stringOperand, op });
         } else {
           // No literal value chunk — either an isNotNull()/isNull() condition (a text
           // chunk carries "is not null" / "is null", no Param) or a column-to-column
@@ -483,6 +600,22 @@ class MockDrizzleQueryBuilder {
             this.filters.push({ field, value: null, op: 'is_not_null' });
           } else if (text.includes('is null')) {
             this.filters.push({ field, value: null, op: 'is_null' });
+          }
+          else if (field === 'orgId') {
+            // The one filter where "too many rows" is not the safe direction.
+            //
+            // Everywhere else in this mock, a condition it cannot evaluate is dropped:
+            // returning extra rows surfaces as a wrong count, which someone notices,
+            // rather than a confidently empty result, which reads as "no data". An org
+            // filter inverts that. Dropping it returns EVERY tenant's rows to whichever
+            // tenant asked — a silent cross-customer read that looks exactly like a
+            // correct answer. Fail closed instead, and loudly: a demo-mode query whose
+            // org filter could not be parsed must match nothing.
+            console.error(
+              '[MockDrizzle] could not evaluate an orgId filter; matching no rows rather ' +
+                'than returning every org\'s data. This is a bug in the mock, not in the caller.'
+            );
+            this.filters.push({ field, value: '__unevaluable_org_filter__' });
           }
           // Otherwise: a comparison the mock cannot evaluate. Adding no filter returns
           // too many rows rather than too few — the safer failure direction for a
@@ -525,34 +658,40 @@ class MockDrizzleQueryBuilder {
     return this;
   }
 
-  orderBy(orderExpr: any) {
-    if (!orderExpr) return this;
+  /**
+   * Record the sort, including the direction.
+   *
+   * This read `orderExpr.name` and `orderExpr.direction`, which a bare column has and
+   * `desc(col)` does not: drizzle wraps it in an SQL object whose queryChunks are
+   * [column, " desc"]. So `.name` was undefined, orderByField stayed empty, and NO
+   * SORTING HAPPENED AT ALL — asc and desc returned byte-identical results, in insertion
+   * order. Combined with `.limit(n)` that turns "top n accounts by intent score" into
+   * "the first n accounts in the file", presented as the top n. Measured on the shipped
+   * dataset, `orderBy(desc(intentScore)).limit(5)` returned scores 92, 100, 95, 84, 90.
+   *
+   * Also takes multiple terms, because `.orderBy(a, b)` is one call with two arguments
+   * and the second was silently dropped.
+   */
+  orderBy(...exprs: any[]) {
+    for (const expr of exprs) {
+      if (!expr) continue;
 
-    // A bare column (orderBy(accounts.name)) exposes .name/.table directly. desc()/
-    // asc() wrap it instead — d.name and d.fieldName are both undefined on the
-    // wrapper, which meant EVERY orderBy(desc(...))/orderBy(asc(...)) call against
-    // the demo-mode JSON store silently sorted nothing at all (orderByField stayed
-    // '', and the sort step below skips entirely when it's falsy). The column is
-    // still there, one level in via queryChunks; direction is the trailing " desc"/
-    // " asc" text chunk. Reference-map the column back to its JS key the same way
-    // parseCondition does, since a table's SQL column name isn't always its JS
-    // property name (dustCache: query_hash vs queryHash).
-    const column = orderExpr.table && orderExpr.name
-      ? orderExpr
-      : (orderExpr.queryChunks || []).find((c: any) => c && c.table && c.name);
+      // A bare column.
+      if (expr.name) {
+        this.orderTerms.push({ field: expr.name, direction: expr.direction || 'asc' });
+        continue;
+      }
 
-    if (column) {
-      const jsKey = this.tableSchema
-        ? Object.keys(this.tableSchema).find(k => this.tableSchema[k] === column)
-        : undefined;
-      this.orderByField = jsKey ?? column.name;
-
-      const dirText = (orderExpr.queryChunks || [])
+      // desc(col) / asc(col): an SQL object carrying the column and a direction chunk.
+      const chunks = Array.isArray(expr.queryChunks) ? expr.queryChunks : [];
+      const col = chunks.find((c: any) => c && c.name && c.table);
+      if (!col) continue;
+      const text = chunks
         .filter((c: any) => c && Array.isArray(c.value))
         .map((c: any) => c.value.join(''))
-        .join('')
+        .join(' ')
         .toLowerCase();
-      this.orderDirection = dirText.includes('desc') ? 'desc' : 'asc';
+      this.orderTerms.push({ field: col.name, direction: text.includes('desc') ? 'desc' : 'asc' });
     }
     return this;
   }
@@ -579,7 +718,16 @@ class MockDrizzleQueryBuilder {
     const tableData = dbData[this.tableName];
 
     if (this.operation === 'select') {
-      let results = [...tableData];
+      // A row written before the orgId column existed belongs to the default org —
+      // the same thing MySQL's `DEFAULT 1` does for existing rows when the column is
+      // added. Applied before filtering, because a filter comparing String(undefined)
+      // against "1" matches nothing: the demo dataset would go blank the moment the
+      // first query started scoping, and "no accounts" reads as an empty book rather
+      // than a bug.
+      const hasOrgColumn = Boolean(this.tableSchema?.orgId);
+      let results: any[] = hasOrgColumn
+        ? tableData.map((r: any) => (r.orgId === undefined || r.orgId === null ? { ...r, orgId: 1 } : r))
+        : [...tableData];
 
       // Apply filters
       for (const filter of this.filters) {
@@ -587,12 +735,31 @@ class MockDrizzleQueryBuilder {
       }
 
       // Handle sorting
-      if (this.orderByField) {
+      if (this.orderTerms.length) {
         results.sort((a, b) => {
-          const valA = a[this.orderByField];
-          const valB = b[this.orderByField];
-          if (valA < valB) return this.orderDirection === 'asc' ? -1 : 1;
-          if (valA > valB) return this.orderDirection === 'asc' ? 1 : -1;
+          for (const { field, direction } of this.orderTerms) {
+            const av = a[field];
+            const bv = b[field];
+
+            // Nulls sort last in both directions. `null < 5` is true in JavaScript
+            // (null coerces to 0), so an account with no intent score would otherwise
+            // lead a descending "top accounts" list from the bottom.
+            const aNull = av === null || av === undefined;
+            const bNull = bv === null || bv === undefined;
+            if (aNull && bNull) continue;
+            if (aNull) return 1;
+            if (bNull) return -1;
+
+            // Numeric and date columns compare by value; anything else by string, so
+            // "10" does not sort before "9" and an ISO date does not sort lexically.
+            const an = comparable(av);
+            const bn = comparable(bv);
+            let cmp: number;
+            if (an !== null && bn !== null) cmp = an === bn ? 0 : an < bn ? -1 : 1;
+            else cmp = String(av).localeCompare(String(bv));
+
+            if (cmp !== 0) return direction === 'asc' ? cmp : -cmp;
+          }
           return 0;
         });
       }
@@ -643,9 +810,55 @@ class MockDrizzleQueryBuilder {
         });
       }
 
-      // Handle count query projection
-      if (this.selectFields && typeof this.selectFields === 'object' && 'count' in this.selectFields) {
-        return [{ count: results.length }];
+      // Aggregate projections — decided by the EXPRESSION, not by the alias.
+      //
+      // This used to be `'count' in this.selectFields`, so whether `count(*)` worked
+      // depended on what you happened to name it:
+      //
+      //   select({ count: sql`count(*)` })  ->  [{ count: 10023 }]   correct
+      //   select({ n:     sql`count(*)` })  ->  10023 empty objects  silently wrong
+      //   select({ count: users.id })       ->  [{ count: 10023 }]   a plain column
+      //                                                             replaced by a row count
+      //
+      // The middle one is how this was found: a limit check that read zero because its
+      // alias was `n`. The third is worse and was latent — a legitimate projection
+      // aliased `count` returning something entirely different from what it asked for.
+      const aggregates = Object.entries(this.selectFields ?? {}).filter(([, expr]) =>
+        isCountExpression(expr)
+      );
+      if (aggregates.length > 0) {
+        const row: any = {};
+        for (const [alias] of aggregates) row[alias] = results.length;
+        return [row];
+      }
+
+      // Apply the column projection.
+      //
+      // `db.select({ id, name })` used to return the WHOLE stored row. Real MySQL returns
+      // the named columns and nothing else, so a caller reading a field it never selected
+      // worked in demo mode and failed against a real database — the divergence that makes
+      // "it works locally" mean nothing.
+      //
+      // It also meant a narrowing projection was not a control. `admin.getAllUsers`
+      // declared `db.select({ id, name, email, role, ... })` over `users` specifically to
+      // keep passwordHash and the TOTP secret out of the response, and got them anyway.
+      // That one is separately (and correctly) closed in _core/publicUser.ts, which
+      // re-picks the safe fields in JS so the guarantee does not depend on the store —
+      // but the projection should also just work.
+      if (this.selectFields && typeof this.selectFields === 'object') {
+        const aliases = Object.entries(this.selectFields);
+        results = results.map((row: any) => {
+          const out: any = {};
+          for (const [alias, col] of aliases) {
+            // The alias may name a column on this table, a column decorated onto the row
+            // by the join handling above, or (for an SQL expression the shim cannot
+            // evaluate) nothing — in which case the alias is still present, as undefined,
+            // rather than silently absent.
+            const name = (col as any)?.name;
+            out[alias] = row[alias] !== undefined ? row[alias] : name ? row[name] : undefined;
+          }
+          return out;
+        });
       }
 
       return results;
@@ -759,7 +972,7 @@ class MockDrizzleQueryBuilder {
 
       for (let i = 0; i < tableData.length; i++) {
         const item = tableData[i];
-        const matches = this.filters.every(filter => matchesFilter(item, filter));
+        const matches = this.filters.every((filter: any) => matchesFilter(item, filter));
         if (matches) {
           tableData[i] = {
             ...item,
@@ -778,7 +991,7 @@ class MockDrizzleQueryBuilder {
     if (this.operation === 'delete') {
       const originalLength = tableData.length;
       const newTableData = tableData.filter((item: any) => {
-        const matches = this.filters.every(filter => matchesFilter(item, filter));
+        const matches = this.filters.every((filter: any) => matchesFilter(item, filter));
         return !matches;
       });
       const deletedCount = originalLength - newTableData.length;
@@ -820,6 +1033,27 @@ class MockDrizzle {
   }
 }
 
+/**
+ * Is this projection value a `count(...)` aggregate?
+ *
+ * Drizzle builds `sql\`count(*)\`` into an object of query chunks rather than a string,
+ * so there is nothing to compare against directly — this stringifies the chunks and looks
+ * for the call. Crude, and right for the one aggregate this shim claims to support:
+ * anything else (sum, avg, a window function) is not detected, does not pretend to work,
+ * and falls through to the ordinary projection where its alias comes back undefined
+ * rather than confidently wrong.
+ */
+function isCountExpression(expr: any): boolean {
+  if (!expr || typeof expr !== "object") return false;
+  const chunks = (expr as any).queryChunks ?? (expr as any).sql ?? null;
+  if (!chunks) return false;
+  try {
+    return /count\s*\(/i.test(JSON.stringify(chunks));
+  } catch {
+    return false;
+  }
+}
+
 // Get raw mysql2 pool for direct queries
 export async function getPool(): Promise<mysql.Pool | null> {
   if (process.env.DEMO_MODE === "true") {
@@ -834,7 +1068,10 @@ export async function getPool(): Promise<mysql.Pool | null> {
         user: url.username,
         password: url.password,
         database: url.pathname.slice(1),
-        ssl: { rejectUnauthorized: false },
+        // Was `{ rejectUnauthorized: false }`, hardcoded: encrypted but unauthenticated
+        // where the server spoke TLS, and a failed handshake where it did not. See
+        // _core/database-config.ts.
+        ssl: sslOption(),
         waitForConnections: true,
         connectionLimit: 10,
       });
@@ -866,6 +1103,12 @@ export async function getDb() {
       _db = new MockDrizzle() as any;
     }
   } else if (!_db) {
+    // Only demo mode gets the demo store. This branch used not to check, so
+    // DEMO_MODE=false with no DATABASE_URL served 1,000 synthetic accounts as though
+    // they were the customer's — and the readiness probe, which MockDrizzle answers
+    // perfectly, called that instance healthy. assertDatabaseConfigured() stops a real
+    // deployment from reaching here at all; this is the second lock on the same door.
+    assertDatabaseConfigured();
     console.warn("[Database] No DATABASE_URL found, falling back to local JSON database");
     _db = new MockDrizzle() as any;
   }
@@ -922,6 +1165,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
+    // tenancy-exempt: session resolution — this runs to FIND the user whose org everything else is filtered by
     await db.insert(users).values(values).onDuplicateKeyUpdate({
       set: updateSet,
     });
@@ -938,13 +1182,14 @@ export async function getUserByOpenId(openId: string) {
     return undefined;
   }
 
+  // tenancy-exempt: session resolution — this runs to FIND the user whose org everything else is filtered by
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
 }
 
 // Account queries
-export async function upsertAccount(account: InsertAccount) {
+export async function upsertAccount(orgId: number, account: InsertAccount) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot upsert account: database not available");
@@ -952,8 +1197,12 @@ export async function upsertAccount(account: InsertAccount) {
   }
 
   try {
-    await db.insert(accounts).values(account).onDuplicateKeyUpdate({
-      set: account,
+    // orgId spelled out in the statement rather than hidden behind a variable: it is
+    // the tenant boundary, and `pnpm tenancy` reads the query to decide whether one is
+    // present. A boundary a reader (or the audit) cannot see in the query is a boundary
+    // nobody can check.
+    await db.insert(accounts).values({ ...account, orgId }).onDuplicateKeyUpdate({
+      set: { ...account, orgId },
     });
   } catch (error) {
     console.error("[Database] Failed to upsert account:", error);
@@ -961,14 +1210,18 @@ export async function upsertAccount(account: InsertAccount) {
   }
 }
 
-export async function getAllAccounts(isDemoUser: boolean = false) {
+export async function getAllAccounts(orgId: number, isDemoUser: boolean = false) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get accounts: database not available");
     return [];
   }
 
-  const allAccounts = await db.select().from(accounts).orderBy(desc(accounts.createdAt));
+  const allAccounts = await db
+    .select()
+    .from(accounts)
+    .where(eq(accounts.orgId, orgId))
+    .orderBy(desc(accounts.createdAt));
 
   // If demo user, only show demo accounts (those with name starting with "Demo_")
   if (isDemoUser && allAccounts.some((a: any) => a.name?.startsWith('Demo_'))) {
@@ -979,28 +1232,46 @@ export async function getAllAccounts(isDemoUser: boolean = false) {
   return allAccounts.filter((a: any) => !a.name?.startsWith('Demo_'));
 }
 
-export async function getAccountById(id: number) {
+export async function getAccountById(orgId: number, id: number) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get account: database not available");
     return undefined;
   }
 
-  const result = await db.select().from(accounts).where(eq(accounts.id, id)).limit(1);
+  // The org half is not decoration: an account id is a small integer a caller can
+  // simply guess, so without it "give me account 42" reaches whichever tenant owns 42.
+  const result = await db
+    .select()
+    .from(accounts)
+    .where(and(eq(accounts.orgId, orgId), eq(accounts.id, id)))
+    .limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function updateAccount(id: number, updates: Partial<InsertAccount>) {
+/**
+ * Returns how many rows were touched, so a caller can tell an edit from a no-op.
+ *
+ * It used to return void, which left every caller unable to distinguish "updated" from
+ * "matched nothing" — and validation.fixIssue reported `success: true` either way. Org
+ * scoping makes a miss MORE likely, not less: another tenant's id is now a legitimate
+ * zero-row write, and that must not be reported as a successful edit.
+ */
+export async function updateAccount(orgId: number, id: number, updates: Partial<InsertAccount>): Promise<number> {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot update account: database not available");
-    return;
+    return 0;
   }
 
   try {
-    await db.update(accounts)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(accounts.id, id));
+    // orgId is deliberately not settable through `updates` — moving a row between
+    // tenants is not an edit, and the caller's own org is the only one it may write to.
+    const { orgId: _ignored, ...safe } = updates as Partial<InsertAccount> & { orgId?: number };
+    const result = await db.update(accounts)
+      .set({ ...safe, updatedAt: new Date() })
+      .where(and(eq(accounts.orgId, orgId), eq(accounts.id, id)));
+    return affectedRows(result);
   } catch (error) {
     console.error("[Database] Failed to update account:", error);
     throw error;
@@ -1008,7 +1279,7 @@ export async function updateAccount(id: number, updates: Partial<InsertAccount>)
 }
 
 // Contacts queries (renamed from people)
-export async function upsertPerson(person: any) {
+export async function upsertPerson(orgId: number, person: any) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot upsert person: database not available");
@@ -1016,8 +1287,8 @@ export async function upsertPerson(person: any) {
   }
 
   try {
-    await db.insert(contacts).values(person).onDuplicateKeyUpdate({
-      set: person,
+    await db.insert(contacts).values({ ...person, orgId }).onDuplicateKeyUpdate({
+      set: { ...person, orgId },
     });
   } catch (error) {
     console.error("[Database] Failed to upsert person:", error);
@@ -1025,7 +1296,7 @@ export async function upsertPerson(person: any) {
   }
 }
 
-export async function getAllPeople() {
+export async function getAllPeople(orgId: number) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get people: database not available");
@@ -1065,13 +1336,14 @@ export async function getAllPeople() {
     })
     .from(contacts)
     .leftJoin(accounts, eq(contacts.accountId, accounts.id))
+    .where(eq(contacts.orgId, orgId))
     .orderBy(desc(contacts.createdAt));
-  
+
   return results;
 }
 
 // Paginated version for performance
-export async function getPeoplePaginated(limit: number = 100, offset: number = 0) {
+export async function getPeoplePaginated(orgId: number, limit: number = 100, offset: number = 0) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get people: database not available");
@@ -1094,10 +1366,14 @@ export async function getPeoplePaginated(limit: number = 100, offset: number = 0
       })
       .from(contacts)
       .leftJoin(accounts, eq(contacts.accountId, accounts.id))
+      .where(eq(contacts.orgId, orgId))
       .orderBy(desc(contacts.createdAt))
       .limit(limit)
       .offset(offset),
-    db.select({ count: sql<number>`count(*)` }).from(contacts)
+    // The count is scoped too. A page of this org's contacts under another org's total
+    // is a pager that promises pages which come back empty — and quietly discloses how
+    // many contacts the other tenant has.
+    db.select({ count: sql<number>`count(*)` }).from(contacts).where(eq(contacts.orgId, orgId))
   ]);
 
   return { 
@@ -1106,19 +1382,7 @@ export async function getPeoplePaginated(limit: number = 100, offset: number = 0
   };
 }
 
-export async function getPeopleByCompany(companyName: string) {
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get people: database not available");
-    return [];
-  }
-
-  // Company column doesn't exist - this function is deprecated
-  // Use getContactsByAccountId instead
-  return [];
-}
-
-export async function getPersonById(id: number) {
+export async function getPersonById(orgId: number, id: number) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get person: database not available");
@@ -1152,13 +1416,13 @@ export async function getPersonById(id: number) {
     })
     .from(contacts)
     .leftJoin(accounts, eq(contacts.accountId, accounts.id))
-    .where(eq(contacts.id, id))
+    .where(and(eq(contacts.orgId, orgId), eq(contacts.id, id)))
     .limit(1);
   
   return results[0] || null;
 }
 
-export async function getContactsByAccountId(accountId: number) {
+export async function getContactsByAccountId(orgId: number, accountId: number) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get contacts: database not available");
@@ -1187,7 +1451,7 @@ export async function getContactsByAccountId(accountId: number) {
     })
     .from(contacts)
     .leftJoin(accounts, eq(contacts.accountId, accounts.id))
-    .where(eq(contacts.accountId, accountId));
+    .where(and(eq(contacts.orgId, orgId), eq(contacts.accountId, accountId)));
   
   return results;
 }
@@ -1246,18 +1510,18 @@ export async function getContactsByAccountId(accountId: number) {
 // }
 
 // Calls queries (renamed from gongCalls)
-export async function getAllGongCalls() {
+export async function getAllGongCalls(orgId: number) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get calls: database not available");
     return [];
   }
 
-  return await db.select().from(calls).orderBy(desc(calls.callDate));
+  return await db.select().from(calls).where(eq(calls.orgId, orgId)).orderBy(desc(calls.callDate));
 }
 
 // Paginated version for performance
-export async function getGongCallsPaginated(limit: number = 50, offset: number = 0) {
+export async function getGongCallsPaginated(orgId: number, limit: number = 50, offset: number = 0) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get calls: database not available");
@@ -1265,8 +1529,8 @@ export async function getGongCallsPaginated(limit: number = 50, offset: number =
   }
 
   const [callsResult, countResult] = await Promise.all([
-    db.select().from(calls).orderBy(desc(calls.callDate)).limit(limit).offset(offset),
-    db.select({ count: sql<number>`count(*)` }).from(calls)
+    db.select().from(calls).where(eq(calls.orgId, orgId)).orderBy(desc(calls.callDate)).limit(limit).offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(calls).where(eq(calls.orgId, orgId))
   ]);
 
   return { 
@@ -1275,7 +1539,7 @@ export async function getGongCallsPaginated(limit: number = 50, offset: number =
   };
 }
 
-export async function getGongCallsByCompany(companyName: string) {
+export async function getGongCallsByCompany(orgId: number, companyName: string) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get calls: database not available");
@@ -1287,27 +1551,31 @@ export async function getGongCallsByCompany(companyName: string) {
   const matched = await db
     .select({ id: accounts.id })
     .from(accounts)
-    .where(eq(accounts.name, companyName));
+    .where(and(eq(accounts.orgId, orgId), eq(accounts.name, companyName)));
   const ids = (matched as any[]).map((a) => a.id);
   if (ids.length === 0) return [];
   const all: any[] = [];
   for (const id of ids) {
-    all.push(...(await getGongCallsByAccountId(id)));
+    all.push(...(await getGongCallsByAccountId(orgId, id)));
   }
   return all;
 }
 
-export async function getGongCallsByAccountId(accountId: number) {
+export async function getGongCallsByAccountId(orgId: number, accountId: number) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get calls: database not available");
     return [];
   }
 
-  return await db.select().from(calls).where(eq(calls.accountId, accountId)).orderBy(desc(calls.callDate));
+  return await db
+    .select()
+    .from(calls)
+    .where(and(eq(calls.orgId, orgId), eq(calls.accountId, accountId)))
+    .orderBy(desc(calls.callDate));
 }
 
-export async function getGongCallsByPersonId(personId: number) {
+export async function getGongCallsByPersonId(orgId: number, personId: number) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get calls: database not available");
@@ -1315,7 +1583,11 @@ export async function getGongCallsByPersonId(personId: number) {
   }
 
   // personId column is now contactId
-  return await db.select().from(calls).where(eq(calls.contactId, personId)).orderBy(desc(calls.callDate));
+  return await db
+    .select()
+    .from(calls)
+    .where(and(eq(calls.orgId, orgId), eq(calls.contactId, personId)))
+    .orderBy(desc(calls.callDate));
 }
 
 
@@ -1327,7 +1599,7 @@ export async function getGongCallsByPersonId(personId: number) {
  * Bulk upsert accounts from Salesforce
  * Uses sfdcAccountId as the unique key for matching
  */
-export async function bulkUpsertAccountsFromSalesforce(accountsData: Array<{
+export async function bulkUpsertAccountsFromSalesforce(orgId: number, accountsData: Array<{
   name: string;
   domain: string | null;
   industry: string | null;
@@ -1352,10 +1624,13 @@ export async function bulkUpsertAccountsFromSalesforce(accountsData: Array<{
   for (const account of accountsData) {
     try {
       // Check if account exists by sfdcAccountId
+      // Matching on sfdcAccountId ALONE would find another tenant's row for the same
+      // Salesforce account — two customers can legitimately both track it — and the
+      // update below would then rewrite their data with this sync's values.
       const existing = await db
         .select({ id: accounts.id })
         .from(accounts)
-        .where(eq(accounts.sfdcAccountId, account.sfdcAccountId))
+        .where(and(eq(accounts.orgId, orgId), eq(accounts.sfdcAccountId, account.sfdcAccountId)))
         .limit(1);
 
       if (existing.length > 0) {
@@ -1373,11 +1648,12 @@ export async function bulkUpsertAccountsFromSalesforce(accountsData: Array<{
             type: account.type,
             updatedAt: new Date(),
           })
-          .where(eq(accounts.sfdcAccountId, account.sfdcAccountId));
+          .where(and(eq(accounts.orgId, orgId), eq(accounts.sfdcAccountId, account.sfdcAccountId)));
         updated++;
       } else {
         // Insert new
         await db.insert(accounts).values({
+          orgId,
           name: account.name,
           domain: account.domain,
           industry: account.industry,
@@ -1405,7 +1681,7 @@ export async function bulkUpsertAccountsFromSalesforce(accountsData: Array<{
  * Uses sfdcContactId as the unique key for matching
  * Links to accounts via sfdcAccountId
  */
-export async function bulkUpsertContactsFromSalesforce(contactsData: Array<{
+export async function bulkUpsertContactsFromSalesforce(orgId: number, contactsData: Array<{
   name: string;
   email: string | null;
   title: string | null;
@@ -1428,7 +1704,10 @@ export async function bulkUpsertContactsFromSalesforce(contactsData: Array<{
 
   // Build a map of sfdcAccountId -> accountId for linking
   const accountMap = new Map<string, number>();
-  const allAccounts = await db.select({ id: accounts.id, sfdcAccountId: accounts.sfdcAccountId }).from(accounts);
+  const allAccounts = await db
+    .select({ id: accounts.id, sfdcAccountId: accounts.sfdcAccountId })
+    .from(accounts)
+    .where(eq(accounts.orgId, orgId));
   for (const acc of allAccounts) {
     if (acc.sfdcAccountId) {
       accountMap.set(acc.sfdcAccountId, acc.id);
@@ -1444,7 +1723,7 @@ export async function bulkUpsertContactsFromSalesforce(contactsData: Array<{
       const existing = await db
         .select({ id: contacts.id, linkedinUrl: contacts.linkedinUrl })
         .from(contacts)
-        .where(eq(contacts.sfdcContactId, contact.sfdcContactId))
+        .where(and(eq(contacts.orgId, orgId), eq(contacts.sfdcContactId, contact.sfdcContactId)))
         .limit(1);
 
       if (existing.length > 0) {
@@ -1462,12 +1741,13 @@ export async function bulkUpsertContactsFromSalesforce(contactsData: Array<{
             accountId: accountId || null,
             updatedAt: new Date(),
           })
-          .where(eq(contacts.sfdcContactId, contact.sfdcContactId));
+          .where(and(eq(contacts.orgId, orgId), eq(contacts.sfdcContactId, contact.sfdcContactId)));
         updated++;
         if (accountId) linked++;
       } else {
         // Insert new
         await db.insert(contacts).values({
+          orgId,
           name: contact.name,
           email: contact.email,
           title: contact.title,
@@ -1492,18 +1772,24 @@ export async function bulkUpsertContactsFromSalesforce(contactsData: Array<{
 /**
  * Get sync status - counts of accounts and contacts
  */
-export async function getSyncStatus() {
+export async function getSyncStatus(orgId: number) {
   const db = await getDb();
   if (!db) {
     return { accounts: 0, contacts: 0, linkedContacts: 0 };
   }
 
-  const [accountCount] = await db.select({ count: sql<number>`count(*)` }).from(accounts);
-  const [contactCount] = await db.select({ count: sql<number>`count(*)` }).from(contacts);
+  const [accountCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(accounts)
+    .where(eq(accounts.orgId, orgId));
+  const [contactCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(contacts)
+    .where(eq(contacts.orgId, orgId));
   const [linkedCount] = await db
     .select({ count: sql<number>`count(*)` })
     .from(contacts)
-    .where(sql`${contacts.accountId} IS NOT NULL`);
+    .where(and(eq(contacts.orgId, orgId), sql`${contacts.accountId} IS NOT NULL`));
 
   return {
     accounts: accountCount?.count || 0,
@@ -1516,7 +1802,7 @@ export async function getSyncStatus() {
 // OPPORTUNITIES FUNCTIONS
 // ============================================
 
-export async function getAllOpportunities() {
+export async function getAllOpportunities(orgId: number) {
   const db = await getDb();
   if (!db) {
     if (process.env.DEMO_MODE === 'true') {
@@ -1524,10 +1810,14 @@ export async function getAllOpportunities() {
     }
     return [];
   }
-  return await db.select().from(opportunities).orderBy(desc(opportunities.createdAt));
+  return await db
+    .select()
+    .from(opportunities)
+    .where(eq(opportunities.orgId, orgId))
+    .orderBy(desc(opportunities.createdAt));
 }
 
-export async function getOpportunityById(id: number) {
+export async function getOpportunityById(orgId: number, id: number) {
   const db = await getDb();
   if (!db) {
     if (process.env.DEMO_MODE === 'true') {
@@ -1535,11 +1825,15 @@ export async function getOpportunityById(id: number) {
     }
     return undefined;
   }
-  const result = await db.select().from(opportunities).where(eq(opportunities.id, id)).limit(1);
+  const result = await db
+    .select()
+    .from(opportunities)
+    .where(and(eq(opportunities.orgId, orgId), eq(opportunities.id, id)))
+    .limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getOpportunitiesByAccountId(accountId: number) {
+export async function getOpportunitiesByAccountId(orgId: number, accountId: number) {
   const db = await getDb();
   if (!db) {
     if (process.env.DEMO_MODE === 'true') {
@@ -1547,15 +1841,19 @@ export async function getOpportunitiesByAccountId(accountId: number) {
     }
     return [];
   }
-  return await db.select().from(opportunities).where(eq(opportunities.accountId, accountId)).orderBy(desc(opportunities.createdAt));
+  return await db
+    .select()
+    .from(opportunities)
+    .where(and(eq(opportunities.orgId, orgId), eq(opportunities.accountId, accountId)))
+    .orderBy(desc(opportunities.createdAt));
 }
 
-export async function upsertOpportunity(opportunity: InsertOpportunity) {
+export async function upsertOpportunity(orgId: number, opportunity: InsertOpportunity) {
   const db = await getDb();
   if (!db) return;
-  
-  await db.insert(opportunities).values(opportunity).onDuplicateKeyUpdate({
-    set: opportunity,
+
+  await db.insert(opportunities).values({ ...opportunity, orgId }).onDuplicateKeyUpdate({
+    set: { ...opportunity, orgId },
   });
 }
 

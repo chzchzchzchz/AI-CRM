@@ -126,3 +126,119 @@ describe("dataValidation — web search evidence honesty", () => {
     expect(searchEvidenceStats.noEvidence).toBe(0);
   });
 });
+
+describe("dataValidation — model-verification honesty", () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    vi.doUnmock("./_core/llm");
+    vi.resetModules();
+  });
+
+  /**
+   * verifyCompanyDomain/verifyEmployeeCount/verifyContactEmployment imported
+   * isLlmUnavailable and never called it. When invokeLLM degraded (no key, model
+   * unreachable) or threw (Forge rate-limited/down — a real failure mode, not just
+   * "no key configured"), the function fell through to the exact same `return null` as
+   * "checked the evidence, found nothing wrong." Nothing distinguished the two: a rep
+   * verifying a flagged record during an outage got a clean bill of health that no model
+   * had actually produced. These pin llmEvidenceStats as the fix — the count is honest
+   * even though a single validateAccount call can't return anything but [] either way.
+   */
+
+  it("records the model check as unavailable rather than clean, when invokeLLM degrades", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => htmlWithRealEvidence,
+    }) as any;
+
+    vi.doMock("./_core/llm", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("./_core/llm")>();
+      return {
+        ...actual,
+        invokeLLM: vi.fn().mockResolvedValue({
+          choices: [{ message: { role: "assistant", content: actual.LLM_UNAVAILABLE_NOTE } }],
+        }),
+      };
+    });
+
+    const { validateAccount, resetSearchEvidenceStats, resetLlmEvidenceStats, llmEvidenceStats } =
+      await import("./dataValidation");
+    resetSearchEvidenceStats();
+    resetLlmEvidenceStats();
+
+    const issues = await validateAccount({
+      id: 4, name: "Acme Corp", domain: "acme.com", employeeCount: 500, intentScore: 30,
+    });
+
+    // No fabricated finding — but the honest reason is "couldn't check," not "checked,
+    // found nothing." That distinction only exists in the stats now.
+    expect(issues).toHaveLength(0);
+    expect(llmEvidenceStats.checked).toBeGreaterThan(0);
+    expect(llmEvidenceStats.unavailable).toBe(llmEvidenceStats.checked);
+  });
+
+  it("records the model check as unavailable rather than clean, when invokeLLM throws", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => htmlWithRealEvidence,
+    }) as any;
+
+    vi.doMock("./_core/llm", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("./_core/llm")>();
+      return { ...actual, invokeLLM: vi.fn().mockRejectedValue(new Error("rate limited")) };
+    });
+
+    const { validateAccount, resetSearchEvidenceStats, resetLlmEvidenceStats, llmEvidenceStats } =
+      await import("./dataValidation");
+    resetSearchEvidenceStats();
+    resetLlmEvidenceStats();
+
+    const issues = await validateAccount({
+      id: 5, name: "Acme Corp", domain: "acme.com", employeeCount: 500, intentScore: 30,
+    });
+
+    expect(issues).toHaveLength(0);
+    expect(llmEvidenceStats.checked).toBeGreaterThan(0);
+    expect(llmEvidenceStats.unavailable).toBe(llmEvidenceStats.checked);
+  });
+
+  it("does not record unavailability when the model call actually succeeds", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => htmlWithRealEvidence,
+    }) as any;
+
+    vi.doMock("./_core/llm", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("./_core/llm")>();
+      return {
+        ...actual,
+        invokeLLM: vi.fn().mockResolvedValue({
+          choices: [{
+            message: {
+              role: "assistant",
+              content: JSON.stringify({ isValid: true, confidence: 0.9, issue: "", suggestion: "" }),
+            },
+          }],
+        }),
+      };
+    });
+
+    const { validateAccount, resetSearchEvidenceStats, resetLlmEvidenceStats, llmEvidenceStats } =
+      await import("./dataValidation");
+    resetSearchEvidenceStats();
+    resetLlmEvidenceStats();
+
+    await validateAccount({
+      id: 6, name: "Acme Corp", domain: "acme.com", employeeCount: null, intentScore: 30,
+    });
+
+    expect(llmEvidenceStats.checked).toBeGreaterThan(0);
+    expect(llmEvidenceStats.unavailable).toBe(0);
+  });
+});

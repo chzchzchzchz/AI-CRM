@@ -1,3 +1,4 @@
+import { unworkedSixQAs } from "./six-qa";
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getAllAccounts, getContactsByAccountId, getGongCallsByAccountId, getAllOpportunities } from "./db";
@@ -56,7 +57,7 @@ export const priorityActionsRouter = router({
       const limit = input?.limit || 3;
       const userEmail = input?.userEmail;
       const isDemoUser = ctx.user?.email?.includes('demo') || false;
-      let accounts = await getAllAccounts(isDemoUser);
+      let accounts = await getAllAccounts(ctx.orgId, isDemoUser);
       
       // Apply rep-specific filtering only for non-demo users
       // Filter for whichever rep is selected, demo or not: the dashboard labels these
@@ -75,8 +76,8 @@ export const priorityActionsRouter = router({
 
       const enrichedActions = await Promise.all(
         hotAccounts.map(async (account: Account) => {
-          const contacts = await getContactsByAccountId(account.id);
-          const calls = await getGongCallsByAccountId(account.id);
+          const contacts = await getContactsByAccountId(ctx.orgId, account.id);
+          const calls = await getGongCallsByAccountId(ctx.orgId, account.id);
           
           // Sort contacts: key titles first, then by name
           const sortedContacts = [...contacts].sort((a: Contact, b: Contact) => {
@@ -272,7 +273,7 @@ export const priorityActionsRouter = router({
     .input(z.object({ userEmail: z.string().optional() }))
     .query(async ({ ctx, input }) => {
       const isDemoUser = ctx.user?.email?.includes('demo') || false;
-      let accounts = await getAllAccounts(isDemoUser);
+      let accounts = await getAllAccounts(ctx.orgId, isDemoUser);
       
       // Apply rep-specific filtering if user email matches a known rep
       const territory = territoryFor(input?.userEmail);
@@ -292,20 +293,29 @@ export const priorityActionsRouter = router({
       // 6QA opportunity gap: qualified accounts (intent >= 70) with no opportunity yet.
       // Previously this read rawData.sixqa_qualified / has_opportunity, which nothing
       // populates, so it was always 0 and fell back to a fabricated 80% of all accounts.
-      const allOpps = await getAllOpportunities().catch(() => []);
+      //
+      // getAllOpportunities already returns [] on its own when there's genuinely no
+      // database configured (see server/db.ts) — a `.catch(() => [])` here only ever
+      // fires on a real query failure, which is not the same fact as "no opportunities
+      // exist." Swallowing it inflated sixQAGap to every hot account, the maximum
+      // possible value, with nothing to show a rep the number was manufactured rather
+      // than measured. getAllAccounts above is not caught for the same reason.
+      const allOpps = await getAllOpportunities(ctx.orgId);
       const accountsWithOpp = new Set(
         (allOpps as any[]).map((o) => o.accountId).filter((id) => id != null)
       );
-      const sixQAGap = accounts.filter(
-        (a: Account) => (a.intentScore || 0) >= 70 && !accountsWithOpp.has(a.id)
-      ).length;
+      const unworked = unworkedSixQAs(accounts, accountsWithOpp);
 
       return {
         totalAccounts: accounts.length,
         hotLeads,
         warmLeads,
         coldLeads,
-        sixQAGap,
+        sixQAGap: unworked.length,
+        // The home tile links to /accounts?filter=unworked. The accounts page filters to
+        // exactly these ids rather than re-deriving the set, so the list it shows is the
+        // number the tile promised — same territory, same definition.
+        unworkedAccountIds: unworked.map((a) => a.id),
       };
     }),
 });

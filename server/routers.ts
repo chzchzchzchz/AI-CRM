@@ -1,6 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { isDecisionMaker } from "@shared/taxonomy";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { LLM_UNAVAILABLE_NOTE } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { wrapUntrusted } from "./_core/untrusted";
@@ -11,11 +12,15 @@ import { eq } from "drizzle-orm";
 import { sdk } from "./_core/sdk";
 import { toPublicUser } from "./_core/publicUser";
 import { z } from "zod";
-import { getAllAccounts, getAccountById, updateAccount, getAllPeople, getPeoplePaginated, getPeopleByCompany, getContactsByAccountId, getPersonById, /* createClayRequest, updateClayRequest, getAllClayRequests, getClayRequest, */ upsertAccount, upsertPerson, getAllGongCalls, getGongCallsPaginated, getGongCallsByCompany, getGongCallsByAccountId, getAllOpportunities, getOpportunityById, getOpportunitiesByAccountId, upsertOpportunity } from "./db";
+import { getAllAccounts, getAccountById, updateAccount, getAllPeople, getPeoplePaginated, getContactsByAccountId, getPersonById, /* createClayRequest, updateClayRequest, getAllClayRequests, getClayRequest, */ upsertAccount, upsertPerson, getAllGongCalls, getGongCallsPaginated, getGongCallsByCompany, getGongCallsByAccountId, getAllOpportunities, getOpportunityById, getOpportunitiesByAccountId, upsertOpportunity } from "./db";
 import { enrichAccountWithAI, analyzeGongCall, generateOutreachEmail, intelligentSearch, prioritizeContacts } from "./ai";
 import { enrichAccount } from "./sixsense";
 import { conversationWithMemory, generateAccountSummary, generateContactSummary } from "./aiContext";
 import { clayImportRouter } from "./clay-import";
+import { dataImportRouter } from "./data-import-router";
+import { connectorCredentialsRouter } from "./connector-credentials-router";
+import { companyProfileRouter } from "./company-profile-router";
+import { entitlementsRouter } from "./entitlements-router";
 import { clayWebhookRouter } from "./clay-webhook";
 import { intentScoresRouter, zapierRouter, clayPullRouter, integrationsRouter } from "./integrations-router";
 import { calls as callsTable } from "../drizzle/schema";
@@ -24,6 +29,7 @@ import { rfpRouter } from "./rfp-scraper";
 import { outreachRouter } from "./outreach";
 import { geminiRouter } from "./gemini";
 import { clayRouter } from "./clay";
+import { invitesRouter } from "./invites-router";
 import { validationRouter } from "./validation-router";
 import { priorityActionsRouter } from "./priority-actions-router";
 import { bulkInsightsRouter } from "./bulk-insights-router";
@@ -52,6 +58,8 @@ import { recordFailedLogin, clearLoginAttempts, getLoginLockout, validatePasswor
 // requestAccess below runs before any account exists — a mismatch in the original,
 // unused module that a synthetic id would only paper over.)
 import { logUserSignup, logUserLogin, logUserLogout } from "./_core/audit";
+import { signupMode, createOrganization } from "./_core/onboarding";
+import { DEFAULT_ORG_ID, assertDeploymentConnectorAllowed } from "./_core/tenancy";
 import { twoFARouter } from "./twofa-router";
 import {
   createChallenge,
@@ -60,6 +68,7 @@ import {
   verifyTotp,
   redeemBackupCode,
   countBackupCodes,
+  withUserLock,
 } from "./twofa";
 
 /**
@@ -75,6 +84,10 @@ async function issueSession(
 ) {
   const db = await getDb();
   if (db) {
+    // tenancy-exempt: writes the sign-in timestamp on the row the session just resolved; no org known yet
+    // write-unchecked: the `success: true` below is the LOGIN's, not this write's. A
+    // sign-in must not fail because a cosmetic last-seen timestamp did not persist —
+    // that would turn a display detail into an outage.
     await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
   }
 
@@ -118,7 +131,7 @@ export const appRouter = router({
         additionalContext: z.string().optional(),
         debugMode: z.boolean().optional()
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         // The client (ContextualAI) passes only { id } for the account — never the actual
         // data — so the model was asked about an account it knew nothing about. Hydrate the
         // full, real signal pack from the id here so the answer is grounded.
@@ -127,7 +140,7 @@ export const appRouter = router({
         if (accountId && Object.keys(accountData).length <= 2) {
           try {
             const { gatherAccountSignals } = await import("./intel/signals");
-            accountData = await gatherAccountSignals(Number(accountId));
+            accountData = await gatherAccountSignals(ctx.orgId, Number(accountId));
           } catch (e) {
             console.error("[deepThink.sales] could not hydrate account signals:", e);
           }
@@ -137,27 +150,28 @@ export const appRouter = router({
         let additionalContext = input.additionalContext;
         try {
           const { getBrainDigest, brainContextBlock } = await import("./intel/brain");
-          const digest = await getBrainDigest();
+          const digest = await getBrainDigest(ctx.orgId);
           additionalContext = [brainContextBlock(digest), additionalContext].filter(Boolean).join("\n\n");
         } catch { /* brain unavailable → proceed without it */ }
-        return await deepThinkSales({ ...input, accountData, additionalContext });
+        return await deepThinkSales({ orgId: ctx.orgId, ...input, accountData, additionalContext });
       }),
     help: protectedProcedure
       .input(z.object({
         query: z.string(),
         debugMode: z.boolean().optional()
       }))
-      .mutation(async ({ input }) => {
-        return await deepThinkHelp(input);
+      .mutation(async ({ input, ctx }) => {
+        return await deepThinkHelp({ orgId: ctx.orgId, ...input });
       }),
   }),
+  invites: invitesRouter,
   sixsenseAnalytics: sixsenseAnalyticsRouter,
   analytics: router({
     overview: protectedProcedure.query(async ({ ctx }) => {
       const isDemoUser = ctx.user?.email?.includes('demo') || false;
-      const accounts = await getAllAccounts(isDemoUser);
-      const people = await getAllPeople();
-      const calls = await getAllGongCalls();
+      const accounts = await getAllAccounts(ctx.orgId, isDemoUser);
+      const people = await getAllPeople(ctx.orgId);
+      const calls = await getAllGongCalls(ctx.orgId);
 
       // Calculate intent score distribution
       const intentScores = accounts
@@ -274,6 +288,7 @@ export const appRouter = router({
         // pass this check and create a second account for an address that already had
         // one, confirmed live against demo@ai-crm.com.
         const normalizedEmail = input.email.trim().toLowerCase();
+        // tenancy-exempt: identity lookup by email, before any session exists; email is globally unique across orgs
         const existing = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
         if (existing.length > 0) {
           throw new Error("An account with this email already exists");
@@ -285,25 +300,53 @@ export const appRouter = router({
         // Create user with unique openId
         const openId = `email_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
+        // Which organization does this person belong to?
+        //
+        // Until now: none, implicitly. The insert omitted orgId, so every signup in every
+        // deployment took the column default and landed in org 1 — including the second
+        // customer of a product whose README said tenants were isolated. The boundary was
+        // real and nothing ever put anyone on the far side of it.
+        //
+        // invite-only (default) keeps exactly the old behaviour: join the existing org,
+        // wait for an admin. self-serve creates a new organization and makes this person
+        // its admin, which is what a new customer signing up actually is.
+        const mode = signupMode();
+        const selfServe = mode === "self-serve";
+        const orgId = selfServe
+          ? await createOrganization(db, `${input.name}'s workspace`)
+          : DEFAULT_ORG_ID;
+
+        // tenancy-exempt: signup creates the user row; the org is resolved immediately above
         const result = await db.insert(users).values({
+          orgId,
           openId,
           email: normalizedEmail,
           name: input.name,
           passwordHash,
-          loginMethod: "email",
-          isApproved: false, // Require admin approval
-          role: "user",
+          // The first member of a brand-new organization has no one to approve them —
+          // they ARE the customer. Waiting for an admin would mean waiting for
+          // themselves, which is how a self-serve signup becomes a dead end.
+          isApproved: selfServe,
+          role: selfServe ? "admin" : "user",
         });
         
         // Get the new user ID
         const newUserId = result[0].insertId;
         
+        // Only an invite-only signup is awaiting anything.
+        //
+        // A self-serve signup is already approved, is already an admin, and is already
+        // alone in a brand-new organization — so mailing the incumbent operator a
+        // one-click DENY link for it hands them a button that revokes a different
+        // customer's account, on a queue with nothing in it. They are told a new
+        // workspace exists, which is the part they actually want to know.
+        if (!selfServe) {
         // Send notification to admin for approval with one-click links
         try {
           // Generate one-click approval links
           const baseUrl = process.env.VITE_APP_URL || `http://localhost:${process.env.PORT || 3333}`;
           const { approveUrl, denyUrl } = getApprovalLinks(newUserId, baseUrl);
-          
+
           await notifyOwner({
             title: `🔔 New User Registration: ${input.name}`,
             content: `A new user has registered and is awaiting approval.
@@ -329,6 +372,21 @@ Or go to the Admin Panel: /admin/approval`
           console.error("Failed to send admin notification:", notifyError);
           // Don't fail the signup if notification fails
         }
+        } else {
+          try {
+            await notifyOwner({
+              title: `🎉 New workspace: ${input.name}`,
+              content: `A new organization signed up and is active — no approval needed.
+
+**Name:** ${input.name}
+**Email:** ${input.email}
+**Organization:** ${orgId}
+**Registered:** ${new Date().toISOString()}`,
+            });
+          } catch (notifyError) {
+            console.error("Failed to send new-workspace notification:", notifyError);
+          }
+        }
 
         await logUserSignup(Number(newUserId), normalizedEmail, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
 
@@ -338,7 +396,13 @@ Or go to the Admin Panel: /admin/approval`
         //
         // Safe to return: it identifies an account that is not approved and cannot log
         // in, and possessing it proves nothing without the emailed code.
-        return { success: true, userId: Number(newUserId) };
+        //
+        // `needsApproval` is what stops the last screen of signup from lying. The server
+        // decides the mode; the client had no way to know it, so a self-serve customer —
+        // approved, admin, alone in their own workspace — was shown "Account Pending
+        // Approval. You'll receive an email once your account is approved." They would
+        // wait for an approval that had already happened and an email no one would send.
+        return { success: true, userId: Number(newUserId), needsApproval: !selfServe };
       }),
     
     // Email/Password Login
@@ -356,44 +420,50 @@ Or go to the Admin Panel: /admin/approval`
         // just by sending a different value for it on the next request. getClientIP
         // only trusts that header when the operator has confirmed a real proxy sets it.
         const clientIP = getClientIP(ctx.req);
+        // Stored addresses are lowercased at signup (see signUp above) — normalize the
+        // login attempt the same way, both for the DB lookup and for the lockout key
+        // below, so a user who typed a different case than they signed up with isn't
+        // told it's wrong and isn't tracked as a separate lockout identity.
+        const normalizedEmail = input.email.trim().toLowerCase();
 
         // Enforce the brute-force lockout on the tRPC path (the express loginRateLimiter
         // doesn't cover /api/trpc). Without this the 5-attempt lockout was never applied.
-        const lockout = getLoginLockout(clientIP);
+        // Keyed by (IP, account): keying by IP alone meant any successful login from a
+        // shared IP (office NAT, VPN, CGNAT) wiped out an attacker's accumulated failed
+        // attempts against a DIFFERENT account on that same IP — see security.ts.
+        const lockout = await getLoginLockout(clientIP, normalizedEmail);
         if (lockout.locked) {
           logSecurityEvent("LOGIN_LOCKED", { email: input.email, ip: clientIP }, "warn");
           throw new Error(`Too many login attempts. Try again in ${Math.ceil(lockout.retryAfterSeconds / 60)} minute(s).`);
         }
 
-        // Find user by email. Stored addresses are lowercased at signup (see signUp
-        // above) — normalize the login attempt the same way so a user who typed their
-        // email in a different case at signup than at login isn't told it's wrong.
-        const userResults = await db.select().from(users).where(eq(users.email, input.email.trim().toLowerCase())).limit(1);
+        // tenancy-exempt: identity lookup by email, before any session exists; email is globally unique across orgs
+        const userResults = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
         const user = userResults[0];
-        
+
         if (!user || !user.passwordHash) {
           // Record failed attempt
-          recordFailedLogin(clientIP);
+          await recordFailedLogin(clientIP, normalizedEmail);
           logSecurityEvent("LOGIN_FAILED", { email: input.email, reason: "user_not_found", ip: clientIP }, "warn");
           throw new Error("Invalid email or password");
         }
-        
+
         // Verify password
         const isValid = await bcrypt.compare(input.password, user.passwordHash);
         if (!isValid) {
           // Record failed attempt
-          recordFailedLogin(clientIP);
+          await recordFailedLogin(clientIP, normalizedEmail);
           logSecurityEvent("LOGIN_FAILED", { email: input.email, reason: "invalid_password", ip: clientIP }, "warn");
           throw new Error("Invalid email or password");
         }
-        
+
         // Check if approved
         if (!user.isApproved) {
           throw new Error("Your account is pending approval");
         }
-        
+
         // Clear failed login attempts on successful login
-        clearLoginAttempts(clientIP);
+        await clearLoginAttempts(clientIP, normalizedEmail);
 
         // The password was right. If this account has a second factor, that is not
         // enough on its own — issue a short-lived challenge instead of a session.
@@ -409,7 +479,7 @@ Or go to the Admin Panel: /admin/approval`
           return {
             success: false as const,
             twoFactorRequired: true as const,
-            challengeId: createChallenge(user.id),
+            challengeId: await createChallenge(user.id),
           };
         }
 
@@ -442,7 +512,7 @@ Or go to the Admin Panel: /admin/approval`
         const db = await getDb();
         if (!db) throw new Error("Database not available");
 
-        const claim = claimChallengeAttempt(input.challengeId);
+        const claim = await claimChallengeAttempt(input.challengeId);
         if (!claim.ok) {
           throw new Error(
             claim.reason === "exhausted"
@@ -451,23 +521,34 @@ Or go to the Admin Panel: /admin/approval`
           );
         }
 
+        // tenancy-exempt: resolved from the 2FA challenge's own userId, which the password step already established
         const [user] = await db.select().from(users).where(eq(users.id, claim.userId)).limit(1);
         if (!user?.twoFactorEnabled || !user.twoFactorSecret) {
           throw new Error("Two-factor authentication is not enabled for this account");
         }
 
         if (input.isBackupCode) {
-          const redeemed = await redeemBackupCode(
-            user.twoFactorBackupCodes as string | null,
-            input.code
-          );
+          // Queued per user: redeemBackupCode reads a snapshot, removes one code, and
+          // hands back what's left for this caller to write — with no lock, two
+          // concurrent redemptions (someone who has two different valid codes and
+          // fires both at once) can both read the same starting set and each remove
+          // only their own code from it, so whichever write lands last silently
+          // restores the other "used" code. Re-reading inside the lock (rather than
+          // reusing `user` from above) means the second request in a queued pair sees
+          // the first request's write.
+          const redeemed = await withUserLock(user.id, async () => {
+            // tenancy-exempt: resolved from the 2FA challenge's own userId, which the password step already established
+            const [fresh] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+            const result = await redeemBackupCode(fresh?.twoFactorBackupCodes as string | null, input.code);
+            if (result.ok) {
+              // Spend it before the session is issued: a code that survives its own
+              // use is a permanent bypass of the second factor.
+              // tenancy-exempt: resolved from the 2FA challenge's own userId, which the password step already established
+              await db.update(users).set({ twoFactorBackupCodes: result.remaining }).where(eq(users.id, user.id));
+            }
+            return result;
+          });
           if (!redeemed.ok) throw new Error("That recovery code is not valid");
-          // Spend it before the session is issued: a code that survives its own use
-          // is a permanent bypass of the second factor.
-          await db
-            .update(users)
-            .set({ twoFactorBackupCodes: redeemed.remaining })
-            .where(eq(users.id, user.id));
           logSecurityEvent(
             "LOGIN_2FA_BACKUP_CODE_USED",
             { userId: user.id, remaining: countBackupCodes(redeemed.remaining) },
@@ -477,7 +558,7 @@ Or go to the Admin Panel: /admin/approval`
           throw new Error("That code is not valid");
         }
 
-        consumeChallenge(input.challengeId);
+        await consumeChallenge(input.challengeId);
         logSecurityEvent("LOGIN_SUCCESS", { userId: user.id, method: "2fa" }, "info");
         await logUserLogin(user.id, user.email, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
         return issueSession(ctx, user);
@@ -495,11 +576,13 @@ Or go to the Admin Panel: /admin/approval`
         const db = await getDb();
         if (!db) throw new Error("Database not available");
         // Check if request already exists
+        // tenancy-exempt: an access request is submitted before an account exists — there is no org to attribute it to yet
         const existing = await db.select().from(accessRequests).where(eq(accessRequests.email, input.email)).limit(1);
         if (existing.length > 0) {
           throw new Error("You have already submitted an access request");
         }
         
+        // tenancy-exempt: an access request is submitted before an account exists — there is no org to attribute it to yet
         await db.insert(accessRequests).values({
           email: input.email,
           name: input.name,
@@ -516,18 +599,18 @@ Or go to the Admin Panel: /admin/approval`
   accounts: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       const isDemoUser = ctx.user?.email?.includes('demo') || false;
-      return await getAllAccounts(isDemoUser);
+      return await getAllAccounts(ctx.orgId, isDemoUser);
     }),
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        return await getAccountById(input.id);
+      .query(async ({ input, ctx }) => {
+        return await getAccountById(ctx.orgId, input.id);
       }),
     getStats: protectedProcedure.query(async ({ ctx }) => {
       const isDemoUser = ctx.user?.email?.includes('demo') || false;
-      const accounts = await getAllAccounts(isDemoUser);
-      const people = await getAllPeople();
-      const calls = await getAllGongCalls();
+      const accounts = await getAllAccounts(ctx.orgId, isDemoUser);
+      const people = await getAllPeople(ctx.orgId);
+      const calls = await getAllGongCalls(ctx.orgId);
       
       // Calculate hot leads (intent score >= 70)
       const hotLeads = accounts.filter((a: Account) => {
@@ -556,8 +639,8 @@ Or go to the Admin Panel: /admin/approval`
     }),
     enrichWith6sense: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
-        const account = await getAccountById(input.id);
+      .mutation(async ({ input, ctx }) => {
+        const account = await getAccountById(ctx.orgId, input.id);
         if (!account?.domain) {
           throw new Error('Account not found or missing domain');
         }
@@ -585,16 +668,16 @@ Or go to the Admin Panel: /admin/approval`
         if (data.profileFit) updates.sixsenseProfileFit = data.profileFit;
         if (data.sixsenseId) updates.sixsenseId = data.sixsenseId;
         if (data.segments?.length) updates.sixsenseSegments = JSON.stringify(data.segments);
-        await updateAccount(input.id, updates as any);
+        await updateAccount(ctx.orgId, input.id, updates as any);
 
         return { success: true, accountId: input.id, enrichment: data, message: "Account enriched from 6sense." };
       }),
     getTimeline: protectedProcedure
       .input(z.object({ accountId: z.number(), limit: z.number().default(50) }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
         const [account, calls] = await Promise.all([
-          getAccountById(input.accountId),
-          getGongCallsByAccountId(input.accountId)
+          getAccountById(ctx.orgId, input.accountId),
+          getGongCallsByAccountId(ctx.orgId, input.accountId)
         ]);
         
         if (!account) {
@@ -680,8 +763,8 @@ Or go to the Admin Panel: /admin/approval`
   }),
   
   opportunities: router({
-    list: protectedProcedure.query(async () => {
-      return await getAllOpportunities();
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return await getAllOpportunities(ctx.orgId);
     }),
     upsert: protectedProcedure
       .input(z.object({
@@ -697,18 +780,18 @@ Or go to the Admin Panel: /admin/approval`
         aiInsights: z.string().optional(),
         sfdcOpportunityId: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const payload: any = { ...input };
         if (typeof payload.amount === "string") payload.amount = payload.amount.replace(/[^0-9.-]/g, "");
         if (typeof payload.expectedCloseDate === "string" && payload.expectedCloseDate) {
           payload.expectedCloseDate = new Date(payload.expectedCloseDate);
         }
-        return await upsertOpportunity(payload);
+        return await upsertOpportunity(ctx.orgId, payload);
       }),
     aiScore: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
-        const opp = await getOpportunityById(input.id);
+      .mutation(async ({ input, ctx }) => {
+        const opp = await getOpportunityById(ctx.orgId, input.id);
         if (!opp) throw new Error("Opportunity not found");
 
         // Deterministic success score derived from real deal signals (stage
@@ -732,7 +815,7 @@ Or go to the Admin Panel: /admin/approval`
           (closeDate ? `, target close ${closeDate}` : "") +
           `. Score weights stated probability by stage progression.`;
 
-        await upsertOpportunity({
+        await upsertOpportunity(ctx.orgId, {
           ...opp,
           aiSuccessScore: score,
           aiInsights: insights,
@@ -743,8 +826,8 @@ Or go to the Admin Panel: /admin/approval`
   }),
 
   calls: router({
-    list: protectedProcedure.query(async () => {
-      return await getAllGongCalls();
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return await getAllGongCalls(ctx.orgId);
     }),
     create: protectedProcedure
       .input(z.object({
@@ -758,10 +841,11 @@ Or go to the Admin Panel: /admin/approval`
         actionItems: z.array(z.string()).optional(),
         callDate: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
         await db.insert(callsTable).values({
+          orgId: ctx.orgId,
           accountId: input.accountId ?? null,
           contactId: input.contactId ?? null,
           title: input.title,
@@ -779,16 +863,26 @@ Or go to the Admin Panel: /admin/approval`
   people: router({
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        return await getPersonById(input.id);
+      .query(async ({ input, ctx }) => {
+        return await getPersonById(ctx.orgId, input.id);
       }),
     // Bounded by default so the Contacts page doesn't ship all 10k rows (~8MB) on load.
     // A search term filters server-side across the FULL set, so no contact is unreachable
     // even though only a page is returned. Rich client-side filters run over what's returned.
     list: protectedProcedure
-      .input(z.object({ limit: z.number().optional(), search: z.string().optional() }).optional())
-      .query(async ({ input }) => {
-        const all = await getAllPeople();
+      .input(
+        z
+          .object({ limit: z.number().optional(), search: z.string().optional(), accountId: z.number().optional() })
+          .optional()
+      )
+      .query(async ({ input, ctx }) => {
+        // One account's contacts, all of them. The unfiltered list is capped at 1,500 of
+        // 10,023, so narrowing it client-side would report "0 contacts" for any account
+        // whose people sit past the cap — this is what the account page's "View all" asks for.
+        if (input?.accountId !== undefined) {
+          return await getContactsByAccountId(ctx.orgId, input.accountId);
+        }
+        const all = await getAllPeople(ctx.orgId);
         const q = input?.search?.trim().toLowerCase();
         const cap = input?.limit ?? 1500;
         if (q) {
@@ -804,10 +898,10 @@ Or go to the Admin Panel: /admin/approval`
       }),
     prioritize: protectedProcedure
       .input(z.object({ accountId: z.number().optional() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
         let contacts = input.accountId
-          ? await getPeopleByCompany(String(input.accountId))
-          : await getAllPeople();
+          ? await getContactsByAccountId(ctx.orgId, input.accountId)
+          : await getAllPeople(ctx.orgId);
         // Never feed thousands of contacts into a single LLM prompt. Without an account,
         // rank the most senior contacts (a real signal) and cap the set the model scores.
         if (!input.accountId && contacts.length > 60) {
@@ -816,7 +910,7 @@ Or go to the Admin Panel: /admin/approval`
             .sort((a: any, b: any) => (rank[a.seniority] ?? 5) - (rank[b.seniority] ?? 5))
             .slice(0, 50);
         }
-        const account = input.accountId ? await getAccountById(input.accountId) : null;
+        const account = input.accountId ? await getAccountById(ctx.orgId, input.accountId) : null;
         return await prioritizeContacts(contacts, account || {});
       }),
   }),
@@ -856,7 +950,7 @@ Or go to the Admin Panel: /admin/approval`
   //     }),
   //   getStatus: publicProcedure
   //     .input(z.object({ requestId: z.string() }))
-  //     .query(async ({ input }) => {
+  //     .query(async ({ input, ctx }) => {
   //       return await getClayRequest(input.requestId);
   //     }),
   //   listRequests: publicProcedure.query(async () => {
@@ -865,15 +959,16 @@ Or go to the Admin Panel: /admin/approval`
   // }),
 
   gong: router({
-    list: protectedProcedure.query(async () => {
-      return await getAllGongCalls();
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return await getAllGongCalls(ctx.orgId);
     }),
     listPaginated: protectedProcedure
       .input(z.object({ limit: z.number().default(50), offset: z.number().default(0) }))
-      .query(async ({ input }) => {
-        return await getGongCallsPaginated(input.limit, input.offset);
+      .query(async ({ input, ctx }) => {
+        return await getGongCallsPaginated(ctx.orgId, input.limit, input.offset);
       }),
-    testConnection: protectedProcedure.query(async () => {
+    testConnection: protectedProcedure.query(async ({ ctx }) => {
+      assertDeploymentConnectorAllowed(ctx.orgId, "Gong");
       const { gongTestConnection, isGongConfigured } = await import("./integrations/gong");
       if (!isGongConfigured()) {
         return { configured: false, ok: false, message: "No Gong credentials set" };
@@ -895,7 +990,14 @@ Or go to the Admin Panel: /admin/approval`
           withTranscripts: z.boolean().default(false),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        // This one hands the records straight back rather than storing them, so the org
+        // scoping everywhere else in this file never applied to it — the handler did not
+        // even take ctx. The Gong workspace it reads belongs to whoever configured the
+        // deployment, and calls and transcripts are the most sensitive thing in this
+        // product: on a self-serve install any customer could read the operator's sales
+        // conversations, verbatim, by pressing a button.
+        assertDeploymentConnectorAllowed(ctx.orgId, "Gong");
         const { gongListCalls, gongGetTranscripts, isGongConfigured } = await import(
           "./integrations/gong"
         );
@@ -930,8 +1032,8 @@ Or go to the Admin Panel: /admin/approval`
   ai: router({
     analyzeCall: protectedProcedure
       .input(z.object({ callId: z.number() }))
-      .mutation(async ({ input }) => {
-        const calls = await getAllGongCalls();
+      .mutation(async ({ input, ctx }) => {
+        const calls = await getAllGongCalls(ctx.orgId);
         const call = calls.find((c: Call) => c.id === input.callId);
         if (!call) throw new Error('Call not found');
         return await analyzeGongCall(call);
@@ -939,8 +1041,8 @@ Or go to the Admin Panel: /admin/approval`
 
     search: protectedProcedure
       .input(z.object({ query: z.string() }))
-      .mutation(async ({ input }) => {
-        return await intelligentSearch(input.query);
+      .mutation(async ({ input, ctx }) => {
+        return await intelligentSearch(ctx.orgId, input.query);
       }),
 
     chat: protectedProcedure
@@ -955,6 +1057,7 @@ Or go to the Admin Panel: /admin/approval`
       }))
       .mutation(async ({ input, ctx }) => {
         return await conversationWithMemory({
+          orgId: ctx.orgId,
           query: input.query,
           accountId: input.accountId,
           contactId: input.contactId,
@@ -965,14 +1068,14 @@ Or go to the Admin Panel: /admin/approval`
 
     generateContactSummary: protectedProcedure
       .input(z.object({ contactId: z.number(), includeLinkedIn: z.boolean().optional() }))
-      .mutation(async ({ input }) => {
-        return await generateContactSummary(input.contactId, input.includeLinkedIn ?? false);
+      .mutation(async ({ input, ctx }) => {
+        return await generateContactSummary(ctx.orgId, input.contactId, input.includeLinkedIn ?? false);
       }),
 
     compileResearch: protectedProcedure
       .input(z.object({ accountId: z.number(), forceRefresh: z.boolean().optional() }))
-      .query(async ({ input }) => {
-        const account = await getAccountById(input.accountId);
+      .query(async ({ input, ctx }) => {
+        const account = await getAccountById(ctx.orgId, input.accountId);
         if (!account) throw new Error('Account not found');
 
         // Check cache first (valid for 24 hours)
@@ -992,7 +1095,7 @@ Or go to the Admin Panel: /admin/approval`
         // If forceRefresh, clear the cache first
         if (input.forceRefresh) {
           console.log(`[AI Research] Force refresh requested for account ${input.accountId}, clearing cache...`);
-          await updateAccount(input.accountId, {
+          await updateAccount(ctx.orgId, input.accountId, {
             aiResearchCache: null,
             aiCacheUpdatedAt: null
           } as any);
@@ -1045,17 +1148,34 @@ Or go to the Admin Panel: /admin/approval`
         // and told a working-but-slow setup to go install what it already has.
         const { content: insights, available } = llmText(response);
 
+        if (!available) {
+          // Nothing was actually generated. Caching this note for 24h (the block
+          // below) would serve the outage message to every viewer of this account
+          // for the rest of the day, even after the model comes back — and
+          // AccountResearch.tsx renders `insights` through SafeStreamdown with no
+          // separate check, so the note would read as real research, not an error.
+          return {
+            insights: LLM_UNAVAILABLE_NOTE,
+            rawTriggers: triggers,
+            rawNews: newsData,
+            available: false,
+            cached: false,
+            cacheAge: 0,
+          };
+        }
+
         const result = {
           insights,
           rawTriggers: triggers,
-          rawNews: newsData
+          rawNews: newsData,
+          available: true,
         };
 
         // Only cache a real result. Caching a degraded one would pin a transient outage
         // (a slow Ollama, a rate-limited free tier) as this account's research for a full
         // 24 hours, long after the provider recovers.
         if (available) {
-          await updateAccount(input.accountId, {
+          await updateAccount(ctx.orgId, input.accountId, {
             aiResearchCache: JSON.stringify(result),
             aiCacheUpdatedAt: new Date()
           } as any);
@@ -1066,8 +1186,8 @@ Or go to the Admin Panel: /admin/approval`
 
     analyzeTechStack: protectedProcedure
       .input(z.object({ accountId: z.number() }))
-      .mutation(async ({ input }) => {
-        const account = await getAccountById(input.accountId);
+      .mutation(async ({ input, ctx }) => {
+        const account = await getAccountById(ctx.orgId, input.accountId);
         if (!account || !account.techStack) {
           return { categories: {}, raw: "No technology stack data available" };
         }
@@ -1135,6 +1255,10 @@ Or go to the Admin Panel: /admin/approval`
 
   // Clay data import
   clayImport: clayImportRouter,
+  dataImport: dataImportRouter,
+  connectorCredentials: connectorCredentialsRouter,
+  companyProfile: companyProfileRouter,
+  entitlements: entitlementsRouter,
   intentScores: intentScoresRouter,
   zapier: zapierRouter,
   clayPull: clayPullRouter,

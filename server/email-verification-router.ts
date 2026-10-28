@@ -1,7 +1,9 @@
 import { router, publicProcedure } from "./_core/trpc";
+import { affectedRows } from "./_core/affected-rows";
 import { validatePasswordComplexity, logSecurityEvent, enforceSendCooldown, getClientIP } from "./_core/security";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./_core/email";
 import { logEmailVerified, logPasswordReset } from "./_core/audit";
+import { withUserLock } from "./twofa";
 
 // The plaintext code is delivered by EMAIL. Only echo it back in the API response in demo
 // mode (so the demo works without a mailer). Returning it in production would let anyone
@@ -46,7 +48,7 @@ export const emailVerificationRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ input }) => {
-      enforceSendCooldown(`verify:${input.email}`);
+      await enforceSendCooldown(`verify:${input.email}`);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -64,8 +66,15 @@ export const emailVerificationRouter = router({
         expiresAt,
       });
 
-      await sendVerificationEmail(input.email, code).catch(() => false);
-      return isDemo() ? { success: true, code, expiresAt } : { success: true };
+      // Capture whether the send actually worked instead of discarding it — see
+      // sendPasswordResetCode below, which had the identical bug. SignUp.tsx has no
+      // branch for a failed send, only a thrown error, which this mutation never
+      // produces on its own: it always resolved successfully even when
+      // sendVerificationEmail returned false because SendGrid was unconfigured or down,
+      // so the verify screen said "We sent a 6-digit code" to an address that never
+      // got one, with resend reporting the same false success.
+      const emailSent = await sendVerificationEmail(input.email, code).catch(() => false);
+      return isDemo() ? { success: true, emailSent, code, expiresAt } : { success: true, emailSent };
     }),
 
   verifyEmail: publicProcedure
@@ -83,51 +92,67 @@ export const emailVerificationRouter = router({
       // verification code" without touching `attempts` — so the three-attempt limit
       // below could never fire and the six-digit code was open to brute force. The
       // counter only means something if a failed guess is what increments it.
-      const verification = await db
-        .select()
-        .from(emailVerificationCodes)
-        .where(eq(emailVerificationCodes.userId, input.userId))
-        .limit(1);
+      //
+      // The read-check-increment below is a read-modify-write with no compare-and-swap,
+      // same shape as the 2FA backup-code race withUserLock exists for (see twofa.ts):
+      // N concurrent guesses all read the same `attempts` value and each write back
+      // `that value + 1`, so firing guesses in parallel instead of sequentially lets
+      // more than 3 real attempts land before the cap engages — a six-digit code
+      // (1,000,000 possibilities) is exactly what an attempt cap needs to hold the
+      // line against. Queuing every verification attempt for this user behind the
+      // previous one closes it: each request's read always sees the prior request's
+      // write.
+      return await withUserLock(input.userId, async () => {
+        const verification = await db
+          .select()
+          .from(emailVerificationCodes)
+          .where(eq(emailVerificationCodes.userId, input.userId))
+          .limit(1);
 
-      if (!verification[0]) {
-        throw new Error("Invalid verification code");
-      }
+        if (!verification[0]) {
+          throw new Error("Invalid verification code");
+        }
 
-      const verCode = verification[0];
+        const verCode = verification[0];
 
-      // Checked before the comparison: an exhausted code must stop being an oracle.
-      if ((verCode.attempts || 0) >= 3) {
-        throw new Error("Too many attempts. Please request a new code.");
-      }
+        // Checked before the comparison: an exhausted code must stop being an oracle.
+        if ((verCode.attempts || 0) >= 3) {
+          throw new Error("Too many attempts. Please request a new code.");
+        }
 
-      if (verCode.expiresAt < new Date()) {
-        throw new Error("Verification code expired");
-      }
+        if (verCode.expiresAt < new Date()) {
+          throw new Error("Verification code expired");
+        }
 
-      if (!codesMatch(verCode.code, input.code)) {
+        if (!codesMatch(verCode.code, input.code)) {
+          await db
+            .update(emailVerificationCodes)
+            .set({ attempts: (verCode.attempts || 0) + 1 })
+            .where(eq(emailVerificationCodes.id, verCode.id));
+          logSecurityEvent(
+            "EMAIL_VERIFICATION_FAILED",
+            { userId: input.userId, attempts: (verCode.attempts || 0) + 1 },
+            "warn"
+          );
+          throw new Error("Invalid verification code");
+        }
+
         await db
           .update(emailVerificationCodes)
-          .set({ attempts: (verCode.attempts || 0) + 1 })
+          .set({ verified: true })
           .where(eq(emailVerificationCodes.id, verCode.id));
-        logSecurityEvent(
-          "EMAIL_VERIFICATION_FAILED",
-          { userId: input.userId, attempts: (verCode.attempts || 0) + 1 },
-          "warn"
-        );
-        throw new Error("Invalid verification code");
-      }
 
-      await db
-        .update(emailVerificationCodes)
-        .set({ verified: true })
-        .where(eq(emailVerificationCodes.id, verCode.id));
+        // Note: Email verification does NOT auto-approve users
+        // Admin must manually approve via the admin panel or email notification
 
-      await logEmailVerified(input.userId, verCode.email, getClientIP(ctx.req), ctx.req.headers["user-agent"]);
+      await logEmailVerified(input.userId, verCode.email, getClientIP(ctx.req), ctx.req?.headers?.["user-agent"]);
 
       // Note: Email verification does NOT auto-approve users
       // Admin must manually approve via the admin panel or email notification
 
       return { success: true, message: "Email verified. Your account is pending admin approval." };
+  });
+
     }),
 
   resendVerificationCode: publicProcedure
@@ -136,13 +161,16 @@ export const emailVerificationRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ input }) => {
-      enforceSendCooldown(`verify:${input.email}`);
+      await enforceSendCooldown(`verify:${input.email}`);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
       const code = generateVerificationCode();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
+      // write-unchecked: clearing any previous code before issuing a new one. Deleting
+      // zero rows is the normal first-send case, and the `success: true` below is about
+      // the code that was just created and sent, not about this housekeeping.
       await db
         .delete(emailVerificationCodes)
         .where(eq(emailVerificationCodes.userId, input.userId));
@@ -154,8 +182,8 @@ export const emailVerificationRouter = router({
         expiresAt,
       });
 
-      await sendVerificationEmail(input.email, code).catch(() => false);
-      return isDemo() ? { success: true, code, expiresAt } : { success: true };
+      const emailSent = await sendVerificationEmail(input.email, code).catch(() => false);
+      return isDemo() ? { success: true, emailSent, code, expiresAt } : { success: true, emailSent };
     }),
 
   sendPasswordResetCode: publicProcedure
@@ -163,7 +191,7 @@ export const emailVerificationRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ input }) => {
-      enforceSendCooldown(`reset:${input.email}`);
+      await enforceSendCooldown(`reset:${input.email}`);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -171,6 +199,7 @@ export const emailVerificationRouter = router({
       // normalize here too, or a user who types a different case than they signed up
       // with is told (indirectly, via the anti-enumeration success response) that a
       // code was sent when no account was actually found.
+      // tenancy-exempt: identity lookup by email, before any session exists; email is globally unique across orgs
       const userResults = await db
         .select()
         .from(users)
@@ -249,10 +278,29 @@ export const emailVerificationRouter = router({
 
       const passwordHash = await bcrypt.hash(input.newPassword, 10);
 
-      await db
+      // The reset code was validated, but the USER it points at is a separate row and can
+      // be gone by now — deleted or deactivated between issuing the code and redeeming
+      // it. This returned `{ success: true }` regardless, so the person was told their
+      // password had been changed, the code was burned, and the new password did not
+      // work. On a password-reset path that is the worst possible place to be vague:
+      // they cannot log in and have no reason to suspect the reset itself.
+      //
+      // tenancy-exempt: auth path — runs before a session exists, so there is no org to filter by
+      const reset = await db
         .update(users)
         .set({ passwordHash })
         .where(eq(users.id, code.userId));
+
+      if (affectedRows(reset) === 0) {
+        logSecurityEvent(
+          "PASSWORD_RESET_FAILED",
+          { userId: code.userId, email: code.email, reason: "user_row_missing" },
+          "warn"
+        );
+        // The code is deliberately left unused: nothing was changed, so nothing was
+        // spent, and the person can try again if the account comes back.
+        throw new Error("That account is no longer available. Your password was not changed.");
+      }
 
       await db
         .update(passwordResetCodes)

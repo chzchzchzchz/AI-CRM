@@ -4,6 +4,7 @@ import { invokeLLM, llmText, parseLlmJson, unavailableReason } from "./_core/llm
 import { wrapUntrusted } from "./_core/untrusted";
 import { withRCP } from "./ai-system-prompt";
 import { getCompanyConfig } from "./config";
+import { csvRow } from "@shared/csv";
 
 // Target template fields for SFDC/HubSpot webinar import
 const TARGET_FIELDS = [
@@ -243,27 +244,39 @@ Return a JSON object with this structure:
         return newRow;
       });
 
-      // Generate CSV output
+      // Generate CSV output. csvRow neutralizes a cell that starts with =, +, - or
+      // @ — Excel/Sheets read that as a formula, not text, the moment this file is
+      // opened, and this is webinar registrant data nobody here typed themselves.
+      // See shared/csv.ts.
       const headers = TARGET_FIELDS.map(f => f.name);
       const csvLines = [
         headers.join(","),
-        ...processedRows.map(row => 
-          headers.map(h => {
-            const val = row[h] || "";
-            // Escape commas and quotes
-            if (val.includes(",") || val.includes('"') || val.includes("\n")) {
-              return `"${val.replace(/"/g, '""')}"`;
-            }
-            return val;
-          }).join(",")
-        )
+        ...processedRows.map(row => csvRow(headers.map(h => row[h] || "")))
       ];
+
+      // TARGET_FIELDS marks Recent Event/Status/First+Last Name/Company/Email/Country
+      // as required, and the mapping screen shows a "Required" badge for each — but
+      // nothing ever checked whether a required field actually ended up with a value.
+      // A row with Email left unmapped (or mapped to a column that's blank for that
+      // row) produced processedCount > 0, "Processing Complete", and a downloadable
+      // CSV with a blank Email column throughout — indistinguishable from a real,
+      // complete export. Email specifically doesn't even appear in the preview table
+      // (which only renders the first 8 of 24 fields), so a rep had no way to notice
+      // short of opening the downloaded file and reading it column by column.
+      const requiredFields = TARGET_FIELDS.filter(f => f.required).map(f => f.name);
+      const missingRequiredFields = requiredFields
+        .map(field => ({
+          field,
+          missingCount: processedRows.filter(row => !row[field]?.trim()).length,
+        }))
+        .filter(f => f.missingCount > 0);
 
       return {
         success: true,
         processedCount: processedRows.length,
         csvContent: csvLines.join("\n"),
         preview: processedRows.slice(0, 5),
+        missingRequiredFields,
       };
     }),
 });

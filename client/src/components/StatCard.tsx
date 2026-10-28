@@ -38,6 +38,12 @@ interface StatCardProps {
   tone?: Tone;
   className?: string;
   onClick?: () => void;
+  /**
+   * Declares this tile as a figure the quality gate compares across pages. A "global"
+   * tile must show the same value as every other global tile with the same key; a "view"
+   * tile is scoped (a territory, a filter) and is allowed to differ.
+   */
+  metric?: { key: string; scope: "global" | "view"; value: string | number };
 }
 
 export function StatCard({
@@ -49,6 +55,7 @@ export function StatCard({
   tone,
   className,
   onClick,
+  metric,
 }: StatCardProps) {
   const resolved: Tone =
     tone ?? (borderColor ? TONE_BY_LEGACY_COLOR[borderColor] : undefined) ?? "neutral";
@@ -58,10 +65,13 @@ export function StatCard({
   return (
     <Comp
       onClick={onClick}
+      data-metric={metric?.key}
+      data-metric-scope={metric?.scope}
+      data-metric-value={metric?.value}
       className={cn(
         "bg-card px-4 py-3.5 text-left",
         onClick &&
-          "transition-colors hover:bg-muted/60 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+          "group transition-colors hover:bg-muted/60 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         className
       )}
     >
@@ -79,7 +89,11 @@ export function StatCard({
         {value}
       </div>
 
-      {subtitle && <div className="mt-1.5 text-2xs text-ink-faint">{subtitle}</div>}
+      {/* ink-faint clears AA on the card (4.70:1) but not on the lighter hover background
+          (4.22:1), so the caption brightens with its tile rather than fading into it. */}
+      {subtitle && (
+        <div className="mt-1.5 text-2xs text-ink-faint group-hover:text-ink-muted transition-colors">{subtitle}</div>
+      )}
     </Comp>
   );
 }

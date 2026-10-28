@@ -17,13 +17,15 @@ abstract is a rule that will eventually be silenced.
 ```
 pnpm verify
   ├── pnpm check         typecheck, server + client
-  ├── pnpm lint          rules-of-hooks only
+  ├── pnpm lint          the two React hook rules
   ├── pnpm test          unit tests
   ├── pnpm inventory     regenerate docs/CAPABILITIES.md
   ├── pnpm check:claims  static truth checks
   ├── pnpm build
   ├── pnpm gate          browser checks, every route × 2 viewports
-  └── pnpm flows         uses the app: filter, open, search, walk the nav
+  ├── pnpm flows         uses the app: filter, open, search, walk the nav
+  ├── pnpm tenancy:e2e   two customers sign up, invite, and stay isolated
+  └── pnpm smoke         connectors, against a live tenant when a key is set
 ```
 
 Run any one on its own. `pnpm gate` boots its own server on port 3399; point it at
@@ -86,10 +88,13 @@ rather than passing quietly.
 | At least 120 characters of content | a page can render its shell, show nothing, and meet every budget above |
 | No console errors | a failed query logs and renders an empty state rather than throwing, so `pageerror` never sees it |
 | Route finishes loading | every route is code-split; a fixed wait measures whichever ones happened to arrive |
+| Page data finishes loading | `/insights` was measured at 0 characters and 310 nodes — its spinner. Same page code passed one commit and failed the next, decided by how loaded the runner was |
+| No WCAG 2 A/AA violations (axe) | every contact row was a `role="button"` with a button nested inside it; four icon-only controls had no name; the admin page's active tab put white text on amber at 1.55:1 |
 
-The last two are the ones that catch a page which looks right. A tile can be
-legible, well-spaced, error-free and still be lying; the mechanical tells are that
-the sentence is a shape rather than an answer, and that the app contradicts itself.
+**No placeholder output** and **metric agreement** are the ones that catch a page
+which looks right. A tile can be legible, well-spaced, error-free and still be
+lying; the mechanical tells are that the sentence is a shape rather than an answer,
+and that the app contradicts itself.
 
 **Metric agreement** works off two attributes. A tile that claims to describe the
 whole book of business carries `data-metric="decision-makers"`,
@@ -101,6 +106,18 @@ Contacts tiles switch their own scope when a filter is on.
 
 Height and node budgets are asserted at desktop only: on a phone everything stacks,
 so those numbers describe the layout rather than the page's restraint.
+
+**Waiting** works off two attributes, because there are two separate races and a
+fixed wait loses both. `data-route-loading` marks the Suspense fallback while a
+code-split chunk is in flight; `data-page-loading` marks a page that has replaced
+itself with a spinner or skeleton while its query runs. All three harnesses wait
+for each to detach, and treat one still present after 15s as a finding rather than
+retrying. Both matter because every one of these loading states renders **zero
+characters** — so a page measured during one is indistinguishable from a page with
+nothing on it, and the gate reports the spinner's numbers as the page's. A new
+page-level `if (isLoading)` that returns markup must carry the attribute;
+`pnpm check:claims` fails the build otherwise, which is how the tenth one was
+found after nine had been fixed by hand.
 
 ---
 
@@ -121,16 +138,25 @@ anything.** So the whole class of "I tried it and nothing happened" was invisibl
 a search box that filters nothing, a row that doesn't navigate, a dialog that
 opens empty. Every one of those renders perfectly.
 
-Four flows, each a thing a rep does in the first two minutes, each asserting an
+Eleven flows, each a thing a rep does in the first two minutes, each asserting an
 observable change rather than that a handler exists:
 
 | Flow | What it asserts |
 |---|---|
 | Contacts search narrows the list | a nonsense query matches 0, `director` matches some but not all |
+| The unfiltered view doesn't claim a filter is active | the default accounts page offers no reset and marks nothing active; selecting Hot leads does both |
+| The home page's tiles open the list they counted | clicking Hot, then Unworked 6QA, on the home page lands on an accounts list of exactly the number the tile showed — and choosing Unworked 6QA on the accounts page itself gives the same |
+| Switching territory re-filters the accounts list | picking a rep narrows the list below the unfiltered count |
+| A region's View all opens that region | Top Accounts' "View all Central accounts" lands on exactly the number on the Central card |
+| An account's View all opens its contacts | the account page's "View all" contacts lands on that account's contacts, and says so |
 | Clicking an account opens it | the URL moves to the row's own href, and the page isn't a 404 or a stub |
 | Global search returns results | Ctrl+K opens, a real query finds something, a nonsense one says so |
 | Every nav link goes somewhere real | every sidebar link is followed and none lands on the 404 page |
 | An AI action ends in readable output | Generate produces content, or says why it can't — and never claims success for neither |
+| 2FA enrolment produces a real secret | the page is routed, reports honest status, and returns a real QR code and base32 key |
+
+The count above is checked against the script: this line read "Four flows" over a table
+of five for as long as anyone had looked, which is how a document stops being read.
 
 Deliberately small. A flaky flow check is worse than none, because it teaches
 people to re-run CI until it goes green. Anything that couldn't be made

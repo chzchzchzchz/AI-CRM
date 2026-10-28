@@ -11,6 +11,7 @@ import { SafeStreamdown } from "@/components/SafeStreamdown";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  unavailable?: boolean;
 }
 
 /**
@@ -85,9 +86,13 @@ export function GlobalAIChat() {
         conversationHistory: messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
       });
       
-      setMessages(prev => [...prev, { 
-        role: "assistant", 
-        content: result.answer || "I couldn't find relevant information for that query."
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: result.answer || "I couldn't find relevant information for that query.",
+        // The mutation resolves (no thrown error) even when no model was reachable —
+        // `answer` is the outage note in that case, not a real reply. Flagged here so
+        // both bubble renders below show it as a notice, not as the assistant's own words.
+        unavailable: result.available === false,
       }]);
     } catch (error) {
       setMessages(prev => [...prev, { 
@@ -271,7 +276,13 @@ export function GlobalAIChat() {
                 <div className="space-y-6">
                   {messages.map((msg, i) => (
                     <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-                      <div className={`max-w-[80%] rounded-md p-4 ${ msg.role === "user" ? isWarRoomMode ? "bg-caution text-accent-foreground shadow-lg" : "bg-accent shadow-lg" : "bg-card border border-border text-ink-muted" }`}>
+                      <div className={`max-w-[80%] rounded-md p-4 ${
+                        msg.role === "user"
+                          ? isWarRoomMode ? "bg-caution text-accent-foreground shadow-lg" : "bg-accent shadow-lg"
+                          : msg.unavailable
+                            ? "bg-caution-subtle border border-caution/30 text-caution"
+                            : "bg-card border border-border text-ink-muted"
+                      }`}>
                         {msg.role === "assistant" ? (
                           <SafeStreamdown className="text-sm leading-relaxed">{msg.content}</SafeStreamdown>
                         ) : (
@@ -396,7 +407,13 @@ export function GlobalAIChat() {
           ) : (
             messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] rounded-sm p-3 ${ msg.role === "user" ? "bg-accent text-accent-foreground" : "bg-canvas border border-border text-ink-muted" }`}>
+                <div className={`max-w-[85%] rounded-sm p-3 ${
+                  msg.role === "user"
+                    ? "bg-accent text-accent-foreground"
+                    : msg.unavailable
+                      ? "bg-caution-subtle border border-caution/30 text-caution"
+                      : "bg-canvas border border-border text-ink-muted"
+                }`}>
                   {msg.role === "assistant" ? (
                     <SafeStreamdown className="text-sm">{msg.content}</SafeStreamdown>
                   ) : (

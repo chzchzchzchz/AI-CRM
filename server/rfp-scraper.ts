@@ -2,7 +2,7 @@ import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb } from "./db";
 import { rfps, RFP } from "../drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 /**
  * SAM.gov Opportunities API Integration
@@ -128,17 +128,24 @@ async function searchSAMGov(apiKey: string, keyword: string, limit: number = 100
 }
 
 /**
- * Scrape RFPs from SAM.gov for the configured keywords
+ * Scrape RFPs from SAM.gov for the configured keywords.
+ *
+ * Per-keyword failures used to be logged and swallowed, so a rejected/expired API key —
+ * every keyword search fails identically with the same 401/403 — produced the exact
+ * same [] as a genuinely quiet week for the configured keywords. Callers get the
+ * per-keyword failure count so they can tell "checked, found nothing" apart from
+ * "couldn't check any of them."
  */
-async function scrapeAllRFPs(apiKey: string): Promise<SAMOpportunity[]> {
+async function scrapeAllRFPs(apiKey: string): Promise<{ opportunities: SAMOpportunity[]; failedKeywords: string[] }> {
   const allOpportunities: SAMOpportunity[] = [];
   const seenIds = new Set<string>();
+  const failedKeywords: string[] = [];
 
   for (const keyword of RFP_KEYWORDS) {
     try {
       console.log(`[RFP Scraper] Searching for: ${keyword}`);
       const opportunities = await searchSAMGov(apiKey, keyword, 100);
-      
+
       // Deduplicate by noticeId
       for (const opp of opportunities) {
         if (!seenIds.has(opp.noticeId)) {
@@ -146,22 +153,23 @@ async function scrapeAllRFPs(apiKey: string): Promise<SAMOpportunity[]> {
           allOpportunities.push(opp);
         }
       }
-      
+
       // Rate limiting: wait 1 second between requests
       await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (error) {
       console.error(`[RFP Scraper] Error searching for "${keyword}":`, error);
+      failedKeywords.push(keyword);
     }
   }
 
   console.log(`[RFP Scraper] Found ${allOpportunities.length} unique opportunities`);
-  return allOpportunities;
+  return { opportunities: allOpportunities, failedKeywords };
 }
 
 /**
  * Store scraped RFPs in database
  */
-async function storeRFPs(opportunities: SAMOpportunity[]): Promise<number> {
+async function storeRFPs(orgId: number, opportunities: SAMOpportunity[]): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -170,10 +178,15 @@ async function storeRFPs(opportunities: SAMOpportunity[]): Promise<number> {
   for (const opp of opportunities) {
     try {
       // Check if already exists
-      const existing = await db.select().from(rfps).where(eq(rfps.url, opp.uiLink)).limit(1);
+      // A solicitation number is a public identifier — two tenants can legitimately
+      // both be tracking the same government RFP, so the match has to be per org or
+      // one tenant's scrape silently skips (or overwrites) the other's row.
+      const existing = await db.select().from(rfps)
+        .where(and(eq(rfps.orgId, orgId), eq(rfps.url, opp.uiLink))).limit(1);
       
       if (existing.length === 0) {
         await db.insert(rfps).values({
+          orgId,
           title: opp.title,
           agency: `${opp.department} - ${opp.subTier}`,
           responseDeadline: opp.responseDeadLine ? new Date(opp.responseDeadLine) : null,
@@ -220,13 +233,14 @@ export const rfpRouter = router({
       type: z.enum(["government", "private"]).optional(),
       limit: z.number().optional(),
     }).optional())
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) return [];
 
       // Filtering by effective status (not the stored column) needs every row in
       // hand first — fine at this table's size (tens of rows, not millions).
-      const all = await db.select().from(rfps).orderBy(desc(rfps.createdAt));
+      const all = await db.select().from(rfps)
+        .where(eq(rfps.orgId, ctx.orgId)).orderBy(desc(rfps.createdAt));
       const withEffectiveStatus = all.map((r: RFP) => ({ ...r, status: effectiveRfpStatus(r) }));
       const filtered = input?.status
         ? withEffectiveStatus.filter((r: RFP) => r.status === input.status)
@@ -242,20 +256,35 @@ export const rfpRouter = router({
     .input(z.object({
       apiKey: z.string().optional(),   // optional override; defaults to server env
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const apiKey = input.apiKey || process.env.SAM_GOV_API_KEY;
         if (!apiKey) {
           return { success: false, error: "SAM.gov API key not configured (set SAM_GOV_API_KEY)" };
         }
-        const opportunities = await scrapeAllRFPs(apiKey);
-        const inserted = await storeRFPs(opportunities);
+        const { opportunities, failedKeywords } = await scrapeAllRFPs(apiKey);
+
+        // Every keyword failing identically (401/403 from a rejected or expired key,
+        // or SAM.gov being down) used to look exactly like a genuinely quiet week: []
+        // in, "Scraped 0 opportunities" out. A rep has no way to tell a broken
+        // credential apart from a slow week unless the two report differently.
+        if (failedKeywords.length > 0 && failedKeywords.length === RFP_KEYWORDS.length) {
+          return {
+            success: false,
+            error: `SAM.gov search failed for every configured keyword (${failedKeywords.length}). Check SAM_GOV_API_KEY — see server logs for the underlying error.`,
+          };
+        }
+
+        const inserted = await storeRFPs(ctx.orgId, opportunities);
 
         return {
           success: true,
           total: opportunities.length,
           inserted,
-          message: `Scraped ${opportunities.length} opportunities, inserted ${inserted} new RFPs`
+          failedKeywordCount: failedKeywords.length,
+          message: failedKeywords.length
+            ? `Scraped ${opportunities.length} opportunities, inserted ${inserted} new RFPs (${failedKeywords.length}/${RFP_KEYWORDS.length} keyword searches failed — see server logs)`
+            : `Scraped ${opportunities.length} opportunities, inserted ${inserted} new RFPs`,
         };
       } catch (error: any) {
         return {
@@ -268,11 +297,11 @@ export const rfpRouter = router({
   /**
    * Get RFP statistics
    */
-  stats: protectedProcedure.query(async () => {
+  stats: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) return { total: 0, open: 0, closed: 0, awarded: 0 };
 
-    const allRfps = await db.select().from(rfps);
+    const allRfps = await db.select().from(rfps).where(eq(rfps.orgId, ctx.orgId));
     const effectiveStatuses = allRfps.map((r: RFP) => effectiveRfpStatus(r));
 
     return {
@@ -298,10 +327,11 @@ export const rfpRouter = router({
       url: z.string().optional(),
       status: z.string().default("open"),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       await db.insert(rfps).values({
+        orgId: ctx.orgId,
         title: input.title,
         description: input.description ?? null,
         agency: input.agency ?? null,

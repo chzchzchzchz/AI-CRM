@@ -102,6 +102,21 @@ describe("prompt-injection defense", () => {
               offenders.push(`${path.relative(serverDir, p)}:${line}`);
             }
           }
+
+          // A second shape the check above can't see: a plain string field (not a
+          // serialized object, so no JSON.stringify to find) interpolated bare. A call
+          // transcript is exactly this — tools-router.ts's askTranscriptQuestion did
+          // `${input.transcript}` directly, invisible to the JSON.stringify scan, while
+          // its own sibling analyzeTranscript wrapped the identical field two procedures
+          // up. Matches only a BARE identifier/property chain inside `${}` (no call
+          // expression, no concatenation) so `${wrapUntrusted("...", input.transcript)}`
+          // — the fixed shape — does not match at all.
+          const bareRx = /\$\{([a-zA-Z0-9_.]*\btranscript\b[a-zA-Z0-9_.]*)\}/gi;
+          let bm: RegExpExecArray | null;
+          while ((bm = bareRx.exec(src))) {
+            const line = src.slice(0, bm.index).split("\n").length;
+            offenders.push(`${path.relative(serverDir, p)}:${line} (bare \${${bm[1]}}, not wrapUntrusted)`);
+          }
         }
       }
     };

@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Linkedin, Phone, TrendingUp, Building2, Users, Flame, Zap, ArrowRight, Sparkles, Target, Calendar, MapPin, UserCircle, FileSpreadsheet, DollarSign } from "lucide-react";
+import { Mail, Phone, TrendingUp, Building2, Users, Flame, Zap, ArrowRight, Sparkles, Target, Calendar, MapPin, UserCircle, FileSpreadsheet, DollarSign } from "lucide-react";
+import { Linkedin } from "@/components/icons/linkedin";
 import { ContextualAI } from "@/components/ContextualAI";
 import { DemoTour } from "@/components/DemoTour";
 import { HotLeadsWidget } from "@/components/HotLeadsWidget";
@@ -16,6 +17,8 @@ import { RepSwitcher } from "@/components/RepSwitcher";
 import { useRep, REP_TERRITORIES } from "@/contexts/RepContext";
 import { CompanyLogo } from "@/components/ui/company-logo";
 import { PageHeader } from "@/components/app-shell/PageHeader";
+import { DataErrorBanner } from "@/components/ui/data-error-banner";
+import { EmptyWorkspace } from "@/components/ui/empty-workspace";
 import { MetricGrid } from "@/components/ui/metric";
 import { StatCard } from "@/components/StatCard";
 
@@ -34,10 +37,10 @@ export default function Home() {
   const userEmail = selectedRep || user?.email || '';
   
   // All hooks must be called before any early returns (React rules of hooks)
-  const { data: repStats } = trpc.priorityActions.getRepStats.useQuery({ userEmail }, { enabled: !!user });
+  const { data: repStats, error: repStatsError } = trpc.priorityActions.getRepStats.useQuery({ userEmail }, { enabled: !!user });
   const { data: accounts, isLoading: accountsLoading } = trpc.accounts.list.useQuery(undefined, { enabled: !!user });
   const { data: enrichedPriorityActions, isLoading: priorityLoading } = trpc.priorityActions.getEnriched.useQuery({ limit: 3, userEmail }, { enabled: !!user });
-  const { data: topKeywords } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 10 }, { enabled: !!user });
+  const { data: topKeywords, error: topKeywordsError } = trpc.sixsenseAnalytics.getKeywords.useQuery({ limit: 10 }, { enabled: !!user });
   const { data: opportunitiesData } = trpc.opportunities.list.useQuery(undefined, { enabled: !!user });
 
   // Show login screen if not authenticated (after all hooks)
@@ -207,6 +210,20 @@ export default function Home() {
           }
         />
 
+        <DataErrorBanner
+          errors={[repStatsError, topKeywordsError]}
+          message="Some dashboard data couldn't be loaded — rep-specific counts below may show workspace-wide numbers instead, and trending keywords may be missing."
+        />
+
+        {/* A brand-new workspace has nothing in it, and every tile below reads as a
+            statement about a business: "Accounts 0 · Hot 0 · Open pipeline $0 · No
+            qualified accounts". That is the first screen a self-serve customer sees,
+            and it describes an empty pipeline rather than an empty workspace. Say
+            which one it is before they read the numbers as their own. */}
+        {!accountsLoading && (accounts?.length ?? 0) === 0 ? (
+          <EmptyWorkspace what="data in this workspace" />
+        ) : null}
+
         <ContextualAI context="home" placeholder="Ask about today's pipeline…" />
 
         {/* Key figures. Butted together so the row reads as one instrument
@@ -255,11 +272,26 @@ export default function Home() {
                 ? `${Math.round((sixQAGap / hotLeads) * 100)}% of qualified accounts`
                 : sixQAGap !== undefined
                   ? "No qualified accounts"
-                  : "Loading"
+                  // "Loading" is only true for the brief window before the query
+                  // settles — confirmed live that it otherwise sits here forever
+                  // once repStats fails and react-query gives up retrying, reading
+                  // as a stuck spinner rather than the outage the banner above
+                  // already names.
+                  : repStatsError
+                    ? "Unavailable"
+                    : "Loading"
             }
             icon={Target}
             tone="accent"
             onClick={() => setLocation("/accounts?filter=unworked")}
+            // Intent Signals shows the same figure. Declared global so the quality gate
+            // fails if the two ever disagree again; in a rep's territory it is a subset,
+            // and says so.
+            metric={
+              sixQAGap !== undefined
+                ? { key: "unworked-6qa", scope: isKnownRep ? "view" : "global", value: sixQAGap }
+                : undefined
+            }
           />
         </MetricGrid>
 

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { intentScores as intentScoresTable } from "../../drizzle/schema";
 import {
   getDb,
@@ -163,14 +163,14 @@ function toNumber(value: unknown): number | null {
 
 
 /** Pull the intent-score time series. Isolated so a demo-shim quirk can't break the pack. */
-async function fetchIntentHistory(accountId: number) {
+async function fetchIntentHistory(orgId: number, accountId: number) {
   try {
     const db = await getDb();
     if (!db) return [];
     const rows = await db
       .select()
       .from(intentScoresTable)
-      .where(eq(intentScoresTable.accountId, accountId));
+      .where(and(eq(intentScoresTable.orgId, orgId), eq(intentScoresTable.accountId, accountId)));
     return Array.isArray(rows) ? rows : [];
   } catch (error) {
     console.error(`[signals] intent history unavailable for account ${accountId}:`, error);
@@ -178,15 +178,21 @@ async function fetchIntentHistory(accountId: number) {
   }
 }
 
-export async function gatherAccountSignals(accountId: number): Promise<SignalPack> {
-  const account = await getAccountById(accountId);
+export async function gatherAccountSignals(orgId: number, accountId: number): Promise<SignalPack> {
+  const account = await getAccountById(orgId, accountId);
   if (!account) throw new Error(`Account ${accountId} not found`);
 
+  // Not caught into [] on failure: a genuine query error here (as opposed to "this
+  // account really has no contacts") would otherwise read as a verified fact — feeding
+  // an AI-written brief that confidently states an account has zero contacts, zero
+  // calls, or zero opportunities when the truth is the fetch broke mid-request. Every
+  // caller of gatherAccountSignals already either sits behind a tRPC procedure (which
+  // turns a throw into a normal client-facing error) or its own try/catch.
   const [people, calls, opps, intentRows] = await Promise.all([
-    getContactsByAccountId(accountId).catch(() => []),
-    getGongCallsByAccountId(accountId).catch(() => []),
-    getOpportunitiesByAccountId(accountId).catch(() => []),
-    fetchIntentHistory(accountId),
+    getContactsByAccountId(orgId, accountId),
+    getGongCallsByAccountId(orgId, accountId),
+    getOpportunitiesByAccountId(orgId, accountId),
+    fetchIntentHistory(orgId, accountId),
   ]);
 
   const a = account as any;

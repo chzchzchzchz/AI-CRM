@@ -8,6 +8,17 @@ import { getCompanyConfig } from "./config";
 // Store approval tokens (in production, use Redis or database)
 const approvalTokens = new Map<string, { userId: number; action: "approve" | "deny"; expiresAt: Date }>();
 
+// Every live token for a user, so approving or denying can retire the OTHER token for
+// the same signup too. The two are meant to be mutually exclusive outcomes of one
+// decision — before this, clicking one left the other sitting in the same email, still
+// valid for its full 7 days. An admin who approved a user and later re-opened that
+// email (cleanup, a "wait, who was this" scroll-back, a forwarded copy) and clicked
+// Deny — thinking it was for a different, newer request — deleted an already-approved,
+// possibly-active user. Both links also sit in the same email a corporate link-scanner
+// GETs to check for malware before a human ever opens it; nothing stopped a scanner
+// from resolving both, in either order, and silently deciding the outcome.
+const tokensByUser = new Map<number, Set<string>>();
+
 // Generate a secure token for one-click approval
 export function generateApprovalToken(userId: number, action: "approve" | "deny"): string {
   const token = crypto.randomBytes(32).toString("hex");
@@ -16,14 +27,26 @@ export function generateApprovalToken(userId: number, action: "approve" | "deny"
     action,
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
   });
+  const forUser = tokensByUser.get(userId) ?? new Set<string>();
+  forUser.add(token);
+  tokensByUser.set(userId, forUser);
   return token;
+}
+
+/** Invalidate every outstanding token for a user — both sides of one approve/deny pair. */
+function retireTokensFor(userId: number): void {
+  const forUser = tokensByUser.get(userId);
+  if (forUser) {
+    for (const t of forUser) approvalTokens.delete(t);
+    tokensByUser.delete(userId);
+  }
 }
 
 // Get approval links for a user
 export function getApprovalLinks(userId: number, baseUrl: string): { approveUrl: string; denyUrl: string } {
   const approveToken = generateApprovalToken(userId, "approve");
   const denyToken = generateApprovalToken(userId, "deny");
-  
+
   return {
     approveUrl: `${baseUrl}/api/admin/approve/${approveToken}`,
     denyUrl: `${baseUrl}/api/admin/deny/${denyToken}`,
@@ -69,6 +92,63 @@ async function resolveToken(
   return { ok: true, user };
 }
 
+export type ApprovalResolution =
+  | { kind: "invalid" }
+  | { kind: "expired" }
+  | { kind: "wrong-action" }
+  | { kind: "db-unavailable" }
+  | { kind: "user-not-found" }
+  | { kind: "already-approved"; user: { name: string | null; email: string | null } }
+  | { kind: "approved"; user: { name: string | null; email: string | null } }
+  | { kind: "denied"; user: { name: string | null; email: string | null } };
+
+/**
+ * The actual decision logic, separated from Express so it's directly testable and so
+ * both routes below share one implementation of "resolve this token" rather than two
+ * copies that could individually forget to retire the sibling token.
+ */
+export async function resolveApprovalToken(
+  token: string,
+  expectedAction: "approve" | "deny"
+): Promise<ApprovalResolution> {
+  const tokenData = approvalTokens.get(token);
+  if (!tokenData) return { kind: "invalid" };
+
+  if (tokenData.expiresAt < new Date()) {
+    approvalTokens.delete(token);
+    return { kind: "expired" };
+  }
+
+  if (tokenData.action !== expectedAction) return { kind: "wrong-action" };
+
+  const db = await getDb();
+  if (!db) return { kind: "db-unavailable" };
+
+  // tenancy-exempt: authorized by the unguessable one-click token in the approval link, not by a session
+  const [user] = await db.select().from(users).where(eq(users.id, tokenData.userId));
+  if (!user) {
+    retireTokensFor(tokenData.userId);
+    return { kind: "user-not-found" };
+  }
+
+  if (expectedAction === "approve") {
+    if (user.isApproved) {
+      retireTokensFor(tokenData.userId);
+      return { kind: "already-approved", user: { name: user.name, email: user.email } };
+    }
+    // tenancy-exempt: authorized by the unguessable one-click token in the approval link, not by a session
+    await db.update(users).set({ isApproved: true }).where(eq(users.id, tokenData.userId));
+    retireTokensFor(tokenData.userId);
+    return { kind: "approved", user: { name: user.name, email: user.email } };
+  }
+
+  // Deny = remove from system.
+  // tenancy-exempt: authorized by the unguessable one-click token in the approval link, not by a session
+  await db.delete(users).where(eq(users.id, tokenData.userId));
+  retireTokensFor(tokenData.userId);
+  return { kind: "denied", user: { name: user.name, email: user.email } };
+}
+
 export function registerAdminApprovalRoutes(app: Express) {
   // GET renders a confirmation page — it must not itself approve or deny anyone.
   // Email security gateways (Microsoft Safe Links, Proofpoint, Mimecast, and similar)
@@ -103,6 +183,7 @@ export function registerAdminApprovalRoutes(app: Express) {
       const db = await getDb();
       await db!.update(users).set({ isApproved: true }).where(eq(users.id, user.id));
       approvalTokens.delete(req.params.token);
+      retireTokensFor(user.id);
 
       return res.status(200).send(renderResultPage(
         "User Approved ✓",
@@ -133,6 +214,7 @@ export function registerAdminApprovalRoutes(app: Express) {
       const db = await getDb();
       await db!.delete(users).where(eq(users.id, user.id));
       approvalTokens.delete(req.params.token);
+      retireTokensFor(user.id);
 
       return res.status(200).send(renderResultPage(
         "User Denied",

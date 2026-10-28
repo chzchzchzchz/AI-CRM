@@ -1,13 +1,15 @@
 import { useState, useMemo, useCallback, useEffect } from"react";
+import { MFA_PROVIDERS } from "@/lib/mfa-providers";
 import { Card, CardContent } from"@/components/ui/card";
 import { Button } from"@/components/ui/button";
 import { Input } from"@/components/ui/input";
 import { trpc } from"@/lib/trpc";
-import { Link, useLocation } from"wouter";
+import { Link, useLocation, useSearch } from"wouter";
 import {
-  User, Mail, Linkedin, MapPin, Building2, Search, ArrowUpDown, ExternalLink,
+  User, Mail, MapPin, Building2, Search, ArrowUpDown, ExternalLink,
   Briefcase, Users, Sparkles, Phone, TrendingUp, Flame, Snowflake, ChevronRight, Target
 } from"lucide-react";
+import { Linkedin } from "@/components/icons/linkedin";
 import { ContextualAI } from"@/components/ContextualAI";
 import {
   Select,
@@ -19,6 +21,8 @@ import {
 import { useRep } from"@/contexts/RepContext";
 import { RepSwitcher } from"@/components/RepSwitcher";
 import { isDecisionMaker, DECISION_MAKER_HINT, TITLE_TOKENS } from "@shared/taxonomy";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
+import { EmptyWorkspace } from "@/components/ui/empty-workspace";
 
 type SortField ="priority" |"name" |"title" |"company";
 type SortOrder ="asc" |"desc";
@@ -50,8 +54,16 @@ export default function ContactsEnhanced() {
   // The true totals, so the header can say how much it is NOT showing.
   const { data: totals } = trpc.accounts.getStats.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
 
-  const { data: contacts, isLoading } = trpc.people.list.useQuery(
-    { search: debouncedSearch || undefined },
+  // The account page's "View all" links here with ?account=<id>. This page read no
+  // parameters, so it opened every contact in the workspace — 10,023 for an account with
+  // two. The server returns that account's contacts in full, so the 1,500-row cap on the
+  // unfiltered list can't hide any of them.
+  const search = useSearch();
+  const accountParam = new URLSearchParams(search).get("account");
+  const accountIdFilter = accountParam && /^\d+$/.test(accountParam) ? Number(accountParam) : undefined;
+
+  const { data: contacts, isLoading, error: contactsError, refetch: refetchContacts } = trpc.people.list.useQuery(
+    { search: debouncedSearch || undefined, accountId: accountIdFilter },
     { staleTime: 3 * 60 * 1000 }
   );
 
@@ -99,8 +111,6 @@ export default function ContactsEnhanced() {
   }, [contacts]);
 
   // MFA/Identity Provider options - hardcoded list of identity/auth vendors
-  const MFA_PROVIDERS = ["Ping Identity","Okta","Duo Security","Azure AD","OneLogin","ForgeRock","Auth0","CyberArk","RSA SecurID","SailPoint","Saviynt","IBM Security Verify","Oracle Identity","SecureAuth","Thales SafeNet"
-  ];
 
   // Extract MFA/Identity providers found in accounts' techStack
   const mfaProviders = useMemo(() => {
@@ -239,7 +249,7 @@ export default function ContactsEnhanced() {
   // Loading state
   if (isLoading) {
     return (
-      <div>
+      <div data-page-loading="true">
         <div className="container py-10 space-y-6 max-w-7xl">
           <div className="space-y-3">
             <div className="h-9 w-72 skeleton" />
@@ -273,6 +283,7 @@ export default function ContactsEnhanced() {
   // contacts even though only 1,500 rows were fetched.
   const isNarrowed =
     isRepMode ||
+    accountIdFilter !== undefined ||
     showAIPriority ||
     !!searchQuery ||
     companyFilter !=="all" ||
@@ -321,6 +332,18 @@ export default function ContactsEnhanced() {
               )}
               {repInfo && <> · {repInfo.label} territory</>}
             </p>
+            {accountIdFilter !== undefined && (
+              <p className="mt-1 text-sm text-ink-muted">
+                Contacts at{" "}
+                <span className="font-medium text-foreground">
+                  {accounts?.find((a: any) => a.id === accountIdFilter)?.name ?? `account #${accountIdFilter}`}
+                </span>
+                {" · "}
+                <Link href="/contacts" className="text-accent hover:underline">
+                  Show all
+                </Link>
+              </p>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <RepSwitcher />
@@ -473,7 +496,13 @@ export default function ContactsEnhanced() {
         </div>
 
         {/* Contacts List */}
-        {filteredContacts.length === 0 ? (
+        {contactsError ? (
+          <DataUnavailable what="contacts" detail={contactsError} onRetry={() => refetchContacts()} />
+        ) : !isLoading && (contacts?.length ?? 0) === 0 ? (
+          /* Nothing has ever been imported into this workspace. Checked against the
+             UNFILTERED list, so narrowing a search can never reach this. */
+          <EmptyWorkspace what="contacts" icon={Users} />
+        ) : filteredContacts.length === 0 ? (
           <Card>
             <CardContent className="py-16 text-center">
               <Users className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
@@ -494,18 +523,19 @@ export default function ContactsEnhanced() {
               const phone = contact.phone || (contact as any).mobilePhone || (contact as any).directPhone;
 
               return (
+                // The row stays clickable anywhere for a mouse, but it is not a button: it
+                // used to be role="button" with a LinkedIn button inside it, which a screen
+                // reader cannot operate (axe: nested-interactive, 37 per page). Its key
+                // handler also checked e.key === "" — Space is " " — so Space did nothing.
+                // Keyboard and assistive tech now reach the contact through the name link.
                 <div
                   key={contact.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => navigate(`/contacts/${contact.id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key ==="Enter" || e.key ==="") {
-                      e.preventDefault();
-                      navigate(`/contacts/${contact.id}`);
-                    }
+                  onClick={(e) => {
+                    // A click on the name link or the LinkedIn button handles itself.
+                    if ((e.target as HTMLElement).closest("a, button")) return;
+                    navigate(`/contacts/${contact.id}`);
                   }}
-                  className="group flex flex-wrap items-center gap-4 px-4 py-3 cursor-pointer transition-colors hover:bg-surface/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+                  className="group flex flex-wrap items-center gap-4 px-4 py-3 cursor-pointer transition-colors hover:bg-surface/[0.025]"
                 >
                   {/* Avatar */}
                   <div className="w-9 h-9 rounded-sm bg-muted border border-border/60 flex items-center justify-center flex-shrink-0">
@@ -515,9 +545,12 @@ export default function ContactsEnhanced() {
                   {/* Identity */}
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-[15px] text-foreground truncate group-hover:text-accent transition-colors">
+                      <Link
+                        href={`/contacts/${contact.id}`}
+                        className="font-semibold text-[15px] text-foreground truncate group-hover:text-accent transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      >
                         {contact.name}
-                      </span>
+                      </Link>
                       {dm && (
                         <span className="hidden sm:inline-flex items-center gap-1 text-2xs font-medium text-ink-muted bg-muted rounded px-1.5 py-0.5 flex-shrink-0">
                           <Target className="h-2.5 w-2.5" />
@@ -640,9 +673,9 @@ export default function ContactsEnhanced() {
               Previous
             </Button>
             <span className="px-4 py-2 text-sm text-ink-muted">
-              Page <span className="tabular-nums text-ink-muted">{currentPage}</span> of{""}
+              Page <span className="tabular-nums text-ink-muted">{currentPage}</span> of{" "}
               <span className="tabular-nums text-ink-muted">{totalPages}</span>
-              {""}(<span className="tabular-nums text-ink-muted">{filteredContacts.length}</span> contacts)
+              {" "}(<span className="tabular-nums text-ink-muted">{filteredContacts.length}</span> contacts)
             </span>
             <Button
               variant="outline"

@@ -28,6 +28,7 @@ const SixsenseSync = lazyLoad(() => import("./pages/SixsenseSync"));
 const SalesforceSync = lazyLoad(() => import("./pages/SalesforceSync"));
 const SixsenseAnalytics = lazyLoad(() => import("./pages/SixsenseAnalytics"));
 const CsvProcessor = lazyLoad(() => import("./pages/CsvProcessor"));
+const ImportAccounts = lazyLoad(() => import("./pages/ImportAccounts"));
 const DataHub = lazyLoad(() => import("./pages/DataHub"));
 const ContentStudio = lazyLoad(() => import("./pages/ContentStudio"));
 const TranscriptAnalyzer = lazyLoad(() => import("./pages/TranscriptAnalyzer"));
@@ -35,6 +36,7 @@ const AITools = lazyLoad(() => import("./pages/AITools"));
 const TopAccounts = lazyLoad(() => import("./pages/TopAccounts"));
 const Login = lazyLoad(() => import("./pages/Login"));
 const SignUp = lazyLoad(() => import("./pages/SignUp"));
+const AcceptInvite = lazyLoad(() => import("./pages/AcceptInvite"));
 const RequestAccess = lazyLoad(() => import("./pages/RequestAccess"));
 const ForgotPassword = lazyLoad(() => import("./pages/ForgotPassword"));
 const LeadProcessor = lazyLoad(() => import("./pages/LeadProcessor"));
@@ -52,6 +54,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/signup" component={SignUp} />
+      <Route path="/accept-invite" component={AcceptInvite} />
       <Route path="/request-access" component={RequestAccess} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path={"/"} component={Home} />
@@ -75,6 +78,7 @@ function Router() {
       <Route path="/salesforce-sync" component={SalesforceSync} />
       <Route path="/sixsense-analytics" component={SixsenseAnalytics} />
       <Route path="/csv-processor" component={CsvProcessor} />
+      <Route path="/import" component={ImportAccounts} />
       <Route path="/data-hub" component={DataHub} />
       <Route path="/content-studio" component={ContentStudio} />
       <Route path="/transcript-analyzer" component={TranscriptAnalyzer} />

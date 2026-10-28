@@ -8,6 +8,7 @@ import { trpc } from"@/lib/trpc";
 import { toast } from"sonner";
 import { KnowledgeBase } from"@/components/KnowledgeBase";
 import { LearningInsights } from"@/components/LearningInsights";
+import { csvRow } from"@shared/csv";
 import { 
   Upload, FileSpreadsheet, Sparkles, Loader2, Download, 
   CheckCircle2, XCircle, AlertTriangle, Database, 
@@ -137,7 +138,16 @@ export default function DataHub() {
 
       setStatus('complete');
       setProgress(100);
-      toast.success(`Processed ${result.cleanedCount} records successfully!`);
+      // originalCount > 0 && cleanedCount === 0 means every row was filtered out —
+      // downloadCleanedData below already treats that as a failure ("Nothing to
+      // download"); this toast, shown first in the exact same run, was still calling
+      // it a success. Status stays 'complete' so the issues list this message points
+      // to is actually visible.
+      if (result.originalCount > 0 && result.cleanedCount === 0) {
+        toast.error(`Every row was filtered out of ${result.originalCount} uploaded. See the issues list below.`);
+      } else {
+        toast.success(`Processed ${result.cleanedCount} records successfully!`);
+      }
 
     } catch (error) {
       // e.g. ".xlsx" uploads throw a specific "export to CSV" error server-side —
@@ -160,12 +170,13 @@ export default function DataHub() {
       return;
     }
 
+    // csvRow neutralizes a cell that starts with =, +, - or @ — Excel/Sheets read
+    // that as a formula, not text, the moment this file is opened, and this data
+    // came from an uploaded file nobody here typed themselves. See shared/csv.ts.
     const headers = Object.keys(result.cleanedData[0] || {});
     const csv = [
       headers.join(','),
-      ...result.cleanedData.map(row => 
-        headers.map(h => `"${String(row[h] || '').replace(/"/g, '""')}"`).join(',')
-      )
+      ...result.cleanedData.map(row => csvRow(headers.map(h => row[h] || '')))
     ].join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });

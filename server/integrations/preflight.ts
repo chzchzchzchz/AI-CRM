@@ -11,6 +11,8 @@
 
 import { CONNECTORS, COMMON_PLACEHOLDERS, type ConnectorSpec, type EnvSpec } from "./registry";
 import { isWeakSecret } from "@shared/weak-secret";
+import { probeStore } from "../_core/shared-store";
+import { signupMode } from "../_core/onboarding";
 
 export type Severity = "ready" | "incomplete" | "invalid" | "not-configured";
 
@@ -200,9 +202,43 @@ export type PreflightReport = {
   counts: Record<Severity, number> & { coreProblems: number };
 };
 
-export function buildReport(env: NodeJS.ProcessEnv = process.env): PreflightReport {
+export async function buildReport(env: NodeJS.ProcessEnv = process.env): Promise<PreflightReport> {
   const connectors = runPreflight(env);
   const core = checkCore(env);
+
+  // Asked of the live store rather than derived from `env`: whether state is actually
+  // shared depends on whether Redis answers, which no amount of reading a string tells
+  // you. An operator running two pods behind a REDIS_URL that silently never connected
+  // gets N × the login attempts they configured, and nothing else in the app says so.
+  // Which signup mode is live. An operator running self-serve while believing it is
+  // invite-only is handing out workspaces to anyone with the URL; one running invite-only
+  // while believing it is self-serve has paying customers stuck at an approval screen
+  // nobody is watching. Neither is visible from inside the app without being told.
+  const mode = signupMode();
+  core.push({
+    name: "Signup",
+    ok: true,
+    message:
+      mode === "self-serve"
+        ? "Self-serve — a signup creates its OWN organization and its first user is that org's admin."
+        : "Invite-only — a signup joins the existing organization and waits for admin approval.",
+    fix:
+      mode === "self-serve"
+        ? undefined
+        : "Selling to more than one customer needs SIGNUP_MODE=self-serve, or every signup lands in the same workspace.",
+  });
+
+  const shared = await probeStore();
+  core.push({
+    name: "Auth state",
+    ok: shared.shared || !shared.configured,
+    message: shared.detail,
+    fix: shared.configured
+      ? shared.shared
+        ? undefined
+        : "Check REDIS_URL is reachable from this host, or unset it and run a single instance."
+      : "Only needed for more than one instance: REDIS_URL=redis://host:6379",
+  });
   const counts = {
     ready: 0,
     incomplete: 0,

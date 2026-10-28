@@ -253,12 +253,18 @@ field isn't in the data, return an empty array rather than a plausible-sounding 
 
   const { content, available } = llmText(response);
   if (!available) {
+    // `summary` used to be the only place this showed up — inside a JSON blob dumped
+    // to the page (Calls.tsx renders the whole response with JSON.stringify), next to
+    // several genuinely-empty arrays. Nothing marked the object itself as a failure,
+    // so the row still expanded and read as "not much happened on this call" rather
+    // than "the analysis didn't run."
     return {
       summary: unavailableReason(content), keyTopics: [], objections: [], nextSteps: [],
       sentiment: "neutral", buyingSignals: [], competitorsMentioned: [], actionItems: [],
+      available: false,
     };
   }
-  return sanitizeCallAnalysis(parseLlmJson(content), callData);
+  return { ...sanitizeCallAnalysis(parseLlmJson(content), callData), available: true };
 }
 
 /**
@@ -298,11 +304,11 @@ Return only the email body (no subject line).
 /**
  * Smart search with natural language understanding
  */
-export async function intelligentSearch(query: string): Promise<any> {
+export async function intelligentSearch(orgId: number, query: string): Promise<any> {
   // Get all data for context
-  const accounts = await getAllAccounts();
-  const people = await getAllPeople();
-  const calls = await getAllGongCalls();
+  const accounts = await getAllAccounts(orgId);
+  const people = await getAllPeople(orgId);
+  const calls = await getAllGongCalls(orgId);
 
   const prompt = `${getCompanyContext()}
 

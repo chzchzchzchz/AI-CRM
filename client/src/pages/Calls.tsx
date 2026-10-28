@@ -10,6 +10,7 @@ import {
   Phone, Calendar, Clock, Building2, Search,
   PlayCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Sparkles, Loader2
 } from "lucide-react";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
 
 
 const CALLS_PER_PAGE = 50;
@@ -22,7 +23,16 @@ export default function Calls() {
   const [analyses, setAnalyses] = useState<Record<number, string>>({});
 
   const analyze = trpc.ai.analyzeCall.useMutation({
-    onSuccess: (res, vars) => {
+    onSuccess: (res: any, vars) => {
+      // `available === false` means summary is the "AI generation is unavailable"
+      // note, buried inside a JSON blob next to several genuinely-empty arrays —
+      // nothing marked the object itself as a failure, so this used to render under
+      // an "Analysis" heading exactly like a real one.
+      if (res?.available === false) {
+        toast.error("AI generation is unavailable right now — could not analyze this call.");
+        setAnalyzingId(null);
+        return;
+      }
       const text = typeof res === "string" ? res : JSON.stringify(res, null, 2);
       setAnalyses(a => ({ ...a, [vars.callId]: text }));
       // Open the row so the result is visible where it was asked for.
@@ -36,12 +46,12 @@ export default function Calls() {
   });
 
   // Use paginated query for performance
-  const { data, isLoading } = trpc.gong.listPaginated.useQuery(
+  const { data, isLoading, error, refetch } = trpc.gong.listPaginated.useQuery(
     { limit: CALLS_PER_PAGE, offset: (currentPage - 1) * CALLS_PER_PAGE },
     { staleTime: 3 * 60 * 1000 }
   );
 
-  const calls = data?.calls || [];
+  const calls = useMemo(() => data?.calls || [], [data]);
   const totalCalls = data?.total || 0;
   const totalPages = Math.ceil(totalCalls / CALLS_PER_PAGE);
 
@@ -84,7 +94,7 @@ export default function Calls() {
   // Loading state
   if (isLoading && !data) {
     return (
-      <div className="text-foreground">
+      <div data-page-loading="true" className="text-foreground">
         <div className="container mx-auto py-8 px-4 space-y-6 max-w-6xl">
           <div className="h-10 w-48 skeleton rounded" />
           <div className="space-y-3">
@@ -160,7 +170,9 @@ export default function Calls() {
         </div>
 
         {/* Calls List */}
-        {filteredCalls.length === 0 ? (
+        {error ? (
+          <DataUnavailable what="calls" detail={error} onRetry={() => refetch()} />
+        ) : filteredCalls.length === 0 ? (
           <Card className="bg-card border-border shadow-none">
             <CardContent className="py-12 text-center">
               <Phone className="h-12 w-12 mx-auto text-ink-subtle mb-3" />
@@ -317,6 +329,7 @@ export default function Calls() {
             size="sm"
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
+            aria-label="Previous page"
             className="border-border-strong text-ink-muted hover:bg-muted hover:text-foreground"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -344,6 +357,7 @@ export default function Calls() {
             size="sm"
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage >= totalPages}
+            aria-label="Next page"
             className="border-border-strong text-ink-muted hover:bg-muted hover:text-foreground"
           >
             <ChevronRight className="h-4 w-4" />

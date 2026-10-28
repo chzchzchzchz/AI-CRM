@@ -581,6 +581,17 @@ function findFabrication(
     return `cites ${m[1]}.${m[2]} ${m[3]}, but the pack records ${recorded}`;
   }
 
+  // 4. A formal solicitation the account's data never mentions. A deal at Proposal is not
+  //    an RFP, but a model reading "Proposal" will write "a defined open RFP" — and none of
+  //    the checks above fire, because an invented document is not a name, an amount or a
+  //    cited figure. Grounded against the same vocabulary as names: if the account's own
+  //    triggers, call topics or action items mention one, citing it is fine.
+  for (const m of text.matchAll(/\b(RF[PIQ])s?\b/gi)) {
+    const kind = m[1].toLowerCase();
+    if (known.has(kind) || known.has(`${kind}s`)) continue;
+    return `mentions an ${m[1].toUpperCase()}, but nothing in the account's data does`;
+  }
+
   return null;
 }
 
@@ -715,9 +726,9 @@ type Snapshot = {
   judgement?: Judgement;
 };
 
-async function loadSnapshots(accountId: number): Promise<Snapshot[]> {
+async function loadSnapshots(orgId: number, accountId: number): Promise<Snapshot[]> {
   try {
-    const rows = await getContext(BRIEF_CONTEXT_TYPE, `account_${accountId}`);
+    const rows = await getContext(orgId, BRIEF_CONTEXT_TYPE, `account_${accountId}`);
     return (rows || [])
       .map((r: any) => {
         const meta = r.metadata || {};
@@ -743,8 +754,8 @@ async function loadSnapshots(accountId: number): Promise<Snapshot[]> {
  * Brief history with per-generation deltas, so you can see how the account moved
  * (intent climbed, pipeline grew, contacts added) rather than just re-reading prose.
  */
-export async function getAccountBriefHistory(accountId: number, limit = 10) {
-  const snaps = (await loadSnapshots(accountId))
+export async function getAccountBriefHistory(orgId: number, accountId: number, limit = 10) {
+  const snaps = (await loadSnapshots(orgId, accountId))
     .sort((a, b) => (b.generatedAt || "").localeCompare(a.generatedAt || ""))
     .slice(0, limit);
 
@@ -780,16 +791,17 @@ export async function getAccountBriefHistory(accountId: number, limit = 10) {
 // ---------------------------------------------------------------------------------
 
 export async function generateAccountBrief(
+  orgId: number,
   accountId: number,
   opts: { forceRefresh?: boolean } = {}
 ): Promise<AccountBrief> {
-  const pack = await gatherAccountSignals(accountId);
+  const pack = await gatherAccountSignals(orgId, accountId);
   const signalHash = hashSignals(pack);
   const metrics = metricsFrom(pack);
 
   // Reuse the last brief when the underlying signals are byte-identical and still fresh.
   if (!opts.forceRefresh) {
-    const snaps = await loadSnapshots(accountId);
+    const snaps = await loadSnapshots(orgId, accountId);
     const latest = snaps
       .filter((s) => s.signalHash === signalHash && s.version === BRIEF_VERSION && s.markdown)
       .sort((a, b) => (b.generatedAt || "").localeCompare(a.generatedAt || ""))[0];
@@ -911,6 +923,7 @@ export async function generateAccountBrief(
   if (!degraded) {
     try {
       await storeContext({
+        orgId,
         type: BRIEF_CONTEXT_TYPE,
         key: `account_${accountId}`,
         value: markdown,

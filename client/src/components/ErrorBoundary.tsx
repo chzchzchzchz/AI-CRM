@@ -21,6 +21,25 @@ class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
+  /**
+   * Without this, a caught crash left no trace anywhere.
+   *
+   * getDerivedStateFromError swaps in the fallback screen, which is the point — no
+   * blank page — but nothing wrote down that it happened. A rep hits "Reload Page",
+   * the app comes back, and the only record of the crash was on their screen for as
+   * long as it took them to click the button. No console entry, no server log, no
+   * signal that anything went wrong at all.
+   *
+   * console.error at least leaves something in the browser console and in whatever
+   * already scrapes it (the quality gate's own page.on("console") listener among
+   * them). It is not telemetry — there is no server-side collector for client
+   * crashes in this app — so a real deployment still needs one. This is the floor,
+   * not the fix.
+   */
+  componentDidCatch(error: Error, info: { componentStack?: string | null }) {
+    console.error("[ErrorBoundary] caught a render error:", error, info.componentStack);
+  }
+
   render() {
     if (this.state.hasError) {
       return (

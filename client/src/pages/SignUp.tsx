@@ -10,13 +10,22 @@ import { Loader2, CheckCircle, AlertCircle, MailCheck } from "lucide-react";
 
 /**
  * Signup is three steps, not one: create the account, prove the address is yours,
- * then wait for an admin.
+ * then — depending on how this deployment is configured — either start using it or
+ * wait for an admin.
  *
  * The middle step was fully built on the server — code generation, expiry, an
  * attempt limit, a mailer — and nothing ever called it, so every account reached
  * the approval queue with an address no one had checked.
+ *
+ * The last step used to be unconditional: "Account Pending Approval. You'll receive an
+ * email once your account is approved." Under SIGNUP_MODE=self-serve that is false in
+ * every particular. The server has already created the organization, approved the
+ * account and made it an admin — this person IS the customer — so they were left
+ * waiting for an approval that had happened and an email nobody would send, one click
+ * away from a workspace that was ready. The server now says which mode it is in and
+ * this screen says the true thing.
  */
-type Stage = "form" | "verify" | "pending";
+type Stage = "form" | "verify" | "done";
 
 export default function SignUp() {
   const [stage, setStage] = useState<Stage>("form");
@@ -27,6 +36,10 @@ export default function SignUp() {
   const [error, setError] = useState("");
 
   const [userId, setUserId] = useState<number | null>(null);
+  // Which of the two endings applies. Only the server knows the deployment's
+  // SIGNUP_MODE, so it says. Defaults to true: if the answer never arrives, "wait for
+  // an admin" is the harmless wrong message and "your workspace is ready" is not.
+  const [needsApproval, setNeedsApproval] = useState(true);
   const [code, setCode] = useState("");
   const [notice, setNotice] = useState("");
   // In demo mode the server returns the code instead of mailing it, so the flow is
@@ -35,24 +48,32 @@ export default function SignUp() {
 
   const sendCode = trpc.emailVerification.sendVerificationCode.useMutation({
     onSuccess: res => {
-      setDemoCode("code" in res ? (res.code as string) : null);
+      const demo = "code" in res ? (res.code as string) : null;
+      setDemoCode(demo);
+      // `emailSent` used to be discarded, so a broken or unconfigured mailer still
+      // landed on "We sent a 6-digit code to you@company.com" with no code ever sent
+      // and no way off the screen except abandoning verification via "Do this later".
+      if (!demo && res.emailSent === false) {
+        setNotice("We couldn't send a verification email right now. You can try again or verify later.");
+      }
       setStage("verify");
     },
     // A failed send must not strand the account: it exists and is queued for approval
     // either way, so say what happened and move on rather than looping on the form.
     onError: err => {
       setNotice(`We couldn't send a verification email (${err.message}).`);
-      setStage("pending");
+      setStage("done");
     },
   });
 
   const signUpMutation = trpc.auth.signUp.useMutation({
     onSuccess: res => {
+      setNeedsApproval(res.needsApproval !== false);
       if (res.userId) {
         setUserId(res.userId);
         sendCode.mutate({ userId: res.userId, email });
       } else {
-        setStage("pending");
+        setStage("done");
       }
     },
     onError: err => setError(err.message || "Failed to create account"),
@@ -61,16 +82,21 @@ export default function SignUp() {
   const verify = trpc.emailVerification.verifyEmail.useMutation({
     onSuccess: () => {
       setNotice("");
-      setStage("pending");
+      setStage("done");
     },
     onError: err => setError(err.message || "Could not verify that code"),
   });
 
   const resend = trpc.emailVerification.resendVerificationCode.useMutation({
     onSuccess: res => {
-      setDemoCode("code" in res ? (res.code as string) : null);
+      const demo = "code" in res ? (res.code as string) : null;
+      setDemoCode(demo);
       setError("");
-      setNotice("A new code is on its way.");
+      setNotice(
+        demo || res.emailSent !== false
+          ? "A new code is on its way."
+          : "We couldn't send that email right now. Please try again in a moment."
+      );
     },
     onError: err => setError(err.message),
   });
@@ -174,7 +200,7 @@ export default function SignUp() {
                 <button
                   type="button"
                   className="text-ink-muted underline underline-offset-2"
-                  onClick={() => setStage("pending")}
+                  onClick={() => setStage("done")}
                 >
                   Do this later
                 </button>
@@ -186,23 +212,38 @@ export default function SignUp() {
     );
   }
 
-  if (stage === "pending") {
+  if (stage === "done") {
     return (
       <div className="grid min-h-screen place-items-center bg-canvas p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <CheckCircle className="h-16 w-16 text-caution" />
-              <h2 className="text-2xl font-semibold">Account Pending Approval</h2>
-              <p className="text-muted-foreground">
-                Your account has been created and is pending admin approval.
-                You'll receive an email once your account is approved.
-              </p>
-              {notice && <p className="text-sm text-ink-muted">{notice}</p>}
-              <Link href="/login" className="text-sm text-accent underline underline-offset-2">
-                Back to sign in
-              </Link>
-            </div>
+            {needsApproval ? (
+              <div className="flex flex-col items-center gap-4 text-center">
+                <CheckCircle className="h-16 w-16 text-caution" />
+                <h2 className="text-2xl font-semibold">Account Pending Approval</h2>
+                <p className="text-muted-foreground">
+                  Your account has been created and is pending admin approval. You'll
+                  receive an email once your account is approved.
+                </p>
+                {notice && <p className="text-sm text-ink-muted">{notice}</p>}
+                <Link href="/login" className="text-sm text-accent underline underline-offset-2">
+                  Back to sign in
+                </Link>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-4 text-center">
+                <CheckCircle className="h-16 w-16 text-positive" />
+                <h2 className="text-2xl font-semibold">Your workspace is ready</h2>
+                <p className="text-muted-foreground">
+                  You're the admin of a new, empty workspace — nothing to wait for. Sign in
+                  to start, and invite your colleagues from the admin page once you're in.
+                </p>
+                {notice && <p className="text-sm text-ink-muted">{notice}</p>}
+                <Link href="/login">
+                  <Button className="mt-1">Sign in</Button>
+                </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

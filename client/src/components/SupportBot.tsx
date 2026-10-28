@@ -73,9 +73,17 @@ export function SupportBot() {
         debugMode: true // Always capture reasoning, but we'll hide it by default
       });
 
+      // `available === false` means `answer` is the "AI generation is unavailable"
+      // note (server internals like BUILT_IN_FORGE_API_KEY, not a conversational
+      // reply) rather than a real answer — `response.answer || fallback` didn't catch
+      // this because that note is a non-empty, truthy string. It was posted straight
+      // into the chat log as if the bot had actually answered the question.
+      const gotRealAnswer = response.available !== false && response.answer;
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: response.answer || `Hmm, I'm not sure about that. Reach out to ${SUPPORT_CONTACT} if you need more help!`,
+        content: gotRealAnswer
+          ? response.answer
+          : `Hmm, I'm not sure about that. Reach out to ${SUPPORT_CONTACT} if you need more help!`,
         reasoning: response.reasoning // Always store reasoning for optional viewing
       }]);
     } catch (error) {

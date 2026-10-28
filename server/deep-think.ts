@@ -1,5 +1,5 @@
 import { wrapUntrusted, INJECTION_GUARD } from "./_core/untrusted";
-import { invokeLLM, llmText } from "./_core/llm";
+import { invokeLLM, llmText, LLM_UNAVAILABLE_NOTE } from "./_core/llm";
 import { getDb } from "./db";
 import { aiResponseCache } from "../drizzle/schema";
 import { eq, and, gt } from "drizzle-orm";
@@ -81,6 +81,11 @@ export interface DeepThinkResult {
   reasoning?: string; // Only included in debug mode
   cached?: boolean; // Indicates if response was from cache
   cacheHitCount?: number; // How many times this response has been served
+  // False only when no model was reachable and `answer` is LLM_UNAVAILABLE_NOTE, not
+  // a real answer. ContextualAI.tsx and SupportBot.tsx both used to do
+  // `result.answer || fallback` — a non-empty degradation note is truthy, so it
+  // rendered straight into the chat as if a model had actually answered the question.
+  available?: boolean;
 }
 
 /**
@@ -94,7 +99,7 @@ function generateCacheHash(query: string, context: string): string {
 /**
  * Check cache for existing response
  */
-async function checkCache(queryHash: string): Promise<DeepThinkResult | null> {
+async function checkCache(orgId: number, queryHash: string): Promise<DeepThinkResult | null> {
   try {
     const db = await getDb();
     if (!db) return null;
@@ -105,6 +110,11 @@ async function checkCache(queryHash: string): Promise<DeepThinkResult | null> {
       .from(aiResponseCache)
       .where(
         and(
+          // The hash is of the query text and its context, so two tenants asking the
+          // same question produce the same hash. Without the org half, the second
+          // tenant's lookup HITS the first tenant's answer — which was written from
+          // the first tenant's account data.
+          eq(aiResponseCache.orgId, orgId),
           eq(aiResponseCache.queryHash, queryHash),
           gt(aiResponseCache.expiresAt, now)
         )
@@ -121,7 +131,10 @@ async function checkCache(queryHash: string): Promise<DeepThinkResult | null> {
           hitCount: (entry.hitCount || 1) + 1,
           lastHitAt: now
         })
-        .where(eq(aiResponseCache.id, entry.id));
+        // Already fetched org-scoped above, so the id is this org's — but the filter
+        // is spelled out anyway: a bare-id write is one refactor away from a bare-id
+        // write on an id that came from somewhere else.
+        .where(and(eq(aiResponseCache.orgId, orgId), eq(aiResponseCache.id, entry.id)));
 
       return {
         answer: entry.answer,
@@ -140,6 +153,7 @@ async function checkCache(queryHash: string): Promise<DeepThinkResult | null> {
  * Store response in cache
  */
 async function storeInCache(params: {
+  orgId: number;
   queryHash: string;
   query: string;
   contextHash: string;
@@ -154,6 +168,7 @@ async function storeInCache(params: {
     expiresAt.setHours(expiresAt.getHours() + CACHE_TTL_HOURS);
 
     await db.insert(aiResponseCache).values({
+      orgId: params.orgId,
       queryHash: params.queryHash,
       query: params.query,
       contextHash: params.contextHash,
@@ -180,12 +195,13 @@ async function storeInCache(params: {
  * 2-layer AI processing for enhanced intelligence
  */
 export async function deepThink(params: {
+  orgId: number;
   query: string;
   context?: string;
   debugMode?: boolean;
   skipCache?: boolean;
 }): Promise<DeepThinkResult> {
-  const { query, context = "", debugMode = false, skipCache = false } = params;
+  const { orgId, query, context = "", debugMode = false, skipCache = false } = params;
 
   // Generate cache hash
   const queryHash = generateCacheHash(query, context);
@@ -193,12 +209,15 @@ export async function deepThink(params: {
 
   // Check cache first (unless skipCache is true)
   if (!skipCache) {
-    const cachedResult = await checkCache(queryHash);
+    const cachedResult = await checkCache(orgId, queryHash);
     if (cachedResult) {
       console.log(`[DeepThink] Cache HIT for query: "${query.substring(0, 50)}..."`);
       return {
         ...cachedResult,
-        reasoning: debugMode ? cachedResult.reasoning : undefined
+        reasoning: debugMode ? cachedResult.reasoning : undefined,
+        // Only a real answer is ever written to the cache (see the comment below,
+        // at the point that writes it) — a cache hit is always available.
+        available: true,
       };
     }
     console.log(`[DeepThink] Cache MISS for query: "${query.substring(0, 50)}..."`);
@@ -227,7 +246,7 @@ export async function deepThink(params: {
   // ongoing projects") that reads like real advice. Confirmed live. Skip layer 2
   // entirely rather than let it launder a failure into something that looks like one.
   if (!layer1Available) {
-    return { answer: reasoningStr, reasoning: undefined, cached: false };
+    return { answer: reasoningStr, reasoning: undefined, cached: false, available: false };
   }
 
   // ============================================
@@ -250,11 +269,14 @@ Transform this into a polished, human response.`;
 
   // Caching the degradation note would make one outage look like a permanent answer.
   const { content: answer, available } = llmText(layer2Response);
-  if (!available) return { answer, reasoning: reasoningStr, cached: false };
+  if (!available) {
+    return { answer: LLM_UNAVAILABLE_NOTE, reasoning: reasoningStr, cached: false, available: false };
+  }
   const answerStr = answer;
 
   // Store in cache for future use
   await storeInCache({
+    orgId,
     queryHash,
     query,
     contextHash,
@@ -265,7 +287,8 @@ Transform this into a polished, human response.`;
   return {
     answer: answerStr,
     reasoning: debugMode ? reasoningStr : undefined,
-    cached: false
+    cached: false,
+    available: true
   };
 }
 
@@ -274,6 +297,7 @@ Transform this into a polished, human response.`;
  * Specialized version with {COMPANY_NAME} context
  */
 export async function deepThinkSales(params: {
+  orgId: number;
   query: string;
   accountData?: any;
   contactData?: any;
@@ -301,7 +325,7 @@ export async function deepThinkSales(params: {
     context += `\n\nADDITIONAL CONTEXT:\n${additionalContext}`;
   }
 
-  return deepThink({ query, context, debugMode, skipCache });
+  return deepThink({ orgId: params.orgId, query, context, debugMode, skipCache });
 }
 
 /**
@@ -309,6 +333,7 @@ export async function deepThinkSales(params: {
  * Specialized version for dashboard help
  */
 export async function deepThinkHelp(params: {
+  orgId: number;
   query: string;
   debugMode?: boolean;
   skipCache?: boolean;
@@ -333,5 +358,5 @@ export async function deepThinkHelp(params: {
 
 If you can't answer something, suggest the user reach out to ${cfg.supportContact} for help.`;
 
-  return deepThink({ query, context, debugMode, skipCache });
+  return deepThink({ orgId: params.orgId, query, context, debugMode, skipCache });
 }

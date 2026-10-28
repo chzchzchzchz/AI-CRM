@@ -46,9 +46,15 @@ export default [
       // The one that matters: hooks must be unconditional and above every return.
       "react-hooks/rules-of-hooks": "error",
       // A stale closure reading last render's state is the other bug in this family
-      // that renders fine and behaves wrong. Warn rather than error — the existing
-      // code has several deliberate omissions that would need review, not a blanket fix.
-      "react-hooks/exhaustive-deps": "warn",
+      // that renders fine and behaves wrong. This was a warning while the existing
+      // omissions awaited review, and the review found one of seven was real: the
+      // accounts list left the territory predicate out of its dependencies, so picking
+      // a rep changed nothing on screen. The warning had sat in every lint run for
+      // weeks. A new omission of the same kind then showed "0 accounts" under a tile
+      // that said 69, and was caught only by someone reading the lint output. The
+      // other six were harmless and are fixed, so this is an error now: a missing
+      // dependency fails the build instead of scrolling past.
+      "react-hooks/exhaustive-deps": "error",
     },
   },
 ];
