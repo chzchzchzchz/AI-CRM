@@ -157,32 +157,34 @@ export function registerAdminApprovalRoutes(app: Express) {
   // the approval — a real access decision made by a bot, not the admin. The mutation
   // now only happens on the POST triggered by an explicit click on this page.
   app.get("/api/admin/approve/:token", async (req: Request, res: Response) => {
-    const result = await resolveToken(req.params.token, "approve");
+    const token = req.params.token as string;
+    const result = await resolveToken(token, "approve");
     if (!result.ok) return res.status(result.status).send(result.page);
     const { user } = result;
 
     if (user.isApproved) {
-      approvalTokens.delete(req.params.token);
+      approvalTokens.delete(token);
       return res.status(200).send(renderResultPage("Already Approved", `${user.name} (${user.email}) has already been approved.`, true));
     }
 
-    return res.status(200).send(renderConfirmPage("approve", req.params.token, user.name ?? user.email ?? "this user", user.email ?? ""));
+    return res.status(200).send(renderConfirmPage("approve", token, user.name ?? user.email ?? "this user", user.email ?? ""));
   });
 
   app.post("/api/admin/approve/:token", async (req: Request, res: Response) => {
     try {
-      const result = await resolveToken(req.params.token, "approve");
+      const token = req.params.token as string;
+      const result = await resolveToken(token, "approve");
       if (!result.ok) return res.status(result.status).send(result.page);
       const { user } = result;
 
       if (user.isApproved) {
-        approvalTokens.delete(req.params.token);
+        approvalTokens.delete(token);
         return res.status(200).send(renderResultPage("Already Approved", `${user.name} (${user.email}) has already been approved.`, true));
       }
 
       const db = await getDb();
       await db!.update(users).set({ isApproved: true }).where(eq(users.id, user.id));
-      approvalTokens.delete(req.params.token);
+      approvalTokens.delete(token);
       retireTokensFor(user.id);
 
       return res.status(200).send(renderResultPage(
@@ -197,24 +199,26 @@ export function registerAdminApprovalRoutes(app: Express) {
   });
 
   app.get("/api/admin/deny/:token", async (req: Request, res: Response) => {
-    const result = await resolveToken(req.params.token, "deny");
+    const token = req.params.token as string;
+    const result = await resolveToken(token, "deny");
     if (!result.ok) return res.status(result.status).send(result.page);
     const { user } = result;
 
-    return res.status(200).send(renderConfirmPage("deny", req.params.token, user.name ?? user.email ?? "this user", user.email ?? ""));
+    return res.status(200).send(renderConfirmPage("deny", token, user.name ?? user.email ?? "this user", user.email ?? ""));
   });
 
   app.post("/api/admin/deny/:token", async (req: Request, res: Response) => {
     try {
-      const result = await resolveToken(req.params.token, "deny");
+      const token = req.params.token as string;
+      const result = await resolveToken(token, "deny");
       if (!result.ok) return res.status(result.status).send(result.page);
       const { user } = result;
 
       // Deny = remove from system.
       const db = await getDb();
       await db!.delete(users).where(eq(users.id, user.id));
-      approvalTokens.delete(req.params.token);
-      retireTokensFor(user.id);
+      approvalTokens.delete(req.params.token as string);
+      retireTokensFor(user.id as number);
 
       return res.status(200).send(renderResultPage(
         "User Denied",
